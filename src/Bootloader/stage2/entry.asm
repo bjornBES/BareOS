@@ -1,0 +1,186 @@
+bits 16
+
+section .entry
+
+%define ENDL 0x0D, 0x0A
+
+extern __bss_start
+extern __end
+extern _init
+
+extern start
+global entry
+
+entry:
+    cli
+
+    mov [g_BootDrive], dl
+    mov [g_BootPartitionOff], si
+    mov [g_BootPartitionSeg], di
+    
+    mov si, message
+    call puts
+
+    mov ax, ds
+    mov ss, ax
+    mov sp, 0xFFF0
+    mov bp, sp
+
+    call EnableA20
+    call LoadGDT
+
+    mov eax, cr0
+    or al, 1
+    mov cr0, eax
+
+    jmp dword 0x08:.pmode
+
+.pmode:
+    [bits 32]
+
+    mov ax, 0x10
+    mov ds, ax
+    mov ss, ax
+
+    mov edi, __bss_start
+    mov ecx, __end
+    sub ecx, edi
+    mov al, 0
+    cld
+    rep stosb
+
+    ; call global constructors
+    call _init
+
+    mov dx, [g_BootPartitionSeg]
+    shl edx, 16
+    mov dx, [g_BootPartitionOff]
+    push edx
+    
+    xor edx, edx
+    mov dl, [g_BootDrive]
+    push edx
+    call start
+
+    cli
+    hlt
+
+message: db "Hello world", 0xD, 0xA, 0
+
+puts:
+    push si
+    push ax
+    push bx
+
+.loop:
+    lodsb
+    or al, al
+    jz .done
+    
+
+    mov ah, 0x0E
+    mov bh, 0
+    int 0x10
+
+    jmp .loop
+.done:
+
+    pop bx
+    pop ax
+    pop si
+    ret
+
+EnableA20:
+    [bits 16]
+    ; disable keyboard
+    call A20WaitInput
+    mov al, KbdControllerDisableKeyboard
+    out KbdControllerCommandPort, al
+    
+    ; read control output port
+    call A20WaitInput
+    mov al, KbdControllerReadCtrlOutputPort
+    out KbdControllerCommandPort, al
+
+    call A20WaitOutput
+    in al, KbdControllerDataPort
+    push eax
+
+    ; write control output port
+    call A20WaitInput
+    mov al, KbdControllerWriteCtrlOutputPort
+    out KbdControllerCommandPort, al
+
+    call A20WaitInput
+    pop eax
+    or al, 2
+    out KbdControllerDataPort, al
+
+    ; enable keyboard
+    call A20WaitInput
+    mov al, KbdControllerEnableKeyboard
+    out KbdControllerCommandPort, al
+
+    call A20WaitInput
+    ret
+
+A20WaitInput:
+    [bits 16]
+
+    in al, KbdControllerCommandPort
+    test al, 2
+    jnz A20WaitInput
+    ret
+
+A20WaitOutput:
+    [bits 16]
+
+    in al, KbdControllerCommandPort
+    test al, 1
+    jz A20WaitOutput
+    ret
+
+KbdControllerDataPort               equ 0x60
+KbdControllerCommandPort            equ 0x64
+KbdControllerDisableKeyboard        equ 0xAD
+KbdControllerEnableKeyboard         equ 0xAE
+KbdControllerReadCtrlOutputPort     equ 0xD0
+KbdControllerWriteCtrlOutputPort    equ 0xD1
+
+    
+LoadGDT:
+    [bits 16]
+    lgdt [g_GDTDesc]
+    ret
+
+%macro GDTDescriptor 6
+    dw %1
+    dw %2
+    db %3
+    db %4
+    db %5
+    db %6
+%endmacro
+
+g_GDT:
+    ; Null Descriptor
+    dq 0
+
+    ; 32-bit code segment
+    GDTDescriptor 0xFFFF, 0, 0, 0b10011010, 0b11001111, 0
+    
+    ; 32-bit data segment
+    GDTDescriptor 0xFFFF, 0, 0, 0b10010010, 0b11001111, 0
+
+    ; 16-bit code segment
+    GDTDescriptor 0xFFFF, 0, 0, 0b10011010, 0b00001111, 0
+    
+    ; 16-bit data segment
+    GDTDescriptor 0xFFFF, 0, 0, 0b10010010, 0b00001111, 0
+
+g_GDTDesc:  dw g_GDTDesc - g_GDT - 1
+            dd g_GDT
+
+g_BootDrive: db 0
+g_BootPartitionSeg: dw 0
+g_BootPartitionOff: dw 0

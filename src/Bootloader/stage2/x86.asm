@@ -1,0 +1,689 @@
+%macro x86_EnterRealMode 0
+    [bits 32]
+    jmp word 18h:.pmode16         ; 1 - jump to 16-bit protected mode segment
+
+.pmode16:
+    [bits 16]
+    ; 2 - disable protected mode bit in cr0
+    mov eax, cr0
+    and al, ~1
+    mov cr0, eax
+
+    ; 3 - jump to real mode
+    jmp word 00h:.rmode
+
+.rmode:
+    ; 4 - setup segments
+    mov ax, 0
+    mov ds, ax
+    mov ss, ax
+
+    ; 5 - enable interrupts
+    sti
+
+%endmacro
+
+
+%macro x86_EnterProtectedMode 0
+    cli
+
+    ; 4 - set protection enable flag in CR0
+    mov eax, cr0
+    or al, 1
+    mov cr0, eax
+
+    ; 5 - far jump into protected mode
+    jmp dword 08h:.pmode
+
+
+.pmode:
+    ; we are now in protected mode!
+    [bits 32]
+    
+    ; 6 - setup segment registers
+    mov ax, 0x10
+    mov ds, ax
+    mov ss, ax
+
+%endmacro
+
+; Convert linear address to segment:offset address
+; Args:
+;    1 - linear address
+;    2 - (out) target segment (e.g. es)
+;    3 - target 32-bit register to use (e.g. eax)
+;    4 - target lower 16-bit half of #3 (e.g. ax)
+
+%macro LinearToSegOffset 4
+
+    mov %3, %1      ; linear address to eax
+    shr %3, 4
+    mov %2, %4
+    mov %3, %1      ; linear address to eax
+    and %3, 0xf
+
+%endmacro
+
+
+global x86_outb
+x86_outb:
+    [bits 32]
+    mov dx, [esp + 4]
+    mov al, [esp + 8]
+    out dx, al
+    ret
+
+global x86_inb
+x86_inb:
+    [bits 32]
+    mov dx, [esp + 4]
+    xor eax, eax
+    in al, dx
+    ret
+
+
+global x86_Disk_GetDriveParams
+x86_Disk_GetDriveParams:
+    [bits 32]
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp         ; initialize new call frame
+
+    x86_EnterRealMode
+
+    [bits 16]
+
+    ; save regs
+    push es
+    push bx
+    push esi
+    push di
+
+    ; call int13h
+    mov dl, [bp + 8]    ; dl - disk drive
+    mov ah, 08h
+    mov di, 0           ; es:di - 0000:0000
+    mov es, di
+    stc
+    int 13h
+
+    ; out params
+    mov eax, 1
+    sbb eax, 0
+
+    ; drive type from bl
+    LinearToSegOffset [bp + 12], es, esi, si
+    mov [es:si], bl
+
+    ; cylinders
+    mov bl, ch          ; cylinders - lower bits in ch
+    mov bh, cl          ; cylinders - upper bits in cl (6-7)
+    shr bh, 6
+    inc bx
+
+    LinearToSegOffset [bp + 16], es, esi, si
+    mov [es:si], bx
+
+    ; sectors
+    xor ch, ch          ; sectors - lower 5 bits in cl
+    and cl, 3Fh
+    
+    LinearToSegOffset [bp + 20], es, esi, si
+    mov [es:si], cx
+
+    ; heads
+    mov cl, dh          ; heads - dh
+    inc cx
+
+    LinearToSegOffset [bp + 24], es, esi, si
+    mov [es:si], cx
+
+    ; restore regs
+    pop di
+    pop esi
+    pop bx
+    pop es
+
+    ; return
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    [bits 32]
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+
+global x86_Disk_Reset
+x86_Disk_Reset:
+    [bits 32]
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+
+    x86_EnterRealMode
+
+    mov ah, 0
+    mov dl, [bp + 8]    ; dl - drive
+    stc
+    int 13h
+
+    mov eax, 1
+    sbb eax, 0           ; 1 on success, 0 on fail   
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+
+global x86_Disk_Read
+x86_Disk_Read:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push ebx
+    push es
+
+    ; setup args
+    mov dl, [bp + 8]    ; dl - drive
+
+    mov ch, [bp + 12]    ; ch - cylinder (lower 8 bits)
+    mov cl, [bp + 13]    ; cl - cylinder to bits 6-7
+    shl cl, 6
+    
+    mov al, [bp + 16]    ; cl - sector to bits 0-5
+    and al, 3Fh
+    or cl, al
+
+    mov dh, [bp + 20]   ; dh - head
+
+    mov al, [bp + 24]   ; al - count
+
+    LinearToSegOffset [bp + 28], es, ebx, bx
+
+    ; call int13h
+    mov ah, 02h
+    stc
+    int 13h
+
+    ; set return value
+    mov eax, 1
+    sbb eax, 0           ; 1 on success, 0 on fail   
+
+    ; restore regs
+    pop es
+    pop ebx
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+
+;
+; int ASMCALL x86_E820GetNextBlock(E820MemoryBlock* block, uint32_t* continuationId);
+;
+E820Signature   equ 0x534D4150
+
+global x86_E820GetNextBlock
+x86_E820GetNextBlock:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    push ds
+    push es
+
+    ; setup params
+    LinearToSegOffset [bp + 8], es, edi, di     ; es:di pointer to structure
+    
+    LinearToSegOffset [bp + 12], ds, esi, si    ; ebx - pointer to continuationId
+    mov ebx, ds:[si]
+
+    mov eax, 0xE820                             ; eax - function
+    mov edx, E820Signature                      ; edx - signature
+    mov ecx, 24                                 ; ecx - size of structure
+
+    ; call interrupt
+    int 0x15
+
+    ; test results
+    cmp eax, E820Signature
+    jne .Error
+
+    .IfSuccedeed:
+        mov eax, ecx            ; return size
+        mov ds:[si], ebx        ; fill continuation parameter
+        jmp .EndIf
+
+    .Error:
+        mov eax, -1
+
+    .EndIf:
+
+    ; restore regs
+    pop es
+    pop ds
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+;
+; bool ASMCALL x86_VESASupported(void* result);
+;
+global x86_VESASupported
+x86_VESASupported:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push edi
+    push es
+
+    LinearToSegOffset [bp + 8], es, edi, di
+
+    mov ax, 0x4F00
+    int 10h
+
+    cmp AX, 0x004F
+    jne .VESANotSupported
+
+    xor eax, eax
+    mov al, 1
+    jmp .Endif
+    
+    .VESANotSupported:
+    
+        xor eax, eax
+    
+    .Endif:
+    
+    ; restore regs
+    pop es
+    pop edi
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+;
+; bool __attribute__((cdecl)) x86_GetVESAEntry(uint16_t mode, void* result);
+;
+global x86_GetVESAEntry
+x86_GetVESAEntry:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push ecx
+    push edi
+    push es
+
+    LinearToSegOffset [bp + 12], es, edi, di
+    mov cx, [bp + 8]
+    mov ax, 0x4F01
+    int 10h
+
+    cmp al, 0x4F
+    jne .VESANotSupported
+
+    xor eax, eax
+    mov al, 1
+    jmp .Endif
+    
+    .VESANotSupported:
+    
+    xor eax, eax
+    
+    .Endif:
+    
+    ; restore regs
+    pop es
+    pop edi
+    pop ecx
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
+
+;
+; int __attribute__((cdecl)) x86_SetVESAMode(uint16_t mode);
+;
+global x86_SetVESAMode
+x86_SetVESAMode:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push ebx
+    push edi
+    mov ax, es
+    push ax
+    
+    xor edi,    edi
+    mov es,     di
+    
+    mov bx,     [bp + 8]        ; Get the mode
+    mov ax,     0x4F02          ; set SET SuperVGA VIDEO MODE
+    int 0x10                    ; int
+    
+    cmp ah,     0x4F            ; successful and function supported
+    je .success
+    ; VESA Not Supported
+    ; xor ax, ax              ; false
+    jmp .End
+.success:
+    ;; mov al, 0x01
+.End:
+    
+    ; restore regs
+    pop bx
+    mov es, bx
+    pop ebx
+    pop ebx
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    mov esp, ebp
+    pop ebp
+    ret
+
+;
+; bool __attribute__((cdecl)) x86_PCIInitCheck(uint8_t* PCIchar, uint8_t* protectedModeEntry, uint16_t* PCIInterfaceLevel, uint8_t* lastPCIBus);
+;
+global x86_PCIInitCheck
+x86_PCIInitCheck:
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode   ; enter into rmode again
+
+    ; save modified regs
+    push ebx
+    push ecx
+    push edx
+    push edi
+    push esi
+    push es
+    
+    xor edi, edi
+    LinearToSegOffset [bp + 12], es, esi, si        ; getting the protectedModeEntry address
+    mov [es:si], edi                                ; protectedModeEntry = null 
+    
+    LinearToSegOffset [bp + 16], es, esi, si        ; getting the PCIInterfaceLevel address
+    mov [es:si], edi                                ; PCIInterfaceLevel = null
+
+    LinearToSegOffset [bp + 20], es, esi, si        ; getting the lastPCIBus address
+    mov [es:si], edi                                ; lastPCIBus = null
+    
+    xor edi, edi
+    mov ax, 0xB101
+    int 0x1A                                        ; calling the INSTALLATION CHECK function
+
+    LinearToSegOffset [bp + 8], es, esi, si         ; getting the address PCIchar / [es:si] = PCIchar
+    cmp ah, 0x00
+    jne .PCINotInstalled
+
+    .Succedeed:
+    mov [es:si], al                                 ; setting the PCI hardware characteristics
+    mov eax, 1
+        
+    LinearToSegOffset [bp + 12], es, esi, si        ; getting the protectedModeEntry address
+    mov [es:si], edi                                ; setting the address of protected-mode entry point
+
+    LinearToSegOffset [bp + 16], es, esi, si        ; getting the PCIInterfaceLevel address
+    mov [es:si], ebx                                ; setting the PCI interface level
+        
+    LinearToSegOffset [bp + 20], es, esi, si        ; getting the lastPCIBus address
+    mov [es:si], ecx                                ; setting the number of last PCI bus in system
+        
+    jmp .EndIf
+        
+    .PCINotInstalled:
+    mov [es:si], ah
+    mov eax, 0
+
+    .EndIf:
+
+    pop es
+    pop esi
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    
+    push eax
+    
+    x86_EnterProtectedMode                          ; enter into pmode again
+    
+    pop eax
+
+    pop ebp
+    ret
+
+;
+; void ASMCALL SetVGAMode(uint8_t mode);
+;
+global SetVGAMode
+SetVGAMode:
+    push    ebp
+    mov     ebp,    esp
+
+    x86_EnterRealMode
+
+    push    eax
+
+    xor     ax,     ax
+    mov     al,     [bp + 8]
+    int     0x10
+
+    pop     eax    
+
+    x86_EnterProtectedMode
+
+    pop     ebp
+    ret
+
+extern page_directory
+extern kernelEntry
+;
+; void ASMCALL JumpToKernel(void* bootparms)
+;
+global JumpToKernel    
+JumpToKernel:
+    ; setup pages
+    ; mov     eax,    cr4
+    ; or      eax,    0x10   ; PSE = 1
+    ; mov     cr4,    eax
+    cli
+    mov     eax,    page_directory
+    mov     cr3,    eax
+
+    mov     eax,    cr0
+    or      eax,    0x80000000   ; PG = 1
+    mov     cr0,    eax
+
+    mov     edi,    [esp + 4]
+    mov     eax,    [kernelEntry]
+
+global .jumpKernel
+.jumpKernel:
+    push    word 0x08
+    push    eax
+    retf
+    
+;
+; bool ASMCALL X86_checkForKeys()
+;
+global X86_checkForKeys    
+X86_checkForKeys:
+    push    ebp
+    mov     ebp,    esp
+    
+    x86_EnterRealMode
+
+    push    ecx
+    push    edx
+    push    ebx
+    push    edi
+    push    esi
+
+    mov ah, 0
+    int 0x1A            ; TIME - GET SYSTEM TIME
+    ; Return:
+    ; CX:DX = number of clock ticks since midnight
+    ; AL = midnight flag, nonzero if midnight passed since time last read 
+
+    mov     si, menu_key
+    mov     bx, cx
+    mov     di, dx
+
+.wait_loop:
+    mov ah, 1
+    int 0x16            ; KEYBOARD - CHECK FOR KEYSTROKE
+    ; ZF set if no keystroke available
+    ; ZF clear if keystroke available
+    ; AH = BIOS scan code
+    ; AL = ASCII character
+
+    ; if no keystroke
+    jz .check_timer
+
+    ; we got BIOS scan code
+    ; and an ASCII char code
+    ; from int 0x16 ah=1
+    ; just need to compare em
+
+    ; compare
+    mov ah, 0
+    int 0x16            ; KEYBOARD - GET KEYSTROKE
+    cmp ah, [si]        ; compare ah to [F1, F10, F12, DEL]
+    je .key_pressed     ; load menu
+    
+.check_timer:
+    mov ah, 0
+    int 0x1A
+    ; CX:DX = current
+    ; BX:DI = start
+
+    ; compute difference
+
+    mov ax, dx          ; ax = current low
+    sub ax, di          ; current low - start low
+    mov dx, ax          ; store result in DX (low)
+    
+    mov ax, cx          ; ax = current high
+    sbb ax, bx          ; current high - start high
+    mov cx, ax          ; store result in DX (high)
+
+    cmp cx, 0
+    jne .wait_loop
+    cmp dx, 36          ; ~2 sec
+    jl .wait_loop
+
+.timeout: ; if we ran out of time
+    xor eax, eax
+    jmp .exit_function
+.key_pressed: ; key was pressed
+    mov eax, 1 ; yes
+.exit_function:
+
+    pop     esi
+    pop     edi
+    pop     ebx
+    pop     edx
+    pop     ecx
+    push    eax
+
+    x86_EnterProtectedMode
+
+    pop     eax
+    pop     ebp
+    ret
+
+section .bss
+;
+; uint8_t menu_key = 0
+;
+global menu_key
+menu_key: resb 1
