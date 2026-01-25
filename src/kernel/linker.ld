@@ -5,23 +5,23 @@ KERNEL_LMA = 0x00100000;
 
 SECTIONS
 {
-    . = KERNEL_VMA;
-    .text               : AT(KERNEL_LMA)
+    . = KERNEL_LMA;
+    .text               : /* AT(KERNEL_LMA) */
     {
         __text_start = .;       *(.text)
     }
 
-    .data               : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
+    .data               : /* AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA) */
     {
         __data_start = .;       *(.data)
     }
 
-    .rodata             : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
+    .rodata             : /* AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA) */
     {
         __rodata_start = .;     *(.rodata)
     }
     
-    .font               : AT(ADDR(.font) - KERNEL_VMA + KERNEL_LMA)
+    .font               : /* AT(ADDR(.font) - KERNEL_VMA + KERNEL_LMA) */
     {
         __font_start = .;       *(.font)
     }

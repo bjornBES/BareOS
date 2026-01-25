@@ -5,7 +5,7 @@
 #include "minmax.h"
 #include "stdio.h"
 
-#define KERNEL_VMA 0xC0000000
+#define KERNEL_VMA 0x00100000
 #define KERNEL_LMA 0x00100000
 
 void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOffset)
@@ -85,19 +85,19 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
             continue;
 
         /* Translate VADDR → physical */
-        if (ph.VirtualAddress < KERNEL_VMA)
+        if (ph.PhysicalAddress < KERNEL_VMA)
         {
             printf("ELF: segment below kernel VMA\n");
             FAT_Close(fd);
             return false;
         }
 
-        uint32_t phys = ph.VirtualAddress - KERNEL_VMA + KERNEL_LMA;
+        uint32_t phys = ph.PhysicalAddress - KERNEL_VMA + KERNEL_LMA;
 
         dest = (uint8_t *)(uintptr_t)phys;
 
         printf("ELF: load seg %u\n", i);
-        printf("     VADDR 0x%x\n", ph.VirtualAddress);
+        printf("     VADDR 0x%x\n", ph.PhysicalAddress);
         printf("     PADDR 0x%x\n", phys);
         printf("     filesz %u memsz %u\n", ph.FileSize, ph.MemorySize);
 

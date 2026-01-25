@@ -17,6 +17,9 @@ static __attribute__((unused)) fd_t const stdout = (fd_t)VFS_FD_STDOUT;
 static __attribute__((unused)) fd_t const stderr = (fd_t)VFS_FD_STDERR;
 static __attribute__((unused)) fd_t const stddebug = (fd_t)VFS_FD_DEBUG;
 
+void fputc(char c, fd_t file);
+void fputs(const char* s, fd_t file);
+
 void putc(char c);
 void puts(const char* s);
 

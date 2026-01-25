@@ -30,3 +30,12 @@ message:
 db "BES KERNEL", 0xD, 0xA, 0
 message_len:
     dw $-message
+
+global crash_me
+crash_me:
+    ; div by 0
+    mov ecx, 0x1337
+    mov eax, 0
+    div eax
+    int 0x80
+    ret

@@ -9,19 +9,37 @@
 #include <core/printfDriver/printf.h>
 #include <core/arch/i686/VGATextDevice.h>
 #include <kernel/vfs.h>
+#include <core/arch/i686/e9.h>
 
 #define MODULE "stdio"
 
 void putc(char c)
 {
-    putChar(c);
+    fputc(c, stdout);
 }
 
 void puts(const char* str)
 {
+    fputs(str, stdout);
+}
+
+void fputc(char c, fd_t file)
+{
+    if (file == stdout)
+    {
+        putChar(c);
+    }
+    if (file == stddebug)
+    {
+        e9_putc(c);
+    }
+}
+
+void fputs(const char* str, fd_t file)
+{
     while(*str)
     {
-        putc(*str);
+        fputc(*str, file);
         str++;
     }
 }

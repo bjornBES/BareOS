@@ -19,7 +19,7 @@ sys.path.append(project_root)
 
 userApps = os.path.abspath(os.path.join(project_root, "src/user_programs"))
 
-from scripts.utility import FindIndex, GlobRecursive, IsFileName, ParseSize
+from utility import FindIndex, GlobRecursive, IsFileName, ParseSize
 from config import mountMethod, config, arch, imageType, imageFS, imageSize
 from disk import DiskSpec, DiskPartitionSpec, disks
 
