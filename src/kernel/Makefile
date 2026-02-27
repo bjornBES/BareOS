@@ -2,7 +2,6 @@ TARGET_ASMFLAGS += -f elf
 TARGET_CFLAGS += -ffreestanding -nostdlib -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR)
 TARGET_LIBS += -lgcc
 TARGET_LINKFLAGS += -T linker.ld -nostdlib
-CBLFLAGS += 
 
 BUILD_DIRKERNEL = $(BUILD_DIR)/kernel
 BUILD_DIRC = $(BUILD_DIRKERNEL)/c
@@ -12,13 +11,13 @@ TEMP_DIRCBL = $(BUILD_DIRKERNEL)/cobol/temp
 
 HEADERS_C = $(shell find . -type f -name "*.h")
 
-SOURCES_C = $(shell find . -type f -name "*.c")
+SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c"))
 
 OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
 
 HEADERS_ASM = $(shell find . -type f -name "*.inc")
 
-SOURCES_ASM = $(shell find . -type f -name "*.asm")
+SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm"))
 
 OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
 
@@ -35,7 +34,7 @@ $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
 	@$(TARGET_LD) $(TARGET_LINKFLAGS) -D DEBUG=1 -D=PAGING=$(PAGING_ENABLE) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 
-$(BUILD_DIRC)/%.obj: %.c $(HEADERS_C)
+$(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(TARGET_CFLAGS) -DMAX_PATH_SIZE=$(MAX_PATH_SIZE) -D__minPages__=$(MIN_NUMBER_PAGES) -c -o $@ $<
 	@echo "--> Compiled: " $<
@@ -44,16 +43,6 @@ $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -DPAGING=$(PAGING_ENABLE) -o $@ $<
 	@echo "--> Compiled: " $<
-
-$(TEMP_DIRCBL)/%.c: %.cbl
-	@mkdir -p $(@D)
-	@$(CBL) $(CBLFLAGS) -C -o $@ $<
-	@echo "--> Translated COBOL to C: " $< " into " $@
-
-$(BUILD_DIRCBL)/%.obj: $(TEMP_DIRCBL)/%.c
-	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
-	@echo "--> Compiled COBOL-C: " $<
 
 always:
 	@if not exist $(BUILD_DIRASM) mkdir $(BUILD_DIRASM)

@@ -564,7 +564,6 @@ SetVGAMode:
     pop     ebp
     ret
 
-extern page_directory
 extern kernelEntry
 ;
 ; void ASMCALL JumpToKernel(void* bootparms)
@@ -572,12 +571,8 @@ extern kernelEntry
 global JumpToKernel    
 JumpToKernel:
     ; setup pages
-    ; mov     eax,    cr4
-    ; or      eax,    0x10   ; PSE = 1
-    ; mov     cr4,    eax
-    cli
-    mov     eax,    page_directory
-    mov     cr3,    eax
+    ; mov     eax,    page_directory
+    ; mov     cr3,    eax
 
     ; mov     eax,    cr0
     ; or      eax,    0x80000000   ; PG = 1
@@ -585,12 +580,10 @@ JumpToKernel:
 
     mov     edi,    [esp + 4]
     mov     eax,    [kernelEntry]
-
+    
 global .jumpKernel
 .jumpKernel:
-    push    word 0x08
-    push    eax
-    retf
+    jmp eax
     
 ;
 ; bool ASMCALL X86_checkForKeys()

@@ -4,32 +4,34 @@
 extern stack_top
 extern main
 
-section .text
-
-global entry
-entry:
-    mov esp, stack_top
-    push edi
-    mov edi, 0xb80000
-    mov esi, message
-    mov ah, 0x07
-    mov ecx, message_len
-
-.next_char:
-    lodsb
-    xchg al, ah
-    stosw
-    loop .next_char
-
-    call main
-
-.end:
-    jmp .end
+section .data
 
 message:
 db "BES KERNEL", 0xD, 0xA, 0
 message_len:
     dw $-message
+
+section .text
+
+global entry
+entry:
+    cli
+    
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    mov esp, stack_top
+    mov ebp, esp
+    push edi
+
+    call main
+
+.end:
+    jmp .end
 
 global crash_me
 crash_me:
@@ -37,5 +39,4 @@ crash_me:
     mov ecx, 0x1337
     mov eax, 0
     div eax
-    int 0x80
     ret

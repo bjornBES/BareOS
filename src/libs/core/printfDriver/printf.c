@@ -9,13 +9,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <core/arch/i686/VGATextDevice.h>
-// #include <core/arch/i686/E9Device.h>
+#include <stdio.h>
 #include "limits.h"
 
 #ifndef DEBUGLEVELDEF
 #define DEBUGLEVELDEF 1
-typedef enum {
+typedef enum
+{
     LVL_DEBUG = 0,
     LVL_INFO = 1,
     LVL_WARN = 2,
@@ -24,7 +24,7 @@ typedef enum {
 } DebugLevel;
 #endif
 
-void logf(const char* module, DebugLevel level, const char* fmt, ...);
+void logf(const char *module, DebugLevel level, const char *fmt, ...);
 
 // 'ntoa' conversion buffer size, this must be big enough to hold one converted
 // numeric number including padded zeros (dynamically created on stack)
@@ -218,18 +218,7 @@ typedef union
 
 void k_fputc(char c, fd_t fd)
 {
-    if (fd == 1)
-    {
-        putChar(c);
-    }
-    /*
-    else if (fd == 3)
-    {
-        uint8_t* data = (uint8_t*)(char*)&c;
-        //Write(data, 1);
-    }
-    */
-    
+    fputc(c, fd);
 }
 
 // This is unnecessary in C99, since compound initializers can be used,
@@ -1459,6 +1448,6 @@ output_gadget_t function_gadget()
 {
     output_gadget_t result = discarding_gadget();
     result.max_chars = PRINTF_MAX_POSSIBLE_BUFFER_SIZE;
-    result.file = 1;    // STD Out
+    result.file = 1; // STD Out
     return result;
 }

@@ -148,5 +148,35 @@
     },
     "C_Cpp.errorSquiggles": "disabled",
     "python-envs.defaultEnvManager": "ms-python.python:pyenv",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "cSpell.enabledFileTypes": {
+        "*": true,
+        "markdown": true,
+        "makefile": false
+    },
+    "cSpell.words": [
+        "ASMCALL",
+        "ASMFLAGS",
+        "biosregs",
+        "bootparams",
+        "cdecl",
+        "CPUID",
+        "elfheader",
+        "LINKFLAGS",
+        "lodsb",
+        "lodsd",
+        "movzx",
+        "outregs",
+        "physaddr",
+        "resb",
+        "resd",
+        "stosw",
+        "vesa",
+        "virtualaddr"
+    ],
+    "commentAnchors.tagHighlights.enabled": false,
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "always",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "commands"
 }

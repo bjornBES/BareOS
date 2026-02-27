@@ -36,6 +36,11 @@ cat > .vscode/.gdb_script.gdb << EOF
     symbol-file $PWD/build/i686_debug/kernel/kernel.elf
     set disassembly-flavor intel
     target remote | qemu-system-i386 $QEMU_ARGS
+    b main
+    foc cmd
+    lay next
+    lay next
+    lay next
 EOF
 
 gdb -x .vscode/.gdb_script.gdb

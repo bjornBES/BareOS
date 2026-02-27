@@ -1,3 +1,13 @@
+/*
+ * File: main.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 27 Feb 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "stdio.h"
@@ -6,7 +16,7 @@
 #include "string.h"
 
 #include <boot/bootparams.h>
-#include "memory/paging.h"
+#include "paging/paging.h"
 #include "x86.h"
 #include "memdefs.h"
 #include "fs/mbr.h"
@@ -16,6 +26,8 @@
 #include "bootparams/memory/memdetect.h"
 #include "bootparams/pci/pci.h"
 #include "bootparams/video/vesa.h"
+#include "bootparams/equipment/CPUID.h"
+#include "bootparams/equipment/Equipment.h"
 #include "menu/menu.h"
 
 typedef void (*BootStart)(BootParams *boot);
@@ -36,6 +48,8 @@ void hexdump(void *ptr, int len)
 
 void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
 {
+    fill_table();
+
     bool readyToJump = false;
     printf("%x", partition);
     hexdump(partition, 64);
@@ -67,6 +81,9 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     DetectMemory(bootParams);
     DetectVESA(bootParams);
     DetectPCI(bootParams);
+    DetectEquipment(bootParams);
+    DetectCPUID(bootParams);
+    bootParams->pageDirectory = pageDirectory;
 
     /*
     Get some info of computer from BIOS like
@@ -106,12 +123,24 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     }
     readyToJump = true;
 
+    x86_SetVESAMode(0x115);
+    bootParams->currentMode = 0x115;
+
     if (readyToJump)
     {
-        printf("File table\n");
-        fill_table();           // fulls out the tables
-        printf("Enable paging and jump\n");
-        JumpToKernel(bootParams);         // sets tables and enables PG and jumps
+        printf("jump to 0x%p\n", *kernelEntry);
+        __asm__("cli");
+        __asm__("mov %%eax, %%cr3" : : "a"(pageDirectory));
+        __asm__("mov %cr0, %eax");
+        __asm__("orl $0x80000000, %eax");
+        __asm__("mov %eax, %cr0");
+        __asm__("sti");
+        __asm__("movl %0, %%edi" : : "r"(bootParams) );
+        __asm__("pushw $0x08" );
+        __asm__("pushl %0" : : "r"(kernelEntry) );
+        __asm__("retf" );
+
+        __builtin_unreachable();
     }
 
 end:

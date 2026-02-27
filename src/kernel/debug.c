@@ -1,3 +1,13 @@
+/*
+ * File: debug.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 27 Feb 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "debug.h"
 #include <stdio.h>
 #include <core/printfDriver/printf.h>
@@ -20,6 +30,7 @@ void logf(const char* module, DebugLevel level, const char* fmt, ...)
     
     if (level < MIN_LOG_LEVEL)
     return;
+    
     fputs(g_LogSeverityColors[level], VFS_FD_DEBUG);    // set color depending on level
     fprintf(VFS_FD_DEBUG, "[%s] ", module);             // write module
     vprintf(VFS_FD_DEBUG, fmt, args);                   // write text
@@ -38,4 +49,20 @@ void strlogf(DebugLevel level, const char* str)
     fprintf(VFS_FD_DEBUG, str);                         // write text
     fputs(g_ColorReset, VFS_FD_DEBUG);                  // reset format
     fputs("\n", VFS_FD_DEBUG);                          // newline
+}
+
+void write_error(DebugLevel level, const char* module, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    vprintf(VFS_FD_STDERR, fmt, args);
+
+    fputs(g_LogSeverityColors[level], VFS_FD_DEBUG);    // set color depending on level
+    fprintf(VFS_FD_DEBUG, "[%s] ", module);             // write module
+    vprintf(VFS_FD_DEBUG, fmt, args);                   // write text
+    fputs(g_ColorReset, VFS_FD_DEBUG);                  // reset format
+    fputs("\n", VFS_FD_DEBUG);                          // newline
+
+    va_end(args);
 }

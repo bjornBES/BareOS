@@ -32,8 +32,11 @@ isr_common:
     pusha
     ; push eax, ecx, edx, ebx, esp, ebp, esi, edi
 
-    push ds
-    push es
+    xor eax, eax        ; push ds
+    mov ax, ds
+    push ax
+    mov ax, es
+    push ax
     
     mov ax, 0x10
     mov ds, ax
@@ -45,11 +48,12 @@ isr_common:
     call i686_ISRHandler
     add esp, 4
 
-    pop ax
-    pop ds
+    pop eax             ; restore old segment
+    mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
+
     
     popa
     add esp, 8              ; remove error code and interrupt number

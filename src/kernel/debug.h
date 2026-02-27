@@ -1,3 +1,13 @@
+/*
+ * File: debug.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 27 Feb 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include <debug.h>
 #include <stdio.h>
@@ -30,3 +40,5 @@ void strlogf(DebugLevel level, const char* str);
 #define _log_crit(str)           strlogf(LVL_CRITICAL, str)
 
 #define FUNC_NOT_IMPLEMENTED(module, func) log_err(module, "%s: Not implemented", func)
+
+void write_error(DebugLevel level, const char* module, const char* fmt, ...);

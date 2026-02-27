@@ -1,6 +1,6 @@
 #!/bin/bash
 
-QEMU_ARGS="-k da -debugcon stdio -m 8g -d guest_errors -netdev user,id=mynet0 -net nic,model=rtl8139,netdev=mynet0"
+QEMU_ARGS="-k da -debugcon stdio -m 8m -d guest_errors -netdev user,id=mynet0 -net nic,model=rtl8139,netdev=mynet0"
 
 if [ "$#" -le 1 ]; then
     echo "Usage: ./run.sh <image_type> <image> <floppy_image> ..."

@@ -2,7 +2,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <kernel/vfs.h>
+#include <IO.h>
+#include <kernel/vfsBase.h>
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -16,6 +17,8 @@ static __attribute__((unused)) fd_t const stdin = (fd_t)VFS_FD_STDIN;
 static __attribute__((unused)) fd_t const stdout = (fd_t)VFS_FD_STDOUT;
 static __attribute__((unused)) fd_t const stderr = (fd_t)VFS_FD_STDERR;
 static __attribute__((unused)) fd_t const stddebug = (fd_t)VFS_FD_DEBUG;
+
+void clear();
 
 void fputc(char c, fd_t file);
 void fputs(const char* s, fd_t file);

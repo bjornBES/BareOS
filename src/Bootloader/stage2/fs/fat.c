@@ -522,13 +522,18 @@ FAT_File* FAT_Open(Partition* disk, const char* path)
 
 bool FAT_Skip(Partition* part, FAT_File* file, uint32_t bytes)
 {
+    printf("FAT_SKIP(%p, %p, %i)\n", part, file, bytes);
     uint8_t discard[512];
     while (bytes > 0)
     {
         uint32_t chunk = (bytes > sizeof(discard)) ? sizeof(discard) : bytes;
         uint32_t read = FAT_Read(part, file, chunk, discard);
         if (read != chunk)
+        {
+            printf("Read failed read %u is not the same as chunk %u\n", read, chunk);
+            printf("Still need %u bytes to read\n", bytes);
             return false;
+        }
         bytes -= read;
     }
     return true;

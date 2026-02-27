@@ -5,7 +5,7 @@
 #include "minmax.h"
 #include "stdio.h"
 
-#define KERNEL_VMA 0x00100000
+#define KERNEL_VMA 0xC0000000
 #define KERNEL_LMA 0x00100000
 
 void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOffset)
@@ -33,8 +33,8 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
         return false;
     }
 
-    ELFHeader eh;
-    if (FAT_Read(part, fd, sizeof(eh), &eh) != sizeof(eh))
+    ELFHeader elfHeader;
+    if (FAT_Read(part, fd, sizeof(elfHeader), &elfHeader) != sizeof(elfHeader))
     {
         printf("ELF: header read failed\n");
         FAT_Close(fd);
@@ -42,77 +42,86 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
     }
 
     /* Basic validation */
-    if (eh.Magic[0] != 0x7F ||
-        eh.Magic[1] != 'E' ||
-        eh.Magic[2] != 'L' ||
-        eh.Magic[3] != 'F')
+    if (elfHeader.Magic[0] != 0x7F ||
+        elfHeader.Magic[1] != 'E' ||
+        elfHeader.Magic[2] != 'L' ||
+        elfHeader.Magic[3] != 'F')
     {
         printf("ELF: bad magic\n");
         FAT_Close(fd);
         return false;
     }
 
-    printf("ELF: entry VADDR = 0x%x\n", eh.ProgramEntryPosition);
+    printf("ELF: entry VADDR = 0x%x\n", elfHeader.ProgramEntryPosition);
 
     /* Return the VIRTUAL entry point */
-    *entryPoint = (void *)(uintptr_t)eh.ProgramEntryPosition;
+    *entryPoint = (void *)(uintptr_t)elfHeader.ProgramEntryPosition;
     uint8_t *dest;
     int elfSize = 0;
 
     /* Load each PT_LOAD segment */
-    for (uint16_t i = 0; i < eh.ProgramHeaderTableEntryCount; i++)
+    printf("ELF: program header table %u\n", elfHeader.ProgramHeaderTableEntryCount);
+    for (uint16_t i = 0; i < elfHeader.ProgramHeaderTableEntryCount; i++)
     {
-        ELFProgramHeader ph;
+        ELFProgramHeader progarmHeader;
         uint32_t ph_pos =
-            eh.ProgramHeaderTablePosition +
-            i * eh.ProgramHeaderTableEntrySize;
+            elfHeader.ProgramHeaderTablePosition +
+            i * elfHeader.ProgramHeaderTableEntrySize;
 
+        printf("ELF: file dis postion = %u\n", fd->Position);
         if (!FAT_Skip(part, fd, ph_pos - fd->Position))
         {
+            printf("ELF: ph_pos base = 0x%x\n", elfHeader.ProgramHeaderTablePosition);
+            printf("ELF: ph_pos index = 0x%x\n", i * elfHeader.ProgramHeaderTableEntrySize);
             printf("ELF: PH seek failed\n");
             FAT_Close(fd);
             return false;
         }
 
-        if (FAT_Read(part, fd, sizeof(ph), &ph) != sizeof(ph))
+        if (FAT_Read(part, fd, sizeof(progarmHeader), &progarmHeader) != sizeof(progarmHeader))
         {
             printf("ELF: PH read failed\n");
             FAT_Close(fd);
             return false;
         }
 
-        if (ph.Type != ELF_PROGRAM_TYPE_LOAD)
+        printf("program header type = %u\n", progarmHeader.Type);
+
+        if (progarmHeader.Type != ELF_PROGRAM_TYPE_LOAD)
             continue;
 
         /* Translate VADDR → physical */
-        if (ph.PhysicalAddress < KERNEL_VMA)
+        if (progarmHeader.VirtualAddress < KERNEL_VMA)
         {
+            printf("ELF: kernel virt addr = 0x%x\n", progarmHeader.VirtualAddress);
+            printf("ELF: kernel phys addr = 0x%x\n", progarmHeader.PhysicalAddress);
             printf("ELF: segment below kernel VMA\n");
             FAT_Close(fd);
             return false;
         }
 
-        uint32_t phys = ph.PhysicalAddress - KERNEL_VMA + KERNEL_LMA;
+        uint32_t phys = progarmHeader.VirtualAddress - KERNEL_VMA + KERNEL_LMA;
 
         dest = (uint8_t *)(uintptr_t)phys;
 
         printf("ELF: load seg %u\n", i);
-        printf("     VADDR 0x%x\n", ph.PhysicalAddress);
+        printf("     VADDR 0x%x\n", progarmHeader.VirtualAddress);
         printf("     PADDR 0x%x\n", phys);
-        printf("     filesz %u memsz %u\n", ph.FileSize, ph.MemorySize);
+        printf("     file size %u mem size %u\n", progarmHeader.FileSize, progarmHeader.MemorySize);
+        printf("     dest 0x%x \n", dest);
 
         /* Zero entire segment (BSS included) */
-        memset(dest, 0, ph.MemorySize);
+        memset(dest, 0, progarmHeader.MemorySize);
 
         /* Load file-backed portion */
-        if (!FAT_Skip(part, fd, ph.Offset - fd->Position))
+        if (!FAT_Skip(part, fd, progarmHeader.Offset - fd->Position))
         {
             printf("ELF: segment seek failed\n");
             FAT_Close(fd);
             return false;
         }
 
-        uint32_t remaining = ph.FileSize;
+        uint32_t remaining = progarmHeader.FileSize;
         uint8_t *p = dest;
 
         while (remaining > 0)

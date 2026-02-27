@@ -1,3 +1,13 @@
+/*
+ * File: menu.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 27 Feb 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "menu.h"
 #include "stdio.h"
 
@@ -67,6 +77,8 @@ bool checkKey(uint8_t *biosKey, char *asciiKey)
     {
         *asciiKey = oregs.al;
     }
+
+
     return true;
 }
 
@@ -115,18 +127,18 @@ void menuEntry(BootParams *bootParams)
             break;
         }
 
-        {
-            char asciiKey = 0;
-            bool result = checkKey(NULL, &asciiKey);
-            printf("was key down? %s (%d)", result == true ? "TRUE" : "FALSE", result);
-            if (result)
-            {
-                if (asciiKey == 0x1b)
-                {
-                    break;
-                }
-            }
-        }
+        // {
+        //     char asciiKey = 0;
+        //     bool result = checkKey(NULL, &asciiKey);
+        //     printf("was key down? %s (%d)", result == true ? "TRUE" : "FALSE", result);
+        //     if (result)
+        //     {
+        //         if (asciiKey == 0x1b)
+        //         {
+        //             break;
+        //         }
+        //     }
+        // }
         
         if (needDraw == true)
         {
@@ -134,4 +146,9 @@ void menuEntry(BootParams *bootParams)
             draw();
         }
     }
+
+    for (;;)
+    {
+    }
+    end:
 }

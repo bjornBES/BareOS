@@ -99,7 +99,6 @@ void Scrollback(int lines)
 
 void putChar(char c)
 {
-    Outb(0xE9, c);
     switch (c)
     {
         case '\n':

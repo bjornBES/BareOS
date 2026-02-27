@@ -1,3 +1,13 @@
+/*
+ * File: vesa.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 27 Feb 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "vesa.h"
 #include "x86.h"
 
@@ -86,6 +96,7 @@ void DetectVESA(BootParams *bp)
             printf("vesa mode %d %dx%dx%d ret=%u pmode=0x%x\n", moderaw, pmode.width, pmode.height, pmode.bpp, ret, pmode);
             bp->vesaModes[index].modeAttributes = pmode.attributes;
             bp->vesaModes[index].memoryModel = pmode.memory_model;
+            bp->vesaModes[index].mode = moderaw;
             bp->vesaModes[index].width = pmode.width;
             bp->vesaModes[index].height = pmode.height;
             bp->vesaModes[index].bitsPerPixel = pmode.bpp;

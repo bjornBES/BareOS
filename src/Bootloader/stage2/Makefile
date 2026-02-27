@@ -31,6 +31,7 @@ $(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C) $(BUILD_DIR)/libcore.
 	@echo "--> Created  stage2.bin"
 
 $(BUILD_DIRC)/%.obj: %.c
+	@echo "--> Compiling: " $<
 	mkdir -p $(@D)
 	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
 	@echo "--> Compiled: " $<

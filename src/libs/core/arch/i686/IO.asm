@@ -1,3 +1,13 @@
+;
+; File: IO.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 27 Feb 2026
+; Modified By: BjornBEs
+; -----
+;
+
 [bits 32]
 
 %if __i686__ == 1
@@ -41,6 +51,16 @@ global Ind
 Ind:
     mov dx, [esp + 4]
     in eax, dx
+    ret
+
+global enableInterrupts
+enableInterrupts:
+    sti
+    ret
+
+global disableInterrupts
+disableInterrupts:
+    cli
     ret
     
 %endif
