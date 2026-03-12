@@ -1,12 +1,19 @@
+/*
+ * File: elf.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 01 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "elf.h"
 #include "fs/fat.h"
 #include "memdefs.h"
 #include "memory.h"
 #include "minmax.h"
 #include "stdio.h"
-
-#define KERNEL_VMA 0xC0000000
-#define KERNEL_LMA 0x00100000
 
 void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOffset)
 {

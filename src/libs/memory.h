@@ -1,23 +1,18 @@
+/*
+ * File: memory.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 01 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 
 #include <core/Defs.h>
 #include <stdint.h>
 #include <stddef.h>
-
-typedef struct {
-	uint8_t status;
-	uint32_t size;
-} alloc_t;
-
-void mmInit(uint32_t _end);
-void mmPrintStatus();
-void mmPrintBlocks();
-
-void* pmalloc(size_t size);
-void* malloc(size_t size);
-void free(void* ptr);
-void* calloc(size_t num, size_t size);
-void* realloc(void* ptr, size_t size);
 
 ASMCALL void* memcpy(void* dst, const void* src, size_t num);
 ASMCALL void* memset(void* ptr, int value, size_t num);

@@ -55,8 +55,8 @@ void i686_IRQInitialize()
         i686_IRQRegisterHandler(PIC_REMAP_OFFSET + 1, i686_IRQ_Handler);
     }
 
-    Outb(0x21, 0xFF);
-    Outb(0xA1, 0xFF);
+    outb(0x21, 0xFF);
+    outb(0xA1, 0xFF);
 }
 
 void i686_IRQRegisterHandler(int irq, IRQHandler handler)
@@ -70,12 +70,12 @@ void i686_IRQRegisterHandler(int irq, IRQHandler handler)
     // unmask interrupt
     if (irq < 8)
     {
-        uint8_t data = Inb(0x21) & ~(1 << irq);
-        Outb(0x21, data);
+        uint8_t data = inb(0x21) & ~(1 << irq);
+        outb(0x21, data);
     }
     else
     {
-        uint8_t data = Inb(0xA1) & ~(1 << (irq - 8));
-        Outb(0xA1, data);
+        uint8_t data = inb(0xA1) & ~(1 << (irq - 8));
+        outb(0xA1, data);
     }
 }

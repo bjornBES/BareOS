@@ -1,3 +1,13 @@
+/*
+ * File: string.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 01 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include <core/Defs.h>
 #include <stdint.h>
@@ -5,6 +15,8 @@
 
 #define UNICODE_COMBINING_ACUTE 0x0301
 #define UNICODE_COMBINING_CARON 0x030C
+
+#define ToBoolString ? "TRUE" : "FALSE" 
 
 typedef char* string;
 

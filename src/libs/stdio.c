@@ -17,19 +17,14 @@
 
 #include <string.h>
 #include <core/printfDriver/printf.h>
-#include <core/arch/i686/VGATextDevice.h>
+#include <core/video/VGATextDevice.h>
 #include <core/arch/i686/e9.h>
-#include <kernel/vfsBase.h>
+#include <kernel_core/vfsBase.h>
 
 #define MODULE "stdio"
 
-extern int VFS_Write(fd_t file, uint8_t *data, size_t size);
-extern int VFS_Read(fd_t file, uint8_t *data, size_t size);
-
-void clear()
-{
-    Clear();
-}
+extern int VFS_write(fd_t file, uint8_t *data, size_t size);
+extern int VFS_read(fd_t file, uint8_t *data, size_t size);
 
 void putc(char c)
 {
@@ -43,13 +38,13 @@ void puts(const char *str)
 
 void fputc(char c, fd_t file)
 {
-    VFS_Write(file, (uint8_t*)&c, 1);
+    VFS_write(file, (uint8_t *)&c, 1);
 }
 
 void fputs(const char *str, fd_t file)
 {
     int len = strlen(str);
-    VFS_Write(file, (uint8_t*)str, len);
+    VFS_write(file, (uint8_t *)str, len);
 }
 
 int vfprintf(fd_t file, const char *fmt, va_list args)
@@ -94,3 +89,4 @@ int snprintf(char *s, size_t n, const char *format, ...)
     va_end(args);
     return ret;
 }
+

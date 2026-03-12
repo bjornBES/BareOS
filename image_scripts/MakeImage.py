@@ -299,6 +299,7 @@ def loadFiles(image, files, baseDir, imageDir = "::/", partition_offset = 0):
             
     print(f"> copying files...")
     for file in files:
+        print(f'have file {file}')
         file_src = file
         file_rel = os.path.relpath(file_src, src_root)
         file_dst = os.path.join(imageDir, file_rel)
@@ -343,6 +344,9 @@ def calculate_files_partition_size(files):
     return sectors_needed + 128  # +128 sectors for FAT overhead
 
 def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
+    print(f"======================================")
+    print(f"doing disk {disk.name}")
+    print(f"======================================")
     mbr = os.path.join(buildDir, disk.MBRBootFile) if disk.MBRBootFile != "" else ""
     image = os.path.join(buildDir, disk.image_path)
     build_disk(image, disk, mbr, disk.filesystem, disk.size_sectors)
@@ -353,9 +357,14 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
     stage2_size = 0
     
     for partition in disk.partitions:
+        print(f"======================================")
+        print(f"doing partition {partition.name}")
+        print(f"======================================")
+        print(f"got target as {partition.root_dir} size as {partition.size_sectors}")
         print(f"buildDir={buildDir}, filesDir={filesDir}")
         rootDir = os.path.join(filesDir, partition.root_dir)
         files = GlobRecursive('*', rootDir)
+        print(f"got {files} from {rootDir}")
         stage2 = os.path.join(buildDir, partition.stage2) if partition.bootable else ""
         kernel = os.path.join(buildDir, partition.kernel) if partition.bootable else ""
         vbr = os.path.join(buildDir, partition.VBRBootFile) if partition.VBRBootFile != "" else ""
@@ -482,8 +491,8 @@ floppyOutput = os.path.join(project_root, f"build/{arch}_{config}/floppyImage.{o
 sataOutput = os.path.join(project_root, f"build/{arch}_{config}/sataImage.{output_fmt}")
 
 disks.append(DiskSpec("main", "image.img", 0, imageFS, [
-    DiskPartitionSpec("boot", [], "root/root", 4096, "fat32", 4096, True, stage1vbr, stage2, kernel),
-    DiskPartitionSpec("User", [], "root/user", 4096, "fat32", 0, False)
+    DiskPartitionSpec("boot", [], "root", 4096, "fat32", 8192, True, stage1vbr, stage2, kernel),
+    DiskPartitionSpec("User", [], "user", 4096, "fat32", 0, False)
     ], stage1mbr))
 
 for disk in disks:

@@ -98,36 +98,27 @@ memset32:
     ret
 
 ;
-; int memcmp(count char *cs, const char *ct)
+; int memcmp(count char *cs, const char *ct, size_t num)
 ;
 ; Compares the two strings pointed to by cs and ct.
 global memcmp
 memcmp:
     push ebp
     mov ebp, esp
-    cld
+
     push esi
     push edi
-    push ebx
-    
+    push ecx
+
     mov esi, [ebp + 8] ; cs
     mov edi, [ebp + 12] ; ct
+    mov ecx, [ebp + 16] ; num
+
+    xor eax, eax
+    repe cmpsb
+    setnz al
     
-.loop:
-    lodsb ; load byte from cs
-    mov bl, [edi]
-    inc edi
-    cmp al, bl ; compare with ct
-    jne .diff ; if not equal, jump to end
-    test al, al ; check for null terminator
-    jnz .loop ; if null, jump to end
-    xor eax, eax ; set result to zero if equal
-    jmp .end ; continue comparing
-.diff:
-    sub eax, [edi] ; calculate difference
-    jmp .end ; jump to end
-.end:
-    pop ebx
+    pop ecx
     pop edi
     pop esi
     pop ebp

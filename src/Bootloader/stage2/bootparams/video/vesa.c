@@ -55,7 +55,7 @@ VbeInfoBlock *Info;
 
 void hexdump(void *ptr, int len);
 
-void DetectVESA(BootParams *bp)
+void DetectVESA(boot_params *bp)
 {
     int g_VesaEntriesCount;
     Info = (VbeInfoBlock *)(void *)&bp->vesaBios;
@@ -94,16 +94,16 @@ void DetectVESA(BootParams *bp)
             }
             ret = x86_GetVESAEntry(0x2000 | (moderaw & 0x1FF), &pmode);
             printf("vesa mode %d %dx%dx%d ret=%u pmode=0x%x\n", moderaw, pmode.width, pmode.height, pmode.bpp, ret, pmode);
-            bp->vesaModes[index].modeAttributes = pmode.attributes;
-            bp->vesaModes[index].memoryModel = pmode.memory_model;
+            bp->vesaModes[index].mode_attributes = pmode.attributes;
+            bp->vesaModes[index].memory_model = pmode.memory_model;
             bp->vesaModes[index].mode = moderaw;
             bp->vesaModes[index].width = pmode.width;
             bp->vesaModes[index].height = pmode.height;
-            bp->vesaModes[index].bitsPerPixel = pmode.bpp;
-            bp->vesaModes[index].framebuffer = pmode.framebuffer;
+            bp->vesaModes[index].bpp = pmode.bpp;
+            bp->vesaModes[index].frame_buffer = pmode.frame_buffer;
             bp->vesaModes[index].pitch = pmode.pitch;
-            bp->vesaModes[index].redMaskSize = pmode.red_mask;
-            bp->vesaModes[index].redFieldPosition = pmode.red_position;
+            bp->vesaModes[index].red_mask_size = pmode.red_mask;
+            bp->vesaModes[index].red_field_position = pmode.red_position;
             bp->vesaModes[index].greenMaskSize = pmode.green_mask;
             bp->vesaModes[index].greenFieldPosition = pmode.green_position;
             bp->vesaModes[index].blueMaskSize = pmode.blue_mask;

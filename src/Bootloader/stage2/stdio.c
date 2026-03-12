@@ -1,12 +1,131 @@
+/*
+ * File: stdio.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 03 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "stdio.h"
 #include "x86.h"
+#include "IO.h"
 
 #include <stdarg.h>
 #include <stdbool.h>
 
+uint16_t ScreenWidth = 80;
+uint16_t ScreenHeight = 25;
+uint8_t DefaultColor = 0x7;
+uint8_t* g_ScreenBuffer = (uint8_t*)0xB8000;
+int m_ScreenX, m_ScreenY;
+
+char vga_get_cell(int x, int y, uint8_t *color)
+{
+    int index = 2 * (y * ScreenWidth + x);
+    char c = g_ScreenBuffer[index];
+    *color = g_ScreenBuffer[index + 1];
+    return c;
+}
+void vga_set_cell(int x, int y, char c, uint8_t color)
+{
+    int index = 2 * (y * ScreenWidth + x);
+    g_ScreenBuffer[index] = c;
+    g_ScreenBuffer[index + 1] = color;
+}
+
+void vga_set_cursor(int x, int y)
+{
+    int pos = y * ScreenWidth + x;
+    m_ScreenX = x;
+    m_ScreenY = y;
+
+    Outb(0x3D4, 0x0F);
+    Outb(0x3D5, (uint8_t)(pos & 0xFF));
+    Outb(0x3D4, 0x0E);
+    Outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+}
+
+void vga_get_cursor(int* x, int* y)
+{
+    *x = m_ScreenX;
+    *y = m_ScreenY;
+}
+void vga_clear()
+{
+    for (int y = 0; y < ScreenHeight; y++)
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            vga_set_cell(x,y,' ', DefaultColor);
+        }
+    m_ScreenX = 0;
+    m_ScreenY = 0;
+    vga_set_cursor(m_ScreenX, m_ScreenY);
+}
+void vga_scrollback(int lines)
+{
+    for (int y = lines; y < ScreenHeight; y++)
+    {
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            uint8_t color;
+            char c = vga_get_cell(x, y, &color);
+            vga_set_cell(x, y - lines, c, color);
+        }
+    }
+    for (int y = ScreenHeight - lines; y < ScreenHeight; y++)
+    {
+        for (int x = 0; x < ScreenWidth; x++)
+        {
+            vga_set_cell(x, y - lines, ' ', DefaultColor);
+        }
+    }
+        
+    m_ScreenY -= lines;
+}
+
+void vga_put_char(char c)
+{
+    Outb(0xE9, c);
+    switch (c)
+    {
+        case '\n':
+            m_ScreenX = 0;
+            m_ScreenY++;
+            break;
+    
+        case '\t':
+            for (int i = 0; i < 4 - (m_ScreenX % 4); i++)
+                vga_put_char(' ');
+            break;
+
+        case '\r':
+            m_ScreenX = 0;
+            break;
+
+        default:
+            uint8_t color;
+            vga_get_cell(m_ScreenX, m_ScreenY, &color);
+            vga_set_cell(m_ScreenX, m_ScreenY, c, color);
+            m_ScreenX++;
+            break;
+    }
+
+    if (m_ScreenX >= ScreenWidth)
+    {
+        m_ScreenY++;
+        m_ScreenX = 0;
+    }
+    if (m_ScreenY >= ScreenHeight)
+        vga_scrollback(1);
+
+    vga_set_cursor(m_ScreenX, m_ScreenY);
+}
+
 void putc(char c)
 {
-    putChar(c);
+    vga_put_char(c);
 }
 
 void puts(const char* str)

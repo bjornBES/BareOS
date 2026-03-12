@@ -4,4 +4,4 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void DetectCPUID(BootParams* bp);
+void DetectCPUID(boot_params* bp);

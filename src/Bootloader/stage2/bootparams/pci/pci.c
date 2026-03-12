@@ -5,9 +5,9 @@
 #include <core/Defs.h>
 #include <core/arch/i686/bios.h>
 
-void DetectPCI(BootParams* bp)
+void DetectPCI(boot_params* bp)
 {
-    memset(&bp->pciBios, 0, sizeof(PCIBiosInfo));
+    memset(&bp->pciBios, 0, sizeof(PCI_bios_info));
 
     biosregs inRegs;
     initregs(&inRegs);

@@ -12,12 +12,11 @@
 #include "stdio.h"
 
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 #include <core/arch/i686/bios.h>
-#include <core/VGA/vga.h>
 #include <memory.h>
-#include <stdio.h>
-#include <core/arch/i686/VGATextDevice.h>
 
 #define STATE_GENERAL_INFO 1
 
@@ -91,11 +90,11 @@ void draw()
             char c = ui[i][x];
             uint8_t color = ui[i][x + 1];
 
-            _VGA_SetCell(x / 2, i, c, color);
+            vga_set_cell(x / 2, i, c, color);
         }
     }
 }
-void menuEntry(BootParams *bootParams)
+void menuEntry(boot_params *bootParams)
 {
     // mmInit((uint32_t)(uint32_t *)&__end);
     biosregs regs;
@@ -109,15 +108,15 @@ void menuEntry(BootParams *bootParams)
         {
         case STATE_GENERAL_INFO:
         {
-            SetCursor(1, 4);
+            vga_set_cursor(1, 4);
             puts("Hello world"); // y = 4+5
             
-            SetCursor(1, 6);
+            vga_set_cursor(1, 6);
             printf("Memory sections %u", bootParams->e820Count); // y=6
-            SetCursor(1, 7);
+            vga_set_cursor(1, 7);
             puts("> See Memory sections"); // y=7+8
             
-            SetCursor(1, 9);
+            vga_set_cursor(1, 9);
             printf("Memory sections %u\n", bootParams->e820Count);
 
         }

@@ -1,9 +1,22 @@
+/*
+ * File: elf.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 01 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include "fs/mbr.h"
 
 #define ELF_MAGIC ("\x7F" "ELF")
+
+#define KERNEL_VMA 0xC0000000
+#define KERNEL_LMA 0x00100000
 
 typedef struct 
 {

@@ -7,5 +7,5 @@
 
 void e9_putc(char c)
 {
-    Outb(0xE9, c);
+    outb(0xE9, c);
 }

@@ -2,4 +2,4 @@
 
 #include <boot/bootparams.h>
 
-void DetectMemory(BootParams* bt);
+void DetectMemory(boot_params* bt);

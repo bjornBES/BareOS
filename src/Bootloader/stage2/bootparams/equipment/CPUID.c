@@ -20,9 +20,9 @@ typedef struct {
 void ASMCALL CPUID(uint32_t eax, uint32_t ecx, cpuid_regs* outregs);
 
 
-void DetectCPUID(BootParams* bp)
+void DetectCPUID(boot_params* bp)
 {
-    memset(&bp->cpu, 0, sizeof(CPUInfo));
+    memset(&bp->cpu, 0, sizeof(CPU_info));
 
     cpuid_regs reg;
 

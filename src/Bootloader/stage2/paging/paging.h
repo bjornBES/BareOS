@@ -9,5 +9,5 @@
 extern uint32_t pageDirectory[1024] __attribute__((aligned(4096)));
 extern uint32_t pageTableLow[1024] __attribute__((aligned(4096)));
 
-void *get_physaddr(void *virtualaddr);
+void *paging_get_physical(void *virtualaddr);
 void fill_table();

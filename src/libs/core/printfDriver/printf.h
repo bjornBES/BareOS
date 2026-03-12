@@ -1,7 +1,17 @@
+/*
+ * File: printf.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 03 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 
 #pragma once
 
-#include <kernel/vfsBase.h>
+#include <kernel_core/vfsBase.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>

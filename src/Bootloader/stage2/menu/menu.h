@@ -2,4 +2,4 @@
 
 #include <boot/bootparams.h>
 
-void menuEntry(BootParams* bootParams);
+void menuEntry(boot_params* bootParams);

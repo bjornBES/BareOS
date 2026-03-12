@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 03 Mar 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -35,7 +35,7 @@ typedef struct
     uint8_t floppyFlag : 1;           // AX bit 0 = floppy installed
     uint8_t numFloppies : 2;          // AX bit 6: number of floppies minus 1 if floppyFlag set
     uint8_t reserved : 3;             // fill remaining bits
-} __attribute__((packed)) EquipmentFlags;
+} __attribute__((packed)) equipment_flags;
 
 // ==================== E820 memory map ====================
 // Source: INT 0x15, AX=0xE820
@@ -52,7 +52,7 @@ typedef struct
     uint64_t addr; // BaseAddr (ES:DI + 0)
     uint64_t size; // Length   (ES:DI + 8)
     uint32_t type; // Type     (ES:DI + 16)
-} __attribute__((packed)) E820Entry;
+} __attribute__((packed)) E820_entry;
 
 // ==================== VESA BIOS info ====================
 // Source: INT 0x10, AX=0x4F00 — Get VBE Controller Info
@@ -64,7 +64,7 @@ typedef struct
     uint16_t totalMemory;  // TotalMemory in 64 KB blocks (offset 0x12)
     // Mode list copied from far pointer at offset 0x0E (VideoModePtr)
     uint16_t modeList[MAX_VESA_MODES];
-} __attribute__((packed)) VESABiosInfo;
+} __attribute__((packed)) VESA_bios_info;
 
 // ==================== VESA mode info ====================
 // Source: INT 0x10, AX=0x4F01 — Get VBE Mode Info
@@ -73,34 +73,31 @@ typedef struct
 typedef struct
 {
     // ---- Mode validity & layout ----
-    uint16_t modeAttributes; // ModeAttributes (offset 0x00)
-    uint8_t memoryModel;     // MemoryModel (offset 0x1B)
+    uint16_t mode_attributes; // ModeAttributes (offset 0x00)
+    uint8_t memory_model;     // MemoryModel (offset 0x1B)
     uint8_t reserved0;
 
     // ---- Resolution & format ----
     uint16_t width;       // XResolution (offset 0x12)
     uint16_t height;      // YResolution (offset 0x14)
-    uint8_t bitsPerPixel; // BitsPerPixel (offset 0x19)
+    uint8_t bpp; // BitsPerPixel (offset 0x19)
 
-    // ---- Linear framebuffer ----
-    uint32_t framebuffer; // PhysBasePtr (offset 0x28)
+    // ---- Linear frame_buffer ----
+    uint32_t frame_buffer; // PhysBasePtr (offset 0x28)
     uint32_t pitch;       // BytesPerScanLine (offset 0x10)
 
     // ---- Color layout ----
-    uint8_t redMaskSize;      // RedMaskSize (offset 0x1F)
-    uint8_t redFieldPosition; // RedFieldPosition (offset 0x20)
-
+    uint8_t red_mask_size;      // RedMaskSize (offset 0x1F)
+    uint8_t red_field_position; // RedFieldPosition (offset 0x20)
     uint8_t greenMaskSize;      // GreenMaskSize (offset 0x21)
     uint8_t greenFieldPosition; // GreenFieldPosition (offset 0x22)
-
     uint8_t blueMaskSize;      // BlueMaskSize (offset 0x23)
     uint8_t blueFieldPosition; // BlueFieldPosition (offset 0x24)
-
     uint8_t alphaMaskSize;      // RsvdMaskSize (offset 0x25)
     uint8_t alphaFieldPosition; // RsvdFieldPosition (offset 0x26)
 
     uint16_t mode;
-} __attribute__((packed)) VESAMode;
+} __attribute__((packed)) VESA_mode;
 
 // ==================== PCI BIOS info ====================
 // Source: INT 0x1A, AX=0xB101 — PCI BIOS Present
@@ -116,7 +113,7 @@ typedef struct
     uint8_t lastBus;      // CL
     uint8_t numDevices;   // counted manually
     uint32_t signature;   // EDX = 'PCI '
-} __attribute__((packed)) PCIBiosInfo;
+} __attribute__((packed)) PCI_bios_info;
 
 // ==================== Boot drive params ====================
 // Source: INT 0x13, AH=0x08 — Get Drive Parameters
@@ -132,7 +129,7 @@ typedef struct
     uint8_t heads;       // DH
     uint8_t sectors;     // CL & 0x3F
     uint16_t sectorSize; // from BPB or assumed 512
-} __attribute__((packed)) BootDriveParams;
+} __attribute__((packed)) boot_drive_params;
 
 // ==================== CPU info ====================
 // Source: CPUID instruction
@@ -147,7 +144,7 @@ typedef struct
     uint8_t model;     // EAX bits 4–7
     uint8_t stepping;  // EAX bits 0–3
     char brand[MAX_CPU_BRAND_STRING];
-} __attribute__((packed)) CPUInfo;
+} __attribute__((packed)) CPU_info;
 
 // ==================== Bootloader info ====================
 // Source: bootloader internal (not BIOS)
@@ -178,7 +175,7 @@ typedef struct
     uint8_t day;
     uint8_t month;
     uint16_t year;
-} __attribute__((packed)) RTCInfo;
+} __attribute__((packed)) RTC_info;
 
 // ==================== ACPI info ====================
 // Source:
@@ -188,7 +185,7 @@ typedef struct
 {
     uint64_t rsdpAddress;
     uint32_t lapicId;
-} __attribute__((packed)) ACPIInfo;
+} __attribute__((packed)) ACPI_info;
 
 // ==================== Memory info ====================
 // Source: INT 0x12 — Get Conventional Memory Size
@@ -198,49 +195,50 @@ typedef struct
 {
     uint32_t memLower; // AX from INT 0x12
     uint32_t memUpper; // calculated from E820
-} __attribute__((packed)) MemoryInfo;
+} __attribute__((packed)) memory_info;
 
-// ==================== BootParams ====================
+// ==================== boot_params ====================
 // Aggregate structure passed from bootloader to kernel
 typedef struct
 {
     uint8_t BootDevice; // DL at boot
     uint16_t currentMode;
     uint32_t *pageDirectory;
+    // 7 bytes
 
-    EquipmentFlags equipment; // INT 0x11
+    // INT 0x1A RTC
+    RTC_info rtc;
+
+    equipment_flags equipment; // INT 0x11
 
     // INT 0x15, E820
     uint32_t e820Count;
-    E820Entry e820Entries[MAX_E820_ENTRIES];
+    E820_entry e820Entries[MAX_E820_ENTRIES];
 
     // INT 0x10, VESA
-    VESABiosInfo vesaBios;
+    VESA_bios_info vesaBios;
     uint32_t vesaModeCount;
-    VESAMode vesaModes[MAX_VESA_MODES];
+    VESA_mode vesaModes[MAX_VESA_MODES];
 
     // INT 0x1A, PCI BIOS
-    PCIBiosInfo pciBios;
+    PCI_bios_info pciBios;
 
     // INT 0x13
-    BootDriveParams bootDrive;
+    boot_drive_params bootDrive;
 
     // CPUID
-    CPUInfo cpu;
+    CPU_info cpu;
 
     // Bootloader internal
     BootLoaderInfo bootLoader;
 
-    // INT 0x1A RTC
-    RTCInfo rtc;
-
     // ACPI scan + CPUID
-    ACPIInfo acpi;
+    ACPI_info acpi;
 
     // INT 0x12 + E820
-    MemoryInfo memory;
+    memory_info memory;
 
     // Future-proofing
     uint8_t reserved[MAX_RESERVED];
 
-} __attribute__((packed)) BootParams;
+} __attribute__((packed)) boot_params;

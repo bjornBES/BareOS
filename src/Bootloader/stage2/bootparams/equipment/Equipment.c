@@ -8,9 +8,9 @@
 
 #define EQUIPMENT bp->equipment
 
-void DetectEquipment(BootParams* bp)
+void DetectEquipment(boot_params* bp)
 {
-    memset(&bp->equipment, 0, sizeof(EquipmentFlags));
+    memset(&bp->equipment, 0, sizeof(equipment_flags));
 
     biosregs inRegs;
     initregs(&inRegs);

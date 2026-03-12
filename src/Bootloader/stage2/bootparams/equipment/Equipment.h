@@ -4,4 +4,4 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void DetectEquipment(BootParams* bp);
+void DetectEquipment(boot_params* bp);

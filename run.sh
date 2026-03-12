@@ -7,6 +7,8 @@ if [ "$#" -le 1 ]; then
     exit 1
 fi
 
+clear
+
 IMAGE=$2
 # FLOPPY_IMAGE=$3
 # D3_IMAGE=$4
@@ -18,7 +20,7 @@ if [ "$1" == "floppy" ]; then
 elif [ "$1" == "disk" ]; then
 #    QEMU_ARGS="${QEMU_ARGS} -fda $FLOPPY_IMAGE"
 #    QEMU_ARGS="${QEMU_ARGS} -device floppy,id=fdc1"
-    QEMU_ARGS="${QEMU_ARGS} -drive file=$IMAGE,format=raw,id=disk,if=ide"
+    QEMU_ARGS="${QEMU_ARGS} -drive file=$IMAGE,format=raw,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk"
 #    QEMU_ARGS="${QEMU_ARGS} -drive file=$D3_IMAGE,format=raw,id=sata_disk,if=none -device ahci,id=ahci -device ide-hd,drive=sata_disk"
 #    QEMU_ARGS="${QEMU_ARGS} -drive file=$D3_IMAGE,format=raw,id=ide_disk,if=none -device ide-hd,drive=ide_disk"
 

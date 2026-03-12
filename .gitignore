@@ -1,6 +1,18 @@
+/*
+ * File: .gitignore
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 12 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 build/
 toolchain/
 *.err
 bx_enh_dbg.ini
 .vscode/*.log
 image_scripts/__pycache__/*.pyc
+image_scripts/c/partitons.o
+image_scripts/c/partitons

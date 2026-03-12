@@ -4,4 +4,4 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void DetectPCI(BootParams* bp);
+void DetectPCI(boot_params* bp);

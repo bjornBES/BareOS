@@ -1,10 +1,20 @@
+/*
+ * File: string.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 07 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include <string.h>
 #include <memory.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <ctype.h>
 
-void* malloc(size_t size);
+extern void* malloc(size_t size);
 
 /*
 const char *strchr(const char *str, char chr)

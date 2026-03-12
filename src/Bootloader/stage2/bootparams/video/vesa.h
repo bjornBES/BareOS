@@ -45,11 +45,11 @@ typedef struct {
 	uint8_t reserved_position;
 	uint8_t direct_color_attributes;
 
-	uint32_t framebuffer;		// physical address of the linear frame buffer; write here to draw to the screen
+	uint32_t frame_buffer;		// physical address of the linear frame buffer; write here to draw to the screen
 	uint32_t off_screen_mem_off;
-	uint16_t off_screen_mem_size;	// size of memory in the framebuffer but not being displayed on the screen
+	uint16_t off_screen_mem_size;	// size of memory in the frame_buffer but not being displayed on the screen
 	uint8_t reserved1[206];
 } __attribute__((packed)) vesa_mode_info_t;
 
-void DetectVESA(BootParams* bp);
+void DetectVESA(boot_params* bp);
 void SetVESAMode(int mode);

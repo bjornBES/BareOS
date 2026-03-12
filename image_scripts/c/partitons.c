@@ -9,7 +9,7 @@
 #define MBR_SIGNATURE_OFFSET 510
 
 // Partition entry structure (16 bytes)
-struct PartitionEntry
+struct partition_entry
 {
     uint8_t status;      // 0x80 = bootable, 0x00 = inactive
     uint8_t chsFirst[3]; // CHS address of first sector
@@ -34,10 +34,10 @@ int create_partition_table(const char *target, uint32_t start, uint32_t size, ui
     {
         printf("Only Read %u out of %u\n", ret_code, SECTOR_SIZE);
     }
-    struct PartitionEntry* lp = (struct PartitionEntry*)mbr + PARTITION_TABLE_OFFSET;
+    struct partition_entry* lp = (struct partition_entry*)mbr + PARTITION_TABLE_OFFSET;
 
     // printf("mbr partition index 0 lbaFirst:%u, sectors:%u, status:%x, type:%x\n", lp->lbaFirst, lp->sectors, lp->status, lp->type);
-    struct PartitionEntry p;
+    struct partition_entry p;
     memset(&p, 0, sizeof(p));
     p.status = bootable;
     p.type = type;

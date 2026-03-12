@@ -2,7 +2,7 @@
 #include "x86.h"
 #include "stdio.h"
 
-void DetectMemory(BootParams* bt)
+void DetectMemory(boot_params* bt)
 {
     E820MemoryBlock block;
     uint32_t continuation = 0;

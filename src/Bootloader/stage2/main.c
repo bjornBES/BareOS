@@ -28,9 +28,10 @@
 #include "bootparams/video/vesa.h"
 #include "bootparams/equipment/CPUID.h"
 #include "bootparams/equipment/Equipment.h"
+#include "bootparams/ACPI/ACPI.h"
 #include "menu/menu.h"
 
-typedef void (*BootStart)(BootParams *boot);
+typedef void (*BootStart)(boot_params *boot);
 
 BootStart kernelEntry;
 
@@ -48,13 +49,11 @@ void hexdump(void *ptr, int len)
 
 void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
 {
-    fill_table();
-
     bool readyToJump = false;
     printf("%x", partition);
     hexdump(partition, 64);
 
-    BootParams *bootParams = (BootParams *)MEMORY_BOOTPARAMS_ADDR;
+    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
 
     DISK disk;
     if (!DISK_Initialize(&disk, bootDrive))
@@ -83,7 +82,8 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     DetectPCI(bootParams);
     DetectEquipment(bootParams);
     DetectCPUID(bootParams);
-    bootParams->pageDirectory = pageDirectory;
+    DetectACPI(bootParams);
+    bootParams->pageDirectory = pageDirectory + KERNEL_VMA;
 
     /*
     Get some info of computer from BIOS like
@@ -97,21 +97,14 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     */
 
     printf("Hello world");
-    Clear();
-    SetCursor(31, 23);
+    vga_clear();
+    vga_set_cursor(31, 23);
     printf("Press DEL for menu");
-    SetCursor(0, 0);
+    vga_set_cursor(0, 0);
     menu_key = 0x53;
     if (X86_checkForKeys())
     {
         printf("pressed key\n");
-        /*
-        if (!ELF_Read(&part, "/blmenu.elf", (void**)&menuEntry))
-        {
-            printf("ELF read failed, booting halted!\n");
-            goto end;
-            }
-            */
         menuEntry(bootParams);
     }
     printf("to kernel\n");
@@ -128,6 +121,7 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
 
     if (readyToJump)
     {
+        fill_table();
         printf("jump to 0x%p\n", *kernelEntry);
         __asm__("cli");
         __asm__("mov %%eax, %%cr3" : : "a"(pageDirectory));

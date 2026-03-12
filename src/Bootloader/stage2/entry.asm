@@ -1,3 +1,13 @@
+;
+; File: entry.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 11 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 bits 16
 
 section .entry
@@ -26,6 +36,55 @@ entry:
     mov sp, 0xFFF0
     mov bp, sp
 
+    ; get_time scope
+    mov         ah,             0x02
+    clc
+    ; CF clear to avoid bug
+    int         0x1A                            ; TIME - GET REAL-TIME CLOCK TIME
+    ; Return:
+    ; CF clear if successful
+    ; CH = hour (BCD)
+    ; CL = minutes (BCD)
+    ; DH = seconds (BCD)
+    ; DL = daylight savings flag (00h standard time, 01h daylight time)
+    ; CF set on error (i.e. clock not running or in middle of update)
+    ;
+    
+    jc          .get_time_failed                ; there was an error
+    ; if the year is 8230 that is not a bug that is a feature.
+    mov         ebx,            0x00200007      ; boot params RTC_info
+    mov         eax,            ebx
+    mov         [eax],          ch              ; set hour
+    mov         [eax + 1],      cl              ; set minute
+    mov         [eax + 2],      dh              ; set second
+
+    mov         ah,             0x04
+    clc
+    ; CF clear to avoid bug
+    int         0x1A                            ; TIME - GET REAL-TIME CLOCK DATE
+    ; Return:
+    ; CF clear if successful
+    ; CH = century (BCD)
+    ; CL = year (BCD)
+    ; DH = month (BCD)
+    ; DL = day (BCD)
+    ; CF set on error (i.e. clock not running or in middle of update)
+    ;
+    
+    jc          .get_time_failed                ; there was an error
+    mov         eax,            ebx
+    mov         [eax + 3],      dl              ; set day
+    mov         [eax + 4],      dh              ; set month
+    mov         [eax + 5],      cx              ; set year
+    jmp         .get_time_end
+
+.get_time_failed:
+    mov dx, 0xE9
+    mov al, 'E'
+    out dx, al
+    ; print error or something
+.get_time_end:
+
     call EnableA20
     call LoadGDT
 
@@ -33,6 +92,7 @@ entry:
     or al, 1
     mov cr0, eax
 
+    
     jmp dword 0x08:.pmode
 
 .pmode:

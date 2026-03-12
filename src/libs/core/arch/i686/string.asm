@@ -1,3 +1,13 @@
+;
+; File: string.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 11 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 %if __i686__ == 1
 
 
@@ -250,10 +260,8 @@ strchr:
     mov edi, [ebp + 8] ; s
     mov eax, [ebp + 12] ; c
     mov ecx, -1 ; clear ecx for null terminator
-    int 0x2
     clc
     repne scasb ; scan for c
-    int 0x2
     jne .notfound ; if not found, jump to end
     lea eax, [edi] ; return pointer to c
     jmp .end ; jump to end

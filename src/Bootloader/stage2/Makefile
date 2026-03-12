@@ -26,7 +26,7 @@ all: stage2
 
 stage2: $(BUILD_DIRSTAGE2)/stage2.bin
 
-$(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C) $(BUILD_DIR)/libcore.a $(BUILD_DIR)/libbios.a
+$(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C) $(BUILD_DIR)/libbios.a
 	@$(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET_LIBS)
 	@echo "--> Created  stage2.bin"
 

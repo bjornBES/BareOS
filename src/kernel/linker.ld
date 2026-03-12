@@ -39,11 +39,6 @@ SECTIONS
     stack_top = .;
     . = ALIGN(4096);
 
-    /* Boot parameters */
-    . = ALIGN(4096);
-    bootParamsAddr = .;
-    . += 16384;
-
     /* VGA buffer */
     . = ALIGN(4096);
     VGAModesAddr = .;
@@ -57,7 +52,7 @@ SECTIONS
     kernel_end = .;
 
     /* End of kernel */
-    __end = .;
     . = ALIGN(4096);
+    __end = .;
 
 }
