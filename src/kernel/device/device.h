@@ -31,8 +31,8 @@ typedef struct __device_t
     char* name;
     device_type type;
     uint32_t device_id;
-    uint32_t (*read)(void *buffer, uint64_t sector_offset, size_t sector_count, struct __device_t * device);
-    uint32_t (*write)(void *buffer, uint64_t sector_offset, size_t sector_count, struct __device_t * device);
+    uint32_t (*read)(void *buffer, uint64_t offset, size_t count, struct __device_t * device);
+    uint32_t (*write)(void *buffer, uint64_t offset, size_t count, struct __device_t * device);
     void* priv;
 } device;
 

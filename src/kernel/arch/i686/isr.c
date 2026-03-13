@@ -94,6 +94,7 @@ void stack_trace(uint32_t max_frames) {
 
 void __attribute__((cdecl)) i686_ISRHandler(Registers *regs)
 {
+    UART_write_fstr(COM1, "interrupt is %u\r\n", regs->interrupt);
     if (_ISRHandlers[regs->interrupt] != NULL)
     {
         _ISRHandlers[regs->interrupt](regs);
@@ -121,7 +122,7 @@ void __attribute__((cdecl)) i686_ISRHandler(Registers *regs)
     }
 }
 
-void i686_ISRRegisterHandler(int interrupt, ISRHandler handler)
+void i686_isr_register_handler(int interrupt, ISRHandler handler)
 {
     _ISRHandlers[interrupt] = handler;
     i686_IDTEnableGate(interrupt);

@@ -53,9 +53,9 @@ void HALInit()
     i686_IDTLoad();
 
     i686_ISRInitialize();
-    i686_IRQInitialize();
+    i686_irq_initialize();
 
-    i686_ISRRegisterHandler(1, writeRegisters);
-    i686_ISRRegisterHandler(3, breakpoint);
-    i686_ISRRegisterHandler(8, DoubleFault);
+    i686_isr_register_handler(1, writeRegisters);
+    i686_isr_register_handler(3, breakpoint);
+    i686_isr_register_handler(8, DoubleFault);
 }

@@ -19,7 +19,6 @@
 #include <core/video/VGATextDevice.h>
 
 #include "debug/debug.h"
-#include "drivers/serial/UART/UART.h"
 #include "arch/i686/i686.h"
 #include "arch/i686/isr.h"
 #include "hal/hal.h"
@@ -29,6 +28,9 @@
 #include "malloc.h"
 #include "device/device.h"
 #include "fs/FAT/FAT.h"
+
+#include "drivers/serial/UART/UART.h"
+#include "drivers/IO/I8042/I8042.h"
 
 extern char __end;
 extern char VGAModesAddr;
@@ -91,7 +93,7 @@ void main(boot_params *bootParams)
     // uint8_t* addr2 = (uint8_t*)0x1000000;
     // *addr2 = 10;
 
-    i686_ISRRegisterHandler(14, PageFault);
+    i686_isr_register_handler(14, PageFault);
 
     page_directory = (page_directory_entry *)bootParams->pageDirectory;
 
@@ -139,6 +141,8 @@ void main(boot_params *bootParams)
 #undef _4GB
     }
 
+    I8042_init();
+
     // Breakpoint();
     log_debug("main", "page table address 0x%llx", page_table->addr);
     uint32_t *address = (uint32_t *)(uint32_t)page_table->addr;
@@ -183,24 +187,16 @@ void main(boot_params *bootParams)
     }
 
     log_debug("main", "vesa mode %d %dx%dx%d", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp);
-
     vga_init();
     vga_load_font((uint8_t *)&default8x16Font);
-
     video_init(bootParams, &VGAModesAddr);
     uint32_t *fb = (uint32_t *)vesaMode->frame_buffer;
 
     // paging_map_page(page_table, page_table);
     paging_mark_page_used(GETPAGEDIRECTORYINDEX(fb));
-    paging_map_region((void *)fb, (void *)fb, 512, -1);
-
-    /*     for (size_t y = 0; y < 5; y++)
-        {
-            for (size_t x = 0; x < vesaMode->width; x++)
-            {
-                video_set_pixel(x, y, 0x00FF0000);
-            }
-        } */
+    paging_map_region((void *)fb, (void *)fb, PAGE_SIZE * 4096, PAGE_PRESENT | PAGE_WRITABLE);
+    log_debug("main", "paging %x mapped to virt %x/phys %x", fb, paging_get_virtual(fb), paging_get_physical(fb));
+    log_debug("main", "vesa mode %d %dx%dx%d %x", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp, vesaMode->frame_buffer);
 
     device *ahci = device_get(0x100); // device 1 partition 0
 
@@ -225,6 +221,8 @@ void main(boot_params *bootParams)
     VFS_close(file);
 
     hexdump(buffer, 512);
+
+    printf("Hello world");
 
     end:
     // loop

@@ -48,4 +48,4 @@ typedef struct
 typedef void (*ISRHandler)(Registers *regs);
 
 void i686_ISRInitialize();
-void i686_ISRRegisterHandler(int interrupt, ISRHandler handler);
+void i686_isr_register_handler(int interrupt, ISRHandler handler);

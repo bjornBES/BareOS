@@ -1,13 +1,26 @@
+/*
+ * File: irq.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 13 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "irq.h"
 #include "pic.h"
 #include "i8259.h"
+#include "debug/debug.h"
+
+#include "drivers/serial/UART/UART.h"
 
 #include <util/arrays.h>
 #include <stdio.h>
 #include <IO.h>
 
 #define PIC_REMAP_OFFSET 0x20
-#define MODULE "PIC"
+#define MODULE "IRQ"
 
 IRQHandler _IRQHandlers[16];
 static const PICDriver *_Driver = NULL;
@@ -16,22 +29,24 @@ void i686_IRQ_Handler(Registers *regs)
 {
     int irq = regs->interrupt - PIC_REMAP_OFFSET;
 
+    UART_write_fstr(COM1, "Interrupt Req %u\r\n", irq);
+
     if (_IRQHandlers[irq] != NULL)
     {
         _IRQHandlers[irq](regs);
     }
     else
     {
-        fprintf(stddebug, "Unhandled IRQ %d...", irq);
+        log_err(MODULE, "Unhandled IRQ %d...", irq);
     }
     
     _Driver->SendEndOfInterrupt(irq);
 }
 
-void i686_IRQInitialize()
+void i686_irq_initialize()
 {
     const PICDriver *drivers[] ={
-        i8259_GetDriver(),
+        i8259_get_driver(),
     };
 
     for (int i = 0; i < SIZE(drivers); i++)
@@ -48,23 +63,25 @@ void i686_IRQInitialize()
         return;
     }
 
+    log_info(MODULE, "Found %s PIC.", _Driver->Name);
     _Driver->Initialize(PIC_REMAP_OFFSET, PIC_REMAP_OFFSET + 8, false);
 
     for (size_t i = 0; i < 16; i++)
     {
-        i686_IRQRegisterHandler(PIC_REMAP_OFFSET + 1, i686_IRQ_Handler);
+        i686_isr_register_handler(i + PIC_REMAP_OFFSET, i686_IRQ_Handler);
     }
 
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
+    enableInterrupts();
 }
 
-void i686_IRQRegisterHandler(int irq, IRQHandler handler)
+void i686_irq_register_handler(int irq, IRQHandler handler)
 {
-    if (irq > 15)
+/*     if (irq > 15)
     {
         return;
-    }
+    } */
+
+    log_debug(MODULE, "Registering IRQ handler for IRQ %d", irq);
 
     _IRQHandlers[irq] = handler;
     // unmask interrupt

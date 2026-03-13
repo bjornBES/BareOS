@@ -29,7 +29,7 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
 - [X] AHCI (read-only)
 - [X] Simple Unix style device management
 - [X] FAT32 (read-only)
-- [/] Print Text using font
+- [X] Print Text using font
 - [X] Disk Partitions
 - [X] Serial Driver
   - [X] UART

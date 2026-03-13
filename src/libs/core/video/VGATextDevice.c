@@ -15,6 +15,17 @@
 #include <stddef.h>
 #include <stdio.h>
 
+typedef struct
+{
+    uint8_t extra_glyphs;
+    char header[4];
+    uint8_t res;
+    uint8_t width;
+    uint8_t height;
+    uint16_t number_of_glyphs;
+    uint8_t res2[6];
+} PACKED font_struct;
+
 vga_cell_t vga_buffer[60][100];
 
 uint16_t screen_width;
@@ -29,9 +40,9 @@ uint8_t *font_data;
 #define MODULE "VGA"
 
 #define log(...)                           \
-	fprintf(VFS_FD_DEBUG, "[%s]", MODULE); \
-	fprintf(VFS_FD_DEBUG, __VA_ARGS__);    \
-	fprintf(VFS_FD_DEBUG, "\n");
+    fprintf(VFS_FD_DEBUG, "[%s]", MODULE); \
+    fprintf(VFS_FD_DEBUG, __VA_ARGS__);    \
+    fprintf(VFS_FD_DEBUG, "\n");
 
 void vga_to_pixel_coords(int cx, int cy, int *px, int *py)
 {
@@ -42,6 +53,18 @@ void vga_to_cell_coords(int px, int py, int *cx, int *cy)
 {
     *cx = px / glyph_width;
     *cy = py / glyph_height;
+}
+
+void vga_hexdump(void *ptr, int len)
+{
+    unsigned char *p = (unsigned char *)ptr;
+    for (size_t i = 0; i < len; ++i)
+    {
+        if ((i & 0xF) == 0)
+            fprintf(VFS_FD_DEBUG, "\n%02x: ", i);
+        fprintf(VFS_FD_DEBUG, "%02x ", p[i]);
+    }
+    fprintf(VFS_FD_DEBUG, "\n");
 }
 
 char vga_get_cell(int x, int y, uint32_t *fg_color, uint32_t *bg_color)
@@ -60,43 +83,39 @@ void vga_set_cell(int x, int y, char c, uint32_t fg_color, uint32_t bg_color)
 {
     uint8_t bytes_per_row = (glyph_width + 7) / 8;
     uint16_t bytes_per_glyph = bytes_per_row * glyph_height;
-    log("bytes_per_glyph = %u bytes_per_row = %u", bytes_per_glyph, bytes_per_row);
 
-    if ((uint8_t)c >= glyph_number)
-        return;
-
-    char chr = c - 'A';
-
-    uint8_t *glyph = font_data + ((uint8_t)chr * bytes_per_glyph);
-    uint8_t* data = font_data + ((uint8_t)44 * bytes_per_glyph);
-    log("&data = %p", data);
-    log("&glyph = %p", glyph);
-    log("glyph = %X,%X,%X,%X", glyph[0], glyph[1], glyph[2], glyph[3]);
-    fprintf(VFS_FD_DEBUG, "char data = [");
-    for (size_t i = 0; i < bytes_per_glyph; i++)
+    uint16_t u16_c = (uint16_t)c;
+    if (u16_c >= glyph_number)
     {
-        fprintf(VFS_FD_DEBUG, "%X,", data[i]);
+        log("returning %c(%u) is bigger then %u", c, c, glyph_number);
+        return;
     }
-    fprintf(VFS_FD_DEBUG, "]\n");
 
+    char chr = c;
+
+    int index = ((uint8_t)chr * (bytes_per_glyph));
+    uint8_t *glyph = font_data + ((uint8_t)chr * (bytes_per_glyph));
     int px;
     int py;
     vga_to_pixel_coords(x, y, &px, &py);
 
     for (int row = 0; row < glyph_height; row++)
     {
-        uint8_t byte = glyph[row];
-        for (int col = 0; col < glyph_width; col++)
+        uint16_t byte = glyph[row];
+        int col = 0;
+        //log("%08b %02x", byte, byte);
+        for (; col < glyph_width; col++)
         {
-            uint8_t bit  = (byte >> (7 - (col % 8))) & 1;
-
+            uint16_t offset = (7 - (col % 8));
+            // log("offset = %u", offset);
+            uint8_t bit = (byte >> offset) & 1;
             if (bit == 1)
             {
-                video_set_pixel(x + col, y + row, fg_color);
+                video_set_pixel(px + col, py + row, fg_color);
             }
             else
             {
-                video_set_pixel(x + col, y + row, bg_color);
+                video_set_pixel(px + col, py + row, bg_color);
             }
         }
     }
@@ -105,7 +124,6 @@ void vga_set_cell(int x, int y, char c, uint32_t fg_color, uint32_t bg_color)
     vga_buffer[y][x].fg_color = fg_color;
     vga_buffer[y][x].bg_color = bg_color;
 }
-
 
 void vga_set_cursor(int x, int y)
 {
@@ -119,7 +137,7 @@ void vga_set_cursor(int x, int y)
     outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
-void vga_get_cursor(int* x, int* y)
+void vga_get_cursor(int *x, int *y)
 {
     *x = screen_x;
     *y = screen_y;
@@ -131,7 +149,7 @@ void vga_clear()
     {
         for (int x = 0; x < screen_width; x++)
         {
-            vga_set_cell(x,y,' ', 0, 0);
+            vga_set_cell(x, y, ' ', 0, 0);
         }
     }
     screen_x = 0;
@@ -158,7 +176,7 @@ void vga_scrollback(int lines)
             vga_set_cell(x, y - lines, ' ', default_color, 0);
         }
     }
-        
+
     screen_y -= lines;
 }
 
@@ -166,25 +184,25 @@ void vga_put_char(char c)
 {
     switch (c)
     {
-        case '\n':
-            screen_x = 0;
-            screen_y++;
-            break;
-    
-        case '\t':
-            for (int i = 0; i < 4 - (screen_x % 4); i++)
-                vga_put_char(' ');
-            break;
+    case '\n':
+        screen_x = 0;
+        screen_y++;
+        break;
 
-        case '\r':
-            screen_x = 0;
-            break;
+    case '\t':
+        for (int i = 0; i < 4 - (screen_x % 4); i++)
+            vga_put_char(' ');
+        break;
 
-        default:
-            uint32_t color;
-            vga_set_cell(screen_x, screen_y, c, default_color, 0);
-            screen_x++;
-            break;
+    case '\r':
+        screen_x = 0;
+        break;
+
+    default:
+        uint32_t color;
+        vga_set_cell(screen_x, screen_y, c, default_color, 0);
+        screen_x++;
+        break;
     }
 
     if (screen_x >= screen_width)
@@ -202,12 +220,12 @@ void vga_load_font(void *font)
 {
     if (strncmp(font + 1, "F0.1", 4))
     {
-        uint8_t* u8_font_data = (uint8_t*)font;
-        glyph_width = u8_font_data[6];
-        glyph_height = u8_font_data[7];
-        glyph_number = u8_font_data[8];
+        font_struct *font_d = (font_struct *)font;
+        glyph_width = font_d->width;
+        glyph_height = font_d->height;
+        glyph_number = font_d->number_of_glyphs;
 
-        uint16_t number_segments = u8_font_data[0] * 16 + 16;
+        uint16_t number_segments = font_d->extra_glyphs * 16 + 16;
         font_data = font + number_segments;
     }
 }
@@ -220,5 +238,4 @@ void vga_set_mode()
 
 void vga_init()
 {
-
 }

@@ -38,13 +38,15 @@ void *paging_get_physical(void *virtualaddr)
     uint32_t *pd = (uint32_t*)page_dir;
     if (!(pd[pdi] & 0x1))
     {
+        log_debug("Paging", "page directory was not pressent with virt %p", virtualaddr);
         return NULL;
     }
-
+    
     uint32_t *pt = (uint32_t*)(pd[pdi] & ~0xFFF);
-
+    
     if (!(pt[pdi] & 0x1))
     {
+        log_debug("Paging", "page table was not pressent with virt %p", virtualaddr);
         return NULL;
     }
 

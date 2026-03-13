@@ -2,5 +2,5 @@
 
 #include "pic.h"
 
-const PICDriver* i8259_GetDriver();
-void i8259_SendEOI(int irq);
+const PICDriver* i8259_get_driver();
+void i8259_send_eoi(int irq);

@@ -8,16 +8,6 @@
  * -----
  */
 
-/*
- * File: video.c
- * File Created: 27 Feb 2026
- * Author: BjornBEs
- * -----
- * Last Modified: 27 Feb 2026
- * Modified By: BjornBEs
- * -----
- */
-
 // Graphical Interface
 
 #include "video.h"
