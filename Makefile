@@ -1,8 +1,8 @@
 include scripts/config.mk
 
-.PHONY: all floppy_image bootloader clean always debug libs kernel # tools_fat
+.PHONY: all floppy_image bootloader clean always debug libs kernel
 
-all: floppy_image # tools_fat
+all: floppy_image
 
 include scripts/toolchain.mk
 
@@ -11,7 +11,7 @@ include scripts/toolchain.mk
 #
 floppy_image: $(BUILD_DIR)/image.img
 
-$(BUILD_DIR)/image.img: bootloader kernel
+$(BUILD_DIR)/image.img: bootloader kernel user
 	@bash ./scripts/make_disk.sh $(imageType) $(imageFS) $(imageSize) $(arch) $(config)
 
 	@echo "--> Created: " $(floppyOutput)
@@ -67,8 +67,7 @@ $(BUILD_DIR)/tools/fat: always tools/fat/fat.c
 # user
 #
 user: $(TARGET_LIBS)
-	@$(MAKE) -C src/user_programs libs BUILD_DIR=$(abspath $(BUILD_DIR))
-	@$(MAKE) -C src/user_programs BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
 	bash run.sh disk $(BUILD_DIR)/image.img

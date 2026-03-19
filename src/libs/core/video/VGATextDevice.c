@@ -28,8 +28,8 @@ typedef struct
 
 vga_cell_t vga_buffer[60][100];
 
-uint16_t screen_width;
-uint16_t screen_height;
+uint32_t screen_width;
+uint32_t screen_height;
 uint32_t default_color = 0x00FFFFFF;
 int screen_x, screen_y;
 uint8_t glyph_width;
@@ -145,6 +145,8 @@ void vga_get_cursor(int *x, int *y)
 
 void vga_clear()
 {
+    int save_screen_height = screen_height;
+    int save_screen_width = screen_width;
     for (int y = 0; y < screen_height; y++)
     {
         for (int x = 0; x < screen_width; x++)
@@ -155,6 +157,8 @@ void vga_clear()
     screen_x = 0;
     screen_y = 0;
     vga_set_cursor(screen_x, screen_y);
+    screen_height = save_screen_height;
+    screen_width = save_screen_width;
 }
 
 void vga_scrollback(int lines)
@@ -230,10 +234,10 @@ void vga_load_font(void *font)
     }
 }
 
-void vga_set_mode()
+void vga_set_mode(video_mode *mode)
 {
-    screen_width = video_current_mode_data->width;
-    screen_height = video_current_mode_data->height;
+    screen_width = mode->width;
+    screen_height = mode->height;
 }
 
 void vga_init()

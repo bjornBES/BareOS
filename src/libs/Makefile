@@ -7,17 +7,17 @@ TARGET_LINKFLAGS += -nostdlib
 
 HEADERS_C = $(shell find . -type f -name "*.h")
 
-SOURCES_C = $(shell find . -type f -name "*.c") \
+SOURCES_C = $(shell find . -type f -name "*.c")
 
 OBJECTS_C = $(patsubst %.c, $(BUILD_DIR)/libcore/c/%.obj, $(SOURCES_C))
 
 HEADERS_CXX = $(shell find . -type f -name "*.hpp")
 
-SOURCES_CXX = $(shell find . -type f -name "*.cpp") \
+SOURCES_CXX = $(shell find . -type f -name "*.cpp")
 
 OBJECTS_CXX = $(patsubst %.cpp, $(BUILD_DIR)/libcore/cpp/%.obj, $(SOURCES_CXX))
 
-HEADERS_ASM = $(shell find . -type f -name "*.inc") \
+HEADERS_ASM = $(shell find . -type f -name "*.inc")
 
 SOURCES_ASM = $(shell find . -type f -name "*.asm")
 

@@ -1,3 +1,12 @@
+;
+; File: mbr.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 15 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
 bits 16
 
 %define ENDL 0x0D, 0x0A
@@ -197,9 +206,10 @@ lba_to_chs:
 ;   DL = drive number
 ;   ES:BX = destination (ES = segment, BX = offset)
 ; ============================================================================
+global read_sector_lba
 read_sector_lba:
 
-    push ax                             ; save registers we will modify
+    push eax                             ; save registers we will modify
     push bx
     push cx
     push dx
@@ -246,6 +256,7 @@ read_sector_lba:
     ; all attempts are exhausted
     jmp read_error
 
+global .done
 .done:
     popa
 

@@ -2,7 +2,6 @@ import os
 import sys
 import re
 import time
-import sh
 import threading
 from decimal import Decimal
 from io import SEEK_CUR, SEEK_SET
@@ -24,17 +23,6 @@ from config import mountMethod, config, arch, imageType, imageFS, imageSize
 from disk import DiskSpec, DiskPartitionSpec, disks
 
 SECTOR_SIZE = 512
-
-bashScriptsPath = "scripts/image"
-
-BASEDIR = ""
-FLOPPYBASEDIR = ""
-SATABASEDIR = ""
-
-# def copyFile(source, destination):
-#     bashPath = Path(f"{bashScriptsPath}/copyFile.sh").absolute()
-#     subprocess.run(["bash", bashPath, source, destination, str(os.path.getsize(source))])
-    
 
 
 def GetStage2Sector(stage2_path: str, image: str, partition_offset: int = 0):
@@ -84,12 +72,6 @@ def GetStage2Sector(stage2_path: str, image: str, partition_offset: int = 0):
     pf.close()
     return first_sector
 
-
-def generate_image_file(target, size):
-    print(f"got target as {target}, size as {size}")
-    with open(target, 'wb') as fout:
-        fout.write(bytes(size * SECTOR_SIZE))
-        fout.close()
 
 def find_symbol_in_map_file(map_file: Path, symbol: str):
     with map_file.open('r') as fmap:
@@ -310,6 +292,12 @@ def loadFiles(image, files, baseDir, imageDir = "::/", partition_offset = 0):
             
 MAX_WORKERS = 8
 
+def generate_image_file(target, size):
+    print(f"got target as {target}, size as {size}")
+    with open(target, 'wb') as fout:
+        fout.write(bytes(size * SECTOR_SIZE))
+        fout.close()
+
 def generate_image_files(targets):
     filesPath = os.path.join(project_root, "files")
     if not os.path.exists(filesPath):
@@ -324,18 +312,6 @@ def generate_image_files(targets):
         t.start()
     for t in threads:
         t.join()
-                    
-def buildApps():
-    print(f"testing build user apps")
-    makePath = Path(f"{project_root}").absolute()
-    subprocess.run(["make", "-C", project_root, "user"], text=True, check=True)
-    
-    bashPath = Path(os.path.join(os.path.dirname(__file__), "userProg.py")).absolute()
-
-    result = subprocess.run(["python3", bashPath, root])
-    if result.returncode == 1:
-        print("error in the partitons function")
-        exit(1)
                 
 def calculate_files_partition_size(files):
     total_bytes = sum(os.path.getsize(f) for f in files)
@@ -362,21 +338,27 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         print(f"======================================")
         print(f"got target as {partition.root_dir} size as {partition.size_sectors}")
         print(f"buildDir={buildDir}, filesDir={filesDir}")
+        
         rootDir = os.path.join(filesDir, partition.root_dir)
         files = GlobRecursive('*', rootDir)
         print(f"got {files} from {rootDir}")
+        
         stage2 = os.path.join(buildDir, partition.stage2) if partition.bootable else ""
         kernel = os.path.join(buildDir, partition.kernel) if partition.bootable else ""
         vbr = os.path.join(buildDir, partition.VBRBootFile) if partition.VBRBootFile != "" else ""
+
         if last_partition != None:
             if last_partition.size_sectors == 0:
                 print(f"expected sectors {calculate_files_partition_size(files)}")
             offset += last_partition.size_sectors
 
-        s2_offset2 = build_partition(image, files, partition, index, stage2, kernel, rootDir, partition.filesystem, partition.size_sectors, offset, vbr if partition.bootable else "")
+        s2_offset2 = build_partition(image, files, partition.bin_files, partition, index, stage2, kernel, rootDir, partition.filesystem, partition.size_sectors, offset, vbr if partition.bootable else "")
+        
         if (s2_offset2 != 0): s2_offset = s2_offset2
+        
         if s2_offset != 0 and stage2 != "":
             stage2_size = Path(stage2).stat().st_size
+        
         last_partition = partition
         index += 1
     
@@ -400,7 +382,7 @@ def build_disk(image, disk : DiskSpec, mbr : str = "", imageFileSystem : str = i
         create_filesystem(image, imageFileSystem, offset=0)
     
     
-def build_partition(image, files, partition : DiskPartitionSpec, index : int, stage2 : str = "", kernel : str = "", basePath : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0, sector_offset : int = 0, vbr : str = ""):
+def build_partition(image, files, bin_files : list[str], partition : DiskPartitionSpec, index : int, stage2 : str = "", kernel : str = "", basePath : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0, sector_offset : int = 0, vbr : str = ""):
     if (size_sectors == 0):
         size_sectors = ((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE) - sector_offset
     file_system = imageFileSystem
@@ -442,6 +424,17 @@ def build_partition(image, files, partition : DiskPartitionSpec, index : int, st
 
         loadFiles(image, files, basePath, "::/", partition_offset)
 
+        # load bin files
+        if bin_files.__len__() > 0:
+            user_path = os.path.join(project_root, f"build/{arch}_{config}", "user")
+            for file in bin_files:
+                file_src = os.path.join(user_path, file)
+                file_name = os.path.basename(file)
+                file_dst = os.path.join("::/bin", file_name)
+                print(f'    ... copying {file_src} to {file_dst}')
+                if not os.path.isdir(file_src):
+                    mcopy(image, file_src, file_dst, partition_offset)
+                
     finally:
         print("> cleaning up...")
     
@@ -449,52 +442,24 @@ def build_partition(image, files, partition : DiskPartitionSpec, index : int, st
     
     
 
-filesDir = os.path.join(project_root, "files")
-root = os.path.abspath(os.path.join(filesDir, "root"))
+files_dir = os.path.join(project_root, "files")
 
-if not os.path.exists(filesDir):
-    os.mkdir(filesDir)
-if not os.path.exists(root):
-    os.mkdir(root)
+if not os.path.exists(files_dir):
+    os.mkdir(files_dir)
+
 buildsPath = os.path.join(project_root, "build")
-archPath = os.path.join(buildsPath, f"{arch}_{config}")
 if not os.path.exists(buildsPath):
-    os.mkdir(buildsPath)
-if not os.path.exists(archPath):
-    os.mkdir(archPath)
-
-# buildApps()
-
-root_content = GlobRecursive('*', root)
-
-floppyRoot = os.path.abspath(os.path.join(filesDir, "floppyRoot"))
-floppyRoot_content = GlobRecursive('*', floppyRoot)
-
-sataDiskRoot = os.path.abspath(os.path.join(filesDir, "sataDiskRoot"))
-sataDiskRoot_content = GlobRecursive('*', sataDiskRoot)
-
-# BASEDIR=root
-# FLOPPYBASEDIR=floppyRoot
-# SATABASEDIR=sataDiskRoot
-
-floppyInputs = floppyRoot_content
-sataDiskInputs = sataDiskRoot_content
+    exit(-1)
 
 stage1mbr = os.path.join(project_root, f"build/{arch}_{config}/stage1/mbr.bin")
 stage1vbr = os.path.join(project_root, f"build/{arch}_{config}/stage1/vbr.bin")
 stage2 = os.path.join(project_root, f"build/{arch}_{config}/stage2/stage2.bin")
 kernel = os.path.join(project_root, f"build/{arch}_{config}/kernel/kernel.elf")
 
-output_fmt = 'img'
-output = os.path.join(project_root, f"build/{arch}_{config}/image.{output_fmt}")
-floppyOutput = os.path.join(project_root, f"build/{arch}_{config}/floppyImage.{output_fmt}")
-sataOutput = os.path.join(project_root, f"build/{arch}_{config}/sataImage.{output_fmt}")
-
 disks.append(DiskSpec("main", "image.img", 0, imageFS, [
-    DiskPartitionSpec("boot", [], "root", 4096, "fat32", 8192, True, stage1vbr, stage2, kernel),
-    DiskPartitionSpec("User", [], "user", 4096, "fat32", 0, False)
+    DiskPartitionSpec("boot", "root", 4096, "fat32", 8192, True, [], stage1vbr, stage2, kernel),
+    DiskPartitionSpec("User", "user", 4096, "fat32", 0, False, ["init.elf"])
     ], stage1mbr))
 
 for disk in disks:
-    build_disk_from_disk(disk, f"build/{arch}_{config}", filesDir)
-# build_disk(output, root_content, stage1, stage2, kernel, root, imageFS)
+    build_disk_from_disk(disk, f"build/{arch}_{config}", files_dir)

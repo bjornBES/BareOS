@@ -24,7 +24,7 @@ typedef int fd_t;
 // in practice - for non-negative related values, such as widths,
 // precisions, offsets into buffers used for printing and the sizes
 // of these buffers. instead, we use:
-#define PRINTF_MAX_POSSIBLE_BUFFER_SIZE INT_MAX
+#define PRINTF_MAX_POSSIBLE_BUFFER_SIZE INT32_MAX
 
 #define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 0
 

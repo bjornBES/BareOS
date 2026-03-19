@@ -1287,7 +1287,7 @@ void format_string_loop(output_gadget_t *output, const char *format, va_list arg
                 }
                 else
                 {
-                    size_t l = strnlen(p, precision ? precision : PRINTF_MAX_POSSIBLE_BUFFER_SIZE);
+                    size_t l = strlen(p/* , precision ? precision : -1 */);
                     // pre padding
                     if (flags & FLAGS_PRECISION)
                     {

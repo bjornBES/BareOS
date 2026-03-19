@@ -12,6 +12,7 @@
 
 #include "video.h"
 #include "VGATextDevice.h"
+#include "stdio.h"
 
 #include <memory.h>
 
@@ -74,7 +75,7 @@ log_debug("VIDEO", "blue %X & %x", blue, video_mode.blueMaskSize); */
 void video_set_mode(int mode)
 {
     video_current_mode_data = video_get_mode_data(mode);
-    vga_set_mode();
+    vga_set_mode(video_current_mode_data);
 
     frame_buffer = (uint8_t*)video_current_mode_data->frame_buffer;
     current_mode = mode;

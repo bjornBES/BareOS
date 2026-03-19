@@ -11,6 +11,7 @@
 #include "I8042.h"
 #include "arch/i686/irq.h"
 #include "arch/i686/i8259.h"
+#include "drivers/IO/Keyboard/Keyboard.h"
 
 #include <util/binary.h>
 #include <debug/debug.h>
@@ -232,45 +233,14 @@ void I8042_first_channel_handler(Registers *regs)
     // process data
     if (I8042_first_channel_device == I8042_CHANNEL_KEYBOARD_INITALIZED)
     {
-        uint32_t key_value = 0;
-
-        // if data starts with 0xE1, it means that keyboard will send two more bytes
-        if (I8042_first_channel_buffer[0] == 0xE1)
+        uint8_t pointer = I8042_first_channel_buffer_pointer;
+        uint8_t raw = I8042_first_channel_buffer[pointer - 1];
+        key_event ev;
+        if (keyboard_process_byte(raw, &ev))
         {
-            if (I8042_first_channel_buffer_pointer >= 3)
-            {
-                key_value = (I8042_first_channel_buffer[0] | I8042_first_channel_buffer[1] << 8 | 0xE1 << 16);
-            }
-            else
-            {
-                return; // wait for rest of data
-            }
+            keyboard_put_key(&ev);
+            log_debug(MODULE, "Key %s: %d", ev.action == KEY_PRESSED ? "press" : "release", ev.key);
         }
-        // if data starts with 0xE0, it means that keyboard will send one more byte
-        else if (I8042_first_channel_buffer[0] == 0xE0)
-        {
-            if (I8042_first_channel_buffer_pointer >= 2)
-            {
-                key_value = (I8042_first_channel_buffer[1] | 0xE0 << 8);
-            }
-            else
-            {
-                return; // wait for rest of data
-            }
-        }
-        // normal data in one byte
-        else
-        {
-            key_value = I8042_first_channel_buffer[0];
-        }
-
-        // process pressed key
-        log_warn(MODULE, "need to process key %X", key_value);
-        // keyboard_process_code(key_value);
-        
-        // save key to list
-        log_warn(MODULE, "need to save key to a list %X", key_value);
-        // ps2_keyboard_process_key_value(key_value);
 
         // clear variables
         I8042_first_channel_buffer_pointer = 0;
@@ -284,6 +254,7 @@ void I8042_init()
     I8042_second_channel_device = I8042_CHANNEL_NO_DEVICE_CONNECTED;
     I8042_first_channel_present = I8042_DEVICE_NOT_PRESENT;
     I8042_second_channel_present = I8042_DEVICE_NOT_PRESENT;
+    I8042_first_channel_buffer_pointer = 0;
     // Initialize PS/2 devices
 
     // step 1: Disable devices
@@ -540,6 +511,7 @@ void I8042_init()
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)
     {
         log_info(MODULE, "first channel present with conf = %08b", conf);
+        keyboard_init();
         // initialize_ps2_keyboard();
     }
     if (I8042_second_channel_present == I8042_DEVICE_PRESENT)

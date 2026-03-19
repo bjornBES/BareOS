@@ -18,23 +18,19 @@
 
 #define MODULE "malloc"
 
+#define MAX_PAGE_ALIGNED_ALLOCS 32
+
 uint32_t last_alloc = 0;
 uint32_t heap_end = 0;
 uint32_t heap_begin = 0;
-// uint32_t pheap_begin = 0;
-// uint32_t pheap_end = 0;
-// uint8_t *pheap_desc = 0;
 uint32_t memory_used = 0;
 
 void mmInit(uint32_t _end, size_t heapSize)
 {
 	last_alloc = _end + 0x1000;
 	heap_begin = last_alloc;
-	// pheap_end = 0x400000;
-	// pheap_begin = pheap_end - (MAXPAGEALIGNEDALLOC * 4096);
 	heap_end = heap_begin + heapSize;
 	memset((char *)heap_begin, 0, heap_end - heap_begin);
-	// pheap_desc = (uint8_t *)malloc(MAXPAGEALIGNEDALLOC);
 	log_debug(MODULE, "Kernel heap starts at %x", last_alloc);
 }
 
@@ -45,8 +41,6 @@ void mmPrintStatus()
 	log_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
 	log_debug(MODULE, "Heap start: 0x%x", heap_begin);
 	log_debug(MODULE, "Heap end: 0x%x", heap_end);
-	/* 	log("PHeap start: 0x%x\n", pheap_begin);
-		log("PHeap end: 0x%x\n", pheap_end); */
 }
 
 void mmPrintBlocks()
@@ -63,8 +57,8 @@ void mmPrintBlocks()
 			break; // no more blocks
 
 		log_debug(MODULE, "Block %d: addr=0x%x size=%u status=%s",
-			block_index, (uint32_t)(mem + sizeof(alloc_t)),
-			a->size, a->status ? "allocated" : "free");
+				  block_index, (uint32_t)(mem + sizeof(alloc_t)),
+				  a->size, a->status ? "allocated" : "free");
 
 		// move to next block
 		mem += a->size;
@@ -178,15 +172,15 @@ void *realloc(void *ptr, size_t size)
 
 void *kmalloc_phys(size_t size, void **virt_out)
 {
-    void *virt = malloc(size);
-    memset(virt, 0, size);
-    *virt_out = virt;
-    return paging_get_physical(virt);
+	void *virt = malloc(size);
+	memset(virt, 0, size);
+	*virt_out = virt;
+	return paging_get_physical(kernel_page_directory, virt);
 }
 void *kcalloc_phys(size_t num, size_t size, void **virt_out)
 {
-    void *virt = calloc(num, size);
-    memset(virt, 0, size * num);
-    *virt_out = virt;
-    return paging_get_physical(virt);
+	void *virt = calloc(num, size);
+	memset(virt, 0, size * num);
+	*virt_out = virt;
+	return paging_get_physical(kernel_page_directory, virt);
 }

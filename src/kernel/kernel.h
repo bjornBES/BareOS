@@ -8,4 +8,11 @@
  * -----
  */
 
+#pragma once
+
+#define RETURN_ERROR   -1
+#define RETURN_FAILED   0
+#define RETURN_GOOD     1
+
 void panic(char *module, char *file, int line, char* message, ...);
+

@@ -8,9 +8,10 @@ SECTIONS
 {
     . = KERNEL_LMA;
 
-	_kernel_start = .;
 
     . = KERNEL_VMA;
+
+	__kernel_start = .;
 
     .text               : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA)
     {
@@ -28,7 +29,7 @@ SECTIONS
     }
 
     .bss                : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
-    { 
+    {
         __bss_start = .;        *(.bss)     
     }
     
@@ -44,15 +45,11 @@ SECTIONS
     VGAModesAddr = .;
     . += 8192;
 
-    /* VGA Configurations */
-    . = ALIGN(4096);
-    VGAConfigurations = .;
-    . += 8192;
-
-    kernel_end = .;
+    __kernel_end = .;
+    __kernel_end_phys = . - KERNEL_VMA;
 
     /* End of kernel */
     . = ALIGN(4096);
     __end = .;
-
+    __heap_size = 1024 * 256;
 }

@@ -1,3 +1,13 @@
+/*
+ * File: fat.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 15 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "fat.h"
 #include "stdio.h"
 #include "memdefs.h"
@@ -10,7 +20,6 @@
 
 
 #define SECTOR_SIZE             512
-#define MAX_PATH_SIZE           256
 #define MAX_FILE_HANDLES        10
 #define ROOT_DIRECTORY_HANDLE   -1
 #define FAT_CACHE_SIZE          5

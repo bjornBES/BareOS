@@ -1,3 +1,13 @@
+;
+; File: isr_asm.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 19 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 [bits 32]
 
 extern i686_ISRHandler
@@ -8,8 +18,8 @@ extern i686_ISRHandler
 
 global i686_ISR%1:
 i686_ISR%1:
-    push 0              ; push dummy error code
-    push %1             ; push interrupt number
+    push dword 0              ; push dummy error code
+    push dword %1             ; push interrupt number
     jmp isr_common
 
 %endmacro
@@ -18,7 +28,7 @@ i686_ISR%1:
 global i686_ISR%1:
 i686_ISR%1:
                         ; cpu pushes an error code to the stack
-    push %1             ; push interrupt number
+    push dword %1             ; push interrupt number
     jmp isr_common
 
 %endmacro
@@ -34,9 +44,9 @@ isr_common:
 
     xor eax, eax        ; push ds
     mov ax, ds
-    push ax
+    push ds
     mov ax, es
-    push ax
+    push es
     
     mov ax, 0x10
     mov ds, ax

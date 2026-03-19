@@ -58,14 +58,18 @@ typedef struct __filesystem_t
     bool (*close)(vfs_node *node, device *dev, mount_point *mnt);
     uint32_t (*read)(vfs_node *node, void *buffer, size_t offset, size_t length, device *dev, mount_point *mnt);
 
-    bool (*read_dir)(vfs_node *dir, uint32_t index, vfs_dirent *out);
+    int (*read_dir)(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, mount_point *mnt);
 } filesystem;
 
 int VFS_write(fd_t file, uint8_t *data, size_t size);
-int VFS_read(fd_t file, uint8_t *data, size_t size);
+int VFS_read(fd_t file, void *data, size_t size);
 fd_t VFS_open(char *path);
 bool VFS_close(fd_t file);
+int VFS_seek(fd_t file, int offset);
 bool VFS_mount(char *path, device *dev);
 void VFS_register_fs(filesystem *fs);
+int VFS_read_dir(fd_t fd, vfs_dirent *out);
 
 void VFS_init();
+
+mount_point **vfs_get_mount_points(int *count);

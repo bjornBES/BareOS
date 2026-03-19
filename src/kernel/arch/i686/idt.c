@@ -1,3 +1,13 @@
+/*
+ * File: idt.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 15 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "idt.h"
 #include <util/binary.h>
 #include <stdio.h>
@@ -45,10 +55,10 @@ void i686_IDT_DumpSelector(uint16_t sel)
 IDTDescriptor idtr;
     __asm__ ("sidt %0" : "=m"(idtr));
     IDTEntry* idt = (IDTEntry*)(idtr.Ptr);
-    IDTEntry e = idt[n];
+    IDTEntry e = idt[sel];
     uint32_t offset = ((uint32_t)e.BaseHigh << 16) | e.BaseLow;
     fprintf(stddebug, "IDT[%02x]: offset=0x%08X selector=0x%04X type_attr=0x%02X reserved=0x%02X",
-           n, offset, e.SegmentSelector, e.Flags, e.Reserved);
+           sel, offset, e.SegmentSelector, e.Flags, e.Reserved);
 }
 
 #endif

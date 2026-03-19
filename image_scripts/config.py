@@ -17,7 +17,7 @@ def load_config(file='config.env'):
                 c[key.strip().upper()] = val.strip()
     return c
 
-c = load_config(os.path.abspath(os.path.join(project_root, 'build_scripts', 'config.env')))
+c = load_config(os.path.abspath(os.path.join(project_root, 'config', 'config.env')))
 
 config = c['CONFIG']
 arch = c['ARCH']

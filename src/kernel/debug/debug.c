@@ -63,7 +63,7 @@ void logf(const char* module, DebugLevel level, const char* fmt, ...)
         }
     } while (0); */
 
-    // 0x6f 0x6f 0x62 0x20    
+    // 0x6f 0x6f 0x62 0x20
 
     fprintf(VFS_FD_DEBUG, "%s", g_LogSeverityColors[level]); // set color depending on level
     fprintf(VFS_FD_DEBUG, "[%s] ", module);             // write module

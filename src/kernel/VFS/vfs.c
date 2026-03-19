@@ -12,6 +12,7 @@
 #include "device/device.h"
 #include "debug/debug.h"
 #include "malloc.h"
+#include "kernel.h"
 
 #include <core/video/VGATextDevice.h>
 #include <core/arch/i686/e9.h>
@@ -55,11 +56,11 @@ mount_point *vfs_path_resolve(char *path)
     // /device/partition/...
 
     /*
-/sata0/part1/Home/file.txt
-  ↑      ↑    ↑
-  │      │    └── handed to FAT32 fs driver as "Home/file.txt"
-  │      └─────── looked up in mount table → fat32_mount_t*
-  └────────────── looked up in device registry → device*
+/sata0/Home/file.txt
+  ↑      ↑
+  │      │
+  │      └─────── handed to FAT32 fs driver as "Home/file.txt"
+  └────────────── looked up in mount table → fat32_mount_t*
     */
 
     char *vfs_path = path;
@@ -83,7 +84,14 @@ mount_point *vfs_path_resolve(char *path)
     }
 
     mount_point *mount = vfs_check_mount_point(vfs_path);
+    free(cut_path);
     return mount;
+}
+
+mount_point **vfs_get_mount_points(int *count)
+{
+    *count = last_mount_id;
+    return mount_points;
 }
 
 int VFS_read_file(fd_t file, uint8_t *data, size_t size)
@@ -127,7 +135,7 @@ int VFS_write(fd_t file, uint8_t *data, size_t size)
     }
 }
 
-int VFS_read(fd_t file, uint8_t *data, size_t size)
+int VFS_read(fd_t file, void *data, size_t size)
 {
     switch (file)
     {
@@ -143,6 +151,16 @@ int VFS_read(fd_t file, uint8_t *data, size_t size)
         return VFS_read_file(file, data, size);
     }
     return 0;
+}
+
+int VFS_seek(fd_t file, int offset)
+{
+    // have not tested this it can be fucked fyi
+    //
+    // - BjornBEs 16-03-2026
+    vfs_node *node = fd_table[file];
+    node->offset = offset;
+    return RETURN_GOOD;
 }
 
 fd_t VFS_open(char *path)
@@ -185,6 +203,28 @@ bool VFS_close(fd_t fd)
     free(node);
     fd_table[fd] = NULL;
     return true;
+}
+
+fd_t current_fd = VFS_INVALID_FD;
+int current_index;
+int VFS_read_dir(fd_t fd, vfs_dirent *out)
+{
+    if (fd == VFS_INVALID_FD)
+    {
+        return -1;
+    }
+
+    if (current_fd != fd)
+    {
+        // init
+        current_fd = fd;
+        current_index = 0;
+    }
+
+    // loop based on the current_index
+    vfs_node *node = fd_table[fd];
+    int state = node->fs->read_dir(node, current_index, out, node->mount->dev, node->mount);
+    return state;
 }
 
 bool VFS_mount(char *path, device *dev)

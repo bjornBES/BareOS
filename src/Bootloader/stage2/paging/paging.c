@@ -40,8 +40,8 @@ void fill_table()
     // Set first page directory entry to point to page_table_low
     pageDirectory[0] = ((uint32_t)pageTableLow) | 0x03; // Present + RW
 
-    // Identity map first 4MB 0x000000 - 0x3FFFFF
-    for (int i = 0; i < 1024; i++)
+    // Identity map first 4MB 0x001000 - 0x3FFFFF
+    for (int i = 1; i < 1023; i++)
     {
         pageTableLow[i] = (i * 0x1000) | 0x03; // Present + RW
     }

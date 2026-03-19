@@ -1,3 +1,13 @@
+;
+; File: gdt_asm.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 19 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 [bits 32]
 
 ; void __attribute__((cdecl)) GDT_Load(GDTDescriptor* descriptor, uint16_t codeSegment, uint16_t dataSegment);
@@ -31,4 +41,12 @@ GDT_Load:
     ; restore old call frame
     mov esp, ebp
     pop ebp
+    ret
+
+; void __attribute__((cdecl)) i686_tss_load();
+global i686_tss_load
+i686_tss_load:
+    mov ax, (5 * 8) | 0 ; fifth 8-byte selector, symbolically OR-ed with 0 to set the RPL (requested privilege level).
+    ltr ax
+	
     ret

@@ -37,9 +37,10 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
 
 #### Phase 2 Advanced device management
 
-- [ ] Keyboard (PS/2) driver
-  - [ ] Keyboard API
-- [ ] Simple kernel/debug shell
+- [X] Keyboard API
+  - [X] Make a keyboard API
+  - [X] PS/2 driver
+- [/] Simple kernel/debug shell
 - [ ] TSS + ring 3
 - [ ] System calls (int 0x80)
 - [ ] file loader (e.g. ELF)
@@ -65,3 +66,19 @@ This is what the kernel loader should do in order right after the bootloader is 
   - or eax, (1 << 8)
   - wrmsr
 - [ ] Enable paging again
+
+#### Phase 4 Processes in full
+
+- [ ] Process management
+  - [ ] Process scheduler
+  - [ ] Process states
+  - [ ] Process control block
+  - [ ] Process creation and termination
+    - [ ] Allocate memory for process
+    - [ ] Load executable into memory using file loader
+    - [ ] Allocate page tables for process
+    - [ ] Set up user space stack
+    - [ ] Set up user space heap
+    - [ ] Jump to user space using iret
+      - [ ] Switch to user space Page tables
+- [ ] Virtual memory management

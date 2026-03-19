@@ -15,7 +15,7 @@ Install the following dependencies:
 sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo nasm mtools wget python3 python3-pip python3-parted dosfstools libguestfs-tools qemu-system-x86
 
 # Fedora:
-sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo nasm mtools wget python3 python3-pip python3-pyparted dosfstools guestfs-tools qemu-system-x86
+sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo nasm mtools wget python3 python3-pip python3-pyparted dosfstools qemu-system-x86
 
 # Arch & Arch-based:
 paru -S gcc make bison flex libgmp-static libmpc mpfr texinfo nasm mtools qemu-system-x86 python3

@@ -53,7 +53,7 @@ typedef union
 
 typedef struct
 {
-    FAT_entry entries[10];
+    FAT_entry entries[32]; // update this at some point
     uint32_t entry_count;
 } FAT_directory;
 
@@ -129,7 +129,7 @@ typedef struct {
     fat_type type;
 
     uint32_t sectors_per_cluster;
-    uint32_t cluster_size_bytes;
+    uint32_t bytes_per_cluster;
     uint32_t reserved_sectors;
 
     uint32_t root_cluster;
@@ -148,5 +148,12 @@ typedef struct {
     uint32_t fat_cache_position;
 
 } fat_priv_data;
+
+typedef struct {
+
+
+    // for function fat_read_directory
+    
+} fat_priv_node_data;
 
 filesystem *fat_init();

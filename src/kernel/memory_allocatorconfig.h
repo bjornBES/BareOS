@@ -1,9 +1,17 @@
+/*
+ * File: memory_allocatorconfig.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 15 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 
 // 
 #define allocDebug 1
 
-#define minPage __minPages__
-
 // The maximum number of blocks in a page
-#define BLOCKSPREPAGE 256
+#define BLOCKS_PRE_PAGE 256

@@ -30,18 +30,17 @@ all: kernel
 kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
 $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
-#	@bash ./link.sh $(TARGET_LD) $(TARGET_LINKFLAGS) -D DEBUG=1 -D __i370__=1 -D PAGING=$(PAGING_ENABLE) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -D DEBUG=1 -D=PAGING=$(PAGING_ENABLE) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
+	@$(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -DMAX_PATH_SIZE=$(MAX_PATH_SIZE) -D__minPages__=$(MIN_NUMBER_PAGES) -c -o $@ $<
+	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -DPAGING=$(PAGING_ENABLE) -o $@ $<
+	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 
 always:

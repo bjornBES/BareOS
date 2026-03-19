@@ -19,9 +19,14 @@
  */
 
 #pragma once
+#include "frame.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <core/Defs.h>
+
+#define KERNEL_VIRT_BASE 0xC0000000
+#define KERNEL_PHYS_BASE 0x00100000 // 1MB
 
 #define PAGE_SIZE 4096
 
@@ -75,25 +80,21 @@ typedef struct
     uint32_t frame : 20;  /** Physical frame number of level-2 table. */
 } __attribute__((packed)) page_directory_entry;
 
-extern page_directory_entry *page_directory __attribute__((aligned(4096)));
-extern page_table_entry *page_table __attribute__((aligned(4096)));
+extern page_directory_entry *kernel_page_directory __attribute__((aligned(4096)));
+
+page_directory_entry *paging_create_user_directory();
 
 // Walk the page directory and return the physical address mapped at virtAddr,
 // or NULL if not mapped. Useful for debugging and for copy-on-write later.
-void *paging_get_physical(void *virtAddr);
+void *paging_get_physical(page_directory_entry *page_dir, void *virtAddr);
 
 // return the virtual address mapped at physAddr,
 // or NULL if not mapped.
-void *paging_get_virtual(void *physAddr);
+void *paging_get_virtual(page_directory_entry *page_dir, void *physAddr);
 
 static inline uint32_t phys_to_page_index(void *physAddr);
 
 static inline void *page_index_to_phys(uint32_t index);
-
-int paging_check_page(uint32_t page_index);
-void paging_mark_page_used(uint32_t page_index);
-void paging_mark_page_free(uint32_t page_index);
-int paging_find_free_page();
 
 // Allocate any free physical frame. Returns its physical address, or NULL on OOM.
 // Does NOT map it into any address space — caller maps it where needed.
@@ -108,21 +109,23 @@ void paging_free_frame(void *physAddr);
 
 // Map a single virtual page → physical frame in the current page directory.
 // flags: -1 for PAGE_PRESENT | PAGE_WRITABLE
-void paging_map_page(void *virtAddr, void *physAddr, uint32_t flags);
+void paging_map_page(page_directory_entry *page_dir, void *virtAddr, void *physAddr, uint32_t flags);
 
 // Unmap a single virtual page (does NOT free the underlying frame).
-void paging_unmap_page(void *virtAddr);
+void paging_unmap_page(page_directory_entry *page_dir, void *virtAddr);
 
 // Allocate a free frame AND map it at virtAddr in one step.
 // Returns the physical address on success, NULL on OOM.
-void *paging_alloc_and_map(void *virtAddr, uint32_t flags);
+void *paging_alloc_and_map(page_directory_entry *page_dir, void *virtAddr, uint32_t flags);
+
+void *paging_alloc_and_map_region(page_directory_entry *page_dir, void *virtAddr, size_t size, uint32_t flags);
 
 // Map a contiguous physical region [physAddr, physAddr + size) to
 // [virtAddr, virtAddr + size). Rounds up to page boundaries.
 // Used for MMIO regions and framebuffers where the physical address is fixed.
-void paging_map_region(void *virtAddr, void *physAddr, size_t size, uint32_t flags);
+void paging_map_region(page_directory_entry *page_dir, void *virtAddr, void *physAddr, size_t size, uint32_t flags);
 
 // Unmap [virtAddr, virtAddr + size) and free the backing frames.
-void paging_free_region(void *virtAddr, size_t size);
+void paging_free_region(page_directory_entry *page_dir, void *virtAddr, size_t size);
 
-void paging_init(void *page_table);
+void paging_init();

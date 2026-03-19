@@ -21,7 +21,10 @@
 
 #define MODULE "FAT"
 
-#define PRINT_FUNCTION_INFO(func, ...) log_info(MODULE, "in function %s(%s)", func, __VA_ARGS__)
+#define PRINT_FUNCTION_INFO(func, ...)             \
+    fprintf(VFS_FD_DEBUG, "in function %s(", func); \
+    fprintf(VFS_FD_DEBUG, __VA_ARGS__);            \
+    fprintf(VFS_FD_DEBUG, ")\n");
 
 #define COMBINE_CLUSTERS(entry) (entry.FirstClusterHigh << 16) | entry.FirstClusterLow
 
@@ -32,20 +35,15 @@ uint32_t cluster_to_lba(uint32_t cluster, fat_priv_data *priv)
 
 uint32_t fat_read_sectors(void *buffer, uint32_t sector, uint32_t sector_count, device *dev, fat_priv_data *priv)
 {
-    return dev->read(buffer, sector, sector_count, dev);
+    return dev->read(buffer, sector, sector_count, dev) * priv->bytes_per_sector;
 }
-/*
-uint32_t fat_read_sectors(void *buffer, uint32_t bytes, uint32_t bytes_count, device *dev, fat_priv_data *priv)
+void fat_read_clusters(void *buffer, uint32_t cluster, uint32_t clusters_count, device *dev, fat_priv_data *priv)
 {
-    uint32_t sector = (bytes / priv->bytes_per_sector) + 1;
-    uint32_t sector_count = (bytes_count / priv->bytes_per_sector) + 1;
-    return dev->read(buffer, sector, sector_count, dev);
-}
-void fat_read_clusters(void *buffer, uint32_t *bytes, uint32_t bytes_count, device *dev, fat_priv_data *priv)
-{
+    uint32_t lba = cluster_to_lba(cluster, priv);
+    fat_read_sectors(buffer, lba, clusters_count * priv->sectors_per_cluster, dev, priv);
 
 }
-*/
+
 
 bool fat_83_to_name(const char raw83[11], char out[13])
 {
@@ -241,7 +239,7 @@ uint32_t fat_next_cluster(uint32_t current_cluster, device *dev, fat_priv_data *
 
     return next_cluster;
 }
-/* 
+/*
 void get_directory_entry_count(FAT_directory *directory, device *dev, fat_priv_data *fat_priv)
 {
 
@@ -323,7 +321,7 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     char *path_segment_hr = malloc(MAX_FILE_NAME);
     memset(path_segment_hr, 0, MAX_FILE_NAME);
     {
-        const char *temp = strchr(org_path, '/');
+        const char *temp = strchr(org_path, '/') - 1;
         int count = (int)(temp - org_path);
         memcpy(path_segment_hr, org_path, count);
         log_debug(MODULE, "path_segment = %s", path_segment_hr);
@@ -338,7 +336,6 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     free(path_segment_hr);
     log_debug(MODULE, "after 8.3 segment %s", segment83);
 
-    directory->entry_count = 10;
     for (size_t i = 0; i < directory->entry_count; i++)
     {
         FAT_entry *entry = &(directory->entries[i]);
@@ -352,7 +349,7 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
         }
     }
 
-    if (*org_path == 0)
+    if (*org_path == 0 || ((*entry_out)->entry.Attributes & FAT_ATTRIBUTE_DIRECTORY) == 0)
     {
         // done
         return true;
@@ -363,29 +360,32 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     }
 
     // read the entry
-    FAT_directory *current_directory = malloc(sizeof(FAT_directory));
-    if (!fat_read_directory_internal(*entry_out, dev, fat_priv, current_directory))
+    if (!fat_read_directory_internal(*entry_out, dev, fat_priv, directory))
     {
         log_err(MODULE, "failed to read %s entry's directories", (*entry_out)->entry.Name);
         PRINT_FUNCTION_INFO("fat_find_entry", "%s, %p, %p, %p", path, dev, fat_priv, entry_out);
         return false;
     }
 
-    bool result = fat_find_entry(org_path, dev, fat_priv, current_directory, entry_out);
-    free(current_directory);
+    log_debug(MODULE, "entry 0 is %s", directory->entries[0].entry.Name);
+
+    bool result = fat_find_entry(org_path, dev, fat_priv, directory, entry_out);
     return result;
 }
 
-bool fat_read_directory(vfs_node *dir, uint32_t index, device *dev, mount_point *mnt)
+int fat_read_directory(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, mount_point *mnt)
 {
+    // bool fat_read_directory_internal(FAT_entry *entry, device *dev, fat_priv_data *fat_priv, FAT_directory *out)
+    PRINT_FUNCTION_INFO("fat_read_directory", "%p, %u, %p, %p, %p", dir, index, out, dev, mnt);
     FUNC_NOT_IMPLEMENTED(MODULE, "fat_read_directory");
     return false;
 }
 
-uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t length, device *dev, mount_point *mnt)
+uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size, device *dev, mount_point *mnt)
 {
-    /*
-    log_debug(MODULE, "got node {");
+    log_debug(MODULE, "  fat_read_file(%p, %p, %u, %u, %p, %p)", node, buffer, offset, size, dev, mnt);
+    
+/*     log_debug(MODULE, "got node {");
     log_debug(MODULE, "  name = %s", node->name);
     log_debug(MODULE, "  flags = 0x%x", node->flags);
     log_debug(MODULE, "  size = %u", node->size);
@@ -395,8 +395,8 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t lengt
     log_debug(MODULE, "  fs = %p", node->fs);
     log_debug(MODULE, "  mount = %p", node->mount);
     log_debug(MODULE, "  priv = %p", node->priv);
-    log_debug(MODULE, "}");
-    */
+    log_debug(MODULE, "}"); */
+   
     fat_priv_data *fat_priv = mnt->fs_priv;
 
     uint32_t cluster_number = node->inode;
@@ -414,8 +414,8 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t lengt
         node->inode = cluster_number;
         node->size = entry->entry.Size;
     }
-    /*
-    log_debug(MODULE, "updated node {");
+    
+/*     log_debug(MODULE, "updated node {");
     log_debug(MODULE, "  name = %s", node->name);
     log_debug(MODULE, "  flags = 0x%x", node->flags);
     log_debug(MODULE, "  size = %u", node->size);
@@ -425,15 +425,51 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t lengt
     log_debug(MODULE, "  fs = %p", node->fs);
     log_debug(MODULE, "  mount = %p", node->mount);
     log_debug(MODULE, "  priv = %p", node->priv);
-    log_debug(MODULE, "}");
-    */
+    log_debug(MODULE, "}"); */
+   
     if (!buffer)
     {
         return 0;
     }
+    uint32_t cluster = node->inode;
+    uint32_t offset_cluster = offset / fat_priv->bytes_per_cluster;
+    if (offset_cluster != 0)
+    {
+        for (size_t i = 0; i < offset_cluster; i++)
+        {
+            cluster = fat_next_cluster(cluster, dev, fat_priv);
+            if (cluster >= FAT_CACHE_INVALID)
+            {
+                return 0;
+            }
+        }
+    }
+
+    uint32_t bytes_read = 0;
+    uint32_t intra = offset % fat_priv->bytes_per_cluster;
+
+    while (size > 0 && cluster < FAT_CACHE_INVALID)
+    {
+        uint8_t tmp[fat_priv->bytes_per_cluster];
+        fat_read_clusters(tmp, cluster, 1, dev, fat_priv);
+
+        uint32_t available = fat_priv->bytes_per_cluster - intra;
+        uint32_t to_copy = size < available ? size : available;
+        memcpy(buffer + bytes_read, tmp + intra, to_copy);
+
+        bytes_read += to_copy;
+        size -= to_copy;
+        intra = 0;
+
+        cluster = fat_next_cluster(cluster, dev, fat_priv);
+    }
+    return bytes_read;
+    
+/*     uint32_t offset_lba = offset / fat_priv->bytes_per_sector;
     uint32_t lba = cluster_to_lba(cluster_number, fat_priv);
-    uint32_t count = (length / fat_priv->bytes_per_sector) + 1;
-    return fat_read_sectors(buffer, lba, count, dev, fat_priv);
+    log_debug(MODULE, "reading from LBA = %u with an offset LBA = %u total LBA = %u", lba, offset_lba, lba + offset_lba);
+    uint32_t count = (size / fat_priv->bytes_per_sector) + 1;
+    return fat_read_sectors(buffer, lba + offset_lba, count, dev, fat_priv); */
 }
 
 bool fat_probe(device *dev)
@@ -524,7 +560,7 @@ bool fat_mount(device *dev, mount_point *mount)
     uint32_t fat_start = fat_priv->reserved_sectors;
     uint32_t data_start = fat_start + fat_priv->fat_count * fat_priv->sectors_per_fat + root_sectors;
     fat_priv->fat_start_lba = fat_start;
-    fat_priv->cluster_size_bytes = fat_priv->sectors_per_cluster * fat_priv->bytes_per_sector;
+    fat_priv->bytes_per_cluster = fat_priv->sectors_per_cluster * fat_priv->bytes_per_sector;
 
     uint32_t total_sectors = bpb->total_sectors;
     if (total_sectors == 0)
@@ -577,6 +613,7 @@ filesystem *fat_init()
     fs->open = fat_open;
     fs->close = fat_close;
     fs->read = fat_read_file;
+    fs->read_dir = fat_read_directory;
 
     return fs;
 }

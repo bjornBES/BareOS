@@ -1,11 +1,22 @@
+/*
+ * File: isr.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 19 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include <stdint.h>
 
 typedef struct
 {
+	uint16_t es;
+	uint16_t ds;
     union {
         struct {
-			uint32_t _dses;
             uint32_t edi;
 			uint32_t esi;
 			uint32_t ebp;
@@ -16,7 +27,6 @@ typedef struct
 			uint32_t eax;
 		} U32;
 		struct {
-			uint16_t es, ds;
             uint16_t di, hdi;
 			uint16_t si, hsi;
 			uint16_t bp, hbp;
@@ -27,7 +37,6 @@ typedef struct
 			uint16_t ax, hax;
 		} U16;
 		struct {
-            uint8_t esl, esh, dsl, dsh;
             uint8_t dil, dih, edi2, edi3;
 			uint8_t sil, sih, esi2, esi3;
 			uint8_t bpl, bph, ebp2, ebp3;

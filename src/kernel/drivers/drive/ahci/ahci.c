@@ -294,7 +294,7 @@ uint32_t ahci_read(void *buffer, uint64_t sector, size_t count, device *device)
     ahci_port aport = ports[drive];
     if (aport.abar != 0)
     {
-        uint16_t *u16Buffer = (uint16_t *)paging_get_physical(buffer);
+        uint16_t *u16Buffer = (uint16_t *)paging_get_physical(kernel_page_directory, buffer);
         uint32_t startl = sector & 0xFFFFFFFF;
         uint32_t starth = (sector >> 32) & 0xFFFFFFFF;
         if (ahci_read_sectors_command(aport, startl, starth, count, u16Buffer))
@@ -375,10 +375,8 @@ void ahci_initialize(pci_device_id *pdev)
     ports = (ahci_port *)malloc(sizeof(ahci_port) * MAX_PORTS);
 
     void *bar5 = (void *)pdev->header.header0.bar5;
-    paging_mark_page_used(1018);
-    paging_mark_page_used(1019);
-    paging_map_region(bar5, bar5, 4096, -1);
-    paging_map_region(bar5 + sizeof(HBA_MEM), bar5 + sizeof(HBA_MEM), 1, -1);
+    paging_map_region(kernel_page_directory, bar5, bar5, 4096, -1);
+    paging_map_region(kernel_page_directory, bar5 + sizeof(HBA_MEM), bar5 + sizeof(HBA_MEM), 1, -1);
 
     ahci_initialize_abar((HBA_MEM *)bar5);
 }
