@@ -41,7 +41,16 @@ void fat_read_clusters(void *buffer, uint32_t cluster, uint32_t clusters_count, 
 {
     uint32_t lba = cluster_to_lba(cluster, priv);
     fat_read_sectors(buffer, lba, clusters_count * priv->sectors_per_cluster, dev, priv);
+}
 
+uint32_t fat_write_sectors(void *buffer, uint32_t sector, uint32_t sector_count, device *dev, fat_priv_data *priv)
+{
+    return dev->write(buffer, sector, sector_count, dev) * priv->bytes_per_sector;
+}
+void fat_write_clusters(void *buffer, uint32_t cluster, uint32_t clusters_count, device *dev, fat_priv_data *priv)
+{
+    uint32_t lba = cluster_to_lba(cluster, priv);
+    fat_write_sectors(buffer, lba, clusters_count * priv->sectors_per_cluster, dev, priv);
 }
 
 

@@ -19,6 +19,10 @@
 
 #define MAX_FILE_NAME 64
 
+#ifndef VFS_IMVALID_FD
+#define VFS_IMVALID_FD (fd_t)-1
+#endif
+
 struct __filesystem_t;
 
 typedef struct

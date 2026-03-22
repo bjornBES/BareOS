@@ -12,6 +12,7 @@
 #include "stdio.h"
 #include "debug/debug.h"
 #include "frame.h"
+#include "malloc.h"
 
 #include <memory.h>
 #include <string.h>
@@ -21,65 +22,88 @@
 
 #define MODULE "PAGING"
 
-page_directory_entry *kernel_page_directory = 0;
+extern char __end;
+extern char __heap_size;
+
+bool paging_print_out = true;
+
+page_directory *kernel_page_directory = 0;
 uint32_t page_dir_loc = 0;
 
 uint32_t *last_page = 0;
 
-void *paging_get_physical(page_directory_entry *page_dir, void *virtualaddr)
+void *phys_to_virt(void *phys)
+{
+    // 0x00101000
+    // 0x00100000
+    // 0x00012c00
+    if ((uint32_t)(phys) >= 0x100000)
+        return (void *)(phys + KERNEL_VIRT_BASE - KERNEL_PHYS_BASE); // kernel higher-half
+    else
+        return (void *)phys; // identity mapped low memory
+}
+
+void *paging_get_physical(page_directory *page_dir, void *virtualaddr)
 {
     uint32_t pdi = GETPAGEDIRECTORYINDEX(virtualaddr);
     uint32_t pti = GETPAGETABLEINDEX(virtualaddr);
     uint32_t offset = (uint32_t)virtualaddr & 0xFFF;
 
-    void *pd_void = (void *)page_dir;
-    uint32_t *pd = (uint32_t *)pd_void;
-    if (!(pd[pdi] & 0x1))
+    page_directory_entry *pde = &page_dir->entries[pdi];
+    if (!(pde->flags.flags_bitmap.present))
     {
-        log_debug("Paging", "page directory was not pressent with virt %p", virtualaddr);
+        log_warn("Paging", "page directory entry [%u] was not pressent with virt %p", pdi, virtualaddr);
+        log_warn("Paging", "pd[%u].pt[%d]", pdi, pti);
         return NULL;
     }
 
-    uint32_t *pt = (uint32_t *)(pd[pdi] & ~0xFFF);
+    uint32_t pt_phys = pde->frame << 12;
+    page_table *pt = phys_to_virt((void *)(pt_phys));
+    page_table_entry *pte = &pt->entries[pti];
 
-    if (!(pt[pdi] & 0x1))
+    if (!(pte->flags.flags_bitmap.present))
     {
-        log_debug("Paging", "page table was not pressent with virt %p", virtualaddr);
+        log_warn("Paging", "page table was not pressent with virt %p", virtualaddr);
         return NULL;
     }
 
-    uint32_t phys_base = pt[pti] & ~0xFFF;
+    uint32_t phys_base = pte->frame << 12;
     return (void *)(phys_base | offset);
 }
 
-void *paging_get_virtual(page_directory_entry *page_dir, void *physAddr)
+void *paging_get_virtual(page_directory *page_dir, void *physAddr)
 {
     uint32_t phys = (uint32_t)physAddr & ~0xFFF; // page-align
 
     for (uint32_t pdi = 0; pdi < 1024; pdi++)
     {
-        if (!page_dir[pdi].flags.flags_bitmap.present)
+        if (!page_dir->entries[pdi].flags.flags_bitmap.present)
         {
             continue;
         }
 
-        page_table_entry *pt = (page_table_entry *)(page_dir[pdi].frame << 12);
+        page_table *pt = (page_table *)phys_to_virt((void *)(page_dir->entries[pdi].frame << 12));
 
-        for (uint32_t pti = 0; pti < 1024; pti++)
+        for (uint32_t pti = 1023; pti != 0; pti--)
         {
-            if (!pt[pti].flags.flags_bitmap.present)
+            page_table_entry pte = pt->entries[pti];
+            if (!pte.flags.flags_bitmap.present)
             {
                 continue;
             }
 
-            if ((pt[pti].frame << 12) == phys)
+            // log_debug(MODULE, "%x == %x", (pte.frame << 12), phys);
+
+            if ((pte.frame << 12) == phys)
             {
+                log_debug(MODULE, "Done got v0x%x | v0x%x = v0x%x from p0x%x", (pdi << 22), (pti << 12), (pdi << 22) | (pti << 12), physAddr);
+                log_debug(MODULE, "Done got pdi %u | pti %u from p0x%x", pdi, pti, physAddr);
                 // Reconstruct the virtual address from the indices
                 return (void *)((pdi << 22) | (pti << 12));
             }
         }
     }
-
+    log_warn("Paging", "could not get virtual from %p", phys);
     return NULL; // not mapped
 }
 
@@ -97,7 +121,72 @@ void paging_init()
 {
     frame_init();
 
-    frame_alloc_region(0x0, 0x00100000); // null/BIOS low page
+    uint32_t heap_start_virt = (uint32_t)&__end;
+    size_t heap_size = (size_t)&__heap_size;
+    heap_init(heap_start_virt, heap_size);
+
+    // map new Page_dir[0]
+    log_debug(MODULE, "Mapping new Page_dir[0]");
+    // Allocate a new page table from kernel-mapped frames
+    void *pt_low_phys = paging_alloc_frame();
+    page_table *pt_low = (page_table *)phys_to_virt(pt_low_phys);
+    memset(pt_low, 0, PAGE_SIZE);
+    log_debug(MODULE, "low page table at v%p;p%p", pt_low, pt_low_phys);
+
+    log_debug(MODULE, "Setting new pt");
+    // Identity map 0x0 - 0x3FFFFF (same as bootloader did)
+    for (int i = 0; i < 1024; i++)
+    {
+        pt_low->entries[i].raw = (i * 0x1000) | 0x03;
+    }
+    log_debug(MODULE, "Done with copy");
+
+    log_debug(MODULE, "installing low");
+    // Install into kernel page directory
+    kernel_page_directory->entries[0].raw = ((uint32_t)pt_low_phys) | 0x03;
+    log_debug(MODULE, "Done with the low");
+
+    log_debug(MODULE, "Flush TLB");
+    // Flush TLB
+    __asm__ volatile("mov %%cr3, %%eax\n"
+                     "mov %%eax, %%cr3" ::: "eax");
+
+    log_debug(MODULE, "PDE[0] rebuilt at phys %p", pt_low_phys);
+#define PAGING_TEST_PHYS_TO_VIRT(p) log_debug(MODULE, "\t-v%p > p%p", paging_get_virtual(kernel_page_directory, (void *)p), p)
+#define PAGING_TEST_VIRT_TO_PHYS(p) log_debug(MODULE, "\t-p%p > v%p", paging_get_physical(kernel_page_directory, (void *)p), p)
+    log_debug(MODULE, "test PDE[0]");
+    PAGING_TEST_VIRT_TO_PHYS(0x1000);
+
+    // map new Page_dir[768]
+    // 1. Allocate new page table in kernel-mapped region (>= 0x100000)
+    void *pt_kernel_phys = paging_alloc_frame();
+    page_table *pt_kernel = (page_table *)phys_to_virt(pt_kernel_phys);
+    memset(pt_kernel, 0, PAGE_SIZE);
+
+    // 2. Copy ALL existing entries from old pageTableKernel into new one
+    // Old one is at 0x16000, identity mapped
+    for (int i = 0; i < 1024; i++)
+    {
+        pt_kernel->entries[i].raw = ((0x00100000 + i * 0x1000)) | 0x03;
+    }
+
+    // 3. NOW atomically swap PDE[768] to point to new table
+    kernel_page_directory->entries[768].raw = ((uint32_t)pt_kernel_phys) | 0x03;
+
+    // 4. Flush TLB - this is the moment of truth
+    __asm__ volatile("mov %%cr3, %%eax\n"
+                     "mov %%eax, %%cr3" ::: "eax");
+    log_debug(MODULE, "PDE[768] rebuilt at phys %p", pt_kernel_phys);
+
+    log_debug(MODULE, "test PDE[768]");
+    PAGING_TEST_VIRT_TO_PHYS(0x00000000c000ce00);
+    PAGING_TEST_VIRT_TO_PHYS(0x00000000c0010000);
+    PAGING_TEST_VIRT_TO_PHYS(0x00000000c0012f00);
+    PAGING_TEST_VIRT_TO_PHYS(0x00000000c004c000);
+    PAGING_TEST_PHYS_TO_VIRT(0x0014c000);
+
+#undef PAGING_TEST_PHYS_TO_VIRT
+#undef PAGING_TEST_VIRT_TO_PHYS
 }
 
 // Allocate any free physical frame. Returns its physical address, or NULL on OOM.
@@ -107,9 +196,14 @@ void *paging_alloc_frame()
     int i = frame_alloc_frame();
     if (i == 0)
     {
-        write_error(LVL_CRITICAL, "Paging", "crit error: Out of pages");
+        write_error(LVL_CRITICAL, "Paging", "crit error: Out of pages got %u", i);
         log_debug("Paging", "why and how the fuck did that happen");
         return NULL;
+    }
+    if (i < KERNEL_PHYS_BASE)
+    {
+        log_warn("MAIN", "=========== nr.2 ===========");
+        // frame_dump_bitmap();
     }
     log_debug(MODULE, "got frame index %u", i / PAGE_SIZE);
 
@@ -150,15 +244,116 @@ void paging_free_frame(void *physAddr)
 
 // Map a single virtual page → physical frame in the current page directory.
 // flags: -1 for PAGE_PRESENT | PAGE_WRITABLE
-void paging_map_page(page_directory_entry *page_dir, void *virtAddr, void *physAddr, uint32_t flags)
+void paging_map_page(page_directory *page_dir, void *virtAddr, void *physAddr, uint32_t flags)
 {
     uint32_t virt = (uint32_t)virtAddr;
     uint32_t page_directory_index = GETPAGEDIRECTORYINDEX(virt);
     uint32_t page_table_index = GETPAGETABLEINDEX(virt);
+    if (paging_print_out)
+    {
+        log_debug(MODULE, "map_page page_dir=%p virt=%p phys=%p flags=%x pdi=%u pti=%u", page_dir, virtAddr, physAddr, flags, page_directory_index, page_table_index);
+    }
 
-    page_directory_entry *page_directory_entry = &page_dir[page_directory_index];
+    page_directory_entry *page_directory_entry = phys_to_virt(&page_dir->entries[page_directory_index]);
+    if (paging_print_out)
+    {
+        log_debug(MODULE, "page_directory_entry at v%p | p%p", page_directory_entry, &page_dir->entries[page_directory_index]);
+    }
 
-    uint32_t a = (uint32_t)page_directory_entry->frame;
+    uint32_t _flags = flags;
+    {
+        if (flags == -1)
+        {
+            _flags = PAGE_WRITABLE;
+        }
+        _flags |= PAGE_PRESENT;
+    }
+    if (paging_print_out)
+    {
+        log_debug(MODULE, "resolved flags=%x", _flags);
+    }
+
+    if (!page_directory_entry->flags.flags_bitmap.present)
+    {
+        if (paging_print_out)
+        {
+            log_info(MODULE, "pdi=%u not present, allocating new page table", page_directory_index);
+        }
+
+        void *page_table_phys = paging_alloc_frame();
+        if (page_table_phys == NULL)
+        {
+            log_crit(MODULE, "out of memory");
+            KernelPanic(MODULE, "out of memory");
+        }
+        if (paging_print_out)
+        {
+            log_debug(MODULE, "new page table phys=%p", page_table_phys);
+        }
+
+        void *page_table_virt = phys_to_virt(page_table_phys);
+        if (paging_print_out)
+        {
+            log_debug(MODULE, "new page table virt=%p", page_table_virt);
+        }
+
+        if (page_table_virt == NULL)
+        {
+            log_crit(MODULE, "paging_get_virtual returned NULL for new page table phys=%p", page_table_phys);
+            KernelPanic(MODULE, "could not get virtual address for new page table");
+        }
+
+        memset(page_table_virt, 0, PAGE_SIZE);
+
+        page_directory_entry->frame = ((uint32_t)(page_table_phys) >> 12);
+        page_directory_entry->flags.flags_byte |= _flags;
+
+        if (paging_print_out)
+        {
+            log_info(MODULE, "installed PDE[%u] -> phys=%p flags=%x", page_directory_index, page_table_phys, _flags);
+        }
+    }
+    else
+    {
+        if (paging_print_out)
+        {
+            log_debug(MODULE, "pdi=%u already present frame=%x", page_directory_index, page_directory_entry->frame);
+        }
+    }
+
+    page_table *pt = (page_table *)phys_to_virt((void *)(page_directory_entry->frame << 12));
+
+    if (paging_print_out)
+    {
+        log_debug(MODULE, "page table virt=%p", pt);
+    }
+
+    if (pt == NULL)
+    {
+        log_crit(MODULE, "paging_get_virtual returned NULL for page table frame=%x", page_directory_entry->frame);
+        KernelPanic(MODULE, "could not get virtual address for page table");
+    }
+
+    pt->entries[page_table_index].frame = (uint32_t)physAddr >> 12;
+    pt->entries[page_table_index].flags.flags_byte = _flags;
+
+    if (paging_print_out)
+    {
+        log_info(MODULE, "mapped virt=%p -> phys=%p (pdi=%u pti=%u flags=%x)", virtAddr, physAddr, page_directory_index, page_table_index, _flags);
+    }
+
+    // Invalidate the TLB entry for this address
+    __asm__ volatile("invlpg (%0)" ::"r"(virtAddr) : "memory");
+}
+
+void kernel_paging_map_page(void *virtAddr, void *physAddr, uint32_t flags)
+{
+    page_directory *page_dir = kernel_page_directory;
+    uint32_t virt = (uint32_t)virtAddr;
+    uint32_t page_directory_index = GETPAGEDIRECTORYINDEX(virt);
+    uint32_t page_table_index = GETPAGETABLEINDEX(virt);
+
+    page_directory_entry page_directory_entry = page_dir->entries[page_directory_index];
 
     uint32_t _flags = flags;
     {
@@ -169,7 +364,7 @@ void paging_map_page(page_directory_entry *page_dir, void *virtAddr, void *physA
         _flags |= PAGE_PRESENT;
     }
 
-    if (!page_directory_entry->flags.flags_bitmap.present)
+    if (!page_directory_entry.flags.flags_bitmap.present)
     {
         void *page_table_phys = paging_alloc_frame();
         if (page_table_phys == NULL)
@@ -177,38 +372,39 @@ void paging_map_page(page_directory_entry *page_dir, void *virtAddr, void *physA
             log_crit("Paging", "out of memory");
             KernelPanic("Paging", "out of memory");
         }
-        void *page_table_virt = page_table_phys + KERNEL_VIRT_BASE;
+        void *page_table_virt = phys_to_virt(page_table_phys);
         memset(page_table_virt, 0, PAGE_SIZE);
 
-        page_directory_entry->frame = ((uint32_t)(page_table_phys) >> 12);
-        page_directory_entry->flags.flags_byte |= _flags;
+        page_directory_entry.frame = ((uint32_t)(page_table_phys) >> 12);
+        page_directory_entry.flags.flags_byte |= _flags;
     }
 
-    page_table_entry *page_table = (page_table_entry *)(void *)(page_directory_entry->frame << 12) + KERNEL_VIRT_BASE;
-    page_table[page_table_index].frame = (uint32_t)physAddr >> 12;
+    page_table *pt = (page_table *)phys_to_virt((void *)(page_directory_entry.frame << 12));
+    pt->entries[page_table_index].frame = (uint32_t)physAddr >> 12;
 
-page_table[page_table_index].flags.flags_byte = _flags;
+    pt->entries[page_table_index].flags.flags_byte = _flags;
 
     // Invalidate the TLB entry for this address
     __asm__ volatile("invlpg (%0)" ::"r"(virtAddr) : "memory");
 }
 
 // Unmap a single virtual page (does NOT free the underlying frame).
-void paging_unmap_page(page_directory_entry *page_dir, void *virtAddr)
+void paging_unmap_page(page_directory *page_dir, void *virtAddr)
 {
     uint32_t virt = (uint32_t)virtAddr;
     uint32_t page_directory_index = GETPAGEDIRECTORYINDEX(virt);
     uint32_t page_table_index = GETPAGETABLEINDEX(virt);
 
-    page_directory_entry *page_directory_entry = &page_dir[page_directory_index];
-    if (!page_directory_entry->flags.flags_bitmap.present)
+    page_directory_entry page_directory_entry = page_dir->entries[page_directory_index];
+    if (!page_directory_entry.flags.flags_bitmap.present)
     {
         write_error(LVL_ERROR, "Paging", "Error: Page directory %u has not been allocated", page_directory_index);
     }
 
-    page_table_entry *page_table = (page_table_entry *)paging_get_virtual(page_dir, (void *)(page_directory_entry->frame << 12));
-    FLAG_UNSET(page_table->flags.flags_byte, PAGE_PRESENT);
-    FLAG_UNSET(page_directory_entry->flags.flags_byte, PAGE_PRESENT);
+    page_table *pt = (page_table *)paging_get_virtual(page_dir, (void *)(page_directory_entry.frame << 12));
+    page_table_entry pte = pt->entries[page_table_index];
+    FLAG_UNSET(pte.flags.flags_byte, PAGE_PRESENT);
+    FLAG_UNSET(page_directory_entry.flags.flags_byte, PAGE_PRESENT);
 
     // Invalidate the TLB entry for this address
     __asm__ volatile("invlpg (%0)" ::"r"(virtAddr) : "memory");
@@ -216,7 +412,7 @@ void paging_unmap_page(page_directory_entry *page_dir, void *virtAddr)
 
 // Allocate a free frame AND map it at virtAddr in one step.
 // Returns the physical address on success, NULL on OOM.
-void *paging_alloc_and_map(page_directory_entry *page_dir, void *virtAddr, uint32_t flags)
+void *paging_alloc_and_map(page_directory *page_dir, void *virtAddr, uint32_t flags)
 {
     void *phys = paging_alloc_frame();
     if (phys == NULL)
@@ -226,10 +422,11 @@ void *paging_alloc_and_map(page_directory_entry *page_dir, void *virtAddr, uint3
     return phys;
 }
 
-void *paging_alloc_and_map_region(page_directory_entry *page_dir, void *virtAddr, size_t size, uint32_t flags)
+void *paging_alloc_and_map_region(page_directory *page_dir, void *virtAddr, size_t size, uint32_t flags)
 {
     uint32_t virt = (uint32_t)virtAddr;
-    void *phys = paging_alloc_frame();
+    void *org_phys = paging_alloc_frame();
+    void *phys = org_phys;
 
     // Round up to page boundary
     uint32_t pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -240,13 +437,13 @@ void *paging_alloc_and_map_region(page_directory_entry *page_dir, void *virtAddr
         virt += PAGE_SIZE;
         phys += PAGE_SIZE;
     }
-    return phys;
+    return org_phys;
 }
 
 // Map a contiguous physical region [physAddr, physAddr + size) to
 // [virtAddr, virtAddr + size). Rounds up to page boundaries.
 // Used for MMIO regions and framebuffers where the physical address is fixed.
-void paging_map_region(page_directory_entry *page_dir, void *virtAddr, void *physAddr, size_t size, uint32_t flags)
+void paging_map_region(page_directory *page_dir, void *virtAddr, void *physAddr, size_t size, uint32_t flags)
 {
     uint32_t virt = (uint32_t)virtAddr;
     uint32_t phys = (uint32_t)physAddr;
@@ -263,7 +460,7 @@ void paging_map_region(page_directory_entry *page_dir, void *virtAddr, void *phy
 }
 
 // Unmap [virtAddr, virtAddr + size) and free the backing frames.
-void paging_free_region(page_directory_entry *page_dir, void *virtAddr, size_t size)
+void paging_free_region(page_directory *page_dir, void *virtAddr, size_t size)
 {
     uint32_t virt = (uint32_t)virtAddr;
     // error things maybe?
@@ -284,15 +481,20 @@ void paging_free_region(page_directory_entry *page_dir, void *virtAddr, size_t s
     }
 }
 
-page_directory_entry *paging_create_user_directory()
+void paging_create_user_directory(void *_proc)
 {
+    process *proc = (process*)_proc;
     uint32_t phys = frame_alloc_frame();
 
-    page_directory_entry *pd = (page_directory_entry *)phys;
+    page_directory *pd = (page_directory *)phys_to_virt((void *)phys);
     memset(pd, 0, PAGE_SIZE);
 
     for (int i = 768; i < 1024; i++)
-        pd[i] = kernel_page_directory[i];
+    {
+        // kernel higher half
+        pd->entries[i] = kernel_page_directory->entries[i];
+    }
 
-    return pd;
+    proc->page_dir_virt = pd;
+    proc->page_dir_phys = (page_directory *)phys;
 }

@@ -2,7 +2,7 @@ include config/config.env
 export $(shell cut -d= -f1 config/config.env | grep -v '^#')
 
 export CFLAGS = -Wall -Werror -trigraphs -Wno-error=unused-variable				\
-				-Werror=int-to-pointer-cast										\
+				-Werror=int-to-pointer-cast	-Werror							\
 				-Wno-error=unused-function -Wno-error=unused-label				\
 				-Wno-error=deprecated -Wno-error=trigraphs						\
 				-DMAX_PATH_SIZE=$(max_path_length) -DPAGING=$(enable_paging) 	\

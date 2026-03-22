@@ -36,6 +36,7 @@ $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+#	@$(TARGET_CC) $(TARGET_CFLAGS) -E -c -o $@.c $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)

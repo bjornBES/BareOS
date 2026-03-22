@@ -24,14 +24,28 @@ uint32_t last_alloc = 0;
 uint32_t heap_end = 0;
 uint32_t heap_begin = 0;
 uint32_t memory_used = 0;
+size_t heap_size;
 
-void mmInit(uint32_t _end, size_t heapSize)
+void heap_init(uint32_t heap_start_virt, size_t _heap_size)
 {
-	last_alloc = _end + 0x1000;
+	heap_size = _heap_size;
+	last_alloc = heap_start_virt + 0x1000;
 	heap_begin = last_alloc;
-	heap_end = heap_begin + heapSize;
-	memset((char *)heap_begin, 0, heap_end - heap_begin);
-	log_debug(MODULE, "Kernel heap starts at %x", last_alloc);
+	heap_end = heap_begin + heap_size;
+	
+	void* heap_begin_phys = paging_get_physical(kernel_page_directory, (void*)heap_begin);
+	log_debug(MODULE, "Kernel heap phys at p%p -> v%p", heap_begin_phys, heap_begin);
+	frame_alloc_region((uint32_t)heap_begin_phys, (uint32_t)(heap_begin_phys + heap_size));
+
+	log_debug(MODULE, "Kernel heap starts at %x", heap_begin);
+}
+
+void mmInit()
+{
+	void* heap_begin_phys = paging_get_physical(kernel_page_directory, (void*)heap_begin);
+    paging_map_region(kernel_page_directory, (void*)heap_begin, heap_begin_phys, heap_size, -1);
+
+	memset((char *)heap_begin, 0, heap_size);
 }
 
 void mmPrintStatus()
@@ -175,7 +189,9 @@ void *kmalloc_phys(size_t size, void **virt_out)
 	void *virt = malloc(size);
 	memset(virt, 0, size);
 	*virt_out = virt;
-	return paging_get_physical(kernel_page_directory, virt);
+	void *phys = paging_get_physical(kernel_page_directory, virt);
+	log_debug(MODULE, "p%p = kmalloc_phys(%u, v%p)", phys, size, virt);
+	return phys;
 }
 void *kcalloc_phys(size_t num, size_t size, void **virt_out)
 {

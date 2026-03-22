@@ -12,6 +12,11 @@
 
 #include <stdint.h>
 
+#define FRAME_BITMAP_SIZE (size_t)&__frame_bitmap_size
+#define FRAME_BITMAP_WORDS (FRAME_BITMAP_SIZE / sizeof(uint32_t))
+
+extern char __frame_bitmap_size;
+
 int frame_get_frame(uint32_t frame_index);
 void frame_mark_frame_used(uint32_t frame_index);
 void frame_mark_frame_free(uint32_t frame_index);

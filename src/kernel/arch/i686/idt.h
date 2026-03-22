@@ -1,6 +1,19 @@
+/*
+ * File: idt.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 20 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "VFS/vfs.h"
+#include <stdio.h>
 
 typedef enum
 {

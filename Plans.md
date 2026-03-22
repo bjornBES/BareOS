@@ -41,13 +41,13 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
   - [X] Make a keyboard API
   - [X] PS/2 driver
 - [/] Simple kernel/debug shell
-- [ ] TSS + ring 3
-- [ ] System calls (int 0x80)
-- [ ] file loader (e.g. ELF)
-  - [ ] jump to user space
-- [ ] AHCI with write support
-- [ ] FAT32 with write support
-- [ ] VFS with write support
+- [X] TSS + ring 3
+- [X] System calls (int 0x80)
+- [X] file loader (e.g. ELF)
+  - [X] jump to user space
+- [X] AHCI with write support
+- [X] FAT32 with write support
+- [X] VFS with write support
 
 #### Phase 3 64 bits
 

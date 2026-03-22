@@ -10,13 +10,17 @@
 
 #include "stack_allocator.h"
 #include "paging/paging.h"
+#include "debug/debug.h"
 #include "kernel.h"
 
 uint32_t stack_alloc_init(process *proc) {
     uint32_t stack_base = USER_STACK_TOP - USER_STACK_INITIAL;
 
     void *frame = (void*)frame_alloc_frame();
-    paging_map_page(proc->page_dir, (void*)stack_base, (void*)frame, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
+    log_debug ("STACK", "got frame %p", frame);
+    log_debug ("STACK", "paging in process page dir");
+    log_debug ("STACK", "mapping %p -> %p", frame, stack_base);
+    paging_map_page(proc->page_dir_phys, (void*)stack_base, (void*)frame, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
 
     proc->stack_top  = USER_STACK_TOP;
     proc->stack_size = USER_STACK_INITIAL;
@@ -32,7 +36,7 @@ int stack_grow(process *proc) {
     uint32_t new_page = proc->stack_top - proc->stack_size - PAGE_SIZE;
 
     uint32_t frame = frame_alloc_frame();
-    paging_map_page(proc->page_dir, (void*)new_page, (void*)frame, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
+    paging_map_page(proc->page_dir_phys, (void*)new_page, (void*)frame, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
 
     proc->stack_size += PAGE_SIZE;
     return RETURN_GOOD;
@@ -43,8 +47,8 @@ void stack_free(process *proc) {
 
     for (uint32_t addr = stack_base; addr < proc->stack_top; addr += PAGE_SIZE)
     {
-        uint32_t frame = (uint32_t)paging_get_physical(proc->page_dir, (void*)addr);
-        paging_unmap_page(proc->page_dir, (void*)addr);
+        uint32_t frame = (uint32_t)paging_get_physical(proc->page_dir_virt, (void*)addr);
+        paging_unmap_page(proc->page_dir_phys, (void*)addr);
         frame_free_frame(frame);
     }
 

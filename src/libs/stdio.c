@@ -17,7 +17,6 @@
 
 #include <string.h>
 #include <core/printfDriver/printf.h>
-#include <core/video/VGATextDevice.h>
 #include <core/arch/i686/e9.h>
 #include <kernel_core/vfsBase.h>
 

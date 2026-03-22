@@ -34,6 +34,7 @@ void vga_set_mode();
 
 void vga_init();
 
+void vga_check();
 
 extern int screen_x, screen_y;
 extern uint8_t *g_ScreenBuffer;

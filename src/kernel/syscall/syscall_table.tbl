@@ -1,0 +1,13 @@
+/*
+ * File: syscall_table.inc
+ * File Created: 22 Mar 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 22 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
+// syscall_table.inc
+// nr, name, ret, arg_types
+X(1,  VFS_write, int,  fd_t,   void*,  size_t)

@@ -24,7 +24,7 @@
 
 #define MODULE "PROC"
 
-void ASMCALL jump_to_user(void *user_entry, void *user_stack);
+void ASMCALL jump_to_user(void *user_entry, void *user_stack, pid process);
 
 extern char stack_top;
 
@@ -38,12 +38,15 @@ int sys_execve(const char *path, char *argv[], char *envp[])
 
 process *process_create(char *path)
 {
+    frame_dump_bitmap();
     process *proc = malloc(sizeof(process));
-    
+
     fd_t file = VFS_open(path);
 
     current_process = proc;
-    proc->page_dir = paging_create_user_directory();
+    log_debug(MODULE, "creating new user directory");
+    paging_create_user_directory(proc);
+    log_debug(MODULE, "at p%p, v%p", proc->page_dir_phys, proc->page_dir_virt);
 
     proc->regs.Reg32.esp = stack_alloc_init(proc);
     proc->regs.ss = i686_USER_DATA_SEGMENT;
@@ -69,12 +72,48 @@ void process_run(process *proc)
     tss_entry.esp0 = (uint32_t)&stack_top;
     log_debug(MODULE, "stack = %p esp = %p", proc->stack_top, proc->regs.Reg32.esp);
     log_debug(MODULE, "jumping to %p", proc->entry);
-    jump_to_user((void*)proc->regs.Reg32.eip, (void*)proc->regs.Reg32.esp);
+
+    uint32_t proc_pd_phys = (uint32_t)proc->page_dir_phys;
+    log_debug(MODULE, "loading CR3 = %p", proc_pd_phys);
+
+    // Switch to process page directory
+    disableInterrupts();
+
+    __asm__ volatile(
+        "mov $0x41, %%al\n"
+        "out %%al, $0xe9\n"
+        "mov %0, %%cr3\n"
+        "mov $0x42, %%al\n"
+        "out %%al, $0xe9\n" ::"r"(proc_pd_phys) : "eax", "memory");
+    enableInterrupts();
+
+    uint8_t *entry = (void *)proc->entry;
+    log_debug(MODULE, "at virt address %p (%p)", entry, paging_get_physical(proc->page_dir_virt, (void *)entry));
+    log_debug(MODULE, "bytes at entry: %02x %02x %02x %02x %02x %02x %02x %02x",
+              entry[0], entry[1], entry[2], entry[3],
+              entry[4], entry[5], entry[6], entry[7]);
+    jump_to_user((void *)proc->regs.Reg32.eip, (void *)proc->regs.Reg32.esp, proc->pid);
 }
 
 int exec(char *path, char *argv[])
 {
     process *proc = process_create(path);
+
+    uint32_t vaddr = proc->load_base;
+    uint32_t pd_index = vaddr >> 22;
+    uint32_t pt_index = (vaddr >> 12) & 0x3FF;
+
+    uint32_t *pd = (uint32_t *)proc->page_dir_virt;
+    uint32_t pde = (uint32_t)pd[pd_index];
+    uint32_t *pt = (uint32_t *)(pde & ~0xFFF);
+    uint32_t pte = pt[pt_index];
+    log_debug(MODULE, "PDE: %x  PTE: %x", pde, pte);
+
     process_run(proc);
     return RETURN_GOOD;
+}
+
+void process_init()
+{
+    next_pid = 0;
 }

@@ -39,6 +39,7 @@ cat > .vscode/.gdb_script.gdb << EOF
     symbol-file $PWD/build/i686_debug/kernel/kernel.elf
     set disassembly-flavor intel
     b main
+    b panic
 EOF
 
 gf2-gdb $PWD/build/i686_debug/kernel/kernel.elf -x .vscode/.gdb_script.gdb

@@ -13,8 +13,9 @@
 #include "debug/debug.h"
 #include "malloc.h"
 #include "kernel.h"
+#include "video/VGATextDevice.h"
+#include "syscall/syscall.h"
 
-#include <core/video/VGATextDevice.h>
 #include <core/arch/i686/e9.h>
 #include <string.h>
 #include <memory.h>
@@ -102,7 +103,7 @@ int VFS_read_file(fd_t file, uint8_t *data, size_t size)
         log_crit("VFS", "File is not opened");
         return 0;
     }
-    
+
     uint32_t offset = node->offset;
     device *dev = node->mount->dev;
     uint32_t bytes = node->fs->read(node, data, offset, size, dev, node->mount);
@@ -113,6 +114,11 @@ int VFS_write(fd_t file, uint8_t *data, size_t size)
 {
     switch (file)
     {
+    case VFS_IMVALID_FD:
+        log_debug("KERNEL", "why? just why?");
+        __unreachable();
+        return 0;
+        
     case VFS_FD_STDIN:
         return 0;
 
@@ -134,6 +140,7 @@ int VFS_write(fd_t file, uint8_t *data, size_t size)
         return -1;
     }
 }
+SYSCALL_DEFINE3(VFS_write, int, fd_t, void*, size_t)
 
 int VFS_read(fd_t file, void *data, size_t size)
 {
@@ -184,7 +191,8 @@ fd_t VFS_open(char *path)
 
             node->fs = node->mount->fs;
             node->offset = 0;
-            strcpy(node->name, path);
+            int mount_length = strlen(node->mount->path);
+            strcpy(node->name, path + mount_length);
 
             node->fs->open(node, node->mount->dev, node->mount);
 
@@ -296,7 +304,11 @@ void VFS_init()
     last_fs_id = 0;
     last_mount_id = 0;
 
+    // syscall_register_handler(1, );
+
     filesystems = (filesystem **)calloc(4, sizeof(filesystem *));
     mount_points = (mount_point **)calloc(8, sizeof(mount_point *));
     log_debug(MODULE, "done init");
+
+    return;
 }

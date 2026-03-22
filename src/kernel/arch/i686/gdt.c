@@ -9,6 +9,7 @@
  */
 
 #include "gdt.h"
+#include "VFS/vfs.h"
 #include <stdio.h>
 #include <memory.h>
 
@@ -49,10 +50,10 @@ void i686_GDTLoad()
 void i686_GDTInitialize()
 {
     i686_GDTSetEntry(0, 0, 0, 0, 0);
-    i686_GDTSetEntry(1, 0, 0xFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
-    i686_GDTSetEntry(2, 0, 0xFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
-    i686_GDTSetEntry(3, 0, 0xFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
-    i686_GDTSetEntry(4, 0, 0xFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    i686_GDTSetEntry(1, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    i686_GDTSetEntry(2, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    i686_GDTSetEntry(3, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    i686_GDTSetEntry(4, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
 }
 
 void i686_tss_initialize()
@@ -90,3 +91,22 @@ void i686_GDT_DumpSelector(uint16_t sel)
 }
 
 #endif
+
+bool _continue_to_user_mode = false;
+bool __unreachable()
+{
+    if (_continue_to_user_mode == true)
+    {
+        return true;
+    }
+    fd_t file = VFS_open("/boot/bare.txt");
+    uint8_t buf[255];
+    VFS_read(file, buf, 255);
+    VFS_close(file);
+    if (memcmp(buf, "This file is required for booting.", 34))
+    {
+        panic("", "", 0x46, "what did the file say?");
+    }
+    _continue_to_user_mode = true;
+    return true;
+}

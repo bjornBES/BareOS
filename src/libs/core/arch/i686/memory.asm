@@ -64,7 +64,7 @@ memset16:
     push edi
 
     mov edi, [ebp + 8]    ; s
-    mov al, [ebp + 12]    ; c
+    mov ax, [ebp + 12]    ; c
     mov ecx, [ebp + 16]   ; n
     
     
@@ -86,7 +86,7 @@ memset32:
     push edi
 
     mov edi, [ebp + 8]    ; s
-    mov al, [ebp + 12]    ; c
+    mov eax, [ebp + 12]    ; c
     mov ecx, [ebp + 16]   ; n
     
     

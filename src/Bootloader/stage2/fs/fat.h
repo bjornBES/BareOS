@@ -1,3 +1,13 @@
+/*
+ * File: fat.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 21 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include "stdint.h"
 #include "mbr.h"
@@ -57,3 +67,4 @@ uint32_t FAT_Read(Partition* disk, FAT_File* file, uint32_t byteCount, void* dat
 bool FAT_ReadEntry(Partition* disk, FAT_File* file, FAT_DirectoryEntry* dirEntry);
 void FAT_Close(FAT_File* file);
 bool FAT_Skip(Partition* part, FAT_File* file, uint32_t bytes);
+bool FAT_Seek(Partition *part, FAT_File *file, uint32_t position);

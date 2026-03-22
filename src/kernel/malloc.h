@@ -21,7 +21,8 @@ typedef struct {
 void *kmalloc_phys(size_t size, void **virt_out);
 void *kcalloc_phys(size_t num, size_t size, void **virt_out);
 
-void mmInit(uint32_t _end, size_t heapSize);
+void heap_init(uint32_t heap_start_virt, size_t heap_size);
+void mmInit();
 void mmPrintStatus();
 void mmPrintBlocks();
 

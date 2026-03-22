@@ -14,9 +14,9 @@
 #include "malloc.h"
 #include "debug/debug.h"
 #include "task/process.h"
+#include "video/VGATextDevice.h"
 
 #include <stdio.h>
-#include <core/video/VGATextDevice.h>
 #include <memory.h>
 #include <string.h>
 

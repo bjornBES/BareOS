@@ -1,3 +1,13 @@
+;
+; File: entry.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 21 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 
 [bits 32]
 
@@ -17,6 +27,9 @@ global entry
 entry:
     cli
     
+    mov al, 'H'
+    out 0xe9, al,
+    
     mov ax, 0x10
     mov ds, ax
     mov es, ax
@@ -27,6 +40,9 @@ entry:
     mov esp, stack_top
     mov ebp, esp
     push edi
+
+    mov al, 'H'
+    out 0xe9, al,
 
     call main
 

@@ -19,17 +19,6 @@ uint32_t pageTableLow2[1024] __attribute__((aligned(4096)));
 uint32_t pageTable2[1024] __attribute__((aligned(4096)));
 uint32_t pageTableKernel[1024] __attribute__((aligned(4096)));
 
-void *paging_get_physical(void *virtualaddr)
-{
-    unsigned long pdindex = (unsigned long)virtualaddr >> 22;
-    unsigned long ptindex = (unsigned long)virtualaddr >> 12 & 0x03FF;
-
-    unsigned long *pt = ((unsigned long *)&pageTableLow) + (0x400 * pdindex);
-    // Here you need to check whether the PT entry is present.
-
-    return (void *)((pt[ptindex] & ~0xFFF) + ((unsigned long)virtualaddr & 0xFFF));
-}
-
 void fill_table()
 {
     memset(pageDirectory, 0, 4096);
@@ -41,7 +30,7 @@ void fill_table()
     pageDirectory[0] = ((uint32_t)pageTableLow) | 0x03; // Present + RW
 
     // Identity map first 4MB 0x001000 - 0x3FFFFF
-    for (int i = 1; i < 1023; i++)
+    for (int i = 0; i < 1024; i++)
     {
         pageTableLow[i] = (i * 0x1000) | 0x03; // Present + RW
     }

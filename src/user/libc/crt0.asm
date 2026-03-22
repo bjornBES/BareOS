@@ -19,6 +19,6 @@ _start:
 
     ; main returned — call exit syscall directly
     mov         eax,            60              ; syscall number for exit
-    mov         ebx,            0               ; exit code
+    mov         ebx,            1               ; exit code
     int         0x80
     jmp         $

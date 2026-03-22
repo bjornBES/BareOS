@@ -75,8 +75,8 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
             elfHeader.ProgramHeaderTablePosition +
             i * elfHeader.ProgramHeaderTableEntrySize;
 
-        printf("ELF: file dis postion = %u\n", fd->Position);
-        if (!FAT_Skip(part, fd, ph_pos - fd->Position))
+        printf("ELF: file dis postion = 0x%x\n", fd->Position);
+        if (!FAT_Seek(part, fd, ph_pos))
         {
             printf("ELF: ph_pos base = 0x%x\n", elfHeader.ProgramHeaderTablePosition);
             printf("ELF: ph_pos index = 0x%x\n", i * elfHeader.ProgramHeaderTableEntrySize);
@@ -84,6 +84,7 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
             FAT_Close(fd);
             return false;
         }
+        printf("ELF: file dis postion = 0x%x\n", fd->Position);
 
         if (FAT_Read(part, fd, sizeof(progarmHeader), &progarmHeader) != sizeof(progarmHeader))
         {
@@ -121,7 +122,7 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
         memset(dest, 0, progarmHeader.MemorySize);
 
         /* Load file-backed portion */
-        if (!FAT_Skip(part, fd, progarmHeader.Offset - fd->Position))
+        if (!FAT_Seek(part, fd, progarmHeader.Offset))
         {
             printf("ELF: segment seek failed\n");
             FAT_Close(fd);

@@ -10,6 +10,7 @@
 
 #pragma once
 #include "stdio.h"
+#include <stdbool.h>
 #if DEBUG
 #define MIN_LOG_LEVEL LVL_DEBUG
 #else
@@ -48,5 +49,7 @@ void strlogf(DebugLevel level, const char *str);
 #define _log_crit(str) strlogf(LVL_CRITICAL, str)
 
 #define FUNC_NOT_IMPLEMENTED(module, func) log_err(module, "%s: Not implemented", func)
+
+extern bool __unreachable();
 
 void write_error(DebugLevel level, const char *module, const char *fmt, ...);

@@ -10,6 +10,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <memory.h>
 #include <core/Defs.h>
 
 #define i686_KERNEL_CODE_SEGMENT 0x08

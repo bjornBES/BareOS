@@ -16,9 +16,11 @@
 #include <memory.h>
 #include <util/binary.h>
 
-#define FRAME_BITMAP_SIZE 1024 // in future (1024 * 1024) / 32 // each bit is a 4KB frame
+extern char __frame_bitmap;
+extern char __frame_bitmap_phys;
+extern char __frame_bitmap_phys_end;
 
-static uint32_t frame_bitmap[FRAME_BITMAP_SIZE];
+uint32_t *frame_bitmap;
 
 inline int frame_get_frame(uint32_t frame_index)
 {
@@ -37,23 +39,14 @@ inline void frame_mark_frame_free(uint32_t frame_index)
 
 void frame_alloc_region(uint32_t start_phys, uint32_t end_phys)
 {
-    uint32_t start_index = (start_phys / PAGE_SIZE) / 32;
-    uint32_t end_index = ((end_phys) / PAGE_SIZE) / 32 + 1;
-    log_info("FRAME", "start_index = %u, end_index = %u", start_index, end_index);
-    for (int i = start_index; i < end_index; i++)
+    uint32_t start_frame = start_phys / PAGE_SIZE;
+    uint32_t end_frame = end_phys / PAGE_SIZE;
+    log_info("FRAME", "marking frames in [0x%x;0x%x]", start_phys, end_phys);
+    log_info("FRAME", "marking frames in index [%d;%d]", start_frame, end_frame);
+    log_info("FRAME", "size %x", (end_frame - start_frame) * PAGE_SIZE);
+    for (int f = start_frame; f <= end_frame; f++)
     {
-        if (frame_bitmap[i] == 0xFFFFFFFF)
-            continue; // all 32 frames in this word are used
-
-        // find first free bit
-        for (int bit = 0; bit < 32; bit++)
-        {
-            int frame_index = i * 32 + bit;
-            if (!frame_get_frame(frame_index))
-            {
-                frame_mark_frame_used(frame_index);
-            }
-        }
+        frame_mark_frame_used(f);
     }
 }
 
@@ -70,7 +63,7 @@ void frame_alloc_at(uint32_t phys_addr)
 
 uint32_t frame_alloc_frame()
 {
-    for (int i = 0; i < FRAME_BITMAP_SIZE; i++)
+    for (int i = 0; i < FRAME_BITMAP_WORDS; i++)
     {
         if (frame_bitmap[i] == 0xFFFFFFFF)
             continue; // all 32 frames in this word are used
@@ -79,13 +72,14 @@ uint32_t frame_alloc_frame()
         for (int bit = 0; bit < 32; bit++)
         {
             int frame_index = i * 32 + bit;
-            if (!frame_get_frame(frame_index))
+            if (!frame_get_frame(frame_index) && frame_index != 0)
             {
                 frame_mark_frame_used(frame_index);
                 return (frame_index)*PAGE_SIZE; // return PHYSICAL address
             }
         }
     }
+    log_crit("FRAME", "out of physical frames");
     panic("FRAME", __FILE__, __LINE__, "out of physical frames");
     return 0;
 }
@@ -100,18 +94,22 @@ void frame_dump_bitmap()
 {
     uint32_t free_count = 0;
     uint32_t used_count = 0;
-    uint32_t total_frames = FRAME_BITMAP_SIZE * 32;
+    uint32_t total_frames = FRAME_BITMAP_WORDS;
 
     for (uint32_t i = 0; i < total_frames; i++)
     {
-        if (frame_get_frame(i))
+        for (int bit = 0; bit < 32; bit++)
         {
-            used_count++;
-            log_debug("FRAME", "frame %u at 0x%08X: Taken", i, i * PAGE_SIZE);
-        }
-        else
-        {
-            free_count++;
+            int frame_index = i * 32 + bit;
+            if (frame_get_frame(frame_index))
+            {
+                used_count++;
+                log_debug("FRAME", "frame %u at 0x%08X: Taken", frame_index, frame_index * PAGE_SIZE);
+            }
+            else
+            {
+                free_count++;
+            }
         }
     }
 
@@ -121,5 +119,24 @@ void frame_dump_bitmap()
 
 void frame_init()
 {
-    memset32(frame_bitmap, 0, sizeof(frame_bitmap) / 32);
+    void *frame_bitmap_phys = (void *)&__frame_bitmap_phys;
+    void *frame_bitmap_virt = (void *)&__frame_bitmap;
+
+    frame_bitmap = frame_bitmap_virt;
+
+    log_debug("FRAME", "frame p%p v%p size is %x", frame_bitmap_phys, frame_bitmap_virt, FRAME_BITMAP_SIZE);
+    memset32(frame_bitmap, 0, FRAME_BITMAP_WORDS);
+
+    log_debug("FRAME", "mapping frame bitmap");
+    paging_map_region(kernel_page_directory, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
+
+    log_debug("FRAME", "=====BEFORE=====");
+    log_debug("FRAME", "word 13195 = 0x%08x", frame_bitmap[13195]);
+    log_debug("FRAME", "word 13196 = 0x%08x", frame_bitmap[13196]);
+    log_debug("FRAME", "marking all frames from 0x0 to 0x%x used", (uint32_t)(frame_bitmap_phys + FRAME_BITMAP_SIZE));
+    frame_alloc_region(0x0, (uint32_t)(frame_bitmap_phys + FRAME_BITMAP_SIZE));
+    log_debug("FRAME", "=====AFTER=====");
+    log_debug("FRAME", "word 13195 = 0x%08x", frame_bitmap[13195]);
+    log_debug("FRAME", "word 13196 = 0x%08x", frame_bitmap[13196]);
+    frame_dump_bitmap();
 }

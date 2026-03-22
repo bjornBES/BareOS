@@ -9,9 +9,11 @@
  */
 
 #include "VGATextDevice.h"
-#include "IO.h"
 #include "video.h"
-#include "string.h"
+
+
+#include <IO.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -242,4 +244,11 @@ void vga_set_mode(video_mode *mode)
 
 void vga_init()
 {
+}
+
+void vga_check()
+{
+    fprintf(VFS_FD_DEBUG, "===================== CHECK =================\n");
+    fprintf(VFS_FD_DEBUG, "%ux%u\n", screen_width, screen_height);
+    fprintf(VFS_FD_DEBUG, "===================== CHECK =================\n");
 }

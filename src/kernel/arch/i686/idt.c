@@ -10,7 +10,6 @@
 
 #include "idt.h"
 #include <util/binary.h>
-#include <stdio.h>
 
 void __attribute__((cdecl)) IDT_Load(IDTDescriptor* idtDescriptor);
 

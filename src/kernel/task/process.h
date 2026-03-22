@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include "paging/paging.h"
 #include "arch/i686/isr.h"
+#include "paging/paging.h"
 
 #include <core/arch/i686/bios.h>
 
@@ -67,14 +67,17 @@ typedef struct
     uint32_t eflags;
 } process_regs;
 
-typedef struct
+struct __process_t;
+
+typedef struct __process_t
 {
     pid pid;
     uint32_t entry;
 
     // === paging ===
 
-    page_directory_entry *page_dir;
+    struct page_directory_t *page_dir_virt;
+    struct page_directory_t *page_dir_phys;
 
     // === stack ===
     // fixed virtual address of stack top (USER_STACK_TOP)
@@ -92,3 +95,4 @@ typedef struct
 } process;
 
 int exec(char *path, char *argv[]);
+void process_init();

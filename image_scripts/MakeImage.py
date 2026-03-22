@@ -421,6 +421,7 @@ def build_partition(image, files, bin_files : list[str], partition : DiskPartiti
             print(f"> copying kernel...")
             mmd(image, "boot", partition_offset)
             mcopy(image, kernel, "::/boot/kernel.elf", partition_offset)
+            
 
         loadFiles(image, files, basePath, "::/", partition_offset)
 

@@ -90,6 +90,8 @@ uint32_t ahci_find_cmdslot(ahci_port aport)
 
 uint8_t ahci_identify_device(ahci_port aport, void *buf)
 {
+    log_debug(MODULE, "ahci_identify_device(aport, p%p)", buf);
+    log_debug(MODULE, "buf = p%p / v%p", buf, paging_get_virtual(kernel_page_directory, buf));
     HBA_PORT *port = aport.port;
     port->is = 0xFFFFFFFF;
     uint32_t slot = ahci_find_cmdslot(aport);
@@ -103,7 +105,7 @@ uint8_t ahci_identify_device(ahci_port aport, void *buf)
 
     HBA_CMD_TBL *cmd_table = (HBA_CMD_TBL *)aport.ctba[slot];
 
-    cmd_table->prdt_entry[0].dba = (uint32_t)buf;
+    cmd_table->prdt_entry[0].dba = (uint32_t)paging_get_physical(kernel_page_directory, buf);
     cmd_table->prdt_entry[0].dbau = 0;
     cmd_table->prdt_entry[0].dbc = 511;
     cmd_table->prdt_entry[0].i = 1;
@@ -125,6 +127,8 @@ uint8_t ahci_identify_device(ahci_port aport, void *buf)
         return 2;
 
     port->ci = (1 << slot);
+
+    log_debug(MODULE, "issuing command: tfd=%x cmd=%x ci=%x is=%x", port->tfd, port->cmd, port->ci, port->is);
 
     while (1)
     {
@@ -218,7 +222,6 @@ void ahci_initialize_port(ahci_port *aport)
     ahci_start_cmd(port);
 }
 
-
 bool ahci_read_sectors_command(ahci_port aport, uint32_t startl, uint32_t starth, size_t count, uint16_t *buf)
 {
     HBA_PORT *port = aport.port;
@@ -287,7 +290,97 @@ bool ahci_read_sectors_command(ahci_port aport, uint32_t startl, uint32_t starth
     return true;
 }
 
+bool ahci_write_sectors_command(ahci_port aport, uint32_t startl, uint32_t starth, size_t count, uint16_t *buf)
+{
+    HBA_PORT *port = aport.port;
+    port->is = (uint32_t)-1; // Clear pending interrupt bits
+    uint32_t slot = ahci_find_cmdslot(aport);
+
+    if (slot == -1)
+        return false;
+
+    HBA_CMD_HEADER *cmd_header = (HBA_CMD_HEADER *)aport.clb;
+    cmd_header += slot;
+    cmd_header->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t); // Command FIS size
+    cmd_header->w = 1;                                        // Write to device
+
+    HBA_CMD_TBL *cmd_tbl = (HBA_CMD_TBL *)(aport.ctba[slot]);
+
+    cmd_tbl->prdt_entry[0].dba = (uint32_t)buf;
+    cmd_tbl->prdt_entry[0].dbc = (count * 512) - 1; // 8K bytes (this value should always be set to 1 less than the actual value)
+    cmd_tbl->prdt_entry[0].dbau = 0;
+    cmd_tbl->prdt_entry[0].i = 1;
+
+    // Setup command
+    FIS_REG_H2D *cmd_fis = (FIS_REG_H2D *)(&cmd_tbl->cfis);
+
+    cmd_fis->fis_type = FIS_TYPE_REG_H2D;
+    cmd_fis->c = 1; // Command
+    cmd_fis->command = SATA_WRITE_DMA_EX;
+
+    cmd_fis->lba0 = (uint8_t)startl;
+    cmd_fis->lba1 = (uint8_t)(startl >> 8);
+    cmd_fis->lba2 = (uint8_t)(startl >> 16);
+    cmd_fis->device = 1 << 6;
+
+    cmd_fis->lba3 = (uint8_t)(startl >> 24);
+    cmd_fis->lba4 = (uint8_t)(starth);
+    cmd_fis->lba5 = (uint8_t)(starth >> 8);
+
+    cmd_fis->countl = (count & 0xFF);
+    cmd_fis->counth = (count >> 8);
+
+    for (uint32_t spin = 0; spin < 1000000; spin++)
+    {
+        if (!(port->tfd & (SATA_BUSY | SATA_DRQ)))
+        {
+            break;
+        }
+    }
+    if ((port->tfd & (SATA_BUSY | SATA_DRQ)))
+    {
+        return 2;
+    }
+
+    port->ci = 1 << slot; // Issue command
+
+    while (1)
+    {
+        if (!(port->ci & (1 << slot)))
+            break;
+        if (port->is & (1 << 30))
+            return 3;
+    }
+
+    if (port->is & (1 << 30))
+        return 3;
+
+    return true;
+}
+
 uint32_t ahci_read(void *buffer, uint64_t sector, size_t count, device *device)
+{
+    sata_private_data *priv = (sata_private_data *)device->priv;
+    uint16_t drive = priv->drive;
+    ahci_port aport = ports[drive];
+    if (aport.abar != 0)
+    {
+        uint16_t *u16Buffer = (uint16_t *)paging_get_physical(kernel_page_directory, buffer);
+        uint32_t startl = sector & 0xFFFFFFFF;
+        uint32_t starth = (sector >> 32) & 0xFFFFFFFF;
+        if (ahci_read_sectors_command(aport, startl, starth, count, u16Buffer))
+        {
+            return count;
+        }
+    }
+    else
+    {
+        return -1;
+    }
+    return -1;
+}
+
+uint32_t ahci_write(void *buffer, uint64_t sector, size_t count, device *device)
 {
     sata_private_data *priv = (sata_private_data *)device->priv;
     uint16_t drive = priv->drive;
@@ -327,6 +420,9 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 sata_identify_packet *info = kmalloc_phys(sizeof(sata_identify_packet), (void **)&info_virt);
                 log_debug(MODULE, "info_virt = %p, info = %p", info_virt, info);
 
+                mmPrintStatus();
+                mmPrintBlocks();
+
                 HBA_PORT *port = &abar->ports[i];
                 log_debug(MODULE, "found sata");
                 ports[ahci_devices_count].abar = abar;
@@ -340,11 +436,12 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 device *dev = (device *)malloc(sizeof(device));
                 sata_private_data *priv = (sata_private_data *)malloc(sizeof(sata_private_data));
                 priv->drive = ahci_devices_count;
-                
+
                 dev->priv = priv;
                 dev->device_id = 1;
                 dev->type = DEVICE_DISK;
                 dev->read = ahci_read;
+                dev->write = ahci_write;
                 device_add(dev);
 
                 char *name = (char *)malloc(41);
@@ -376,7 +473,10 @@ void ahci_initialize(pci_device_id *pdev)
 
     void *bar5 = (void *)pdev->header.header0.bar5;
     paging_map_region(kernel_page_directory, bar5, bar5, 4096, -1);
+    // log_warn("MAIN", "=========== nr.2 ===========");
+    // frame_dump_bitmap();
     paging_map_region(kernel_page_directory, bar5 + sizeof(HBA_MEM), bar5 + sizeof(HBA_MEM), 1, -1);
-
+    // log_debug(MODULE, "got map p0x%x at v0x%x", bar5, paging_get_virtual(kernel_page_directory, bar5));
     ahci_initialize_abar((HBA_MEM *)bar5);
+    log_info(MODULE, "exit out");
 }

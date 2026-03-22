@@ -9,7 +9,7 @@
 ;
 
 ;
-; void ASMCALL jump_to_user(void *user_entry, void *user_stack)
+; void ASMCALL jump_to_user(void *user_entry, void *user_stack, pid process)
 ;
 global jump_to_user
 jump_to_user:
@@ -20,8 +20,9 @@ jump_to_user:
     mov         fs,             ax
     mov         gs,             ax
     
-    mov         eax,            [esp+4]         ; user stack loc
-    mov         ecx,            [esp+8]         ; user entry
+    mov         ebx,            [esp+12]        ; process
+    mov         ecx,            [esp+8]         ; user stack loc
+    mov         eax,            [esp+4]         ; user entry
     
     push        0x23                            ; user data
     push        ecx

@@ -50,8 +50,6 @@ int ELF_read(fd_t fd, process *proc, loader *loader)
     // the the VIRTUAL entry point
     log_debug(MODULE, "before entry at 0x%x", elf_header.program_entry_position);
     log_debug(MODULE, "proc = %p", proc);
-    log_debug(MODULE, "proc->entry = %p", proc->entry);
-    proc->entry = elf_header.program_entry_position;
     log_debug(MODULE, "after entry at 0x%x", elf_header.program_entry_position);
 
     // time to load the program
@@ -83,11 +81,10 @@ int ELF_read(fd_t fd, process *proc, loader *loader)
         {
             continue;
         }
+        void *phys = paging_alloc_and_map_region(proc->page_dir_phys, (void *)elf_prog_header.virtual_address, elf_prog_header.memory_size, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
 
-        void *phys = paging_alloc_and_map_region(proc->page_dir,
-            (void *)elf_prog_header.virtual_address, elf_prog_header.memory_size, PAGE_PRESENT | PAGE_USER);
-
-        dest = (uint8_t *)elf_prog_header.virtual_address;
+        proc->load_base = elf_prog_header.virtual_address;
+        dest = (uint8_t *)phys_to_virt(phys);
         log_debug(MODULE, "ELF: load seg %u", i);
         log_debug(MODULE, "     VADDR 0x%x", elf_prog_header.virtual_address);
         log_debug(MODULE, "     PADDR 0x%x", phys);
@@ -100,6 +97,8 @@ int ELF_read(fd_t fd, process *proc, loader *loader)
 
         VFS_read(fd, dest, elf_prog_header.file_size);
     }
+
+    proc->entry = elf_header.program_entry_position;
 
     return RETURN_GOOD;
 }

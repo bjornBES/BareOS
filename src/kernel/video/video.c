@@ -12,8 +12,8 @@
 
 #include "video.h"
 #include "VGATextDevice.h"
-#include "stdio.h"
 
+#include <stdio.h>
 #include <memory.h>
 
 uint8_t* frame_buffer;

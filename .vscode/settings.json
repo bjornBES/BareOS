@@ -177,6 +177,7 @@
         "featureh",
         "featurel",
         "getchr",
+        "IMVALID",
         "kcalloc",
         "kmalloc",
         "LALT",

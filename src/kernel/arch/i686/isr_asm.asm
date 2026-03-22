@@ -44,9 +44,7 @@ isr_common:
 
     xor eax, eax        ; push ds
     mov ax, ds
-    push ds
-    mov ax, es
-    push es
+    push eax
     
     mov ax, 0x10
     mov ds, ax
