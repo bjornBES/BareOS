@@ -7,20 +7,24 @@ toolchain: toolchain_binutils toolchain_gcc
 BINUTILS_SRC = toolchain/binutils-$(BINUTILS_VERSION)
 BINUTILS_BUILD = toolchain/binutils-build-$(BINUTILS_VERSION)
 
-toolchain_binutils: $(TOOLCHAIN_PREFIX)/bin/i686-elf-ld
+toolchain_binutils: $(TOOLCHAIN_PREFIX)/bin/$(TARGET)-ld
 
-$(TOOLCHAIN_PREFIX)/bin/i686-elf-ld: $(BINUTILS_SRC).tar.xz
-	cd toolchain && tar -xf binutils-$(BINUTILS_VERSION).tar.xz
+$(TOOLCHAIN_PREFIX)/bin/$(TARGET)-ld: $(BINUTILS_SRC).tar.xz $(BINUTILS_SRC)
 	mkdir $(BINUTILS_BUILD)
-	cd $(BINUTILS_BUILD) && CFLAGS= ASMFLAGS= CC= CXX= LD= ASM= LINKFLAGS= TARGET= arch= config= LIBS= ../binutils-$(BINUTILS_VERSION)/configure \
+	cd $(BINUTILS_BUILD) && CFLAGS= ASMFLAGS= CC=/usr/bin/gcc CXX=/usr/bin/g++ LD=/usr/bin/ld ASM= LINKFLAGS= TARGET= arch= config= LIBS= \
+	../binutils-$(BINUTILS_VERSION)/configure \
 		--prefix="$(TOOLCHAIN_PREFIX)"	\
-		--target=$(TARGET)				\
+		--target=x86_64-elf				\
 		--with-sysroot					\
 		--disable-nls					\
-		--enable-languages=c,c++		\
 		--disable-werror
-	$(MAKE) -j8 -C $(BINUTILS_BUILD)
+
+	CC=/usr/bin/gcc CXX=/usr/bin/g++ LD=/usr/bin/ld CFLAGS= ASMFLAGS= LIBS= LINKFLAGS= ASM= \
+	$(MAKE) -C $(BINUTILS_BUILD)
 	$(MAKE) -C $(BINUTILS_BUILD) install
+
+$(BINUTILS_SRC):
+	cd toolchain && tar -xf binutils-$(BINUTILS_VERSION).tar.xz
 
 $(BINUTILS_SRC).tar.xz:
 	mkdir -p toolchain 
@@ -30,17 +34,19 @@ $(BINUTILS_SRC).tar.xz:
 GCC_SRC = toolchain/gcc-$(GCC_VERSION)
 GCC_BUILD = toolchain/gcc-build-$(GCC_VERSION)
 
-toolchain_gcc: $(TOOLCHAIN_PREFIX)/bin/i686-elf-gcc
+toolchain_gcc: $(TOOLCHAIN_PREFIX)/bin/$(TARGET)-gcc
 
-$(TOOLCHAIN_PREFIX)/bin/i686-elf-gcc: $(TOOLCHAIN_PREFIX)/bin/i686-elf-ld $(GCC_SRC).tar.xz
+$(TOOLCHAIN_PREFIX)/bin/$(TARGET)-gcc: $(TOOLCHAIN_PREFIX)/bin/$(TARGET)-ld $(GCC_SRC).tar.xz
 	cd toolchain && tar -xf gcc-$(GCC_VERSION).tar.xz
 	mkdir $(GCC_BUILD)
-	cd $(GCC_BUILD) && CFLAGS= ASMFLAGS= CC= CXX= LD= ASM= LINKFLAGS= LIBS= ../gcc-$(GCC_VERSION)/configure \
+	cd $(GCC_BUILD) && CFLAGS= ASMFLAGS= CC=/usr/bin/gcc CXX=/usr/bin/g++ LD=/usr/bin/ld ASM= LINKFLAGS= TARGET= arch= config= LIBS= ../gcc-$(GCC_VERSION)/configure \
 		--prefix="$(TOOLCHAIN_PREFIX)" 	\
 		--target=$(TARGET)				\
 		--disable-nls					\
 		--enable-languages=c,c++		\
 		--without-headers
+
+	CC=/usr/bin/gcc CXX=/usr/bin/g++ LD=/usr/bin/ld CFLAGS= ASMFLAGS= LIBS= LINKFLAGS= ASM= \
 	$(MAKE) -j8 -C $(GCC_BUILD) all-gcc all-target-libgcc
 	$(MAKE) -C $(GCC_BUILD) install-gcc install-target-libgcc
 	

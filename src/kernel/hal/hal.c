@@ -10,11 +10,11 @@
 
 #include "hal.h"
 
-#include "arch/i686/gdt.h"
-#include "arch/i686/idt.h"
+#include "arch/x86/gdt.h"
+#include "arch/x86/idt.h"
 
-#include "arch/i686/irq.h"
-#include "arch/i686/isr.h"
+#include "arch/x86/irq.h"
+#include "arch/x86/isr.h"
 
 #include "debug/debug.h"
 #include "drivers/serial/UART/UART.h"
@@ -45,26 +45,26 @@ void DoubleFault(Registers *regs)
 
 void HALInit()
 {
-    i686_GDTInitialize();
+    x86_GDT_initialize();
     UART_write_fstr(COM1, "GDT is done\r\n");
-    i686_IDTInitialize();
+    x86_IDT_initialize();
     UART_write_fstr(COM1, "IDT is done\r\n");
     
-    i686_GDTLoad();
+    x86_GDT_load();
     UART_write_fstr(COM1, "GDT is loaded\r\n");
 
-    i686_tss_initialize();
+    x86_TSS_initialize();
     UART_write_fstr(COM1, "TSS is done\r\n");
     
-    i686_IDTLoad();
+    x86_IDT_load();
     UART_write_fstr(COM1, "IDT is loaded\r\n");
     
-    i686_ISRInitialize();
+    x86_ISRInitialize();
     UART_write_fstr(COM1, "ISR init\r\n");
-    i686_irq_initialize();
+    x86_irq_initialize();
     UART_write_fstr(COM1, "IRQ init\r\n");
 
-    i686_isr_register_handler(1, writeRegisters);
-    i686_isr_register_handler(3, breakpoint);
-    i686_isr_register_handler(8, DoubleFault);
+    x86_isr_register_handler(1, writeRegisters);
+    x86_isr_register_handler(3, breakpoint);
+    x86_isr_register_handler(8, DoubleFault);
 }

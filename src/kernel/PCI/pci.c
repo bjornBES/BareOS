@@ -12,10 +12,10 @@
 #include "debug/debug.h"
 #include "drivers/serial/UART/UART.h"
 #include "drivers/drive/ahci/ahci.h"
-#include "malloc.h"
+#include "libs/malloc.h"
 
-#include <IO.h>
-#include <memory.h>
+#include "libs/IO.h"
+#include "libs/memory.h"
 #include <util/binary.h>
 
 #define MODULE "PCI"

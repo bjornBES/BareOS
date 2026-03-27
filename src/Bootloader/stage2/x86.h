@@ -1,3 +1,13 @@
+/*
+ * File: x86.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 23 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
@@ -31,6 +41,7 @@ int ASMCALL x86_SetVESAMode(uint16_t mode);
 
 void ASMCALL JumpToKernel(void* bootparms);
 bool ASMCALL X86_checkForKeys();
+void ASMCALL x86_EnterLongMode();
 
 typedef struct 
 {

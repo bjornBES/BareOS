@@ -1,9 +1,19 @@
+/*
+ * File: Equipment.c
+ * File Created: 26 Feb 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 23 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "Equipment.h"
 #include "x86.h"
 #include "memory.h"
 #include "stdio.h"
-#include <core/Defs.h>
-#include <core/arch/i686/bios.h>
+#include "bios/bios.h"
+
 #include <util/binary.h>
 
 #define EQUIPMENT bp->equipment

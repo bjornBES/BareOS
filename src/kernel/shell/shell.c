@@ -11,14 +11,14 @@
 #include "shell.h"
 #include "drivers/IO/Keyboard/Keyboard.h"
 #include "VFS/vfs.h"
-#include "malloc.h"
 #include "debug/debug.h"
 #include "task/process.h"
 #include "video/VGATextDevice.h"
 
-#include <stdio.h>
-#include <memory.h>
-#include <string.h>
+#include "libs/malloc.h"
+#include "libs/stdio.h"
+#include "libs/string.h"
+#include "libs/memory.h"
 
 #include <stdint.h>
 #include <stdbool.h>

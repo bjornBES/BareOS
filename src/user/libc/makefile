@@ -1,6 +1,6 @@
 
-TARGET_ASMFLAGS := -f elf
-TARGET_CFLAGS := -m32 -std=c99 -ffreestanding -nostdlib -nostdinc \
+USER_TARGET_ASMFLAGS := -f elf
+USER_TARGET_CFLAGS := -std=c99 -ffreestanding -nostdlib -nostdinc \
            		 -Wall -Wextra -Ilibc -fno-omit-frame-pointer
 
 BUILD_DIRC = $(BUILD)/libc/c
@@ -17,15 +17,15 @@ OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
 all: $(BUILD)/libc.a
 
 $(BUILD)/libc.a: $(OBJECTS_ASM) $(OBJECTS_C)
-	@$(TARGET_AR) rcs $@ $^
+	@$(TARGET32_AR) rcs $@ $^
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+	@$(TARGET32_CC) $(USER_TARGET_CFLAGS) -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -o $@ $<
+	$(TARGET32_ASM) $(USER_TARGET_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 

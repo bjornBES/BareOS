@@ -9,7 +9,7 @@
 ;
 
 
-[bits 32]
+[bits 64]
 
 extern stack_top
 extern main
@@ -37,14 +37,14 @@ entry:
     mov gs, ax
     mov ss, ax
 
-    mov esp, stack_top
-    mov ebp, esp
-    push edi
+    mov rsp, stack_top
+    mov rbp, rsp
+    push rdi
 
     mov al, 'H'
     out 0xe9, al,
 
-    call main
+    ; call main
 
 .end:
     jmp .end
@@ -52,7 +52,7 @@ entry:
 global crash_me
 crash_me:
     ; div by 0
-    mov ecx, 0x1337
-    mov eax, 0
-    div eax
+    mov rcx, 0x1337
+    mov rax, 0
+    div rax
     ret

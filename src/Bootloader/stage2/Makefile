@@ -1,8 +1,7 @@
-TARGET_ASMFLAGS += -f elf
-TARGET_CFLAGS += -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include
-TARGET_LIBS = -lgcc
-TARGET_LINKFLAGS += -T linker.ld -nostdlib
-LIBS = 
+TARGET32_ASMFLAGS += -f elf
+TARGET32_CFLAGS += -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include
+TARGET32_LIBS +=
+TARGET32_LINKFLAGS += -T linker.ld -nostdlib
 
 BUILD_DIRSTAGE2 = $(BUILD_DIR)/stage2
 BUILD_DIRC = $(BUILD_DIRSTAGE2)/c
@@ -26,19 +25,19 @@ all: stage2
 
 stage2: $(BUILD_DIRSTAGE2)/stage2.bin
 
-$(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C) $(BUILD_DIR)/libbios.a
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET_LIBS)
+$(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C)
+	@$(TARGET32_LD) $(TARGET32_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET32_LIBS)
 	@echo "--> Created  stage2.bin"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@echo "--> Compiling: " $<
 	mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+	@$(TARGET32_CC) $(TARGET32_CFLAGS) -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -o $@ $<
+	@$(TARGET32_ASM) $(TARGET32_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 
 always:

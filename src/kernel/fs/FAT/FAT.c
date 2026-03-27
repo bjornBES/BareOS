@@ -10,14 +10,14 @@
 
 #include "FAT.h"
 
-#include "malloc.h"
-#include "debug/debug.h"
-#include "paging/paging.h"
+#include "libs/malloc.h"
+#include "libs/ctype.h"
+#include "libs/stdio.h"
+#include "libs/memory.h"
+#include "libs/string.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <memory.h>
-#include <ctype.h>
+#include "debug/debug.h"
+
 
 #define MODULE "FAT"
 

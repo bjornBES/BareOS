@@ -20,18 +20,16 @@ jump_to_user:
     mov         fs,             ax
     mov         gs,             ax
     
-    mov         ebx,            [esp+12]        ; process
-    mov         ecx,            [esp+8]         ; user stack loc
-    mov         eax,            [esp+4]         ; user entry
+    mov         rbx,            rdi             ; process
     
     push        0x23                            ; user data
-    push        ecx
+    push        rsi
     
     pushf
-    pop         edx
-    or          edx,            0x200
-    push        edx
+    pop         rdx
+    or          rdx,            0x200
+    push        rdx
     push        0x1B                            ; user code
-    push        eax
+    push        rdi
 
     iret

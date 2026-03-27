@@ -9,9 +9,9 @@
  */
 
 #include "Keyboard.h"
-#include "malloc.h"
+#include "libs/malloc.h"
 
-#include <memory.h>
+#include "libs/memory.h"
 
 // Set 2 base scancode -> KeyCode (index = scancode byte)
 // Only need up to 0x84, everything else is KEY_UNKNOWN

@@ -8,26 +8,26 @@
  * -----
  */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <boot/bootparams.h>
-#include <memory.h>
-#include <IO.h>
 #include <util/binary.h>
-#include <string.h>
+#include "libs/stdio.h"
+#include "libs/memory.h"
+#include "libs/IO.h"
+#include "libs/string.h"
+#include "libs/malloc.h"
 
 #include "video/video.h"
 #include "video/VGATextDevice.h"
 #include "debug/debug.h"
-#include "arch/i686/gdt.h"
-#include "arch/i686/i686.h"
-#include "arch/i686/isr.h"
+#include "arch/x86/gdt.h"
+#include "arch/x86/x86.h"
+#include "arch/x86/isr.h"
+#include "arch/x86/paging/paging.h"
+#include "arch/x86/paging/frame.h"
 #include "hal/hal.h"
-#include "paging/paging.h"
-#include "paging/frame.h"
 #include "PCI/pci.h"
 #include "VFS/vfs.h"
-#include "malloc.h"
 #include "device/device.h"
 #include "fs/FAT/FAT.h"
 #include "shell/shell.h"
@@ -50,11 +50,11 @@ void crash_me();
 
 void PageFault(Registers *regs)
 {
-    uint32_t cr2;
-    __asm__("movl %%cr2,%0" : "=rm"(cr2));
-    uint32_t page_directory_index = GETPAGEDIRECTORYINDEX(cr2);
-    uint32_t page_table_index = GETPAGETABLEINDEX(cr2);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p in page_dir[%u].page_table[%u]\n", cr2, page_directory_index, page_table_index);
+    uint64_t cr2;
+    __asm__("mov %0, cr2" : "=rm"(cr2));
+    paging_print_info((virt_addr)cr2);
+
+    fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p\n", cr2);
 
     fprintf(VFS_FD_DEBUG, "[Page Fault] Unhandled Page Fault %d\n", regs->interrupt);
     fprintf(VFS_FD_DEBUG, "[Page Fault]   eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x\n", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
@@ -106,31 +106,32 @@ void main(boot_params *bootParams)
     // uint8_t* addr2 = (uint8_t*)0x1000000;
     // *addr2 = 10;
 
-    i686_isr_register_handler(14, PageFault);
+    x86_isr_register_handler(14, PageFault);
 
-    enableInterrupts();
+    enable_interrupts();
     log_debug("MAIN", "Hello world from Kernel");
-    kernel_page_directory = (page_directory*)bootParams->pageDirectory;
-    tss_entry.cr3 = (uint32_t)kernel_page_directory;
-    paging_init();
+    paging_init(bootParams);
+    #ifdef __i686__
+    tss_entry.cr3 = (uint32_t)kernel_page;
+    #endif
     log_debug("MAIN", "Paging init");
-    enableInterrupts();
+    enable_interrupts();
 
     log_warn("MAIN", "=========== nr.1 ===========");
     frame_dump_bitmap();
-    uint32_t kernel_start_virt = (uint32_t)&__kernel_start;
-    uint32_t kernel_end_virt = (uint32_t)&__kernel_end;
-    uint32_t kernel_start_phys = kernel_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
-    uint32_t kernel_end_phys = kernel_end_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
+    virt_addr kernel_start_virt = (virt_addr)&__kernel_start;
+    virt_addr kernel_end_virt = (virt_addr)&__kernel_end;
+    phys_addr kernel_start_phys = kernel_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
+    phys_addr kernel_end_phys = kernel_end_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
     uint32_t kernel_size = kernel_end_phys - kernel_start_phys;
     log_debug("Main", "kernel virt start %p - end %p", kernel_start_virt, kernel_end_virt);
     log_debug("Main", "kernel phys start %p - end %p", kernel_start_phys, kernel_end_phys);
 
-    uint32_t heap_start_virt = (uint32_t)&__end;
-    uint32_t heap_start_phys = heap_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
+    virt_addr heap_start_virt = (virt_addr)&__end;
+    phys_addr heap_start_phys = heap_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
     size_t heap_size = (size_t)&__heap_size;
-    uint32_t heap_end_virt = heap_start_virt + heap_size;
-    uint32_t heap_end_phys = heap_start_phys + heap_size;
+    virt_addr heap_end_virt = heap_start_virt + heap_size;
+    phys_addr heap_end_phys = heap_start_phys + heap_size;
     
     log_debug("Main", "kernel heap start v%p - end v%p", heap_start_virt, heap_end_virt);
     log_debug("Main", "kernel heap start p%p - end p%p", heap_start_phys, heap_end_phys);
@@ -140,7 +141,6 @@ void main(boot_params *bootParams)
     log_debug("MAIN", "Kernel phys %x-%x virt %x-%x size %x/%x", kernel_start_phys, kernel_end_phys, kernel_start_virt, kernel_end_virt, kernel_size, kernel_end_phys - kernel_start_phys);
 
     log_debug("MAIN", "Init Memory functions");
-    int heap_page = GETPAGEDIRECTORYINDEX(heap_start_virt);
     mmInit();
     mmPrintStatus();
 
@@ -182,7 +182,7 @@ void main(boot_params *bootParams)
     VFS_mount("/user", ahci);
     ahci = device_get(0x100); // device 1 partition 0
     VFS_mount("/boot", ahci);
-    i686_isr_register_handler(14, PageFault);
+    x86_isr_register_handler(14, PageFault);
     I8042_init();
 
     Loader_init();
@@ -193,14 +193,14 @@ void main(boot_params *bootParams)
     vga_init();
     vga_load_font((uint8_t *)&default8x16Font);
     video_init(bp, &VGAModesAddr);
-    uint32_t *fb = (uint32_t *)vesaMode->frame_buffer;
+    uint32_t *fb = (uint32_t *)(uint64_t)vesaMode->frame_buffer;
 
-    // paging_map_page(page_table, page_table);
+    // paging_map_page(page_table32, page_table32);
     log_debug("main", "paging %x mapped to %x", fb, fb);
     paging_print_out = false;
-    paging_map_region(kernel_page_directory, (void *)fb, (void *)fb, PAGE_SIZE * 4096, PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD);
+    paging_map_region(kernel_page, (void *)fb, (void *)fb, PAGE_SIZE * 4096, PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD);
     paging_print_out = true;
-    log_debug("main", "paging %x mapped to virt %x/phys %x", fb, paging_get_virtual(kernel_page_directory, fb), paging_get_physical(kernel_page_directory, fb));
+    log_debug("main", "paging %x mapped to virt %x/phys %x", fb, paging_get_virtual(kernel_page, fb), paging_get_physical(kernel_page, (virt_addr)fb));
     log_debug("main", "vesa mode %d %dx%dx%d %x", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp, vesaMode->frame_buffer);
 
     syscall_init();

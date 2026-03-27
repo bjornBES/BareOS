@@ -15,7 +15,7 @@
 
 #define ELF_MAGIC ("\x7F" "ELF")
 
-#define KERNEL_VMA 0xC0000000
+#define KERNEL_VMA 0x80000000
 #define KERNEL_LMA 0x00100000
 
 typedef struct 
@@ -40,7 +40,32 @@ typedef struct
     uint16_t SectionHeaderTableEntryCount;
     uint16_t SectionNamesIndex;
 
-} __attribute__((packed)) ELFHeader;
+} __attribute__((packed)) ELF_header;
+
+#ifdef __x86_64__
+typedef struct 
+{
+    uint8_t Magic[4];
+    uint8_t Bitness;            // 1 = 32 bit, 2 = 64 bit
+    uint8_t Endianness;         // 1 = little endian, 2 = big endian
+    uint8_t ELFHeaderVersion;
+    uint8_t ABI;
+    uint8_t _Padding[8];
+    uint16_t Type;              // 1 = relocatable, 2 = executable, 3 = shared, 4 = core
+    uint16_t InstructionSet;
+    uint32_t ELFVersion;
+    uint64_t ProgramEntryPosition;
+    uint64_t ProgramHeaderTablePosition;
+    uint64_t SectionHeaderTablePosition;
+    uint32_t Flags;
+    uint16_t HeaderSize;
+    uint16_t ProgramHeaderTableEntrySize;
+    uint16_t ProgramHeaderTableEntryCount;
+    uint16_t SectionHeaderTableEntrySize;
+    uint16_t SectionHeaderTableEntryCount;
+    uint16_t SectionNamesIndex;
+} __attribute__((packed)) ELF_header64;
+#endif
 
 enum ELFBitness 
 {
@@ -83,7 +108,21 @@ typedef struct
     uint32_t Flags;
     uint32_t Align;
 
-} ELFProgramHeader;
+} ELF_program_header;
+
+#ifdef __x86_64__
+typedef struct
+{
+    uint32_t Type;
+    uint32_t Flags;
+    uint64_t Offset;
+    uint64_t VirtualAddress;
+    uint64_t PhysicalAddress;
+    uint64_t FileSize;
+    uint64_t MemorySize;
+    uint64_t Align;
+} ELF_program_header64;
+#endif
 
 enum ELFProgramType {
     // Program header table entry unused.

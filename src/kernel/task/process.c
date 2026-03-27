@@ -10,11 +10,11 @@
 
 #include "process.h"
 #include "loader.h"
-#include "malloc.h"
+#include "libs/malloc.h"
 
 #include "kernel.h"
 
-#include "arch/i686/gdt.h"
+#include "arch/x86/gdt.h"
 
 #include "VFS/vfs.h"
 #include "debug/debug.h"
@@ -49,7 +49,7 @@ process *process_create(char *path)
     log_debug(MODULE, "at p%p, v%p", proc->page_dir_phys, proc->page_dir_virt);
 
     proc->regs.Reg32.esp = stack_alloc_init(proc);
-    proc->regs.ss = i686_USER_DATA_SEGMENT;
+    proc->regs.ss = x86_USER_DATA_SEGMENT;
 
     loader *loader = Loader_probe(file);
     int state = loader->load(file, proc, loader);
@@ -69,30 +69,27 @@ process *process_create(char *path)
 
 void process_run(process *proc)
 {
-    tss_entry.esp0 = (uint32_t)&stack_top;
+    tss_entry.rsp0 = (uint64_t)&stack_top;
     log_debug(MODULE, "stack = %p esp = %p", proc->stack_top, proc->regs.Reg32.esp);
     log_debug(MODULE, "jumping to %p", proc->entry);
 
-    uint32_t proc_pd_phys = (uint32_t)proc->page_dir_phys;
+    uint64_t proc_pd_phys = (uint64_t)proc->page_dir_phys;
     log_debug(MODULE, "loading CR3 = %p", proc_pd_phys);
 
     // Switch to process page directory
     disableInterrupts();
 
     __asm__ volatile(
-        "mov $0x41, %%al\n"
-        "out %%al, $0xe9\n"
-        "mov %0, %%cr3\n"
-        "mov $0x42, %%al\n"
-        "out %%al, $0xe9\n" ::"r"(proc_pd_phys) : "eax", "memory");
-    enableInterrupts();
+        "mov cr3, %0\n"
+        ::"r"(proc_pd_phys) : "memory");
+    enable_interrupts();
 
     uint8_t *entry = (void *)proc->entry;
-    log_debug(MODULE, "at virt address %p (%p)", entry, paging_get_physical(proc->page_dir_virt, (void *)entry));
+    // log_debug(MODULE, "at virt address %p (%p)", entry, paging_get_physical(proc->page_dir_virt, (void *)entry));
     log_debug(MODULE, "bytes at entry: %02x %02x %02x %02x %02x %02x %02x %02x",
               entry[0], entry[1], entry[2], entry[3],
               entry[4], entry[5], entry[6], entry[7]);
-    jump_to_user((void *)proc->regs.Reg32.eip, (void *)proc->regs.Reg32.esp, proc->pid);
+    jump_to_user((void *)proc->regs.rip, (void *)proc->regs.rsp, proc->pid);
 }
 
 int exec(char *path, char *argv[])
@@ -103,9 +100,9 @@ int exec(char *path, char *argv[])
     uint32_t pd_index = vaddr >> 22;
     uint32_t pt_index = (vaddr >> 12) & 0x3FF;
 
-    uint32_t *pd = (uint32_t *)proc->page_dir_virt;
-    uint32_t pde = (uint32_t)pd[pd_index];
-    uint32_t *pt = (uint32_t *)(pde & ~0xFFF);
+    uint32_t *pd = (uint32_t *)(uint64_t)proc->page_dir_virt;
+    uint32_t pde = (uint32_t)(uint64_t)pd[pd_index];
+    uint32_t *pt = (uint32_t *)(uint64_t)(pde & ~0xFFF);
     uint32_t pte = pt[pt_index];
     log_debug(MODULE, "PDE: %x  PTE: %x", pde, pte);
 

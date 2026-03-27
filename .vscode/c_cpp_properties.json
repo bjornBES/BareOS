@@ -7,8 +7,8 @@
                 "${workspaceFolder}/src/kernel",
                 "${workspaceFolder}/toolchain/gcc-build-11.2.0/gcc/include/"
             ],
-            "defines": [ "__i370__", "__i386__", "i386", "__i686__", "i686", "DEBUG", "MAX_PATH_SIZE"],
-            "compilerPath": "${workspaceFolder}/toolchain/i686-elf/bin/i686-elf-gcc",
+            "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE"],
+            "compilerPath": "${workspaceFolder}/toolchain/x86_64-elf/bin/x86_64-elf-gcc",
             "cStandard": "c99",
             "cppStandard": "c++14",
             "intelliSenseMode": "gcc-x86",

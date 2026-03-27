@@ -9,7 +9,6 @@
  */
 
 #pragma once
-#include <kernel_core/vfsBase.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -19,9 +18,15 @@
 
 #define MAX_FILE_NAME 64
 
-#ifndef VFS_IMVALID_FD
-#define VFS_IMVALID_FD (fd_t)-1
-#endif
+typedef int fd_t;
+
+#define VFS_FD_STDIN (fd_t)0
+#define VFS_FD_STDOUT (fd_t)1
+#define VFS_FD_STDERR (fd_t)2
+#define VFS_FD_DEBUG (fd_t)3
+#define VFS_FS_NEXT (fd_t)4
+#define VFS_INVALID_FD (fd_t) -1
+
 
 struct __filesystem_t;
 

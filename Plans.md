@@ -56,16 +56,17 @@ do it a kernel loader
 This is what the kernel loader should do in order right after the bootloader is done.
 
 - [ ] Add support for Physical Address Extension
-- [ ] cli and set new segments + ss
-- [ ] set stack to kernel loader stack
-- [ ] set PAE bit in CR4
-- [ ] Load CR3 with phys address of PML4
-- [ ] Enable long mode using magic guess
+- [X] cli and set new segments + ss
+- [X] set stack to kernel loader stack
+- [X] set PAE bit in CR4
+- [X] Load CR3 with phys address of PML4
+- [X] Enable long mode using magic guess
   - mov ecx, 0xC0000080
   - rdmsr
   - or eax, (1 << 8)
   - wrmsr
-- [ ] Enable paging again
+- [X] Enable paging again
+- [ ] Rewrite the kernel and project again.
 
 #### Phase 4 Processes in full
 

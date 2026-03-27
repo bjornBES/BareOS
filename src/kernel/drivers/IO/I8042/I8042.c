@@ -9,14 +9,14 @@
  */
 
 #include "I8042.h"
-#include "arch/i686/irq.h"
-#include "arch/i686/i8259.h"
+#include "arch/x86/irq.h"
+#include "arch/x86/i8259.h"
 #include "drivers/IO/Keyboard/Keyboard.h"
 #include "VFS/vfs.h"
+#include "debug/debug.h"
+#include "libs/IO.h"
 
 #include <util/binary.h>
-#include <debug/debug.h>
-#include <IO.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -346,7 +346,7 @@ void I8042_init()
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)
     {
         BIT_UNSET(conf, 0); // disable interrupts
-        i686_irq_register_handler(1, I8042_first_channel_handler);
+        x86_irq_register_handler(1, I8042_first_channel_handler);
         // handlers
     }
 #if SUPPORT_SECOND_PORT
@@ -508,7 +508,7 @@ void I8042_init()
     }
 #endif
     conf = 0x23;
-    VFS_write(VFS_IMVALID_FD, (uint8_t*)"Done I8042\n", 11);
+    VFS_write(VFS_INVALID_FD, (uint8_t*)"Done I8042\n", 11);
     I8042_write_controller_conf(conf);
 
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)

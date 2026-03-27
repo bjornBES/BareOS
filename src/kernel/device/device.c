@@ -10,9 +10,9 @@
 
 #include "device.h"
 #include "debug/debug.h"
-#include "malloc.h"
+#include "libs/malloc.h"
 
-#include <memory.h>
+#include "libs/memory.h"
 
 #define MODULE "DEVICE"
 

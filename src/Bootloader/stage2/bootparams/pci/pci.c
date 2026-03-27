@@ -1,9 +1,18 @@
+/*
+ * File: pci.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 23 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "pci.h"
 #include "x86.h"
 #include "memory.h"
 #include "stdio.h"
-#include <core/Defs.h>
-#include <core/arch/i686/bios.h>
+#include "bios/bios.h"
 
 void DetectPCI(boot_params* bp)
 {

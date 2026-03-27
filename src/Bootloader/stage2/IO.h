@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "core/Defs.h"
+#include "x86.h"
 #include <stdint.h>
 
 void ASMCALL Outb(uint16_t port, uint8_t value);

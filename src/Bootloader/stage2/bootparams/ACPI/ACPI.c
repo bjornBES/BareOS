@@ -9,24 +9,13 @@
  */
 
 #include "ACPI.h"
-#include "cpuid.h"
 #include "string.h"
 #include "memory.h"
+#include "bootparams/equipment/CPUID.h"
+#include "x86.h"
 
 #include <stddef.h>
-#include <core/Defs.h>
 #include <util/binary.h>
-
-#define INIT_CPUID_REG(regs) memset(regs, 0, sizeof(cpuid_regs));
-
-typedef struct {
-    uint32_t eax;
-    uint32_t ebx;
-    uint32_t ecx;
-    uint32_t edx;
-} cpuid_regs;
-
-void ASMCALL CPUID(uint32_t eax, uint32_t ecx, cpuid_regs* outregs);
 
 void DetectACPI(boot_params* bp)
 {

@@ -9,8 +9,8 @@
  */
 
 #include "debug.h"
-#include "stdio.h"
-#include "core/printfDriver/printf.h"
+#include "libs/stdio.h"
+#include <printf_driver/printf.h>
 
 static const char* const g_LogSeverityColors[] =
 {

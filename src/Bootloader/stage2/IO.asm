@@ -10,8 +10,6 @@
 
 [bits 32]
 
-%if __i686__ == 1
-
 global Outb
 Outb:
     mov dx, [esp + 4]
@@ -52,5 +50,3 @@ Ind:
     mov dx, [esp + 4]
     in eax, dx
     ret
-
-%endif

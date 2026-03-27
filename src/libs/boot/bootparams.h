@@ -203,7 +203,7 @@ typedef struct
 {
     uint8_t BootDevice; // DL at boot
     uint16_t currentMode;
-    uint32_t *pageDirectory;
+    uint64_t *pageDirectory;
     // 7 bytes
 
     // INT 0x1A RTC

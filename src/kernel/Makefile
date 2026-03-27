@@ -1,7 +1,14 @@
-TARGET_ASMFLAGS += -f elf
-TARGET_CFLAGS += -ffreestanding -nostdlib -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR)
-TARGET_LIBS += -lgcc
-TARGET_LINKFLAGS += -T linker.ld -nostdlib
+TARGET64_ASMFLAGS += -f elf64
+TARGET64_CFLAGS += -ffreestanding -nostdlib -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR)
+TARGET64_LINKFLAGS += -T linker.ld -nostdlib
+TARGET64_LIBS +=
+
+ifeq ($(arch),i686)
+TARGET64_ASMFLAGS += -Dx86=0
+endif
+ifeq ($(arch),x86_64)
+TARGET64_ASMFLAGS += -Di686=0
+endif
 
 BUILD_DIRKERNEL = $(BUILD_DIR)/kernel
 BUILD_DIRC = $(BUILD_DIRKERNEL)/c
@@ -9,15 +16,19 @@ BUILD_DIRASM = $(BUILD_DIRKERNEL)/asm
 BUILD_DIRCBL = $(BUILD_DIRKERNEL)/cobol
 TEMP_DIRCBL = $(BUILD_DIRKERNEL)/cobol/temp
 
-HEADERS_C = $(shell find . -type f -name "*.h")
+HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*") \
+			$(shell find ${SOURCE_ARCH} -type f -name "*.h")
 
-SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c"))
+SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c" -not -path "./arch/*") \
+				$(shell find ${SOURCE_ARCH} -type f -name "*.c"))
 
 OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
 
-HEADERS_ASM = $(shell find . -type f -name "*.inc")
+HEADERS_ASM = $(shell find . -type f -name "*.inc" -not -path "./arch/*") \
+			  $(shell find ${SOURCE_ARCH} -type f -name "*.inc")
 
-SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm"))
+SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm" -not -path "./arch/*") \
+				$(shell find ${SOURCE_ARCH} -type f -name "*.asm"))
 
 OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
 
@@ -30,18 +41,18 @@ all: kernel
 kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
 $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
+	@$(TARGET64_LD) $(TARGET64_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
-#	@$(TARGET_CC) $(TARGET_CFLAGS) -E -c -o $@.c $<
+	@$(TARGET64_CC) $(TARGET64_CFLAGS) -c -o $@ $<
+	@$(TARGET64_CC) $(TARGET64_CFLAGS) -c -save-temps -o $@.c $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET_ASMFLAGS) -o $@ $<
+	@$(TARGET64_ASM) $(TARGET64_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 
 always:
@@ -50,7 +61,7 @@ always:
 	@if not exist $(BUILD_DIRCBL) mkdir $(BUILD_DIRCBL)
 	@if not exist $(TEMP_DIRCBL) mkdir $(TEMP_DIRCBL)
 
-# arch/i686/isrs_gen.c arch/i686/isrs_gen.inc:
+# arch/x86/isrs_gen.c arch/x86/isrs_gen.inc:
 # @$(SOURCE_DIR)/build_tools/generate_isrs.sh $@
 
 clean:

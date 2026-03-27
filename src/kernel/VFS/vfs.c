@@ -11,15 +11,15 @@
 #include "vfs.h"
 #include "device/device.h"
 #include "debug/debug.h"
-#include "malloc.h"
 #include "kernel.h"
 #include "video/VGATextDevice.h"
 #include "syscall/syscall.h"
+#include "arch/x86/e9.h"
 
-#include <core/arch/i686/e9.h>
-#include <string.h>
-#include <memory.h>
-#include <IO.h>
+#include "libs/malloc.h"
+#include "libs/string.h"
+#include "libs/memory.h"
+#include "libs/IO.h"
 
 #define MODULE "VFS"
 
@@ -114,10 +114,10 @@ int VFS_write(fd_t file, uint8_t *data, size_t size)
 {
     switch (file)
     {
-    case VFS_IMVALID_FD:
+    case VFS_INVALID_FD:
         log_debug("KERNEL", "why? just why?");
         __unreachable();
-        return 0;
+        return -1;
         
     case VFS_FD_STDIN:
         return 0;

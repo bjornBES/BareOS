@@ -19,9 +19,9 @@
  */
 
 #include "UART.h"
+#include "printf_driver/printf.h"
 
-#include <IO.h>
-#include <core/printfDriver/printf.h>
+#include "libs/IO.h"
 
 int UART_serial_received(uint16_t port) {
    return inb(port + UART_LINE_STATUS_REGISTER) & 1;

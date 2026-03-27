@@ -12,7 +12,7 @@
 
 #include "debug/debug.h"
 
-#include "arch/i686/isr.h"
+#include "arch/x86/isr.h"
 
 #define X(nr, name, ret, ...) \
     SYS_##name = nr,
@@ -69,5 +69,5 @@ void syscall_handler_func(Registers *regs)
 
 void syscall_init()
 {
-    i686_isr_register_handler(0x80, syscall_handler_func);
+    x86_isr_register_handler(0x80, syscall_handler_func);
 }

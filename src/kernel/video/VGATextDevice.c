@@ -12,10 +12,11 @@
 #include "video.h"
 
 
-#include <IO.h>
-#include <string.h>
+#include "libs/IO.h"
+#include "libs/stdio.h"
+#include "libs/string.h"
+
 #include <stddef.h>
-#include <stdio.h>
 
 typedef struct
 {

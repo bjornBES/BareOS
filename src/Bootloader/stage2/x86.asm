@@ -1,3 +1,13 @@
+;
+; File: x86.asm
+; File Created: 20 Jan 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 23 Mar 2026
+; Modified By: BjornBEs
+; -----
+;
+
 %macro x86_EnterRealMode 0
     [bits 32]
     jmp word 18h:.pmode16         ; 1 - jump to 16-bit protected mode segment
@@ -674,9 +684,43 @@ X86_checkForKeys:
     pop     ebp
     ret
 
+extern fill_64bit_table
+extern _cr3
+extern entry_but_long
+
+global x86_EnterLongMode
+x86_EnterLongMode:
+    cli
+    ; Enabling Physical Address Extension and Page Size Extension 
+    mov     eax,        cr4
+    or      eax,        (1 << 5) | (1 << 4)
+    mov     cr4,        eax
+
+    call    fill_64bit_table
+
+    mov     eax,        [0x6000]
+    mov     cr3,        eax
+
+    mov     ecx, 0xC0000080
+    rdmsr
+    or      eax, 1 << 8
+    wrmsr
+
+    ; fuck yes 64 bits fuck yes
+
+CR0_PG_ENABLE equ 1 << 31
+
+    mov     eax, cr0
+    or      eax, CR0_PG_ENABLE
+    mov     cr0, eax
+    sti
+
+    jmp     entry_but_long
+    
 section .bss
 ;
 ; uint8_t menu_key = 0
 ;
 global menu_key
 menu_key: resb 1
+    

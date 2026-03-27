@@ -6,3 +6,4 @@ bx_enh_dbg.ini
 image_scripts/__pycache__/*.pyc
 image_scripts/c/partitons.o
 image_scripts/c/partitons
+debug.txt

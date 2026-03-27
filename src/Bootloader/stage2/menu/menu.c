@@ -10,12 +10,13 @@
 
 #include "menu.h"
 #include "stdio.h"
+#include "bios/bios.h"
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 
-#include <core/arch/i686/bios.h>
+
 #include <memory.h>
 
 #define STATE_GENERAL_INFO 1

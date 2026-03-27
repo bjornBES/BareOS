@@ -1,5 +1,4 @@
-TARGET_LINKFLAGS += -nostdlib
-TARGET_ASMFLAGS += -f elf
+TARGET16_LINKFLAGS += $(LINKFLAGS) -nostdlib
 
 
 .PHONY: all clean
@@ -31,25 +30,25 @@ stage1: $(MBR_BIN) $(MBR2_BIN) $(VBR_BIN)
 # MBR linker target
 $(MBR_BIN): $(MBR_OBJ)
 #	@echo "Linking MBR: $(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(MBR_MAP) -o $@ $<"
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -T linker.ld -Wl,-Map=$(MBR_MAP) -o $@ $<
+	@$(TARGET32_LD) $(TARGET16_LINKFLAGS) -T linker.ld -Wl,-Map=$(MBR_MAP) -o $@ $<
 	@echo "--> Created MBR: $@"
 # MBR linker target
 $(MBR2_BIN): $(MBR2_OBJ)
 #	@echo "Linking MBR: $(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(MBR2_MAP) -o $@ $<"
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -T linker.ld -Wl,-Map=$(MBR2_MAP) -o $@ $<
+	@$(TARGET32_LD) $(TARGET16_LINKFLAGS) -T linker.ld -Wl,-Map=$(MBR2_MAP) -o $@ $<
 	@echo "--> Created MBR: $@"
 
 # VBR linker target
 $(VBR_BIN): $(VBR_OBJ)
 #	@echo "Linking VBR: $(TARGET_LD) -T linker_vbr.ld -nostdlib -Wl,-Map=$(VBR_MAP) -o $@ $<"
-	@$(TARGET_LD) $(TARGET_LINKFLAGS) -T linker_vbr.ld -Wl,-Map=$(VBR_MAP) -o $@ $<
+	@$(TARGET32_LD) $(TARGET16_LINKFLAGS) -T linker_vbr.ld -Wl,-Map=$(VBR_MAP) -o $@ $<
 	@echo "--> Created VBR: $@"
 
 # Assembly compilation
 $(BUILD_DIRASM)/%.obj: %.asm
 #	@echo "$(TARGET_ASM) $(TARGET_ASMFLAGS) $< -DFILESYSTEM=$(imageFS) -o $@"
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET_ASMFLAGS) $< -DFILESYSTEM=$(imageFS) -o $@
+	@$(TARGET32_ASM) -f elf $< -DFILESYSTEM=$(imageFS) -o $@
 
 clean:
 	@rm -f $(BUILD_DIRSTAGE1)/*.bin

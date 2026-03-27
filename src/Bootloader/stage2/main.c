@@ -10,12 +10,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <boot/bootparams.h>
+#include <util/binary.h>
 #include "stdio.h"
 #include <stddef.h>
 #include "memory.h"
 #include "string.h"
 
-#include <boot/bootparams.h>
 #include "paging/paging.h"
 #include "x86.h"
 #include "memdefs.h"
@@ -73,7 +74,7 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
 
     bootParams->BootDevice = bootDrive;
 
-    bootParams->bootLoader.bootFlags = 0;
+    bootParams->bootLoader.bootFlags = 1;
     strcpy(bootParams->bootLoader.bootloaderName, "BESOS Bootloader");
     strcpy(bootParams->bootLoader.cmdline, "");
 
@@ -83,18 +84,7 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     DetectEquipment(bootParams);
     DetectCPUID(bootParams);
     DetectACPI(bootParams);
-    bootParams->pageDirectory = pageDirectory + KERNEL_VMA;
-
-    /*
-    Get some info of computer from BIOS like
-    0x12              –                         Conventional memory
-    0x15 (0x88, 0xE801, 0xE820, 0xC7)           Extended / full memory map, system config
-    0x11              –                         Equipment list (floppy, video, etc.)
-    0x13 (0x00, 0x02, 0x03, 0x08, 0x41)         Disk reset, read/write sectors, get drive params, LBA
-    0x10 (0x0F, 0x0B, 0x4F00, 0x4F01)           Video info / VESA
-    0x16 (0x00, 0x01, 0x02)                     Keyboard input / shift flags
-    0x1A (0x00, 0x02, 0x04, 0xB101, 0xB102)     Time, CMOS, PCI BIOS
-    */
+    
 
     printf("Hello world");
     vga_clear();
@@ -108,6 +98,7 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
         menuEntry(bootParams);
     }
     printf("to kernel\n");
+    
     if (!ELF_Read(&part, "/boot/kernel.elf", (void **)&kernelEntry))
     {
         printf("ELF read failed, booting halted!\n");
@@ -119,19 +110,41 @@ void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
     x86_SetVESAMode(0x115);
     bootParams->currentMode = 0x115;
 
+/*
+Set the PAE enable bit in CR4
+Load CR3 with the physical address of the PML4 (Level 4 Page Map)
+Enable long mode by setting the LME flag (bit 8) in MSR 0xC0000080 (aka EFER)
+Enable paging
+*/
+
+    cpuid_regs reg;
+    INIT_CPUID_REG(&reg);
+    CPUID(0x80000001, 0, &reg);
+
+    if (BIT_GET(reg.edx, 29))
+    {
+        strcpy(bootParams->bootLoader.cmdline, "LM");
+        x86_EnterLongMode();
+    }
+    else
+    {
+        strcpy(bootParams->bootLoader.cmdline, "PM");
+    }
+
     if (readyToJump)
     {
-        fill_table();
+        bootParams->pageDirectory = (uint64_t*)(uint32_t*)((void*)page_directory_table + KERNEL_VMA);
+        fill_32bit_table();
         printf("jump to 0x%p\n", *kernelEntry);
-        __asm__("cli");
-        __asm__("mov %%eax, %%cr3" : : "a"(pageDirectory));
-        __asm__("mov %cr0, %eax");
-        __asm__("orl $0x80000000, %eax");
-        __asm__("mov %eax, %cr0");
+        __asm__("cli"); // dont ask.
+        __asm__("mov cr3, eax" : : "a"((uint32_t)page_directory_table));
+        __asm__("mov eax, cr0");
+        __asm__("or eax, 0x80000000");
+        __asm__("mov cr0, eax");
         __asm__("sti");
-        __asm__("movl %0, %%edi" : : "r"(bootParams) );
-        __asm__("pushw $0x08" );
-        __asm__("pushl %0" : : "r"(kernelEntry) );
+        __asm__("mov edi, %0" : : "r"(bootParams) );
+        __asm__("push 0x08" );
+        __asm__("push %0" : : "r"(kernelEntry) );
         __asm__("retf" );
 
         __builtin_unreachable();

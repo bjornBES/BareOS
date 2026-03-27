@@ -1,38 +1,52 @@
 ENTRY(entry)
-OUTPUT_FORMAT("elf32-i386")
-OUTPUT_ARCH(i386)
-KERNEL_VMA = 0xC0000000;
-KERNEL_LMA = 0x00100000;
+OUTPUT_FORMAT("elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+KERNEL_VMA = 0xFFFFFFFF80000000;
+KERNEL_LMA = 0x0000000000100000;
 
-FRAME_BITMAP_SIZE = (1024 * 1024) / 8; /* // each bit is a 4KB frame */
+/* yes need to update now */
+FRAME_BITMAP_SIZE = (1024 * 1024) / 8;
+
+PHDRS
+{
+    text PT_LOAD FLAGS(5);   /* R+X */
+    data PT_LOAD FLAGS(6);   /* R+W */
+}
 
 SECTIONS
 {
-    . = KERNEL_LMA;
-
+    __KERNEL_VIRT = KERNEL_VMA;
+    __KERNEL_PHYS = KERNEL_LMA;
     . = KERNEL_VMA;
 
 	__kernel_start = .;
 
-    .text               : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA)
+    .text               : AT(KERNEL_LMA)
     {
-        __text_start = .;       *(.text)
-    }
-
-    .data               : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
-    {
-        __data_start = .;       *(.data)
-    }
+        __text_start = .;
+        *(.text .text*)
+    } :text
 
     .rodata             : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
     {
-        __rodata_start = .;     *(.rodata)
-    }
+        __rodata_start = .;
+        *(.rodata .rodata*)
+    } :text
+
+    . = ALIGN(4096);
+
+    .data               : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
+    {
+        __data_start = .;
+        *(.data .data*)
+    } :data
 
     .bss                : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
     {
-        __bss_start = .;        *(.bss)     
-    }
+        __bss_start = .;
+        *(.bss .bss*)
+        *(COMMON)
+    } :data
     
     /* Kernel Stack */
     . = ALIGN(4096);

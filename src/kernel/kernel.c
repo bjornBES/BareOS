@@ -10,11 +10,11 @@
 
 #include "kernel.h"
 #include "debug/debug.h"
+#include "libs/stdio.h"
+#include "libs/IO.h"
 
 #include <stdint.h>
-#include <stdio.h>
-#include <IO.h>
-#include <core/printfDriver/printf.h>
+#include <printf_driver/printf.h>
 
 void panic(char *module, char *file, int line, char* message, ...)
 {

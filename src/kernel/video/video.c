@@ -3,6 +3,16 @@
  * File Created: 27 Feb 2026
  * Author: BjornBEs
  * -----
+ * Last Modified: 24 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
+/*
+ * File: video.c
+ * File Created: 27 Feb 2026
+ * Author: BjornBEs
+ * -----
  * Last Modified: 03 Mar 2026
  * Modified By: BjornBEs
  * -----
@@ -13,8 +23,8 @@
 #include "video.h"
 #include "VGATextDevice.h"
 
-#include <stdio.h>
-#include <memory.h>
+#include "libs/stdio.h"
+#include "libs/memory.h"
 
 uint8_t* frame_buffer;
 int current_mode;
@@ -44,7 +54,7 @@ void video_set_pixel(uint32_t cursor_x, uint32_t cursor_y, uint32_t color_packed
     int bytes_per_pixel = video_current_mode_data->bpp / 8;
     // TODO make draw functions for the others so not 24 bpp
     int index = (cursor_y * video_current_mode_data->width + cursor_x) * 3;
-    frame_buffer = (uint8_t*)video_current_mode_data->frame_buffer;
+    frame_buffer = (uint8_t*)(uint64_t)video_current_mode_data->frame_buffer;
     // log_debug("VIDEO", "index = %X (%u * %u + %u) + %X", index, cursor_y, video_current_mode_data->width, cursor_x, frame_buffer);
 
     // log_debug("VIDEO", "red n & %x (%u) ? %x (%u)", video_mode.red_mask_size, video_mode.red_mask_size, video_mode.red_field_position, video_mode.red_field_position);
@@ -77,7 +87,7 @@ void video_set_mode(int mode)
     video_current_mode_data = video_get_mode_data(mode);
     vga_set_mode(video_current_mode_data);
 
-    frame_buffer = (uint8_t*)video_current_mode_data->frame_buffer;
+    frame_buffer = (uint8_t*)(uint64_t)video_current_mode_data->frame_buffer;
     current_mode = mode;
 }
 

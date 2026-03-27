@@ -10,11 +10,11 @@
 
 #include "loader.h"
 
-#include "malloc.h"
+#include "libs/malloc.h"
+#include "libs/memory.h"
 
 #include "debug/debug.h"
 
-#include <memory.h>
 
 #define MAX_LOADERS 16
 

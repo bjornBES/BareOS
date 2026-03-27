@@ -26,10 +26,10 @@ stage1: $(BUILD_DIR)/stage1.bin
 $(BUILD_DIR)/stage1.bin: always
 	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR))
 
-stage2: libs bioslib $(BUILD_DIR)/stage2.bin
+stage2: libs $(BUILD_DIR)/stage2.bin
 
 $(BUILD_DIR)/stage2.bin: always
-	@$(MAKE) -C src/Bootloader/stage2 -j 4 BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR))
 
 # stage2_menu: libs bioslib $(ROOT_DIR)/root/blmenu.elf
 
@@ -43,17 +43,12 @@ kernel: libs $(BUILD_DIR)/kernel/kernel.elf
 
 
 $(BUILD_DIR)/kernel/kernel.elf: always
-	@$(MAKE) -C src/kernel -j 4 BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR))
 
 libs: $(BUILD_DIR)/libcore.a
 
 $(BUILD_DIR)/libcore.a:
 	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR))
-
-bioslib: $(BUILD_DIR)/libbios.a
-
-$(BUILD_DIR)/libbios.a:
-	@$(MAKE) -C src/BIOS BUILD_DIR=$(abspath $(BUILD_DIR))
 
 #
 # Tools
