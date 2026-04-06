@@ -1,5 +1,5 @@
 TARGET32_ASMFLAGS += -f elf
-TARGET32_CFLAGS += -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include
+TARGET32_CFLAGS += -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include -Werror=int-to-pointer-cast
 TARGET32_LIBS +=
 TARGET32_LINKFLAGS += -T linker.ld -nostdlib
 
@@ -11,13 +11,14 @@ HEADERS_C = $(shell find . -type f -name "*.h")
 
 SOURCES_C = $(shell find . -type f -name "*.c")
 
-OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
-
 HEADERS_ASM = $(shell find . -type f -name "*.inc")
 
 SOURCES_ASM = $(shell find . -type f -name "*.asm")
 
+OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
+
 OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
+
 
 .PHONY: all stage2 clean always
 

@@ -1,10 +1,10 @@
-include scripts/config.mk
+include mk/config.mk
 
 .PHONY: all floppy_image bootloader clean always debug libs kernel
 
 all: floppy_image
 
-include scripts/toolchain.mk
+include mk/toolchain.mk
 
 #
 # Floppy image
@@ -30,11 +30,6 @@ stage2: libs $(BUILD_DIR)/stage2.bin
 
 $(BUILD_DIR)/stage2.bin: always
 	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR))
-
-# stage2_menu: libs bioslib $(ROOT_DIR)/root/blmenu.elf
-
-# $(ROOT_DIR)/root/blmenu.elf: always
-# 	@$(MAKE) -C src/Bootloader/stage2_menu -j 4 BUILD_DIR=$(abspath $(BUILD_DIR))
 
 #
 # Kernel
@@ -65,9 +60,9 @@ user: $(TARGET_LIBS)
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
-	bash run.sh disk $(BUILD_DIR)/image.img
+	bash scripts/run.sh disk $(BUILD_DIR)/image.img
 run: $(BUILD_DIR)/image.img
-	bash run.sh disk $(BUILD_DIR)/image.img
+	bash scripts/run.sh disk $(BUILD_DIR)/image.img
 debug_flags:
 	@echo "add -g"
 	$(eval TARGET_ASM += -g)
@@ -76,21 +71,18 @@ debug_flags:
 debug: debug_flags clean all
 
 	@echo "running debug"
-	bash debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/floppyImage.img $(BUILD_DIR)/sataImage.img
+	bash scripts/debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
 
 debugnow:
-	bash debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/floppyImage.img $(BUILD_DIR)/sataImage.img
+	bash scripts/debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
 
-
-load: $(BUILD_DIR)/image.img
-	@bash ./scripts/image/LoadImage.sh $(BUILD_DIR)/image.img /dev/sdd
 
 #
 # Always
 #
 always:
-#	@echo "mkdir -p $(BUILD_DIR)" 
-#	@mkdir -p $(BUILD_DIR)
+	@echo "mkdir -p $(BUILD_DIR)" 
+	@mkdir -p $(BUILD_DIR)
 
 toolchain:
 
@@ -100,5 +92,5 @@ toolchain:
 clean:
 	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
-#	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@rm -rf $(BUILD_DIR)/*

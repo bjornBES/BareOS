@@ -7,7 +7,7 @@
 ; Modified By: BjornBEs
 ; -----
 ;
-bits 16
+[bits 16]
 
 %define ENDL 0x0D, 0x0A
 
@@ -16,18 +16,11 @@ bits 16
 %define fat32 3
 %define ext2  4
 
-section .fsjump
-    jmp short start
-    nop
-
 section .entry
-    global start
+
+global start
 start:
-    ; Print "M" for MBR start
-    ; mov ah, 0x0e
-    ; mov al, 'M'
-    ; int 0x10
-    
+   
     ; Set up segment registers
     xor ax, ax
     mov ds, ax

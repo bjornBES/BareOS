@@ -15,6 +15,8 @@
 #include "minmax.h"
 #include "stdio.h"
 
+extern uint64_t kernel_entry;
+
 void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOffset)
 {
     printf("Kernel segment loaded: [%p - %p], size=%u bytes\n", 
@@ -29,7 +31,7 @@ void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOff
     printf("\n");
 }
 
-bool ELF_read64(Partition *part, const char *path, void **entryPoint)
+bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
 {
     printf("ELF: Opening '%s'\n", path);
 
@@ -58,12 +60,15 @@ bool ELF_read64(Partition *part, const char *path, void **entryPoint)
         FAT_Close(fd);
         return false;
     }
-
-
-    printf("ELF: entry VADDR = 0x%x\n", elfHeader.ProgramEntryPosition);
-
+    
     /* Return the VIRTUAL entry point */
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
     *entryPoint = (void *)elfHeader.ProgramEntryPosition;
+    kernel_entry = elfHeader.ProgramEntryPosition;
+    printf("ELF: entry VADDR = 0x%x + 0x%x\n", (kernel_entry) >> 32, kernel_entry);
+    #pragma GCC diagnostic pop
     uint8_t *dest;
     int elfSize = 0;
 
@@ -115,7 +120,7 @@ bool ELF_read64(Partition *part, const char *path, void **entryPoint)
 
         printf("ELF: load seg %u\n", i);
         printf("     VADDR 0x%x\n", progarmHeader.VirtualAddress);
-        printf("     PADDR 0x%x\n", phys);
+        printf("     PADDR 0x%x/0x%x\n", phys, progarmHeader.PhysicalAddress);
         printf("     file size %u mem size %u\n", progarmHeader.FileSize, progarmHeader.MemorySize);
         printf("     dest 0x%x \n", dest);
 
@@ -155,9 +160,10 @@ bool ELF_read64(Partition *part, const char *path, void **entryPoint)
 
     FAT_Close(fd);
     printf("ELF: kernel loaded successfully\n");
-    // LogKernelSegment(dest, elfSize, 0);
+    LogKernelSegment(dest, elfSize, 0);
     return true;
 }
+
 
 bool ELF_Read(Partition *part, const char *path, void **entryPoint)
 {
@@ -192,7 +198,7 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
     if (elfHeader.Bitness == ELF_BITNESS_64BIT)
     {
         FAT_Close(fd);
-        return ELF_read64(part, path, entryPoint);
+        return ELF_Read64(part, path, entryPoint);
     }
 
     printf("ELF: entry VADDR = 0x%x\n", elfHeader.ProgramEntryPosition);

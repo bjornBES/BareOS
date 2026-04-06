@@ -97,7 +97,6 @@ start:
     mov es, ax
 
     mov bx, STAGE2_LOAD_OFFSET
-global .loop
 .loop:
     mov eax, [si]
     add si, 4
@@ -116,8 +115,7 @@ global .loop
     mov es, di
     
     jmp .loop
-global .read_finish
-    .read_finish:
+.read_finish:
     mov ah, 0x0e
     mov al, 'F'
     int 0x10
@@ -129,7 +127,6 @@ global .read_finish
     mov ax, STAGE2_LOAD_SEGMENT
     mov ds, ax
     mov es, ax
-global .Jump
 .Jump:
     jmp STAGE2_LOAD_SEGMENT:STAGE2_LOAD_OFFSET
     

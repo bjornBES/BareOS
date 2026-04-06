@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # $(TARGET_DIR) $(imageType) $(imageFS) $(imageSize) $(arch) $(config)
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
@@ -13,9 +13,9 @@ imageSize=$3
 arch=$4
 config=$5
 
-pyenv shell 3.14-dev
+# pyenv shell 3.14-dev
 
 # python -m cProfile -o outputFile.txt -s time ./image/MakeImage.py $targetDir $imageType $targetFilesystem $imageSize $arch $config
-python ./image_scripts/MakeImage.py $targetDir $imageType $targetFilesystem $imageSize $arch $config
+python ./tools/MakeImage.py $targetDir $imageType $targetFilesystem $imageSize $arch $config
 
 echo "Done with all"

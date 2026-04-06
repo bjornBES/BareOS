@@ -6,11 +6,6 @@ SECTIONS
 {
     . = phys;
 
-    /* Some filesystems (like FAT) have a header that begins with a 3 byte 
-       jump instruction, which will end up in the .fsjump section.      
-    */
-    .fsjump             : { *(.fsjump)           }
-
     /* Entry section, which shouldn't be too far down the file (the near jump in
        .fsjump is limited to 127 bytes)
     */

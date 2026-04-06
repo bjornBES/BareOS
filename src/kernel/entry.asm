@@ -28,7 +28,7 @@ entry:
     cli
     
     mov al, 'H'
-    out 0xe9, al,
+    out 0xe9, al
     
     mov ax, 0x10
     mov ds, ax

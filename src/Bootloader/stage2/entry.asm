@@ -19,14 +19,15 @@ extern __end
 extern _init
 
 extern start
+extern entry_64
 global entry
 
 entry:
     cli
 
-    mov [g_BootDrive], dl
-    mov [g_BootPartitionOff], si
-    mov [g_BootPartitionSeg], di
+    mov [BootDrive], dl
+    mov [BootPartitionOff], si
+    mov [BootPartitionSeg], di
     
     mov si, message
     call puts
@@ -112,16 +113,27 @@ entry:
     ; call global constructors
     call _init
 
-    mov dx, [g_BootPartitionSeg]
-    shl edx, 16
-    mov dx, [g_BootPartitionOff]
-    push edx
+    mov di, [BootPartitionSeg]
+    shl edi, 16
+    mov di, [BootPartitionOff]
+    push edi
     
-    xor edx, edx
-    mov dl, [g_BootDrive]
-    push edx
-    call start
+    xor esi, esi
+    mov si, [BootDrive]
 
+    ; check long mode
+    mov eax, 0x80000001
+    cpuid
+    and edi, (1 << 29)
+    jz ._32bit   
+    call entry_64
+    jmp ._halt
+._32bit:
+    push edi
+    push esi 
+
+    call start
+._halt:
     cli
     hlt
 
@@ -227,20 +239,26 @@ g_GDT:
     dq 0
 
     ; 32-bit code segment
-    GDTDescriptor 0xFFFF, 0, 0, 0b10011010, 0b11001111, 0
+    GDTDescriptor 0xFFFF, 0, 0, 10011010b, 11001111b, 0
     
     ; 32-bit data segment
-    GDTDescriptor 0xFFFF, 0, 0, 0b10010010, 0b11001111, 0
+    GDTDescriptor 0xFFFF, 0, 0, 10010010b, 11001111b, 0
 
     ; 16-bit code segment
-    GDTDescriptor 0xFFFF, 0, 0, 0b10011010, 0b00001111, 0
+    GDTDescriptor 0xFFFF, 0, 0, 10011010b, 00001111b, 0
     
     ; 16-bit data segment
-    GDTDescriptor 0xFFFF, 0, 0, 0b10010010, 0b00001111, 0
+    GDTDescriptor 0xFFFF, 0, 0, 10010010b, 00001111b, 0
+
+    ; 64-bit code segment
+    GDTDescriptor 0xFFFF, 0, 0, 10011010b, 00100000b, 0
+    
+    ; 64-bit data segment
+    GDTDescriptor 0xFFFF, 0, 0, 10010010b, 00100000b, 0
 
 g_GDTDesc:  dw g_GDTDesc - g_GDT - 1
             dd g_GDT
 
-g_BootDrive: db 0
+g_BootDrive: dw 0
 g_BootPartitionSeg: dw 0
 g_BootPartitionOff: dw 0

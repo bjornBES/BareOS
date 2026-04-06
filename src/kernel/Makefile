@@ -41,18 +41,18 @@ all: kernel
 kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
 $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
-	@$(TARGET64_LD) $(TARGET64_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
+	@$(TARGET_LD) $(TARGET64_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(TARGET64_CC) $(TARGET64_CFLAGS) -c -o $@ $<
-	@$(TARGET64_CC) $(TARGET64_CFLAGS) -c -save-temps -o $@.c $<
+	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -o $@ $<
+#	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -save-temps -o $@.c $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
-	@$(TARGET64_ASM) $(TARGET64_ASMFLAGS) -o $@ $<
+	@$(TARGET_ASM) $(TARGET64_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 
 always:

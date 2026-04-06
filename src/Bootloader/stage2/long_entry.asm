@@ -27,7 +27,7 @@ long_mode_entry:
     mov     ss, ax
 
     mov     rdi, 0x00200000     ; bootparams
-    mov     rax, [kernelEntry]
+    mov     rax, [kernel_entry]
     jmp     rax
 
 GDT_64:
@@ -52,3 +52,9 @@ GDT_64:
 
 GDTDesc_64: dw GDTDesc_64 - GDT_64 - 1
             dq GDT_64
+
+section .bss
+
+global kernel_entry
+kernel_entry:
+    resq 1

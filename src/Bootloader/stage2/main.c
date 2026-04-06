@@ -48,7 +48,7 @@ void hexdump(void *ptr, int len)
     printf("\n");
 }
 
-void __attribute__((cdecl)) start(uint16_t bootDrive, void *partition)
+void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
 {
     bool readyToJump = false;
     printf("%x", partition);
