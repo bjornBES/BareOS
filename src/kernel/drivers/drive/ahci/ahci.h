@@ -29,7 +29,9 @@ typedef enum
 typedef volatile struct
 {
 	uint32_t clb;		// 0x00, command list base address, 1K-byte aligned
+	uint32_t clbu;
 	uint32_t fb;		// 0x08, FIS base address, 256-byte aligned
+	uint32_t fbu;
 	uint32_t is;		// 0x10, interrupt status
 	uint32_t ie;		// 0x14, interrupt enable
 	uint32_t cmd;		// 0x18, command and status
@@ -258,13 +260,15 @@ typedef struct
 	volatile uint32_t prdbc;
 
 	uint32_t ctba;
+	uint32_t ctbau;
 
 	uint32_t reserved1[4];
 } HBA_CMD_HEADER;
 
 typedef struct
 {
-	uint64_t dba;  // Data base address
+	uint32_t dba;  // Data base address
+	uint32_t dbau;  // Data base address
 	uint32_t rsv0; // Reserved
 
 	// DW3
@@ -290,44 +294,80 @@ typedef struct
 
 typedef struct
 {
-	uint16_t gen_cfg;
-	uint16_t unused0[9];
-	char serial_number[20];
-	uint16_t unused1[3];
-	char firmware_rev[8];
-	char model_number[40];
-	uint16_t sectors_per_int;
-	uint16_t reserved0;
-	uint16_t capabilities[2];
-	uint16_t unused2[2];
-	uint16_t valid_values;
-	uint16_t unused3[5];
-	uint16_t multi_sector;
-	uint32_t user_addressable_sectors;
-	uint16_t unused4[13];
-	uint16_t max_queue_depth;
-	uint64_t reserved1;
-	uint16_t major_version;
-	uint16_t minor_version;
-	uint32_t command_sets_supported;
-	uint16_t command_extension_supported;
-	uint32_t command_sets_enabled;
-	uint16_t command_set_default;
-	uint16_t ultra_dma;
-	uint16_t security_erase_time;
-	uint16_t e_security_erase_time;
-	uint16_t power_mgmt_val;
-	uint16_t master_password_rev;
-	uint16_t hw_reset_result;
-	uint16_t acoustic_mgmt;
-	uint16_t streaming[5];
-	uint64_t total_sectors;
-	uint32_t unused5;
-	uint16_t logical_sector_size;
-	uint16_t unused6[10];
-	uint32_t words_per_logical_sector;
-	uint16_t unused7[136];
-	uint16_t checksum;
+    uint16_t general_config;        // 0:  General configuration
+    uint16_t num_cylinders;         // 1:  Number of cylinders (obsolete)
+    uint16_t specific_config;       // 2:  Specific configuration
+    uint16_t num_heads;             // 3:  Number of heads (obsolete)
+    uint16_t rsv0[2];               // 4-5: Retired
+    uint16_t num_sectors_per_track; // 6:  Sectors per track (obsolete)
+    uint16_t vendor0[3];            // 7-9: Vendor specific
+    char     serial[20];            // 10-19: Serial number (ASCII, space-padded)
+    uint16_t rsv1[2];               // 20-21: Retired
+    uint16_t rsv2;                  // 22: Obsolete
+    char     firmware[8];           // 23-26: Firmware revision (ASCII, space-padded)
+    char     model[40];             // 27-46: Model number (ASCII, space-padded)
+    uint16_t max_sectors_per_drq;   // 47: Max sectors per DRQ (bits 7:0)
+    uint16_t rsv3;                  // 48: Trusted computing / reserved
+    uint16_t capabilities0;         // 49: Capabilities (DMA, LBA support)
+    uint16_t capabilities1;         // 50: Capabilities extended
+    uint16_t rsv4[2];               // 51-52: Obsolete
+    uint16_t field_validity;        // 53: Field validity flags
+    uint16_t rsv5[5];               // 54-58: Obsolete
+    uint16_t multi_sector_setting;  // 59: Multiple sector setting
+    uint32_t lba28_sectors;         // 60-61: Total LBA28 addressable sectors
+    uint16_t rsv6;                  // 62: Obsolete
+    uint16_t dma_multiword;         // 63: Multiword DMA modes
+    uint16_t pio_modes;             // 64: PIO modes supported
+    uint16_t min_dma_cycle_time;    // 65: Min multiword DMA cycle time (ns)
+    uint16_t rec_dma_cycle_time;    // 66: Recommended multiword DMA cycle time
+    uint16_t min_pio_cycle_time;    // 67: Min PIO cycle time without flow control
+    uint16_t min_pio_iordy_time;    // 68: Min PIO cycle time with IORDY
+    uint16_t rsv7[6];               // 69-74: Reserved
+    uint16_t queue_depth;           // 75: Queue depth (bits 4:0)
+    uint16_t sata_capabilities;     // 76: SATA capabilities
+    uint16_t sata_capabilities2;    // 77: SATA additional capabilities
+    uint16_t sata_features_supp;    // 78: SATA features supported
+    uint16_t sata_features_en;      // 79: SATA features enabled
+    uint16_t major_version;         // 80: ATA major version
+    uint16_t minor_version;         // 81: ATA minor version
+    uint16_t cmd_set0;              // 82: Command set supported 0
+    uint16_t cmd_set1;              // 83: Command set supported 1
+    uint16_t cmd_set2;              // 84: Command set supported 2
+    uint16_t cmd_set_en0;           // 85: Command set enabled 0
+    uint16_t cmd_set_en1;           // 86: Command set enabled 1
+    uint16_t cmd_set_en2;           // 87: Command set enabled 2
+    uint16_t dma_ultra;             // 88: Ultra DMA modes
+    uint16_t rsv8[4];               // 89-92: Reserved / erase times
+    uint16_t hw_reset_result;       // 93: Hardware reset result
+    uint16_t acoustic;              // 94: Acoustic management
+    uint16_t rsv9[5];               // 95-99: Reserved
+    uint64_t lba48_sectors;         // 100-103: Total LBA48 addressable sectors
+    uint16_t rsv10[2];              // 104-105: Reserved
+    uint16_t physical_logical;      // 106: Physical/logical sector size
+    uint16_t rsv11[9];              // 107-115: Reserved
+    uint16_t logical_sector_size[2];// 116-117: Logical sector size (words)
+    uint16_t rsv12[8];              // 118-125: Reserved
+    uint16_t last_lun;              // 126: Reserved
+    uint16_t rsv13;                 // 127: Reserved
+    uint16_t security_status;       // 128: Security status
+    uint16_t vendor1[31];           // 129-159: Vendor specific
+    uint16_t cfa_power;             // 160: CFA power mode
+    uint16_t rsv14[7];              // 161-167: Reserved
+    uint16_t form_factor;           // 168: Device form factor
+    uint16_t rsv15[3];              // 169-171: Reserved
+    char     media_serial[60];      // 172-191: Current media serial (ASCII)
+    uint16_t sct_cmd_transport;     // 206: SCT command transport
+    uint16_t rsv16[5];              // 207-211: Reserved
+    uint16_t alignment;             // 209: Alignment of logical in physical
+    uint16_t rsv17[6];              // 210-215: Reserved
+    uint16_t nv_cache_caps;         // 214: NV cache capabilities
+    uint32_t nv_cache_size;         // 215-216: NV cache size (logical blocks)
+    uint16_t nv_cache_opts;         // 217: NV cache options
+    uint16_t rsv18[3];              // 218-220: Reserved
+    uint16_t transport_major;       // 221: Transport major version
+    uint16_t transport_minor;       // 222: Transport minor version
+    uint16_t rsv19[31];             // 223-253: Reserved
+    uint16_t integrity;             // 255: Integrity word (checksum)
 } __attribute__((packed)) sata_identify_packet;
 
 typedef struct

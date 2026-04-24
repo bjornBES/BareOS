@@ -7,7 +7,7 @@
 ; Modified By: BjornBEs
 ; -----
 ;
-%if i686 == 1
+%if __i686__ == 1
 [bits 32]
 ; void __attribute__((cdecl)) GDT_load_32(GDTDescriptor* descriptor);
 global GDT_load_32
@@ -40,14 +40,24 @@ GDT_load_64:
     ; load gdt
     lgdt [rdi]
 
+    mov rdi, .reload
+    push 0x08           ; kernel code segment selector
+    push rdi
+    retfq               ; far return, loads CS:RIP
+global .reload
+.reload
+
     mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
+
     ; reload CS via a far return
-    pop rdi             ; return address
+global .return
+.return
+    pop rdi
     push 0x08           ; kernel code segment selector
     push rdi
     retfq               ; far return, loads CS:RIP

@@ -37,6 +37,7 @@ typedef struct __device_t
 } device;
 
 void device_init();
+void device_debug();
 uint32_t device_count();
 uint32_t device_add(device* dev);
 device *device_get(uint32_t id);

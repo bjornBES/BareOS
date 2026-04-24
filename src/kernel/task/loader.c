@@ -51,6 +51,7 @@ loader *Loader_probe(fd_t file)
 
 void Loader_init()
 {
+    log_debug("LOADER", "init loader");
     loaders = (loader**)malloc(MAX_LOADERS * sizeof(loader*));
     memset(loaders, 0, sizeof(loader*));
     loader_index = 0;

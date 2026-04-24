@@ -128,21 +128,10 @@ int strncmp(const char *cs, const char *ct, size_t count)
 }
 char *strchr(const char *s, int c)
 {
-    char *res;
-    inline_asm(
-        "mov ah, al\n\t"
-        "L1_%=:\n\t"
-        "lodsb\n\t"
-        "cmp ah, al\n\t"
-        "je L2_%=\n\t"
-        "test al, al\n\t"
-        "jne L1_%=\n\t"
-        "mov %[src], 1\n"
-        "L2_%=:\n\t"
-        "mov %[result], %[src]\n\t"
-        "dec %[result]" : [result] "=a"(res),
-        [src] "+S"(s), [chr] "+d"(c) : : "memory");
-    return res;
+	while (*s != (char)c)
+		if (*s++ == '\0')
+			return NULL;
+	return (char *)s;
 }
 
 size_t strlen(const char *s)

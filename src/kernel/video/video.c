@@ -26,19 +26,18 @@
 #include "libs/stdio.h"
 #include "libs/memory.h"
 
-uint8_t* frame_buffer;
+uint8_t *frame_buffer;
 int current_mode;
 video_mode *video_current_mode_data;
-video_mode** modes;
+video_mode **modes;
 int mode_count;
 
-
 // Helper Functions
-video_mode* video_get_mode_data(int mode)
+video_mode *video_get_mode_data(int mode)
 {
     for (size_t i = 0; i < mode_count; i++)
     {
-        video_mode* element = modes[i];
+        video_mode *element = modes[i];
         // log_debug("VIDEO", "video mode %d==%d", element->mode, mode);
         if (element->mode == mode)
         {
@@ -54,7 +53,11 @@ void video_set_pixel(uint32_t cursor_x, uint32_t cursor_y, uint32_t color_packed
     int bytes_per_pixel = video_current_mode_data->bpp / 8;
     // TODO make draw functions for the others so not 24 bpp
     int index = (cursor_y * video_current_mode_data->width + cursor_x) * 3;
-    frame_buffer = (uint8_t*)(uint64_t)video_current_mode_data->frame_buffer;
+#ifdef __x86_64__
+    frame_buffer = (uint8_t *)(uint64_t)video_current_mode_data->frame_buffer;
+#else
+    frame_buffer = (uint8_t *)video_current_mode_data->frame_buffer;
+#endif
     // log_debug("VIDEO", "index = %X (%u * %u + %u) + %X", index, cursor_y, video_current_mode_data->width, cursor_x, frame_buffer);
 
     // log_debug("VIDEO", "red n & %x (%u) ? %x (%u)", video_mode.red_mask_size, video_mode.red_mask_size, video_mode.red_field_position, video_mode.red_field_position);
@@ -67,10 +70,10 @@ void video_set_pixel(uint32_t cursor_x, uint32_t cursor_y, uint32_t color_packed
     uint8_t blue = color_packed & 0xFF;
 
     // 0x00RRGGBB
-/* 
-log_debug("VIDEO", "red %X & %x", red, video_mode.red_mask_size);
-log_debug("VIDEO", "green %X & %x", green, video_mode.greenMaskSize);
-log_debug("VIDEO", "blue %X & %x", blue, video_mode.blueMaskSize); */
+    /*
+    log_debug("VIDEO", "red %X & %x", red, video_mode.red_mask_size);
+    log_debug("VIDEO", "green %X & %x", green, video_mode.greenMaskSize);
+    log_debug("VIDEO", "blue %X & %x", blue, video_mode.blueMaskSize); */
 
     // uint8_t alpha = color_packed >> 24 & 0xFF;
     // function draw_24_bpp
@@ -79,28 +82,30 @@ log_debug("VIDEO", "blue %X & %x", blue, video_mode.blueMaskSize); */
     frame_buffer[index + 2] = blue;
     // log_debug("VIDEO", "put the pixel");
     // frame_buffer[index] = alpha;
-
 }
 
 void video_set_mode(int mode)
 {
     video_current_mode_data = video_get_mode_data(mode);
     vga_set_mode(video_current_mode_data);
-
-    frame_buffer = (uint8_t*)(uint64_t)video_current_mode_data->frame_buffer;
+#ifdef __x86_64__
+    frame_buffer = (uint8_t *)(uint64_t)video_current_mode_data->frame_buffer;
+#else
+    frame_buffer = (uint8_t *)video_current_mode_data->frame_buffer;
+#endif
     current_mode = mode;
 }
 
 void video_init(boot_params *bp, void *mode_addr)
 {
-    modes = (video_mode**)mode_addr;
+    modes = (video_mode **)mode_addr;
     mode_count = bp->vesaModeCount;
     VESA_bios_info vesa_info = bp->vesaBios;
-    VESA_mode* vesa_modes = bp->vesaModes;
+    VESA_mode *vesa_modes = bp->vesaModes;
 
     for (size_t i = 0; i < mode_count; i++)
     {
-        modes[i] = (video_mode*)(mode_addr + sizeof(video_mode) * i);
+        modes[i] = (video_mode *)(mode_addr + sizeof(video_mode) * i);
         modes[i]->mode_attributes = vesa_modes[i].mode_attributes;
         modes[i]->memory_model = vesa_modes[i].memory_model;
         modes[i]->width = vesa_modes[i].width;

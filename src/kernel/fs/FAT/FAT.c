@@ -10,6 +10,7 @@
 
 #include "FAT.h"
 
+#include "kernel.h"
 #include "libs/malloc.h"
 #include "libs/ctype.h"
 #include "libs/stdio.h"
@@ -317,6 +318,7 @@ bool fat_read_directory_internal(FAT_entry *entry, device *dev, fat_priv_data *f
 
 bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_directory *directory, FAT_entry **entry_out)
 {
+    PRINT_FUNCTION_INFO("fat_find_entry", "%s, %p, %p, %p", path, dev, fat_priv, entry_out);
     char *org_path = path;
     if (*org_path != '/')
     {
@@ -332,10 +334,21 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     {
         const char *temp = strchr(org_path, '/') - 1;
         int count = (int)(temp - org_path);
-        memcpy(path_segment_hr, org_path, count);
+        if (count == -1 || (uint32_64)temp == 0xffffffffffffffff)
+        {
+            count = strlen(org_path);
+        }
+        else
+        {
+            log_debug(MODULE, "check temp: %p, org_path: %p, count: %u", temp, org_path, count);
+        }
+        log_debug(MODULE, "check %s - %s, %u", path_segment_hr, org_path, count);
+        memcpy(path_segment_hr, org_path, count + 1);
+        log_debug(MODULE, "here3");
         log_debug(MODULE, "path_segment = %s", path_segment_hr);
-        org_path += count;
+        org_path += count + 1;
     }
+    log_debug(MODULE, "post shit");
     log_debug(MODULE, "in fat_find_entry directory = %p with org_path = %s (%u)", directory, org_path, *org_path);
 
     // path segment in the 8.3 format
@@ -377,8 +390,9 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     }
 
     log_debug(MODULE, "entry 0 is %s", directory->entries[0].entry.Name);
-
+    
     bool result = fat_find_entry(org_path, dev, fat_priv, directory, entry_out);
+    log_debug(MODULE, "done now");
     return result;
 }
 
@@ -400,7 +414,7 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
     log_debug(MODULE, "  size = %u", node->size);
     log_debug(MODULE, "  inode = %u", node->inode);
     log_debug(MODULE, "  offset = %u", node->offset);
-    log_debug(MODULE, "  opened = %s", node->opened ToBoolString);
+    log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
     log_debug(MODULE, "  fs = %p", node->fs);
     log_debug(MODULE, "  mount = %p", node->mount);
     log_debug(MODULE, "  priv = %p", node->priv);
@@ -430,7 +444,7 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
     log_debug(MODULE, "  size = %u", node->size);
     log_debug(MODULE, "  inode = %u", node->inode);
     log_debug(MODULE, "  offset = %u", node->offset);
-    log_debug(MODULE, "  opened = %s", node->opened ToBoolString);
+    log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
     log_debug(MODULE, "  fs = %p", node->fs);
     log_debug(MODULE, "  mount = %p", node->mount);
     log_debug(MODULE, "  priv = %p", node->priv);

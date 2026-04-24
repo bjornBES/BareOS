@@ -12,7 +12,7 @@
 #include "debug/debug.h"
 #include "partition_manager/partition_manager.h"
 #include "device/device.h"
-#include "arch/x86/paging/paging.h"
+#include "memory/paging/paging.h"
 
 #include "libs/malloc.h"
 #include "libs/stdio.h"
@@ -105,7 +105,13 @@ uint8_t ahci_identify_device(ahci_port aport, void *buf)
 
     HBA_CMD_TBL *cmd_table = (HBA_CMD_TBL *)aport.ctba[slot];
 
-    cmd_table->prdt_entry[0].dba = (uint64_t)paging_get_physical(kernel_page, buf);
+    uint32_64 dba_phys = (uint32_64)paging_get_physical(kernel_page, buf);
+    cmd_table->prdt_entry[0].dba = dba_phys & 0xFFFFFFFF;
+#ifdef __x86_64__
+    cmd_table->prdt_entry[0].dbau = (dba_phys >> 32);
+#else
+    cmd_table->prdt_entry[0].dbau = 0;
+#endif
     cmd_table->prdt_entry[0].dbc = 511;
     cmd_table->prdt_entry[0].i = 1;
 
@@ -193,15 +199,25 @@ void ahci_initialize_port(ahci_port *aport)
 
     void *mapped_clb_virt;
     void *mapped_clb = kmalloc_phys(4096, &mapped_clb_virt);
-    port->clb = (uint64_t)mapped_clb;
+    port->clb = (uint32_t)((uint32_64)mapped_clb & 0xFFFFFFFF);
+#ifdef __x86_64__
+    port->clbu = (uint32_t)((uint32_64)mapped_clb >> 32);
+#else
+    port->clbu = 0;
+#endif
     aport->clb = mapped_clb_virt;
 
     void *mapped_fb_virt;
     void *mapped_fb = kmalloc_phys(4096, &mapped_fb_virt);
-    port->fb = (uint64_t)mapped_fb;
+    port->fb = (uint32_t)((uint32_64)mapped_fb & 0xFFFFFFFF);
+#ifdef __x86_64__
+    port->clbu = (uint32_t)((uint32_64)mapped_fb >> 32);
+#else
+    port->clbu = 0;
+#endif
     aport->fb = mapped_fb_virt;
 
-    HBA_CMD_HEADER *cmd_header = (HBA_CMD_HEADER *)mapped_clb;
+    HBA_CMD_HEADER *cmd_header = (HBA_CMD_HEADER *)mapped_clb_virt;
 
     void *ctba_pool_virt;
     void *ctba_pool = kcalloc_phys(1, 32 * CTBA_SLOT_SIZE, &ctba_pool_virt);
@@ -212,7 +228,12 @@ void ahci_initialize_port(ahci_port *aport)
         void *ctba_buf_virt = (void *)((uintptr_t)ctba_pool_virt + i * CTBA_SLOT_SIZE);
         cmd_header[i].prdtl = 1;
         aport->ctba[i] = ctba_buf_virt;
-        cmd_header[i].ctba = (uint64_t)ctba_buf;
+        cmd_header[i].ctba = (uint32_64)ctba_buf & 0xFFFFFFFF;
+#ifdef __x86_64__
+        cmd_header[i].ctbau = ((uint32_64)ctba_buf >> 32);
+#else
+        cmd_header[i].ctbau = 0;
+#endif
     }
 
     ahci_start_cmd(port);
@@ -234,7 +255,7 @@ bool ahci_read_sectors_command(ahci_port aport, uint32_t startl, uint32_t starth
 
     HBA_CMD_TBL *cmd_tbl = (HBA_CMD_TBL *)(aport.ctba[slot]);
 
-    cmd_tbl->prdt_entry[0].dba = (uint64_t)buf;
+    cmd_tbl->prdt_entry[0].dba = (uint32_64)buf;
     cmd_tbl->prdt_entry[0].dbc = (count * 512) - 1; // 8K bytes (this value should always be set to 1 less than the actual value)
     cmd_tbl->prdt_entry[0].i = 1;
 
@@ -301,7 +322,7 @@ bool ahci_write_sectors_command(ahci_port aport, uint32_t startl, uint32_t start
 
     HBA_CMD_TBL *cmd_tbl = (HBA_CMD_TBL *)(aport.ctba[slot]);
 
-    cmd_tbl->prdt_entry[0].dba = (uint64_t)buf;
+    cmd_tbl->prdt_entry[0].dba = (uint32_64)buf;
     cmd_tbl->prdt_entry[0].dbc = (count * 512) - 1; // 8K bytes (this value should always be set to 1 less than the actual value)
     cmd_tbl->prdt_entry[0].i = 1;
 
@@ -399,23 +420,25 @@ uint32_t ahci_write(void *buffer, uint64_t sector, size_t count, device *device)
 void ahci_initialize_abar(HBA_MEM *abar)
 {
     uint32_t pi = abar->pi;
+    log_debug(MODULE, "pi = %u", pi);
     for (size_t i = 0; i < 32; i++)
     {
         if (pi & 1)
         {
             // HBA_PORT = 128
             // HBA_MEM = 4352 (0x1100)
-
             int dt = ahci_check_type(&abar->ports[i]);
             if (dt == AHCI_DEV_SATA)
             {
-
-                sata_identify_packet *info_virt;
+                log_debug(MODULE, "after");
+                sata_identify_packet *info_virt = NULL;
+                log_debug(MODULE, "here");
                 sata_identify_packet *info = kmalloc_phys(sizeof(sata_identify_packet), (void **)&info_virt);
+                log_debug(MODULE, "here1");
                 log_debug(MODULE, "info_virt = %p, info = %p", info_virt, info);
 
-                mmPrintStatus();
-                mmPrintBlocks();
+                allocator_print_status();
+                allocator_print_blocks();
 
                 HBA_PORT *port = &abar->ports[i];
                 log_debug(MODULE, "found sata");
@@ -438,24 +461,25 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 dev->write = ahci_write;
                 device_add(dev);
 
-                char *name = (char *)malloc(41);
-                memset(name, 0, 41);
-                // for (int i = 0; i < 40; i += 2)
-                // {
-                //     name[i] = info_virt->model_number[i + 1];
-                //     name[i + 1] = info_virt->model_number[i];
-                // }
+                char *name = (char *)malloc(40);
+                memset(name, 0, 40);
                 int count = sprintf(name, "sata%u", ahci_devices_count);
                 name[count] = '\0';
                 dev->name = name;
 
                 partition_block_device_register(dev);
 
+                uint64_t total_sectors = info_virt->lba28_sectors;
+                if (info_virt->cmd_set_en1 & (1 << 10))
+                {
+                    total_sectors = info_virt->lba48_sectors;
+                }
+
                 // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
-                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, info->total_sectors / 2048);
+                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
                 ahci_devices_count++;
 
-                free(info);
+                free(info_virt);
             }
         }
     }
@@ -464,13 +488,14 @@ void ahci_initialize_abar(HBA_MEM *abar)
 void ahci_initialize(pci_device_id *pdev)
 {
     ports = (ahci_port *)malloc(sizeof(ahci_port) * MAX_PORTS);
-
-    phys_addr bar5 = (phys_addr)(uint64_t)pdev->header.header0.bar5;
-    paging_map_region(kernel_page, bar5, bar5, 4096, -1);
-    // log_warn("MAIN", "=========== nr.2 ===========");
-    // frame_dump_bitmap();
-    paging_map_region(kernel_page, bar5 + sizeof(HBA_MEM), bar5 + sizeof(HBA_MEM), 1, -1);
-    // log_debug(MODULE, "got map p0x%x at v0x%x", bar5, paging_get_virtual(kernel_page, bar5));
-    ahci_initialize_abar((HBA_MEM *)bar5);
+    
+    allocator_print_blocks();
+    phys_addr bar5 = (phys_addr)(uint32_64)pdev->header.header0.bar5;
+    virt_addr vbar5 = (virt_addr)(bar5 + (KERNEL_VIRT_BASE - KERNEL_PHYS_BASE));
+    paging_alloc_frame_region(bar5, (size_t)bar5 + sizeof(HBA_MEM));
+    allocator_print_blocks();
+    paging_map_region(kernel_page, vbar5, bar5, sizeof(HBA_MEM), PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD | PAGE_PWT);
+    allocator_print_blocks();
+    ahci_initialize_abar((HBA_MEM *)vbar5);
     log_info(MODULE, "exit out");
 }

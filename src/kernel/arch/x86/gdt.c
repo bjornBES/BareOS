@@ -12,6 +12,9 @@
 #include "VFS/vfs.h"
 #include "libs/stdio.h"
 #include "libs/memory.h"
+#include "debug/debug.h"
+
+#define MODULE "GDT"
 
 // helper functions
 #define GDT_LIMIT_LOW(limit) (limit & 0xFFFF)
@@ -46,44 +49,70 @@ void x86_GDT_set_entry(uint16_t index, uint32_t base, uint32_t limit, uint8_t ac
 
 void x86_GDT_load()
 {
+    GDT_descript.Limit = sizeof(GDT_table) - 1;
+    GDT_descript.Ptr = GDT_table;
+
 #ifdef __x86_64__
-GDT_load_64(&GDT_descript);
+    GDT_load_64(&GDT_descript);
 #else
-GDT_load_32(&GDT_descript);
+    GDT_load_32(&GDT_descript);
 #endif
+
+    log_debug(MODULE, "loading TSS entry");
+    __asm__ volatile("ltr ax" : : "a"(x86_TSS_SEGMENT));
+    log_debug(MODULE, "loaded TSS entry");
 }
 
 void x86_GDT_initialize()
 {
     x86_GDT_set_entry(0, 0, 0, 0, 0);
+#ifdef __i686__
+    x86_GDT_set_entry(1, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    x86_GDT_set_entry(2, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    x86_GDT_set_entry(3, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    x86_GDT_set_entry(4, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+#else
     x86_GDT_set_entry(1, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K));
     x86_GDT_set_entry(2, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING0 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K));
     x86_GDT_set_entry(3, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K));
     x86_GDT_set_entry(4, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K));
+    x86_GDT_set_entry(5, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_CODE_READABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+    x86_GDT_set_entry(6, 0, 0xFFFFFF, (GDT_ACCESS_PRESENT | GDT_ACCESS_RING3 | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_DATA_WRITEABLE), (GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K));
+#endif
 }
 
 void x86_TSS_initialize()
 {
     memset(&tss_entry, 0, sizeof(tss_entry_t));
 
-    #ifdef __i686__
+#ifdef __i686__
     tss_entry.ss0 = x86_KERNEL_DATA_SEGMENT; // Set the kernel stack segment.
-    tss_entry.esp0 = (uint32_t)&stack_top; // Set the kernel stack segment.
+    tss_entry.sp0 = (uint32_t)&stack_top;   // Set the kernel stack segment.
 
     tss_entry.cs = x86_KERNEL_CODE_SEGMENT;
     tss_entry.ds = x86_KERNEL_DATA_SEGMENT;
     tss_entry.es = x86_KERNEL_DATA_SEGMENT;
     tss_entry.fs = x86_KERNEL_DATA_SEGMENT;
     tss_entry.gs = x86_KERNEL_DATA_SEGMENT;
-    x86_GDT_set_entry(5, (uint32_t)&tss_entry, sizeof(tss_entry_t) - 1, 0x89, 0x00);
-    #else
-    tss_entry.rsp0 = (uint64_t)&stack_top;
+    x86_GDT_set_entry(7, (uint32_t)&tss_entry, sizeof(tss_entry_t) - 1, 0x89, 0x40);
+#else
+    tss_entry.sp0 = (uint64_t)&stack_top;
 
-    x86_GDT_set_entry(5, (uint32_t)(uint64_t)&tss_entry, sizeof(tss_entry_t) - 1, 0x89, 0x00);
-    #endif
+    uint64_t base = (uint64_t)&tss_entry;
+    uint16_t limit = sizeof(tss_entry_t) - 1;
 
+    TSS_descriptor *td = (TSS_descriptor*)&GDT_table[7];
+    td->LimitLow     = limit & 0xFFFF;
+    td->BaseLow      = base & 0xFFFF;
+    td->BaseMid      = (base >> 16) & 0xFF;
+    td->Access       = 0x89;  // present, ring0, 64-bit TSS available
+    td->FlagsLimitHi = (limit >> 16) & 0x0F;  // no G, no D/B, no L
+    td->BaseHigh     = (base >> 24) & 0xFF;
+    td->BaseUpper    = (base >> 32) & 0xFFFFFFFF;
+    td->Reserved     = 0;
 
-    __asm__ volatile ("ltr ax" : : "a"(40));
+#endif
+    log_debug(MODULE, "set TSS entry");
 }
 
 // debug function

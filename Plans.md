@@ -55,7 +55,7 @@ this is optional if the CPUID EAX=0x80000001 bit 29 in EDX is 0
 do it a kernel loader
 This is what the kernel loader should do in order right after the bootloader is done.
 
-- [ ] Add support for Physical Address Extension
+- [X] Add support for Physical Address Extension
 - [X] cli and set new segments + ss
 - [X] set stack to kernel loader stack
 - [X] set PAE bit in CR4

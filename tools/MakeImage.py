@@ -1,14 +1,20 @@
+from math import fabs
 import os
+import struct
 import sys
 import re
 import time
 import threading
+import zlib
+import gpt_image
+from gpt_image.disk import Disk
 from decimal import Decimal
 from io import SEEK_CUR, SEEK_SET
 from pathlib import Path
 from shutil import copy2
 from getpass import getpass
 import subprocess
+from numpy import size
 from pyfatfs.PyFat import PyFat
 import pyfatfs
 from pyfatfs.EightDotThree import EightDotThree
@@ -18,10 +24,11 @@ sys.path.append(project_root)
 
 userApps = os.path.abspath(os.path.join(project_root, "src/user_programs"))
 
+from tools import partitons
 from utility import FindIndex, GlobRecursive, IsFileName, ParseSize
 from config import mountMethod, config, arch, imageType, imageFS, imageSize
 from disk import DiskSpec, DiskPartitionSpec, disks
-from partitons import make_partitons
+from partitons import make_partitions
 
 SECTOR_SIZE = 512
 
@@ -82,12 +89,6 @@ def find_symbol_in_map_file(map_file: Path, symbol: str):
                 if match is not None:
                     return int(match.group(1), base=16)
     return None
-
-def create_partition_table(target: str, partition_offset: int, partition_size : int, partition_type : str, bootable : bool = False, index : int = 0):
-
-    make_partitons(target, partition_offset,partition_size,partition_type,index,True if bootable else False)
-    
-    return
 
 def create_filesystem(target: str, filesystem, reserved_sectors=0, offset=0):
     print(f"target={target} filesystem={filesystem} reserved_sectors={reserved_sectors} offset={offset}")
@@ -322,12 +323,17 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
     print(f"======================================")
     mbr = os.path.join(buildDir, disk.MBRBootFile) if disk.MBRBootFile != "" else ""
     image = os.path.join(buildDir, disk.image_path)
-    build_disk(image, disk, mbr, disk.filesystem, disk.size_sectors)
+    if (os.path.exists(image)):
+        os.remove(image)
+    
+    _disk : Disk = Disk(image, SECTOR_SIZE)
+    build_disk(_disk, disk, mbr, disk.filesystem, disk.size_sectors)
     offset = 0
     index = 0
     last_partition = None
     s2_offset = 0
     stage2_size = 0
+
     
     for partition in disk.partitions:
         print(f"======================================")
@@ -348,10 +354,10 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
             if last_partition.size_sectors == 0:
                 print(f"expected sectors {calculate_files_partition_size(files)}")
                 return
+            offset += last_partition.partition_offset
             offset += last_partition.size_sectors
 
-        s2_offset2 = build_partition(image, files, partition.bin_files, partition, index, stage2, kernel, rootDir, partition.filesystem, partition.size_sectors, offset, vbr if partition.bootable else "")
-        
+        s2_offset2 = build_partition(image, _disk, files, partition.bin_files, partition, index, stage2, kernel, rootDir, partition.filesystem, partition.size_sectors, offset, vbr if partition.bootable else "")
         if (s2_offset2 != 0): s2_offset = s2_offset2
         
         if s2_offset != 0 and stage2 != "":
@@ -367,32 +373,66 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         print(f"> installing MBR...")
         install_mbr(image, mbr)
 
-def build_disk(image, disk : DiskSpec, mbr : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0):
+    if not disk.use_mbr:
+        header = gpt_image.table.Header(_disk.geometry)
+        header.number_of_partition_entries = len(disk.partitions)
+        
+        # first marshal with crc=0
+        header_bytes = bytearray(header.marshal())
+        
+        print(f"_disk.sector_size = {_disk.sector_size}")
+        print(f"num entries in table: {len(_disk.table.partitions.entries)}")
+        part_array = b"".join(p.partition_data for p in disk.partitions)
+        
+        # compute partition array CRC first
+        part_array = part_array.ljust(128 * len(disk.partitions), b"\x00")
+        print(part_array)
+    
+        with open(_disk.image_path, "r+b") as f:
+            f.seek(2 * _disk.sector_size)
+            f.write(part_array)
+    
+        part_crc = zlib.crc32(part_array) & 0xFFFFFFFF
+        
+        
+        struct.pack_into("<I", header_bytes, 88, part_crc)
+        struct.pack_into("<I", header_bytes, 16, 0)
+        header_crc = zlib.crc32(bytes(header_bytes[:92])) & 0xFFFFFFFF
+        struct.pack_into("<I", header_bytes, 16, header_crc)
+        
+        print(f"{header_bytes}")
+        with open(_disk.image_path, "r+b") as f:
+            f.seek(1 * _disk.sector_size)  # LBA1
+            f.write(header_bytes)
+
+def build_disk(_disk : Disk, disk : DiskSpec, mbr : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0):
     if (size_sectors == 0):
         size_sectors = (ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE
+        disk.size_sectors = size_sectors
     
-    print(f"{image}, {size_sectors}")
-    arg = [ (image, size_sectors), ]
-    generate_image_files(arg)
+    _disk.create(size_sectors * SECTOR_SIZE)
+    _disk.table.update()
     
     # Do not create filesystem at root when using partitions - each partition will create its own
     # Only create root filesystem if no partitions are defined
     print(f"try to format the disk")
     if not disk.partitions:
-        print(f"formatting the disk with {image}, {imageFileSystem}")
-        create_filesystem(image, imageFileSystem, offset=0)
+        print(f"formatting the disk with {_disk.image_path}, {imageFileSystem}")
+        create_filesystem(_disk.image_path._str, imageFileSystem, offset=0)
     
     
-def build_partition(image, files, bin_files : list[str], partition : DiskPartitionSpec, index : int, stage2 : str = "", kernel : str = "", basePath : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0, sector_offset : int = 0, vbr : str = ""):
+def build_partition(image, disk : Disk, files, bin_files : list[str], partition : DiskPartitionSpec, index : int, stage2 : str = "", kernel : str = "", basePath : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0, sector_offset : int = 0, vbr : str = ""):
     if (size_sectors == 0):
         size_sectors = ((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE) - sector_offset
+        print(f"size_sectors = {size_sectors}")
+        print(f"base size_sectors = {((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE)} - {sector_offset}")
     file_system = imageFileSystem
     partition_offset = sector_offset + partition.partition_offset
     partition.partition_offset = partition_offset
     
     # create partition table
     print(f"> creating partition table...")
-    create_partition_table(image, partition_offset, size_sectors, file_system, partition.bootable, index)
+    make_partitions(disk, partition_offset, size_sectors, file_system, partition, index)
 
     # Create filesystem
     print(f"> formatting file using {file_system}...")
@@ -452,7 +492,7 @@ if not os.path.exists(files_dir):
     os.mkdir(files_dir)
 
 buildsPath = os.path.join(project_root, "build")
-if not os.path.exists(buildsPath):
+if not os.path.exists(buildsPath): 
     exit(-1)
 
 stage1mbr = os.path.join(project_root, f"build/{arch}_{config}/stage1/mbr.bin")
@@ -460,9 +500,9 @@ stage1vbr = os.path.join(project_root, f"build/{arch}_{config}/stage1/vbr.bin")
 stage2 = os.path.join(project_root, f"build/{arch}_{config}/stage2/stage2.bin")
 kernel = os.path.join(project_root, f"build/{arch}_{config}/kernel/kernel.elf")
 
-disks.append(DiskSpec("main", "image.img", 0, imageFS, [
-    DiskPartitionSpec("boot", "root", 4096, "fat32", 4096, True, [], stage1vbr, stage2, kernel),
-    DiskPartitionSpec("User", "user", 4096, "fat32", 0, False, ["init.elf"])
+disks.append(DiskSpec("main", "image.img", 0, imageFS, False, [
+    DiskPartitionSpec("boot", "root", 4096, "fat32", 4096, True, False, [], stage1vbr, stage2, kernel),
+    DiskPartitionSpec("User", "user", 8192, "fat32", 0, False, False, ["init.elf"])
     ], stage1mbr))
 
 for disk in disks:

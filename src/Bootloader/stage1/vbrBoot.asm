@@ -1,3 +1,13 @@
+;
+; File: vbrBoot.asm
+; File Created: 06 Apr 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 19 Apr 2026
+; Modified By: BjornBEs
+; -----
+;
+
 bits 16
 
 %define ENDL 0x0D, 0x0A
@@ -51,15 +61,14 @@ section .fsheaders
 section .entry
     global start
 start:
-    ; mov ax, 0
-    ; mov ds, ax
-    ; mov si, 0x7dbe
+    mov al, 'V'
+    int 0x10
 
-    ; mov ax,     PARTITION_ENTRY_SEGMENT
-    ; mov es,     ax
-    ; mov di,     PARTITION_ENTRY_OFFSET
-    ; mov cx,     32*2
-    ; rep movsb
+    mov ax,     PARTITION_ENTRY_SEGMENT
+    mov es,     ax
+    mov di,     PARTITION_ENTRY_OFFSET
+    mov cx,     32*2
+    rep movsb
 
     ; Set up segment registers
     xor ax, ax
@@ -116,17 +125,13 @@ start:
     
     jmp .loop
 .read_finish:
-    mov ah, 0x0e
-    mov al, 'F'
-    int 0x10
     mov dl, [ebr_drive_number]
-    mov si, 0x7dbe
-    mov di, 0
-
+    mov si, PARTITION_ENTRY_OFFSET
+    mov di, PARTITION_ENTRY_SEGMENT
 
     mov ax, STAGE2_LOAD_SEGMENT
-    mov ds, ax
     mov es, ax
+    mov ds, ax
 .Jump:
     jmp STAGE2_LOAD_SEGMENT:STAGE2_LOAD_OFFSET
     
@@ -302,8 +307,8 @@ extensions_dap:
 STAGE2_LOAD_SEGMENT         equ 0x0
 STAGE2_LOAD_OFFSET          equ buffer
 
-PARTITION_ENTRY_SEGMENT     equ 0x2000
-PARTITION_ENTRY_OFFSET      equ 0
+PARTITION_ENTRY_SEGMENT     equ 0
+PARTITION_ENTRY_OFFSET      equ 500
 
 section .data
 global stage2_location

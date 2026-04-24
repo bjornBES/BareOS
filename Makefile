@@ -56,25 +56,30 @@ $(BUILD_DIR)/tools/fat: always tools/fat/fat.c
 #
 # user
 #
-user: $(TARGET_LIBS)
+user: $(TARGET_CORE_LIBS)
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
-	bash scripts/run.sh disk $(BUILD_DIR)/image.img
+	python tools/run_vm.py
 run: $(BUILD_DIR)/image.img
-	bash scripts/run.sh disk $(BUILD_DIR)/image.img
+	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.img
+#	python tools/run_vm.py
 debug_flags:
 	@echo "add -g"
-	$(eval TARGET_ASM += -g)
+	$(eval KERNEL_TARGET_ASMFLAGS += -g)
+	$(eval KERNEL_TARGET_CFLAGS += -g)
+	$(eval TARGET_ASMFLAGS += -g)
 	$(eval TARGET_CFLAGS += -g)
+	$(eval ASMFLAGS += -g)
+	$(eval CFLAGS += -g)
 
 debug: debug_flags clean all
 
 	@echo "running debug"
-	bash scripts/debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
+	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
 
 debugnow:
-	bash scripts/debug.sh disk $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
+	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
 
 
 #

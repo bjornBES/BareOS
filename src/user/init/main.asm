@@ -7,15 +7,24 @@
 ; Modified By: BjornBEs
 ; -----
 ;
-
+[bits 64]
 section .text 
 global main
 main:
 
-    mov         edi,            3
-    mov         esi,            MESSAGE
-    mov         ecx,            [MESSAGE_COUNT]
-    mov         eax,            1
+    mov         rdi,            1
+    mov         rax,            512
+    int         0x80
+    
+    mov         rdi,            3
+    mov         rsi,            MESSAGE
+    mov         rdx,            [MESSAGE_COUNT]
+    mov         rax,            1
+    int         0x80
+    mov         rdi,            1
+    mov         rsi,            MESSAGE
+    mov         rdx,            [MESSAGE_COUNT]
+    mov         rax,            1
     int         0x80
     jmp         $
     ret

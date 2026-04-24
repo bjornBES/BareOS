@@ -13,7 +13,6 @@
 #include "debug/debug.h"
 #include "kernel.h"
 #include "video/VGATextDevice.h"
-#include "syscall/syscall.h"
 #include "arch/x86/e9.h"
 
 #include "libs/malloc.h"
@@ -159,6 +158,7 @@ int VFS_read(fd_t file, void *data, size_t size)
     }
     return 0;
 }
+SYSCALL_DEFINE3(VFS_read, int, fd_t, void*, size_t)
 
 int VFS_seek(fd_t file, int offset)
 {
@@ -237,14 +237,19 @@ int VFS_read_dir(fd_t fd, vfs_dirent *out)
 
 bool VFS_mount(char *path, device *dev)
 {
+    log_info(MODULE, "getting: %s probe %p, mount %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->mount);
     mount_point *mount = vfs_check_mount_point(path);
     if (mount != NULL)
     {
         log_crit(MODULE, "mount point (%s) already in use", path);
         return false;
     }
-
+    allocator_print_status();
+    allocator_print_blocks();
     mount = (mount_point *)malloc(sizeof(mount_point));
+    allocator_print_status();
+    allocator_print_blocks();
+    log_info(MODULE, "getting: %s probe %p, mount %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->mount);
     memset(mount, 0, sizeof(mount_point));
     mount_points[last_mount_id] = mount;
     last_mount_id++;
@@ -264,6 +269,7 @@ bool VFS_mount(char *path, device *dev)
     for (size_t i = 0; i < last_fs_id; i++)
     {
         fs = filesystems[i];
+        log_info(MODULE, "getting: %s probe %p, mount %p", fs->name, fs->probe, fs->mount);
         if (fs->probe(dev))
         {
             break;
@@ -295,6 +301,7 @@ bool VFS_mount(char *path, device *dev)
 
 void VFS_register_fs(filesystem *fs)
 {
+    log_info(MODULE, "registering: %s probe %p, mount %p", fs->name, fs->probe, fs->mount);
     filesystems[last_fs_id] = fs;
     last_fs_id++;
 }

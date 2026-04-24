@@ -10,7 +10,7 @@
 
 #pragma once
 #include "stdint.h"
-#include "mbr.h"
+#include "partition/partition.h"
 
 typedef struct 
 {

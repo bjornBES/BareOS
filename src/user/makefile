@@ -1,8 +1,8 @@
-TARGET32_ASMFLAGS += -f elf
-TARGET32_CFLAGS += -m32 -std=c99 -ffreestanding -nostdlib -nostdinc \
+USER_TARGET_ASMFLAGS +=
+USER_TARGET_CFLAGS += -std=c99 -ffreestanding -nostdlib -nostdinc \
            		 -Wall -Wextra -Ilibc -fno-omit-frame-pointer
-TARGET32_LINKFLAGS += -nostdlib -T linker.ld
-TARGET32_LIBS :=
+USER_TARGET_LINKFLAGS += -nostdlib -T linker.ld
+USER_TARGET_LIBS :=
 
 BUILD   := $(BUILD_DIR)/user
 LIBC    := $(BUILD)/libc.a
@@ -29,16 +29,16 @@ program: $(BUILD)/init.elf
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	$(TARGET32_CC) $(TARGET32_CFLAGS) -c $< -o $@
+	$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
-	$(TARGET32_ASM) $(TARGET32_ASMFLAGS) $< -o $@
+	$(TARGET_ASM) $(USER_TARGET_ASMFLAGS) $< -o $@
 	@echo "--> Compiled: " $<
 
 $(BUILD)/init.elf: $(OBJECTS_C) $(OBJECTS_ASM) $(LIBC)
-	$(TARGET32_LD) $(TARGET32_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(TARGET64_LIBS)
+	$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(USER_TARGET_LIBS)
 
 
 always:

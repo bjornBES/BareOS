@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "syscall/syscall.h"
 #include "device/device.h"
 
 #define MAX_FILE_NAME 64

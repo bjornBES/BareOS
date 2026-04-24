@@ -16,11 +16,13 @@
 %define fat32 3
 %define ext2  4
 
-section .entry
+extern __vbr_start
+
+section .text
 
 global start
 start:
-   
+    cli
     ; Set up segment registers
     xor ax, ax
     mov ds, ax
@@ -30,12 +32,16 @@ start:
     
     ; Set stack pointer
     mov ss, ax
-    mov sp, 0x7000
+    mov sp, 0x0600
     
-    push es
-    push word .after
-    retf
+    mov cx, 512
+    mov si, 0x7C00
+    mov di, 0x0600
+    rep movsw
+    
+    jmp 0:.after
 .after:
+    sti
     ; Save boot drive number
     mov byte [ebr_drive_number], dl
     
@@ -73,8 +79,6 @@ start:
 
 .extensions_checked:
     
-    ; mov ax, 0x07C0
-    ; mov es, ax
     mov si, __partition                 ; Offset to partition table from start of MBR
     mov cx, 4                     ; 4 partition entries to check
     
@@ -84,6 +88,11 @@ start:
     mov al, byte [es:si]
     cmp al, 0x80
     je .found_bootable
+
+    ; Check for gpt
+    mov al, byte [es:si + 4]
+    cmp al, 0xEE
+    je gpt_error
     
     ; Move to next partition entry (16 bytes each)
     add si, 16
@@ -95,8 +104,6 @@ start:
     jmp boot_error
 
 .found_bootable:
-    ; Print "B" for bootable partition found
-    
     ; Read partition's LBA start address (at offset 8 in partition entry)
     mov eax, [es:si + 8]
     mov [partition_lba], eax
@@ -113,7 +120,7 @@ start:
     
     ; Set up for reading VBR
     ; Load to physical address 0x7E00 (segment 0x0000, offset 0x7E00)
-    mov bx, buffer                ; BX = 0x7E00 (offset within segment)
+    mov bx, __vbr_start                ; BX = 0x7E00 (offset within segment)
     
     ; Get the LBA address
     mov ax, [partition_lba]
@@ -124,49 +131,44 @@ start:
     ; Check if VBR was loaded (first byte should be 0xEB for jump)
     ; Use segment override to access 0x7E00 directly
     cmp byte [es:bx], 0xeb
-    jne vbr_invalid
+    jne boot_error
+    cmp byte [es:bx + 510], 0xAA55
+    jne boot_error
+    
+    mov si, msg_done_mbr
+    call print_string
     
     mov si, __partition
     
     ; Jump to VBR at physical 0x7E00
-    ; Use far jump with retf (return far)
-global END
-    END:
-    jmp 0:buffer
-
-section .text
+    ; Use far jump
+    jmp 0:__vbr_start
 
 geometry_failed:
     ; Print "G" for error
-    mov al, 'G'
+    mov si, msg_geo_failed
     jmp halt
 
 read_error:
     ; Print "E" for error
-    mov al, 'R'
+    mov si, msg_read_failed
     jmp halt
 
 boot_error:
     ; Print "E" for error
-    mov al, 'B'
+    mov si, msg_no_bootable
     jmp halt
 
-vbr_invalid:
-    ; Print "I" for invalid VBR
-    mov al, 'I'
+gpt_error:
+    ; Print "E" for error
+    mov si, msg_no_vbr_failed
+    jmp halt
     
 halt:
-    mov ah, 0x0e
-    int 0x10
-
-._halt:
-    ; Print "H" for halt
-    mov ah, 0x0e
-    mov al, 'H'
-    int 0x10
+    call print_string
     
     hlt
-    jmp ._halt
+    jmp $
 
 lba_to_chs:
     push ax
@@ -249,7 +251,6 @@ read_sector_lba:
     ; all attempts are exhausted
     jmp read_error
 
-global .done
 .done:
     popa
 
@@ -301,18 +302,21 @@ print_string:
 
 section .rodata
     ; no bootable disk found
-    ; msg_no_bootable:    db "No BP", ENDL, 0
+    msg_no_bootable:    db "No Bootable Drive", 0
     
     ; Failed read VBR
-    ; msg_read_failed:    db "FR VBR", ENDL, 0
+    msg_read_failed:    db "Failed Read", 0
+
+    ; Failed to get drive geo
+    msg_geo_failed:    db "Drive Geo data", 0
+
+    ; Failed to boot there is no a VBR
+    msg_no_vbr_failed:    db "No VBR", 0
+
+    ; Failed to boot there is no a VBR
+    msg_done_mbr:    db "MBR done", 0
 
 section .data
-    partition_lba:          dd 0
-    partition_sectors:      dd 0
-    have_extensions:        db 0
-    ebr_drive_number:       db 0
-    bdb_sectors_per_track:  dw 18
-    bdb_heads:              db 2
     
     extensions_dap:
     ; Disk Address Packet for INT 13h extension
@@ -331,5 +335,11 @@ __partition:
 section .bios_footer
 
 section .bss
+partition_lba:          resd 1
+partition_sectors:      resd 1
+have_extensions:        resb 1
+ebr_drive_number:       resb 1
+bdb_sectors_per_track:  resw 1
+bdb_heads:              resb 1
 buffer:
     resb 512

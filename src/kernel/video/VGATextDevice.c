@@ -15,6 +15,7 @@
 #include "libs/IO.h"
 #include "libs/stdio.h"
 #include "libs/string.h"
+#include "debug/debug.h"
 
 #include <stddef.h>
 
@@ -162,6 +163,7 @@ void vga_clear()
     vga_set_cursor(screen_x, screen_y);
     screen_height = save_screen_height;
     screen_width = save_screen_width;
+    log_debug(MODULE, "clear done");
 }
 
 void vga_scrollback(int lines)
@@ -225,9 +227,11 @@ void vga_put_char(char c)
 
 void vga_load_font(void *font)
 {
-    if (strncmp(font + 1, "F0.1", 4))
+    log_debug(MODULE, "font header %s", font + 1);
+    if (!strncmp(font + 1, "F0.1", 4))
     {
         font_struct *font_d = (font_struct *)font;
+        log_debug(MODULE, "font data %x, %s, %u, %u, %u, %u", font_d->extra_glyphs, font_d->header, font_d->res, font_d->width, font_d->height, font_d->number_of_glyphs);
         glyph_width = font_d->width;
         glyph_height = font_d->height;
         glyph_number = font_d->number_of_glyphs;
@@ -251,5 +255,6 @@ void vga_check()
 {
     fprintf(VFS_FD_DEBUG, "===================== CHECK =================\n");
     fprintf(VFS_FD_DEBUG, "%ux%u\n", screen_width, screen_height);
+    fprintf(VFS_FD_DEBUG, "%u: %ux%u\n", glyph_number, glyph_width, glyph_height);
     fprintf(VFS_FD_DEBUG, "===================== CHECK =================\n");
 }

@@ -36,11 +36,11 @@ typedef enum
 
 typedef struct
 {
-    uint16_t base_low;
+    uint16_t base_1;
     uint16_t segment_selector;
-    uint8_t reserved;
+    uint8_t reserved1;
     uint8_t flags;
-    uint16_t base_high;
+    uint16_t base_2;
 } __attribute__((packed)) IDT_entry32;
 
 typedef struct
@@ -72,7 +72,7 @@ void x86_IDT_load();
 void x86_IDT_disable_gate(int interrupt);
 void x86_IDT_enable_gate(int interrupt);
 #ifdef __i686__
-void x86_IDT_set_gate(int interrupt, void* base, uint32_t segment_descriptor, uint8_t flags);
+void x86_IDT_set_gate(int interrupt, void* base, uint32_t segment_descriptor, uint8_t flags, uint8_t res);
 #else
 void x86_IDT_set_gate(int interrupt, void* base, uint32_t segment_descriptor, uint8_t flags, uint8_t ist);
 #endif

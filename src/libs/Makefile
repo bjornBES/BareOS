@@ -1,8 +1,8 @@
-TARGET64_ASMFLAGS += -f elf64 -I.
-TARGET64_CFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
-TARGET64_CXXFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
-TARGET64_LIBS += -lgcc
-TARGET64_LINKFLAGS += -nostdlib
+KERNEL_TARGET_ASMFLAGS += -f elf64 -I.
+KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
+KERNEL_TARGET_CXXFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
+KERNEL_TARGET_LIBS += -lgcc
+KERNEL_TARGET_LINKFLAGS += -nostdlib
 
 
 HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*") \
@@ -37,16 +37,16 @@ $(BUILD_DIR)/libcore.a: $(OBJECTS_ASM) $(OBJECTS_C) $(OBJECTS_CXX)
 
 $(BUILD_DIR)/libcore/cpp/%.obj: %.cpp $(HEADERS_CXX)
 	@mkdir -p $(@D)
-	@$(TARGET_CXX) $(TARGET64_CXXFLAGS) -c -o $@ $<
+	@$(TARGET_CXX) $(KERNEL_TARGET_CXXFLAGS) -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIR)/libcore/c/%.obj: %.c $(HEADERS_C)
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -o $@ $<
-#	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -save-temps -o $@.c $<
+	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -o $@ $<
+#	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -save-temps -o $@.c $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIR)/libcore/asm/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET64_ASMFLAGS) -o $@ $<
+	@$(TARGET_ASM) $(KERNEL_TARGET_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<

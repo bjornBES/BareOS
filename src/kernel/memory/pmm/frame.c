@@ -15,7 +15,7 @@
 #include "libs/memory.h"
 #include <util/binary.h>
 
-extern char __frame_bitmap;
+/* extern char __frame_bitmap;
 extern char __frame_bitmap_phys;
 extern char __frame_bitmap_phys_end;
 
@@ -74,7 +74,7 @@ phys_addr frame_alloc_frame()
             if (!frame_get_frame(frame_index) && frame_index != 0)
             {
                 frame_mark_frame_used(frame_index);
-                return (phys_addr)((frame)frame_index*PAGE_SIZE); // return PHYSICAL address
+                return (phys_addr)((frame)frame_index * PAGE_SIZE); // return PHYSICAL address
             }
         }
     }
@@ -112,8 +112,33 @@ void frame_dump_bitmap()
         }
     }
 
-    log_debug("FRAME", "Number of free frames:      %u (%u KB)", free_count, free_count * 4);
-    log_debug("FRAME", "Number of allocated frames: %u (%u KB)", used_count, used_count * 4);
+    fprintf(VFS_FD_DEBUG, "Number of free frames:      %u (%u KB)\n", free_count, free_count * 4);
+    fprintf(VFS_FD_DEBUG, "Number of allocated frames: %u (%u KB)\n", used_count, used_count * 4);
+}
+void frame_dump_bitmap_usage()
+{
+    uint32_t free_count = 0;
+    uint32_t used_count = 0;
+    uint32_t total_frames = FRAME_BITMAP_WORDS;
+
+    for (uint32_t i = 0; i < total_frames; i++)
+    {
+        for (int bit = 0; bit < 32; bit++)
+        {
+            int frame_index = i * 32 + bit;
+            if (frame_get_frame(frame_index))
+            {
+                used_count++;
+            }
+            else
+            {
+                free_count++;
+            }
+        }
+    }
+
+    fprintf(VFS_FD_DEBUG, "Number of free frames:      %u (%u KB)\n", free_count, free_count * 4);
+    fprintf(VFS_FD_DEBUG, "Number of allocated frames: %u (%u KB)\n", used_count, used_count * 4);
 }
 
 void frame_init()
@@ -125,17 +150,24 @@ void frame_init()
 
     log_debug("FRAME", "frame p%p v%p size is %x", frame_bitmap_phys, frame_bitmap_virt, FRAME_BITMAP_SIZE);
     memset(frame_bitmap, 0, FRAME_BITMAP_SIZE);
-
+    paging_print_out = true;
     log_debug("FRAME", "mapping frame bitmap");
-    paging_map_region(kernel_page, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
+    // paging_map_region(kernel_page, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
 
-    log_debug("FRAME", "=====BEFORE=====");
-    log_debug("FRAME", "word 13195 = 0x%08x", frame_bitmap[13195]);
-    log_debug("FRAME", "word 13196 = 0x%08x", frame_bitmap[13196]);
     log_debug("FRAME", "marking all frames from 0x0 to 0x%x used", (phys_addr)(frame_bitmap_phys + FRAME_BITMAP_SIZE));
     frame_alloc_region((phys_addr)0x0, (phys_addr)(frame_bitmap_phys + FRAME_BITMAP_SIZE));
-    log_debug("FRAME", "=====AFTER=====");
-    log_debug("FRAME", "word 13195 = 0x%08x", frame_bitmap[13195]);
-    log_debug("FRAME", "word 13196 = 0x%08x", frame_bitmap[13196]);
-    frame_dump_bitmap();
+    // frame_dump_bitmap();
 }
+
+void frame_map()
+{
+    phys_addr frame_bitmap_phys = (phys_addr)&__frame_bitmap_phys;
+    virt_addr frame_bitmap_virt = (virt_addr)&__frame_bitmap;
+    paging_print_out = true;
+    if (paging_get_virtual(kernel_page, frame_bitmap_phys + FRAME_BITMAP_SIZE) == 0)
+    {
+        log_debug("FRAME", "mapping frame bitmap v0x%p to p0x%p size is %u", frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE);
+        paging_map_region(kernel_page, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
+    }
+    paging_print_out = true;
+} */

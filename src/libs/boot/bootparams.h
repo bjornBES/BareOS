@@ -22,7 +22,7 @@
 #define MAX_CMDLINE 128
 #define MAX_BOOTLOADER_NAME 32
 #define MAX_CPU_BRAND_STRING 48
-#define MAX_RESERVED 4096
+#define MAX_BOOTPARAMS_SIZE 0x1000
 
 // ==================== Equipment list flags ====================
 // Source: INT 0x11 — Get Equipment List
@@ -30,11 +30,11 @@
 // Bit meanings come from AX bitfield
 typedef struct
 {
-    uint8_t hasFpu : 1;               // AX bit 1 (math coprocessor present)
-    uint8_t hasCoprocessor : 1;       // AX bit 2 (obsolete, often same as FPU)
-    uint8_t floppyFlag : 1;           // AX bit 0 = floppy installed
-    uint8_t numFloppies : 2;          // AX bit 6: number of floppies minus 1 if floppyFlag set
-    uint8_t reserved : 3;             // fill remaining bits
+    uint8_t hasFpu : 1;         // AX bit 1 (math coprocessor present)
+    uint8_t hasCoprocessor : 1; // AX bit 2 (obsolete, often same as FPU)
+    uint8_t floppyFlag : 1;     // AX bit 0 = floppy installed
+    uint8_t numFloppies : 2;    // AX bit 6: number of floppies minus 1 if floppyFlag set
+    uint8_t reserved : 3;       // fill remaining bits
 } __attribute__((packed)) equipment_flags;
 
 // ==================== E820 memory map ====================
@@ -78,21 +78,21 @@ typedef struct
     uint8_t reserved0;
 
     // ---- Resolution & format ----
-    uint16_t width;       // XResolution (offset 0x12)
-    uint16_t height;      // YResolution (offset 0x14)
-    uint8_t bpp; // BitsPerPixel (offset 0x19)
+    uint16_t width;  // XResolution (offset 0x12)
+    uint16_t height; // YResolution (offset 0x14)
+    uint8_t bpp;     // BitsPerPixel (offset 0x19)
 
     // ---- Linear frame_buffer ----
-    uint32_t frame_buffer; // PhysBasePtr (offset 0x28)
-    uint32_t pitch;       // BytesPerScanLine (offset 0x10)
+    uint64_t frame_buffer; // PhysBasePtr (offset 0x28)
+    uint32_t pitch;        // BytesPerScanLine (offset 0x10)
 
     // ---- Color layout ----
     uint8_t red_mask_size;      // RedMaskSize (offset 0x1F)
     uint8_t red_field_position; // RedFieldPosition (offset 0x20)
     uint8_t greenMaskSize;      // GreenMaskSize (offset 0x21)
     uint8_t greenFieldPosition; // GreenFieldPosition (offset 0x22)
-    uint8_t blueMaskSize;      // BlueMaskSize (offset 0x23)
-    uint8_t blueFieldPosition; // BlueFieldPosition (offset 0x24)
+    uint8_t blueMaskSize;       // BlueMaskSize (offset 0x23)
+    uint8_t blueFieldPosition;  // BlueFieldPosition (offset 0x24)
     uint8_t alphaMaskSize;      // RsvdMaskSize (offset 0x25)
     uint8_t alphaFieldPosition; // RsvdFieldPosition (offset 0x26)
 
@@ -199,46 +199,47 @@ typedef struct
 
 // ==================== boot_params ====================
 // Aggregate structure passed from bootloader to kernel
-typedef struct
+typedef union
 {
-    uint8_t BootDevice; // DL at boot
-    uint16_t currentMode;
-    uint64_t *pageDirectory;
-    // 7 bytes
+    struct
+    {
+        uint64_t kernel_address;
+        uint8_t BootDevice; // DL at boot
+        uint16_t currentMode;
+        uint32_t pageDirectory; // bootload paging32 page directory phys address
 
-    // INT 0x1A RTC
-    RTC_info rtc;
+        // INT 0x1A RTC
+        RTC_info rtc;
 
-    equipment_flags equipment; // INT 0x11
+        equipment_flags equipment; // INT 0x11
 
-    // INT 0x15, E820
-    uint32_t e820Count;
-    E820_entry e820Entries[MAX_E820_ENTRIES];
+        // INT 0x15, E820
+        uint32_t e820Count;
+        E820_entry e820Entries[MAX_E820_ENTRIES];
 
-    // INT 0x10, VESA
-    VESA_bios_info vesaBios;
-    uint32_t vesaModeCount;
-    VESA_mode vesaModes[MAX_VESA_MODES];
+        // INT 0x10, VESA
+        VESA_bios_info vesaBios;
+        uint32_t vesaModeCount;
+        VESA_mode vesaModes[MAX_VESA_MODES];
 
-    // INT 0x1A, PCI BIOS
-    PCI_bios_info pciBios;
+        // INT 0x1A, PCI BIOS
+        PCI_bios_info pciBios;
 
-    // INT 0x13
-    boot_drive_params bootDrive;
+        // INT 0x13
+        boot_drive_params bootDrive;
 
-    // CPUID
-    CPU_info cpu;
+        // CPUID
+        CPU_info cpu;
 
-    // Bootloader internal
-    BootLoaderInfo bootLoader;
+        // Bootloader internal
+        BootLoaderInfo bootLoader;
 
-    // ACPI scan + CPUID
-    ACPI_info acpi;
+        // ACPI scan + CPUID
+        ACPI_info acpi;
 
-    // INT 0x12 + E820
-    memory_info memory;
+        // INT 0x12 + E820
+        memory_info memory;
+    };
+    uint8_t raw[MAX_BOOTPARAMS_SIZE];
 
-    // Future-proofing
-    uint8_t reserved[MAX_RESERVED];
-
-} __attribute__((packed)) boot_params;
+} boot_params;

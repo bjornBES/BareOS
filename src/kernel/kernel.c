@@ -32,3 +32,16 @@ void panic(char *module, char *file, int line, char* message, ...)
     for (;;)
     ;
 }
+void kernel_panic(char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    fprintf(VFS_FD_DEBUG, "[KERNEL] Kernel Panic\n");
+    vprintf(VFS_FD_DEBUG, message, args);               // write text
+    fputs("\n", VFS_FD_DEBUG);                          // newline
+    va_end(args);
+    // TODO make PC restart
+    disableInterrupts();
+    for (;;)
+    ;
+}

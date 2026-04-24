@@ -16,7 +16,7 @@
 #define UNICODE_COMBINING_ACUTE 0x0301
 #define UNICODE_COMBINING_CARON 0x030C
 
-#define ToBoolString ? "TRUE" : "FALSE" 
+#define BOOT_TO_STRING ? "TRUE" : "FALSE" 
 
 typedef char* string;
 

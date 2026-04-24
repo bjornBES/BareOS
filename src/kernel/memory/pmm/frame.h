@@ -12,36 +12,27 @@
 
 #include <stdint.h>
 
-#include "paging.h"
-
-typedef void* phys_addr;
-typedef void* virt_addr;
+#include "kernel.h"
 
 #define FRAME_BITMAP_SIZE (size_t)&__frame_bitmap_size
 #define FRAME_BITMAP_WORDS (FRAME_BITMAP_SIZE / sizeof(uint32_t))
-
-#ifdef __x86_64__
-typedef uint64_t frame;
-#else
-typedef uint32_t frame;
-#endif
 
 extern char __frame_bitmap_size;
 
 /// @brief Get the allocation status of a physical frame.
 /// @param frame_index The index of the frame in the physical frame bitmap.
 /// @return 0 if free, nonzero if used.
-int frame_get_frame(frame frame_index);
+int frame_get_frame(uint32_t frame_index);
 
 /// @brief Mark a physical frame as used in the bitmap.
 ///
 /// @param frame_index The index of the frame to mark in the bitmap.
-void frame_mark_frame_used(frame frame_index);
+void frame_mark_frame_used(uint32_t frame_index);
 
 /// @brief Mark a physical frame as free in the bitmap.
 ///
 /// @param frame_index The index of the frame to unmark in the bitmap.
-void frame_mark_frame_free(frame frame_index);
+void frame_mark_frame_free(uint32_t frame_index);
 
 /// @brief Allocate a range of physical frames as used.
 ///
@@ -67,5 +58,9 @@ void frame_free_frame(phys_addr addr);
 /// @brief Print the physical frame bitmap to the debug console.
 void frame_dump_bitmap();
 
+void frame_dump_bitmap_usage();
+
 /// @brief Initialize frame allocator structures and mark reserved frames.
 void frame_init();
+
+void frame_map();

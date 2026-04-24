@@ -13,11 +13,15 @@
 #include "libs/memory.h"
 #include <core/Defs.h>
 
-#define x86_KERNEL_CODE_SEGMENT 0x08
-#define x86_KERNEL_DATA_SEGMENT 0x10
-#define x86_USER_CODE_SEGMENT 0x18
-#define x86_USER_DATA_SEGMENT 0x20
-#define x86_TSS_SEGMENT 0x28
+#define x86_GET_SEGMENT_SELECTOR(n) (n * 8)
+
+#define x86_KERNEL_CODE_SEGMENT x86_GET_SEGMENT_SELECTOR(1)
+#define x86_KERNEL_DATA_SEGMENT x86_GET_SEGMENT_SELECTOR(2)
+#define x86_USER_CODE_SEGMENT x86_GET_SEGMENT_SELECTOR(3)
+#define x86_USER_DATA_SEGMENT x86_GET_SEGMENT_SELECTOR(4)
+#define x86_USER_CODE32_SEGMENT x86_GET_SEGMENT_SELECTOR(5)
+#define x86_USER_DATA32_SEGMENT x86_GET_SEGMENT_SELECTOR(6)
+#define x86_TSS_SEGMENT x86_GET_SEGMENT_SELECTOR(7)
 
 typedef enum
 {
@@ -65,30 +69,36 @@ typedef struct
 typedef struct
 {
     uint16_t Limit; // sizeof(gdt) - 1
+
+    // @0xffffffff8002fb20
     GDT_entry *Ptr;  // address of GDT
 } __attribute__((packed)) GDT_descriptor;
+// at 0xffffffff8001b038
+// result
+// 0xf000ff53
+// 0xf000e2c3
 
 #ifdef __i686__
 typedef struct tss_entry
 {
     uint32_t prev_tss; // Previous TSS (not used)
-    uint32_t esp0;     // Stack pointer for ring 0 (ISR stack)
+    uint32_t sp0;     // Stack pointer for ring 0 (ISR stack)
     uint32_t ss0;      // Stack segment for ring 0
-    uint32_t esp1;     // Stack pointer for ring 1 (not used)
+    uint32_t sp1;     // Stack pointer for ring 1 (not used)
     uint32_t ss1;      // Stack segment for ring 1 (not used)
-    uint32_t esp2;     // Stack pointer for ring 2 (not used)
+    uint32_t sp2;     // Stack pointer for ring 2 (not used)
     uint32_t ss2;      // Stack segment for ring 2 (not used)
     uint32_t cr3;      // Page directory base
-    uint32_t eip;      // Instruction pointer (not used here)
-    uint32_t eflags;   // Flags (not used here)
-    uint32_t eax;      // General-purpose registers (not used here)
-    uint32_t ecx;      // General-purpose registers (not used here)
-    uint32_t edx;      // General-purpose registers (not used here)
-    uint32_t ebx;      // General-purpose registers (not used here)
-    uint32_t esp;      // Stack pointer (not used here)
-    uint32_t ebp;      // Base pointer (not used here)
-    uint32_t esi;      // Source index (not used here)
-    uint32_t edi;      // Destination index (not used here)
+    uint32_t pc;      // Instruction pointer (not used here)
+    uint32_t flags;   // Flags (not used here)
+    uint32_t ax;      // General-purpose registers (not used here)
+    uint32_t cx;      // General-purpose registers (not used here)
+    uint32_t dx;      // General-purpose registers (not used here)
+    uint32_t bx;      // General-purpose registers (not used here)
+    uint32_t sp;      // Stack pointer (not used here)
+    uint32_t bp;      // Base pointer (not used here)
+    uint32_t si;      // Source index (not used here)
+    uint32_t di;      // Destination index (not used here)
     uint32_t es;       // Data segment
     uint32_t cs;       // Code segment
     uint32_t ss;       // Stack segment
@@ -100,27 +110,37 @@ typedef struct tss_entry
     uint16_t iobase;   // I/O base (not used here)
 } __attribute__((packed)) tss_entry_t;
 #else
+typedef struct {
+    uint16_t LimitLow;
+    uint16_t BaseLow;
+    uint8_t  BaseMid;
+    uint8_t  Access;      // 0x89 = present, ring0, TSS available
+    uint8_t  FlagsLimitHi;
+    uint8_t  BaseHigh;
+    uint32_t BaseUpper;   // bits 63:32
+    uint32_t Reserved;
+} __attribute__((packed)) TSS_descriptor;
 typedef struct tss_entry
 {
-    uint64_t iopb;
-    uint64_t res4;
-    uint64_t res3;
-    uint64_t ist7;
-    uint64_t ist6;
-    uint64_t ist5;
-    uint64_t ist4;
-    uint64_t ist3;
-    uint64_t ist2;
-    uint64_t ist1;
-    uint64_t res2;
-    uint64_t rsp2;
-    uint64_t rsp1;
-    uint64_t rsp0;
     uint32_t res1;
+    uint64_t sp0;
+    uint64_t sp1;
+    uint64_t sp2;
+    uint64_t res2;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t res3;
+    uint16_t res4;
+    uint16_t iopb;
 } __attribute__((packed)) tss_entry_t;
 #endif
 
-#define NUM_DESCRIPTOR 8
+#define NUM_DESCRIPTOR 10
 
 extern tss_entry_t tss_entry;
 

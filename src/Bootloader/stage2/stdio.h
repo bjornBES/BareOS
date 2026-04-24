@@ -10,8 +10,11 @@
 
 #pragma once
 #include <stdint.h>
+#include <stdbool.h>
 
 #define NULL ((void *)0)
+
+extern bool disableOutput;
 
 void vga_set_cell(int x, int y, char c, uint8_t color);
 

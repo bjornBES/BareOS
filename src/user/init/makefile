@@ -1,9 +1,9 @@
 
-TARGET_ASMFLAGS := -f elf
-TARGET_CFLAGS += -m32 -std=c99 -ffreestanding -nostdlib -nostdinc \
+USER_TARGET_ASMFLAGS :=
+USER_TARGET_CFLAGS := -std=c99 -ffreestanding -nostdlib -nostdinc \
            		 -Wall -Wextra -Ilibc -fno-omit-frame-pointer
-TARGET_LINKFLAGS += -nostdlib -T linker.ld
-TARGET_LIBS := -lgcc
+USER_TARGET_LINKFLAGS := -nostdlib -T linker.ld
+USER_TARGET_LIBS := -lgcc
 
 BUILD_DIRC = $(BUILD)/c
 BUILD_DIRASM = $(BUILD)/asm
@@ -18,16 +18,16 @@ all: always $(BUILD)/hello.elf
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	$(TARGET_CC) $(TARGET_CFLAGS) -c $< -o $@
+	$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
-	$(TARGET_ASM) -f elf32 $< -o $@
+	$(TARGET_ASM) $(USER_TARGET_ASMFLAGS) $< -o $@
 	@echo "--> Compiled: " $<
 
 $(BUILD)/hello.elf: $(OBJECTS_C) $(OBJECTS_ASM) $(LIBC)
-	$(TARGET_LD) $(TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/hello.map -o $@ $^ $(TARGET_LIBS)
+	$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/hello.map -o $@ $^ $(USER_TARGET_LIBS)
 
 always:
 	mkdir -p $(BUILD)

@@ -54,6 +54,9 @@
     mov ax, 0x10
     mov ds, ax
     mov ss, ax
+    mov es, ax    ; ← add
+    mov fs, ax    ; ← add
+    mov gs, ax    ; ← add
 
 %endmacro
 
@@ -201,7 +204,12 @@ x86_Disk_Reset:
     pop ebp
     ret
 
-
+;bool ASMCALL x86_Disk_Read(uint8_t drive,
+;                           uint16_t cylinder,
+;                           uint16_t sector,
+;                           uint16_t head,
+;                           uint8_t count,
+;                           void* lowerDataOut);
 global x86_Disk_Read
 x86_Disk_Read:
 
@@ -238,9 +246,9 @@ x86_Disk_Read:
     int 13h
 
     ; set return value
-    mov eax, 1
-    sbb eax, 0           ; 1 on success, 0 on fail   
-
+    jc .exit
+    mov eax, 0
+.exit:
     ; restore regs
     pop es
     pop ebx
@@ -256,6 +264,116 @@ x86_Disk_Read:
     pop ebp
     ret
 
+;
+; int ASMCALL x86_ExtensionSupport(uint8_t drive);
+;
+global x86_ExtensionSupport
+x86_ExtensionSupport:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    push ebx
+    push ecx
+    push edx
+
+    ; setup args
+    mov dl, [bp + 8]    ; dl - drive
+
+    mov bx, 0x55AA
+    mov ah, 0x41
+    stc
+    int 0x13
+
+    jc .no_extensions               ; If carry set, extensions not supported
+    cmp bx, 0xAA55
+    jne .no_extensions              ; If BX != 0xAA55, extensions not supported
+    mov eax, 1
+    jmp .exit
+
+.no_extensions:
+
+    mov eax, 0
+
+.exit:
+
+    pop edx
+    pop ecx
+    pop ebx
+
+    push eax
+    x86_EnterProtectedMode
+    pop eax
+
+    pop ebp
+    ret
+
+;
+; bool ASMCALL x86_Disk_Read_Extended(uint8_t drive, extensions_dap* dap);
+;
+global x86_Disk_Read_Extended
+x86_Disk_Read_Extended:
+
+    ; make new call frame
+    push ebp             ; save old call frame
+    mov ebp, esp          ; initialize new call frame
+
+    x86_EnterRealMode
+
+    ; save modified regs
+    push esi
+    push ds
+
+    ; get DAP linear address from argument
+    mov esi, [bp + 12]
+
+    ; convert to seg:off  
+    mov eax, esi
+    shr eax, 4
+    mov ds, ax          ; DS = linear >> 4
+
+    and esi, 0xF        ; SI = linear & 0xF  (offset within paragraph)
+    mov dl, [bp + 8]
+
+    ; call int13h
+    mov ah, 0x42
+    stc
+    int 13h
+
+    ; Return:
+    ; CF clear if successful
+    ; AH = 00h
+    ; CF set on error
+    ; AH = error code (see #00234)
+    ; disk address packet's block count field set to number of blocks
+    ; successfully transferred
+
+    ; set return value
+    jc .error
+    cmp ah, 0
+    jne .exit
+    xor eax, eax    ; success = 0
+    jmp .exit
+.error:
+    movzx eax, ah
+.exit:
+    ; restore regs
+    pop ds
+    pop esi
+
+    push eax
+
+    x86_EnterProtectedMode
+
+    pop eax
+
+    ; restore old call frame
+    mov esp, ebp
+    pop ebp
+    ret
 
 ;
 ; int ASMCALL x86_E820GetNextBlock(E820MemoryBlock* block, uint32_t* continuationId);
@@ -684,39 +802,12 @@ X86_checkForKeys:
     pop     ebp
     ret
 
-extern fill_64bit_table
-extern _cr3
 extern entry_but_long
-
+[bits 32]
 global x86_EnterLongMode
 x86_EnterLongMode:
     cli
-    ; Enabling Physical Address Extension and Page Size Extension 
-    mov     eax,        cr4
-    or      eax,        (1 << 5) | (1 << 4)
-    mov     cr4,        eax
-
-    call    fill_64bit_table
-
-    mov     eax,        [0x6000]
-    mov     cr3,        eax
-
-    mov     ecx, 0xC0000080
-    rdmsr
-    or      eax, 1 << 8
-    wrmsr
-
-    ; fuck yes 64 bits fuck yes
-
-CR0_PG_ENABLE equ 1 << 31
-
-    mov     eax, cr0
-    or      eax, CR0_PG_ENABLE
-    mov     cr0, eax
-    sti
-
-    jmp     entry_but_long
-    
+    jmp    entry_but_long
 section .bss
 ;
 ; uint8_t menu_key = 0

@@ -1,19 +1,13 @@
 ENTRY(start)
 OUTPUT_FORMAT("binary")
-phys = 0x7C00;                  /* BIOS (or MBR) puts us at 0x7C00 */
-
+phys = 0x0600;                  /* BIOS (or MBR) puts us at 0x7C00 */
 SECTIONS
 {
     . = phys;
 
-    /* Entry section, which shouldn't be too far down the file (the near jump in
-       .fsjump is limited to 127 bytes)
-    */
-    .entry              : { __entry_start = .;
-                            *(.entry)   
-                          }
-
     /* Code */
+    __entry_start = .;
+    __vbr_start = 0x7E00;
     .text               : { *(.text)            }
 
     /* Modifiable data */
@@ -31,7 +25,7 @@ SECTIONS
                           }
 
     /* Required for the BIOS to boot our OS */
-    .bios_footer 0x7DFE : { SHORT(0xAA55)       }
+    .bios_footer 0x0600+510 : { SHORT(0xAA55)       }
 
     /* Uninitialized memory (declared with resb/resw/resq). We can use memory
        beyond this binary for that. 

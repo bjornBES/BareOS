@@ -51,6 +51,30 @@ typedef union {
     } __attribute__((packed));
 } pte64_t;
 
+typedef union
+{
+    uint64_t raw;
+    struct
+    {
+        uint64_t present   : 1;  /* Must be 1 to be valid */
+        uint64_t writable  : 1;  /* 0 = read-only, 1 = read/write */
+        uint64_t user      : 1;  /* 0 = supervisor, 1 = user */
+        uint64_t pwt       : 1;  /* Page-level write-through */
+        uint64_t pcd       : 1;  /* Page-level cache disable */
+        uint64_t accessed  : 1;  /* Set by CPU on read */
+        uint64_t dirty     : 1;  /* Set by CPU on write */
+        uint64_t ps        : 1;  /* Must be 1 for 2 MiB page */
+        uint64_t global    : 1;  /* Don't flush on CR3 reload */
+        uint64_t avail0    : 3;  /* Free for OS use */
+        uint64_t pat       : 1;  /* PAT index bit 2 (bit 12) */
+        uint64_t reserved0 : 8;  /* Must be 0 (bits 13-20) */
+        uint64_t addr      : 31; /* Physical address of 2 MiB page >> 21 */
+        uint64_t avail1    : 7;  /* Free for OS use (bits 52-58) */
+        uint64_t pke       : 4;  /* Protection key (requires CR4.PKE) */
+        uint64_t nx        : 1;  /* No-execute (requires EFER.NXE) */
+    } __attribute__((packed));
+} pd_huge_entry64;  /* 2 MiB */
+
 /* A full table is 512 entries, filling exactly one 4 KiB frame */
 #define PT64_ENTRIES 512
 
@@ -59,12 +83,18 @@ typedef struct { pte64_t e[PT64_ENTRIES]; } __attribute__((aligned(4096))) pdpt_
 typedef struct { pte64_t e[PT64_ENTRIES]; } __attribute__((aligned(4096))) pd_t;
 typedef struct { pte64_t e[PT64_ENTRIES]; } __attribute__((aligned(4096))) pt_t;
 
-extern pml4_t *page_map_level_4_table;
-extern pdpt_t *page_directory_pointer_table;
-extern pd_t *page_directory_table;
-extern pdpt_t *page_directory_pointer_table_kernel;
-extern pd_t *page_directory_table_kernel;
-extern cr3_t *_cr3;
+extern pml4_t page_map_level_4_table;
+extern pdpt_t page_directory_pointer_table;
+extern pd_t page_directory_table;
+extern pdpt_t page_directory_pointer_table_kernel;
+extern pd_t page_directory_table_kernel;
+extern cr3_t _cr3;
+
+#define PT32_ENTRIES 1024
+extern uint32_t page_table_low32[PT32_ENTRIES];
+extern uint32_t page_table_kernel32[PT32_ENTRIES];
+extern uint32_t page_directory_table32;
+
 
 void fill_32bit_table();
 void fill_64bit_table();

@@ -508,7 +508,7 @@ void I8042_init()
     }
 #endif
     conf = 0x23;
-    VFS_write(VFS_INVALID_FD, (uint8_t*)"Done I8042\n", 11);
+    // VFS_write(VFS_INVALID_FD, (uint8_t*)"Done I8042\n", 11);
     I8042_write_controller_conf(conf);
 
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)

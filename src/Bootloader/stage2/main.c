@@ -20,7 +20,8 @@
 #include "paging/paging.h"
 #include "x86.h"
 #include "memdefs.h"
-#include "fs/mbr.h"
+#include "partition/gpt.h"
+#include "partition/partition.h"
 #include "fs/disk.h"
 #include "fs/fat.h"
 #include "elf/elf.h"
@@ -35,9 +36,15 @@
 typedef void (*BootStart)(boot_params *boot);
 
 BootStart kernelEntry;
+boot_params bss_bootParams;
+
+extern uint16_t BootPartitionSeg;
+extern uint16_t BootPartitionOff;
 
 void hexdump(void *ptr, int len)
 {
+    printf("========= HEXDUMP =========\n");
+    printf("hexdump at 0x%p length %u\n", ptr, len);
     unsigned char *p = (unsigned char *)ptr;
     for (size_t i = 0; i < len; ++i)
     {
@@ -50,11 +57,16 @@ void hexdump(void *ptr, int len)
 
 void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
 {
+    printf("\n======================= Start =======================\n");
     bool readyToJump = false;
-    printf("%x", partition);
+    printf("partition = %x\n", partition);
+    if (partition == NULL)
+    {
+        printf("new partition seg:off = %x:%x\n", BootPartitionSeg, BootPartitionOff);
+        partition = segoffset_to_linear_real(BootPartitionSeg, BootPartitionOff);
+        printf("new partition = %x\n", partition);
+    }
     hexdump(partition, 64);
-
-    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
 
     DISK disk;
     if (!DISK_Initialize(&disk, bootDrive))
@@ -64,14 +76,21 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     }
 
     Partition part;
-    MBR_DetectPartition(&part, &disk, partition);
+    MBR_detect_partition(&part, &disk, partition);
+
 
     if (!FAT_Initialize(&part))
     {
         printf("FAT init error\r\n");
         goto end;
     }
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
+    printf("bootParams @ 0x%x\n", bootParams);
+#pragma GCC diagnostic pop
+    memset(bootParams, 0, sizeof(boot_params));
+    bootParams->pageDirectory = 0x112255AA;
     bootParams->BootDevice = bootDrive;
 
     bootParams->bootLoader.bootFlags = 1;
@@ -83,8 +102,7 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     DetectPCI(bootParams);
     DetectEquipment(bootParams);
     DetectCPUID(bootParams);
-    DetectACPI(bootParams);
-    
+    // DetectACPI(bootParams);
 
     printf("Hello world");
     vga_clear();
@@ -98,54 +116,72 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
         menuEntry(bootParams);
     }
     printf("to kernel\n");
-    
-    if (!ELF_Read(&part, "/boot/kernel.elf", (void **)&kernelEntry))
+    disableOutput = true;
+    if (!ELF_Read(&part, "/boot/kernel.elf", (void **)&kernelEntry, bootParams))
     {
         printf("ELF read failed, booting halted!\n");
         printf("Kernel not found\n");
         goto end;
     }
+    disableOutput = false;
     readyToJump = true;
 
     x86_SetVESAMode(0x115);
     bootParams->currentMode = 0x115;
 
-/*
-Set the PAE enable bit in CR4
-Load CR3 with the physical address of the PML4 (Level 4 Page Map)
-Enable long mode by setting the LME flag (bit 8) in MSR 0xC0000080 (aka EFER)
-Enable paging
-*/
+    printf("from bootparams @ 0x%llx\n", bootParams);
+    printf("kernel_address: %p\n", bootParams->kernel_address);
+    printf("BootDevice: %x\n", bootParams->BootDevice);
+    printf("currentMode: %x\n", bootParams->currentMode);
+    printf("pageDirectory: %x\n", bootParams->pageDirectory);
+    printf("day: %x\n", bootParams->rtc.day);
+    printf("month: %x\n", bootParams->rtc.month);
+    printf("year: %x\n", bootParams->rtc.year);
+    printf("second: %x\n", bootParams->rtc.second);
+    printf("minute: %x\n", bootParams->rtc.minute);
+    printf("hour: %x\n", bootParams->rtc.hour);
+    printf("floppyFlag: %x\n", bootParams->equipment.floppyFlag);
+    printf("hasCoprocessor: %x\n", bootParams->equipment.hasCoprocessor);
+    printf("hasFpu: %x\n", bootParams->equipment.hasFpu);
+    printf("numFloppies: %x\n", bootParams->equipment.numFloppies);
+    printf("reserved: %x\n", bootParams->equipment.reserved);
+    printf("vesaModeCount: %x\n", bootParams->vesaModeCount);
+    printf("e820Count: %x\n", bootParams->e820Count);
 
     cpuid_regs reg;
     INIT_CPUID_REG(&reg);
     CPUID(0x80000001, 0, &reg);
-
+#ifdef __x86_64__
     if (BIT_GET(reg.edx, 29))
     {
-        strcpy(bootParams->bootLoader.cmdline, "LM");
+        // strcpy(bootParams->bootLoader.cmdline, "LM");
+        printf("To 64 bit mode\n");
         x86_EnterLongMode();
     }
     else
+#endif
     {
-        strcpy(bootParams->bootLoader.cmdline, "PM");
+        // strcpy(bootParams->bootLoader.cmdline, "PM");
     }
 
     if (readyToJump)
     {
-        bootParams->pageDirectory = (uint64_t*)(uint32_t*)((void*)page_directory_table + KERNEL_VMA);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+        bootParams->pageDirectory = (uint32_t)(uint32_t *)(((void *)&page_directory_table) + KERNEL_VMA);
+#pragma GCC diagnostic pop
         fill_32bit_table();
         printf("jump to 0x%p\n", *kernelEntry);
         __asm__("cli"); // dont ask.
-        __asm__("mov cr3, eax" : : "a"((uint32_t)page_directory_table));
+        __asm__("mov cr3, eax" : : "a"((uint32_t)&page_directory_table));
         __asm__("mov eax, cr0");
         __asm__("or eax, 0x80000000");
         __asm__("mov cr0, eax");
         __asm__("sti");
-        __asm__("mov edi, %0" : : "r"(bootParams) );
-        __asm__("push 0x08" );
-        __asm__("push %0" : : "r"(kernelEntry) );
-        __asm__("retf" );
+        __asm__("mov edi, %0" : : "r"(bootParams));
+        __asm__("push 0x08");
+        __asm__("push %0" : : "r"(kernelEntry));
+        __asm__("retf");
 
         __builtin_unreachable();
     }

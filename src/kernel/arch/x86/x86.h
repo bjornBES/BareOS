@@ -17,4 +17,5 @@
 
 #define Breakpoint() __asm__ __volatile__("int3" : : : "memory")
 
-void ASMCALL arch_panic();
+void arch_breakpoint();
+void ARCH_CALL arch_panic();

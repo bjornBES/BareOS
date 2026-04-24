@@ -7,7 +7,15 @@
  * Modified By: BjornBEs
  * -----
  */
-
+/*
+PLEDGE_STDIO
+PLEDGE_RPATH
+PLEDGE_WPATH
+PLEDGE_PROC
+PLEDGE_MALLOC
+*/
 // syscall_table.inc
-// nr, name, ret, arg_types
-X(1,  VFS_write, int,  fd_t,   void*,  size_t)
+// nr, name, syscall name, syscall name upper, ret, pledge, arg_types
+X(0,  VFS_read, read, READ, int, PLEDGE_STDIO,  fd_t,   void*,  size_t)
+X(1,  VFS_write, write, WRITE, int, PLEDGE_STDIO,  fd_t,   void*,  size_t)
+X(512,  pledge_pledge, pledge, PLEDGE, int, 0,  pledge_flags_t)

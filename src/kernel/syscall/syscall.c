@@ -12,10 +12,33 @@
 
 #include "debug/debug.h"
 
+#include "task/process.h"
 #include "arch/x86/isr.h"
+#include "task/signal.h"
 
-#define X(nr, name, ret, ...) \
-    SYS_##name = nr,
+typedef struct
+{
+    int number;
+    syscall_handler handler;
+    pledge_flags_t pledge;
+} syscall_function_info;
+
+
+#define X(nr, name, sysname, sysnameupper, ret, ...) extern ret sys_##name(syscall_registers *regs);
+#include "syscall_table.tbl"
+#undef X
+
+#define X(nr, name, sysname, sysnameupper, ret, pledge, ...) [nr] = {nr, sys_##name, pledge},
+static const syscall_function_info syscall_table[] = {
+#include "syscall_table.tbl"
+};
+#undef X
+
+#define MODULE "SYSCALL"
+
+#define ENOSYS -1
+
+#define X(nr, name, sysname, sysnameupper, ret, ...) SYS_##sysnameupper = nr,
 
 typedef enum
 {
@@ -25,45 +48,41 @@ typedef enum
 
 #undef X
 
-#define X(nr, name, ret, ...) extern ret sys_##name(syscall_registers *regs);
-#include "syscall_table.tbl"
-#undef X
-
-#define X(nr, name, ret, ...) [nr] = sys_##name,
-syscall_handler syscall_table[] = {
-#include "syscall_table.tbl"
-};
-#undef X
-
-#define MODULE "SYSCALL"
-
-#define ENOSYS -1
-
 void syscall_handler_func(Registers *regs)
 {
-    log_info(MODULE, "System call %d", regs->eax);
-    log_info(MODULE, "  eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-    log_info(MODULE, "  esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
+    log_info(MODULE, "System call %d from pid %u", regs->ax, current_process->pid);
+    log_info(MODULE, "  ax=%x  bx=%x  cx=%x  dx=%x  si=%x  di=%x", regs->ax, regs->bx, regs->cx, regs->dx, regs->si, regs->di);
+    log_info(MODULE, "  sp=%x  bp=%x  pc=%x  flags=%x  cs=%x  ds=%x ss=%x", regs->sp, regs->bp, regs->pc, regs->flags, regs->cs, regs->ds, regs->ss);
     log_info(MODULE, "# of syscalls %u", SYSCALL_COUNT);
     syscall_registers sys_regs;
-    sys_regs.eax = regs->eax;
-    sys_regs.ebx = regs->ebx;
-    sys_regs.ecx = regs->ecx;
-    sys_regs.edx = regs->edx;
-    sys_regs.edi = regs->edi;
-    sys_regs.esi = regs->esi;
+    sys_regs.ax = regs->ax;
+    sys_regs.bx = regs->bx;
+    sys_regs.cx = regs->cx;
+    sys_regs.dx = regs->dx;
+    sys_regs.di = regs->di;
+    sys_regs.si = regs->si;
+    
+    uint32_t nr = regs->ax;
+    syscall_function_info info = syscall_table[nr];
+    log_info(MODULE, "handler address %p", info.handler);
 
-    uint32_t nr = regs->eax;
-    if (nr < SYSCALL_COUNT && syscall_table[nr])
+    if (info.pledge != 0 && !pledge_check(info.pledge))
     {
-        regs->eax = syscall_table[nr](&sys_regs);
+        fprintf(VFS_FD_DEBUG, "[%u]: pledge \"%s\", syscall %u,", current_process->pid, pledge_get_missing(info.pledge), nr);
+        process_kill(current_process->pid, SIGKILL);
+        return;
+    }
+
+    if (nr < SYSCALL_COUNT && info.handler)
+    {
+        regs->ax = info.handler(&sys_regs);
     }
     else
     {
-        log_crit(MODULE, "Unhandled System call %d", regs->eax);
-        log_crit(MODULE, "  eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-        log_crit(MODULE, "  esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
-        regs->eax = ENOSYS;
+        log_crit(MODULE, "Unhandled System call %d", regs->ax);
+        log_crit(MODULE, "  ax=%x  bx=%x  cx=%x  dx=%x  si=%x  di=%x", regs->ax, regs->bx, regs->cx, regs->dx, regs->si, regs->di);
+        log_crit(MODULE, "  sp=%x  bp=%x  pc=%x  flags=%x  cs=%x  ds=%x ss=%x", regs->sp, regs->bp, regs->pc, regs->flags, regs->cs, regs->ds, regs->ss);
+        regs->ax = ENOSYS;
     }
 }
 

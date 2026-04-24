@@ -8,51 +8,46 @@
 ; -----
 ;
 
-
-[bits 64]
-
 extern stack_top
 extern main
-
-section .data
-
-message:
-db "BES KERNEL", 0xD, 0xA, 0
-message_len:
-    dw $-message
 
 section .text
 
 global entry
 entry:
+%if __x86_64__=1
+    [bits 64]
     cli
     
     mov al, 'H'
     out 0xe9, al
-    
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
 
     mov rsp, stack_top
     mov rbp, rsp
     push rdi
 
     mov al, 'H'
-    out 0xe9, al,
-
-    ; call main
+    out 0xe9, al
+    call main
 
 .end:
     jmp .end
+%endif
+%if __i686__=1
+    [bits 32]
+    cli
+    
+    mov al, 'H'
+    out 0xe9, al
 
-global crash_me
-crash_me:
-    ; div by 0
-    mov rcx, 0x1337
-    mov rax, 0
-    div rax
-    ret
+    mov esp, stack_top
+    mov esp, esp
+    push edi
+
+    mov al, 'H'
+    out 0xe9, al
+    call main
+
+.end:
+    jmp .end
+%endif

@@ -1,5 +1,5 @@
-TARGET32_ASMFLAGS += -f elf
-TARGET32_CFLAGS += -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include -Werror=int-to-pointer-cast
+TARGET32_ASMFLAGS += -f elf -D__$(arch)__=1
+TARGET32_CFLAGS += -D__$(arch)__=1 -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include -Werror=int-to-pointer-cast
 TARGET32_LIBS +=
 TARGET32_LINKFLAGS += -T linker.ld -nostdlib
 
@@ -34,6 +34,7 @@ $(BUILD_DIRC)/%.obj: %.c
 	@echo "--> Compiling: " $<
 	mkdir -p $(@D)
 	@$(TARGET32_CC) $(TARGET32_CFLAGS) -c -o $@ $<
+	@$(TARGET32_CC) $(TARGET32_CFLAGS) --save-temps -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm

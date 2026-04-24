@@ -15,4 +15,5 @@
 #else
 #define ASMCALL __attribute__((cdecl))
 #endif
+#define ARCH_CALL ASMCALL
 #define PACKED __attribute__((packed))

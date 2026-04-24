@@ -23,8 +23,8 @@
 #include "arch/x86/gdt.h"
 #include "arch/x86/x86.h"
 #include "arch/x86/isr.h"
-#include "arch/x86/paging/paging.h"
-#include "arch/x86/paging/frame.h"
+#include "memory/paging/paging.h"
+#include "memory/pmm/pmm.h"
 #include "hal/hal.h"
 #include "PCI/pci.h"
 #include "VFS/vfs.h"
@@ -39,48 +39,8 @@
 #include "drivers/IO/I8042/I8042.h"
 #include "drivers/IO/Keyboard/Keyboard.h"
 
-extern char __end;
-extern char __heap_size;
-extern char __kernel_end;
-extern char __kernel_start;
 extern char VGAModesAddr;
 extern char default8x16Font;
-
-void crash_me();
-
-void PageFault(Registers *regs)
-{
-    uint64_t cr2;
-    __asm__("mov %0, cr2" : "=rm"(cr2));
-    paging_print_info((virt_addr)cr2);
-
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p\n", cr2);
-
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Unhandled Page Fault %d\n", regs->interrupt);
-    fprintf(VFS_FD_DEBUG, "[Page Fault]   eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x\n", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-    fprintf(VFS_FD_DEBUG, "[Page Fault]   esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x ds=%x ss=%x\n", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
-
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Error code 0x%x\n", regs->error);
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    Present %u\n", BIT_GET(regs->error, 0));
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    Write %u\n", BIT_GET(regs->error, 1));
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    User %u\n", BIT_GET(regs->error, 2));
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    Reserved write %u\n", BIT_GET(regs->error, 3));
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    Instruction Fetch %u\n", BIT_GET(regs->error, 4));
-    fprintf(VFS_FD_DEBUG, "[Page Fault]    Protection key %u\n", BIT_GET(regs->error, 5));
-
-    UART_write_fstr(COM1, "[Page Fault] Virtual address %p\r\n", cr2);
-
-    UART_write_fstr(COM1, "[Page Fault] Unhandled Page Fault %d\r\n", regs->interrupt);
-    UART_write_fstr(COM1, "[Page Fault]   eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x\r\n", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-    UART_write_fstr(COM1, "[Page Fault]   esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x\r\n", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
-
-    UART_write_fstr(COM1, "[Page Fault] Error code 0x%x\r\n", regs->error);
-    UART_write_fstr(COM1, "[Page Fault]    Present %u\r\n", BIT_GET(regs->error, 0));
-    UART_write_fstr(COM1, "[Page Fault]    Write %u\r\n", BIT_GET(regs->error, 1));
-    UART_write_fstr(COM1, "[Page Fault]    User %u\r\n", BIT_GET(regs->error, 2));
-
-    KernelPanic("Page Fault", "Got page fault from %x", cr2);
-}
 
 void hexdump(void *ptr, int len)
 {
@@ -96,63 +56,82 @@ void hexdump(void *ptr, int len)
 
 void main(boot_params *bootParams)
 {
+    log_debug("MAIN", "from bootparams @ 0x%llx\n", bootParams);
+    log_debug("MAIN", "kernel_address: %p\n", bootParams->kernel_address);
+    log_debug("MAIN", "BootDevice: %x\n", bootParams->BootDevice);
+    log_debug("MAIN", "currentMode: %x\n", bootParams->currentMode);
+    log_debug("MAIN", "pageDirectory: %x\n", bootParams->pageDirectory);
+    log_debug("MAIN", "day: %x\n", bootParams->rtc.day);
+    log_debug("MAIN", "month: %x\n", bootParams->rtc.month);
+    log_debug("MAIN", "year: %x\n", bootParams->rtc.year);
+    log_debug("MAIN", "second: %x\n", bootParams->rtc.second);
+    log_debug("MAIN", "minute: %x\n", bootParams->rtc.minute);
+    log_debug("MAIN", "hour: %x\n", bootParams->rtc.hour);
+    log_debug("MAIN", "floppyFlag: %x\n", bootParams->equipment.floppyFlag);
+    log_debug("MAIN", "hasCoprocessor: %x\n", bootParams->equipment.hasCoprocessor);
+    log_debug("MAIN", "hasFpu: %x\n", bootParams->equipment.hasFpu);
+    log_debug("MAIN", "numFloppies: %x\n", bootParams->equipment.numFloppies);
+    log_debug("MAIN", "reserved: %x\n", bootParams->equipment.reserved);
+    log_debug("MAIN", "vesaModeCount: %x\n", bootParams->vesaModeCount);
+    log_debug("MAIN", "e820Count: %x\n", bootParams->e820Count);
     if (UART_init(COM1))
     {
     }
     UART_write_fstr(COM1, "UART has started\r\n");
-    
+
+    log_info("MAIN", "bootParams @ %p", bootParams);
     HALInit();
     UART_write_fstr(COM1, "UART is done\r\n");
-    // uint8_t* addr2 = (uint8_t*)0x1000000;
-    // *addr2 = 10;
-
-    x86_isr_register_handler(14, PageFault);
-
-    enable_interrupts();
     log_debug("MAIN", "Hello world from Kernel");
-    paging_init(bootParams);
-    #ifdef __i686__
-    tss_entry.cr3 = (uint32_t)kernel_page;
-    #endif
-    log_debug("MAIN", "Paging init");
     enable_interrupts();
-
-    log_warn("MAIN", "=========== nr.1 ===========");
-    frame_dump_bitmap();
-    virt_addr kernel_start_virt = (virt_addr)&__kernel_start;
-    virt_addr kernel_end_virt = (virt_addr)&__kernel_end;
-    phys_addr kernel_start_phys = kernel_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
-    phys_addr kernel_end_phys = kernel_end_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
-    uint32_t kernel_size = kernel_end_phys - kernel_start_phys;
-    log_debug("Main", "kernel virt start %p - end %p", kernel_start_virt, kernel_end_virt);
-    log_debug("Main", "kernel phys start %p - end %p", kernel_start_phys, kernel_end_phys);
-
-    virt_addr heap_start_virt = (virt_addr)&__end;
-    phys_addr heap_start_phys = heap_start_virt - KERNEL_VIRT_BASE + KERNEL_PHYS_BASE;
-    size_t heap_size = (size_t)&__heap_size;
-    virt_addr heap_end_virt = heap_start_virt + heap_size;
-    phys_addr heap_end_phys = heap_start_phys + heap_size;
-    
-    log_debug("Main", "kernel heap start v%p - end v%p", heap_start_virt, heap_end_virt);
-    log_debug("Main", "kernel heap start p%p - end p%p", heap_start_phys, heap_end_phys);
-    log_debug("Main", "kernel heap size is %u in pages %u", heap_size, heap_size / PAGE_SIZE);
-
-    // frame_alloc_region(kernel_start_phys, kernel_end_phys);
-    log_debug("MAIN", "Kernel phys %x-%x virt %x-%x size %x/%x", kernel_start_phys, kernel_end_phys, kernel_start_virt, kernel_end_virt, kernel_size, kernel_end_phys - kernel_start_phys);
+    arch_breakpoint();
+    paging_init(bootParams);
+#ifdef __i686__
+    tss_entry.cr3 = (uint32_t)kernel_page;
+#endif
+    pmm_print_info_verbose();
+    log_debug("MAIN", "Paging init");
 
     log_debug("MAIN", "Init Memory functions");
-    mmInit();
-    mmPrintStatus();
 
+    log_info("MAIN", "====Moving boot params====");
+    paging_print_out = false;
     boot_params *bp = malloc(sizeof(boot_params));
+    paging_map_region(kernel_page, (virt_addr)bootParams, (phys_addr)bootParams, sizeof(boot_params) + PAGE_SIZE, PAGE_PRESENT | PAGE_WRITABLE);
+    log_debug("MAIN", "Mapped boot params");
+    log_debug("MAIN", "Copying from %p to %p", bootParams, bp);
     memcpy(bp, bootParams, sizeof(boot_params));
+    log_info("MAIN", "Test the shit new -> old");
+    log_info("MAIN", "kernel_address: %p -> %p", bp->kernel_address, bootParams->kernel_address);
+    log_info("MAIN", "BootDevice: %x -> %x", bp->BootDevice, bootParams->BootDevice);
+    log_info("MAIN", "currentMode: %x -> %x", bp->currentMode, bootParams->currentMode);
+    log_info("MAIN", "pageDirectory: %x -> %x", bp->pageDirectory, bootParams->pageDirectory);
+    log_info("MAIN", "day: %x -> %x", bp->rtc.day, bootParams->rtc.day);
+    log_info("MAIN", "month: %x -> %x", bp->rtc.month, bootParams->rtc.month);
+    log_info("MAIN", "year: %x -> %x", bp->rtc.year, bootParams->rtc.year);
+    log_info("MAIN", "second: %x -> %x", bp->rtc.second, bootParams->rtc.second);
+    log_info("MAIN", "minute: %x -> %x", bp->rtc.minute, bootParams->rtc.minute);
+    log_info("MAIN", "hour: %x -> %x", bp->rtc.hour, bootParams->rtc.hour);
+    log_info("MAIN", "floppyFlag: %x -> %x", bp->equipment.floppyFlag, bootParams->equipment.floppyFlag);
+    log_info("MAIN", "hasCoprocessor: %x -> %x", bp->equipment.hasCoprocessor, bootParams->equipment.hasCoprocessor);
+    log_info("MAIN", "hasFpu: %x -> %x", bp->equipment.hasFpu, bootParams->equipment.hasFpu);
+    log_info("MAIN", "numFloppies: %x -> %x", bp->equipment.numFloppies, bootParams->equipment.numFloppies);
+    log_info("MAIN", "reserved: %x -> %x", bp->equipment.reserved, bootParams->equipment.reserved);
+    log_info("MAIN", "vesaModeCount: %x -> %x", bp->vesaModeCount, bootParams->vesaModeCount);
+    log_info("MAIN", "e820Count: %x -> %x", bp->e820Count, bootParams->e820Count);
+    log_debug("MAIN", "Freeing boot params");
+    paging_free_region(kernel_page, (virt_addr)bootParams, sizeof(boot_params) + PAGE_SIZE);
+    paging_print_out = true;
+    allocator_print_status();
 
+    paging_print_out = false;
     device_init();
     pci_init(bp->pciBios);
     pci_init_devices();
+    paging_print_out = true;
 
-    mmPrintBlocks();
-    mmPrintStatus();
+    allocator_print_blocks();
+    allocator_print_status();
 
     uint16_t mode = bp->currentMode;
     VESA_mode *vesaMode = NULL;
@@ -174,42 +153,61 @@ void main(boot_params *bootParams)
 
     VFS_init();
 
+    device_debug();
+
     filesystem *fat_fs = fat_init();
     VFS_register_fs(fat_fs);
 
+    log_info("MAIN", "mounting drives");
     device *ahci;
+    log_info("MAIN", "Getting drive 0x101");
     ahci = device_get(0x101); // device 1 partition 1
+    log_info("MAIN", "Mounting drive 0x101");
     VFS_mount("/user", ahci);
+    log_info("MAIN", "Getting drive 0x100");
     ahci = device_get(0x100); // device 1 partition 0
+    log_info("MAIN", "Mounting drive 0x100");
     VFS_mount("/boot", ahci);
-    x86_isr_register_handler(14, PageFault);
     I8042_init();
 
     Loader_init();
     ELF_init();
     process_init();
 
+    syscall_init();
+
     log_debug("main", "vesa mode %d %dx%dx%d", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp);
     vga_init();
     vga_load_font((uint8_t *)&default8x16Font);
+    vga_check();
     video_init(bp, &VGAModesAddr);
-    uint32_t *fb = (uint32_t *)(uint64_t)vesaMode->frame_buffer;
-
+    phys_addr fb = (phys_addr)(uint32_64)vesaMode->frame_buffer;
+    vga_check();
     // paging_map_page(page_table32, page_table32);
     log_debug("main", "paging %x mapped to %x", fb, fb);
     paging_print_out = false;
-    paging_map_region(kernel_page, (void *)fb, (void *)fb, PAGE_SIZE * 4096, PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD);
+    paging_map_region(kernel_page, fb, fb, PAGE_SIZE * 4096, PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD);
     paging_print_out = true;
-    log_debug("main", "paging %x mapped to virt %x/phys %x", fb, paging_get_virtual(kernel_page, fb), paging_get_physical(kernel_page, (virt_addr)fb));
+    log_debug("main", "paging %x mapped to virt %x/phys %x", fb, paging_get_virtual(kernel_page, fb), fb);
     log_debug("main", "vesa mode %d %dx%dx%d %x", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp, vesaMode->frame_buffer);
-
-    syscall_init();
-
     vga_clear();
 
     printf("Hello world");
 
-    shell_enter();
+    int count = 0;
+    mount_point **points = vfs_get_mount_points(&count);
+    int mount_index = 1;
+    mount_point *mnt = points[mount_index - 1];
+    log_debug("MAIN", "%u: MOUNT POINT %s IS %s\n", mount_index, mnt->path, mnt->dev->name);
+    char mount_path[320];
+    strcpy(mount_path, mnt->path);
+    char path[320];
+    count = sprintf(path, "%s/bin/INIT.ELF", mount_path);
+    path[count] = '\0';
+    log_debug("MAIN", "PATH = %s\n", path);
+    char *argv[16] = {0};
+    argv[0] = path;
+    process_exec(path, argv);
 
 end:
     // loop

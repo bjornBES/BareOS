@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+bool disableOutput = false;
 uint16_t ScreenWidth = 80;
 uint16_t ScreenHeight = 25;
 uint8_t DefaultColor = 0x7;
@@ -87,6 +88,10 @@ void vga_scrollback(int lines)
 
 void vga_put_char(char c)
 {
+        if (disableOutput)
+    {
+        return;
+    }
     Outb(0xE9, c);
     switch (c)
     {
@@ -283,7 +288,7 @@ int printf(const char* fmt, ...)
                         case PRINTF_LENGTH_LONG:        printf_signed(va_arg(args, long), radix);
                                                         break;
 
-                        case PRINTF_LENGTH_LONG_LONG:   printf_signed(va_arg(args, long long), radix);
+                        case PRINTF_LENGTH_LONG_LONG:   printf_signed(va_arg(args, int64_t), radix);
                                                         break;
                         }
                     }
@@ -299,7 +304,7 @@ int printf(const char* fmt, ...)
                         case PRINTF_LENGTH_LONG:        printf_unsigned(va_arg(args, unsigned  long), radix);
                                                         break;
 
-                        case PRINTF_LENGTH_LONG_LONG:   printf_unsigned(va_arg(args, unsigned  long long), radix);
+                        case PRINTF_LENGTH_LONG_LONG:   printf_unsigned(va_arg(args, uint64_t), radix);
                                                         break;
                         }
                     }

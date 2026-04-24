@@ -117,6 +117,8 @@ static uint8_t g_FatType;
 static uint32_t g_TotalSectors;
 static uint32_t g_SectorsPerFat;
 
+extern void hexdump(void *ptr, int len);
+
 uint32_t FAT_ClusterToLba(uint32_t cluster);
 
 int FAT_CompareLFNBlocks(const void *blockA, const void *blockB)
@@ -152,7 +154,8 @@ bool FAT_Initialize(Partition *disk)
     g_Data = (FAT_Data *)MEMORY_FAT_ADDR;
 
     // read boot sector
-    if (!FAT_ReadBootSector(disk))
+    int bs_size = FAT_ReadBootSector(disk);
+    if (!bs_size)
     {
         printf("FAT: read boot sector failed\r\n");
         return false;
@@ -185,6 +188,7 @@ bool FAT_Initialize(Partition *disk)
     uint32_t rootDirSize;
     if (isFat32)
     {
+        printf("res %u, spf %u, fc %u\n", g_Data->BS.BootSector.ReservedSectors, g_SectorsPerFat, g_Data->BS.BootSector.FatCount);
         g_DataSectionLba = g_Data->BS.BootSector.ReservedSectors + g_SectorsPerFat * g_Data->BS.BootSector.FatCount;
         rootDirLba = FAT_ClusterToLba(g_Data->BS.BootSector.EBR32.RootDirectoryCluster);
         rootDirSize = 0;

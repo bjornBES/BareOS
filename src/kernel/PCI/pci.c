@@ -9,6 +9,8 @@
  */
 
 #include "pci.h"
+#include "pci_config.h"
+
 #include "debug/debug.h"
 #include "drivers/serial/UART/UART.h"
 #include "drivers/drive/ahci/ahci.h"
@@ -37,6 +39,14 @@ void pci_add_device(pci_device_id *dev)
 uint32_t pci_config_read_dword(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset)
 {
     uint32_t address = getAddress(bus, device, func, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    uint32_t data = ind(CONFIG_DATA);
+    return data;
+}
+uint32_t pci_config_read_device_dword(pci_device_id *pdev, uint8_t offset)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->device_id, pdev->function, offset);
 
     outd(CONFIG_ADDRESS, address);
     uint32_t data = ind(CONFIG_DATA);
@@ -105,6 +115,11 @@ void pci_disable_interrupts(uint16_t bus, uint16_t slot, uint16_t function)
     pci_config_write_word(bus, slot, function, PCI_COMMAND, command);
 }
 
+void pci_get_bar(pci_device_id *pdev)
+{
+    uint32_t bar = pci_config_read_device_dword(pdev, PCI_HEADER_BAR0);
+}
+
 void pci_init_device(pci_device_id *pdev)
 {
     log_debug(MODULE, "PCI Device Found: Bus %d, slot %d, Function %d, Vendor: 0x%X, Device: 0x%X, Class: 0x%X, Subclass: 0x%X",
@@ -139,62 +154,77 @@ void pci_init_devices()
     }
 }
 
-void pci_probe()
+bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_id **device_out)
+{
+    uint16_t vendor = pci_get_vendor_ID(bus, slot, func);
+    if (vendor == 0xffff)
+    {
+        return false;
+    }
+
+    *device_out = (pci_device_id *)malloc(sizeof(pci_device_id));
+    pci_device_id *pdev = *device_out;
+    {
+        pdev->bus = bus;
+        pdev->slot = slot;
+        pdev->function = func;
+
+        pdev->vendor_id = pci_get_vendor_ID(bus, slot, func);
+        pdev->device_id = pci_get_device_ID(bus, slot, func);
+
+        pdev->command = pci_config_read_word(bus, slot, func, PCI_HEADER_COMMAND);
+        pdev->status = pci_config_read_word(bus, slot, func, PCI_HEADER_STATUS);
+
+        uint32_t reg2Data = pci_config_read_dword(bus, slot, func, PCI_HEADER_REVISION_ID);
+        pdev->class_code = (reg2Data >> 24) & 0xFF;
+        pdev->sub_class = (reg2Data >> 16) & 0xFF;
+        pdev->prog_if = (reg2Data >> 8) & 0xFF;
+        pdev->revision_id = (reg2Data) & 0xFF;
+
+        uint32_t reg3Data = pci_config_read_dword(bus, slot, func, PCI_HEADER_CACHE_LINE_SIZE);
+        pdev->bist = (reg3Data >> 24) & 0xFF;
+        pdev->header_type = (reg3Data >> 16) & 0xFF;
+        pdev->latency_timer = (reg3Data >> 8) & 0xFF;
+        pdev->cache_line_size = (reg3Data) & 0xFF;
+    }
+    if (pdev->header_type != 2)
+    {
+        {
+            uint32_t buffer[12];
+            for (size_t i = 0; i < 12; i++)
+            {
+                buffer[i] = pci_config_read_dword(bus, slot, func, i * 4 + 0x10);
+            }
+            memcpy(pdev->header.bytes, buffer, sizeof(pci_header));
+        }
+    }
+    return true;
+}
+
+void pci_check_buses()
 {
     for (uint32_t bus = 0; bus < 256; bus++)
     {
         for (uint32_t slot = 0; slot < 32; slot++)
         {
-            for (uint32_t function = 0; function < 8; function++)
+            uint16_t function = 0;
+            pci_device_id *pdev = NULL;
+            bool result = pci_check_bus(bus, slot, function, &pdev);
+            if (result == false)
             {
-                uint16_t vendor = pci_get_vendor_ID(bus, slot, function);
-                if (vendor == 0xffff)
+                continue;
+            }
+
+            log_debug(MODULE, "vendor: 0x%x device: 0x%x", pdev->vendor_id, pdev->device_id);
+            pci_add_device(pdev);
+            if (pdev->header_type & 0x80)
+            {
+                for (; function < 8; function++)
                 {
-                    continue;
                 }
-                pci_device_id *pdev = (pci_device_id *)malloc(sizeof(pci_device_id));
-                {
-
-                    pdev->vendor_id = pci_get_vendor_ID(bus, slot, function);
-                    pdev->device_id = pci_get_device_ID(bus, slot, function);
-
-                    pdev->command = pci_config_read_word(bus, slot, function, 0x4);
-                    pdev->status = pci_config_read_word(bus, slot, function, 0x6);
-
-                    uint32_t reg2Data = pci_config_read_dword(bus, slot, function, 0x8);
-                    pdev->class_code = (reg2Data >> 24) & 0xFF;
-                    pdev->sub_class = (reg2Data >> 16) & 0xFF;
-                    pdev->prog_if = (reg2Data >> 8) & 0xFF;
-                    pdev->revision_id = (reg2Data) & 0xFF;
-
-                    uint32_t reg3Data = pci_config_read_dword(bus, slot, function, 0xc);
-                    pdev->bist = (reg3Data >> 24) & 0xFF;
-                    pdev->header_type = (reg3Data >> 16) & 0xFF;
-                    pdev->latency_timer = (reg3Data >> 8) & 0xFF;
-                    pdev->cache_line_size = (reg3Data) & 0xFF;
-                }
-                if (pdev->header_type != 2)
-                {
-                    {
-                        uint32_t buffer[12];
-                        for (size_t i = 0; i < 12; i++)
-                        {
-                            buffer[i] = pci_config_read_dword(bus, slot, function, i * 4 + 0x10);
-                        }
-                        memcpy(pdev->header.bytes, buffer, sizeof(pci_header));
-                    }
-                }
-                log_debug(MODULE, "vendor: 0x%x device: 0x%x", pdev->vendor_id, pdev->device_id);
-
-                pdev->bus = bus;
-                pdev->slot = slot;
-                pdev->function = function;
-                pci_add_device(pdev);
-
-                if ((pdev->header_type & 0x80) == 0)
-                {
-                    break;
-                }
+            }
+            else
+            {
             }
         }
     }
@@ -202,6 +232,6 @@ void pci_probe()
 
 void pci_init(PCI_bios_info bios_info)
 {
-    devs = (pci_device_id **)malloc(32 * sizeof(pci_device_id));
-    pci_probe();
+    devs = (pci_device_id **)malloc(PCI_MAX_DEVICES * sizeof(pci_device_id));
+    pci_check_buses();
 }

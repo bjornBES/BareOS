@@ -18,18 +18,6 @@
 #include <stdbool.h>
 
 uint16_t VESAModes[] = {
-    0x00,
-    0x02,
-    0x04,
-    0x06,
-    0x07,
-    0x0D,
-    0x0E,
-    0x0F,
-    0x10,
-    0x11,
-    0x12,
-    0x13,
     0x100,
     0x101,
     0x102,
@@ -116,6 +104,7 @@ void DetectVESA(boot_params *bp)
     }
 
     bp->vesaModeCount = g_VesaEntriesCount;
+    printf("VESA: got %u entries\n", bp->vesaModeCount);
 }
 
 void SetVESAMode(int mode)

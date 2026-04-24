@@ -1,8 +1,18 @@
+import dis
+from hmac import new
 import os
 import struct
 import sys
+from turtle import st
+from uuid import UUID
+import gpt_image.disk
+import gpt_image.partition
 import subprocess
-    
+
+from numpy import byte
+
+from tools import disk
+from tools.disk import DiskPartitionSpec
     
 PARTITION_TYPES = {
     "fat12": "01",
@@ -14,38 +24,54 @@ PARTITION_TYPES = {
 
 SECTOR_SIZE = 512
 PARTITION_TABLE_OFFSET = 0x1BE
+PART_ENTRY_SIZE = 128
 
-def create_partition_table(target: str, start: int, size: int, ptype: int, index: int, bootable: bool):
-    print(f"create_partition_table({target}:{type(target)}, {start}:{type(start)}, {size}:{type(size)}, {ptype}:{type(ptype)}, {index}:{type(index)}, {bootable}:{type(bootable)})")
-    with open(target, "r+b") as f:
-        mbr = bytearray(f.read(SECTOR_SIZE))
+partition_data : bytearray = bytearray(0)
 
-        status = 0x80 if bootable else 0x00
-        entry = struct.pack("<BBBBBBBBII",
-            status,
-            0, 0, 0,   # CHS first (ignored)
-            ptype,
-            0, 0, 0,   # CHS last (ignored)
-            start,
-            size
-        )
+def create_partition_table(disk : gpt_image.disk.Disk, start: int, size: int, ptype: int, index: int, partition: DiskPartitionSpec):
+    
+    if partition.in_gpt:
+        partuuid : UUID = UUID(gpt_image.partition.PartitionType.EFI_SYSTEM_PARTITION.value)
+        new_part = gpt_image.partition.Partition(partition.name, size * disk.sector_size, partuuid.hex)
+        new_part._first_lba.value = start
+        new_part._first_lba.commit()
+        new_part._last_lba.value = start + size - 1
+        new_part._last_lba.commit()
+        new_part.partition_name = partition.name
+        
+        header = gpt_image.table.Header(disk.geometry)
+        
+        part_data = bytearray(new_part.marshal())
+        part_data = part_data.ljust(header.size_of_partition_entries, b'\x00')
+        
+        partition.partition_data = part_data
+        
+        disk.table.partitions.add(new_part)
+    else:
+        with open(disk.image_path, "r+b") as f:
+            mbr = bytearray(f.read(SECTOR_SIZE))
 
-        offset = PARTITION_TABLE_OFFSET + index * 16
-        mbr[offset:offset + 16] = entry
+            status = 0x80 if partition.bootable else 0x00
+            entry = struct.pack("<BBBBBBBBII",
+                status,
+                0, 0, 0,   # CHS first (ignored)
+                ptype,
+                0, 0, 0,   # CHS last (ignored)
+                start,
+                size
+            )
 
-        f.seek(0)
-        f.write(mbr)
+            offset = PARTITION_TABLE_OFFSET + index * 16
+            mbr[offset:offset + 16] = entry
+
+            f.seek(0)
+            f.write(mbr)
 
 # image start size type index bootable
-def make_partitons(image, start, size, ptype, index, bootable):
-    print("running make")
-
-    project_root = os.path.abspath(os.path.dirname(__file__))
-    sys.path.append(project_root)
-
-    print(f"project_root = {project_root}")
+def make_partitions(disk : gpt_image.disk.Disk, start, size, ptype, partition : DiskPartitionSpec, index):
 
     create_partition_table(
-        image, int(start), int(size), int(PARTITION_TYPES[ptype], 16), int(index), bool(bootable))
+        disk, int(start), int(size), int(PARTITION_TYPES[ptype], 16), int(index), partition)
 
-    print("partitons done")
+    print("partitions done")
+

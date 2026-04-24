@@ -14,6 +14,7 @@ section .entry
 
 %define ENDL 0x0D, 0x0A
 
+extern __stack_top
 extern __bss_start
 extern __end
 extern _init
@@ -109,6 +110,7 @@ entry:
     mov al, 0
     cld
     rep stosb
+    mov esp, __stack_top
 
     ; call global constructors
     call _init
@@ -126,8 +128,9 @@ entry:
     cpuid
     and edi, (1 << 29)
     jz ._32bit   
-    call entry_64
-    jmp ._halt
+    ; TODO:
+    ; call entry_64
+    ; jmp ._halt
 ._32bit:
     push edi
     push esi 
@@ -222,7 +225,7 @@ KbdControllerWriteCtrlOutputPort    equ 0xD1
     
 LoadGDT:
     [bits 16]
-    lgdt [g_GDTDesc]
+    lgdt [GDTDesc]
     ret
 
 %macro GDTDescriptor 6
@@ -234,7 +237,7 @@ LoadGDT:
     db %6
 %endmacro
 
-g_GDT:
+GDT:
     ; Null Descriptor
     dq 0
 
@@ -250,15 +253,20 @@ g_GDT:
     ; 16-bit data segment
     GDTDescriptor 0xFFFF, 0, 0, 10010010b, 00001111b, 0
 
+    %if __x86_64__=1
     ; 64-bit code segment
     GDTDescriptor 0xFFFF, 0, 0, 10011010b, 00100000b, 0
     
     ; 64-bit data segment
     GDTDescriptor 0xFFFF, 0, 0, 10010010b, 00100000b, 0
+%endif
+GDTDesc:    dw GDTDesc - GDT - 1
+            dd GDT
 
-g_GDTDesc:  dw g_GDTDesc - g_GDT - 1
-            dd g_GDT
+BootDrive: dw 0
+global BootPartitionSeg
+    BootPartitionSeg: dw 0
 
-g_BootDrive: dw 0
-g_BootPartitionSeg: dw 0
-g_BootPartitionOff: dw 0
+global BootPartitionOff
+    BootPartitionOff: dw 0
+

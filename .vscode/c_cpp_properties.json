@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/src/libs",
                 "${workspaceFolder}/src/kernel",
+                "${workspaceFolder}/src/Bootloader/stage2",
                 "${workspaceFolder}/toolchain/gcc-build-11.2.0/gcc/include/"
             ],
             "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE"],

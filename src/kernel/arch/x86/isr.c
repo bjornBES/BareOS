@@ -13,11 +13,13 @@
 #include "gdt.h"
 #include "x86.h"
 #include "drivers/serial/UART/UART.h"
+#include "arch/x86/paging/x86_paging.h"
 
 #include "debug/debug.h"
 #include "libs/IO.h"
 #include "libs/stdio.h"
 
+#include <printf_driver/printf.h>
 #include <stdint.h>
 
 #define MODULE "ISR"
@@ -69,25 +71,25 @@ void x86_ISRInitialize()
     x86_IDT_disable_gate(0x80);
 }
 
-typedef struct {
-    void* bp;
-    void* ip;
+typedef struct
+{
+    void *bp;
+    void *ip;
 } stack_frame_t;
 
-void stack_trace(uint32_t max_frames) {
-    stack_frame_t *frame;
+void ISR_show_stack_trace(uint32_t max_frames, Registers *regs)
+{
+    stack_frame_t *frame = (stack_frame_t *)regs->bp;
 
-    // read current EBP directly
-    __asm__ volatile("mov %0, rbp" : "=r"(frame));
-
-    UART_write_fstr(COM1, "Stack trace:\r\n");
-    for (uint32_t i = 0; i < max_frames; i++) {
+    log_debug("STACK", "Stack trace:");
+    for (uint32_t i = 0; i < max_frames; i++)
+    {
         // sanity check — bail if EBP looks invalid
-        if (!frame || (uint64_t)frame < 0x100000 || frame->ip == 0)
+        if (!frame || (uint32_64)frame < 0x100000 || frame->ip == 0)
             break;
 
-        UART_write_fstr(COM1, "  [%u] RIP = 0x%08x  RBP = 0x%08x\r\n",
-                i, frame->ip, frame->bp);
+        log_debug("STACK", "  [%u] PC = 0x%08x  BP = 0x%08x",
+                        i, frame->ip, frame->bp);
 
         frame = (stack_frame_t *)frame->bp;
     }
@@ -107,18 +109,17 @@ void x86_ISR_handler(Registers *regs)
     }
     else
     {
-        stack_trace(4);
-        UART_write_fstr(COM1, "Unhandled exception %d\r\n", regs->interrupt/* , g_Exceptions[regs->interrupt] */);
-        UART_write_fstr(COM1, "  eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x\r\n", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-        UART_write_fstr(COM1, "  esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x\r\n", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
-        
+        char buf[2048];
+        x86_ISRFormatRegisters(regs, buf, "\r\n", "  ");
+        ISR_show_stack_trace(4, regs);
+        UART_write_fstr(COM1, "Unhandled exception %d\r\n", regs->interrupt /* , g_Exceptions[regs->interrupt] */);
+        UART_write_fstr(COM1, "%s", buf);
+
         log_crit(MODULE, "Unhandled exception %d %s 0x%x", regs->interrupt, g_Exceptions[regs->interrupt], regs->error);
-        log_crit(MODULE, "  eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-        log_crit(MODULE, "  esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
-        
-        printf("Unhandled exception %d %s\n", regs->interrupt, g_Exceptions[regs->interrupt]);
-        printf("  eax=%x  ebx=%x  ecx=%x  edx=%x  esi=%x  edi=%x\n", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
-        printf("  esp=%x  ebp=%x  eip=%x  eflags=%x  cs=%x  ds=%x ss=%x\n", regs->esp, regs->ebp, regs->eip, regs->eflags, regs->cs, regs->ds, regs->ss);
+        log_crit(MODULE, "%s", buf);
+
+        // printf("Unhandled exception %d %s\n", regs->interrupt, g_Exceptions[regs->interrupt]);
+        // printf("%s", buf);
         KernelPanic("ISR", "Unhandled exception %d", regs->interrupt);
     }
 }
@@ -127,4 +128,13 @@ void x86_isr_register_handler(int interrupt, ISRHandler handler)
 {
     _ISRHandlers[interrupt] = handler;
     x86_IDT_enable_gate(interrupt);
+}
+
+void x86_ISRFormatRegisters(Registers *regs, char *buf, char *postfix, char *prefix)
+{
+#ifdef __x86_64__
+    sprintf(buf, "%sax=0x%llx bx=0x%llx cx=0x%llx dx=0x%llx si=0x%llx di=0x%llx%s%ssp=0x%llx bp=0x%llx pc=0x%04x:0x%llx flags=0b%llb cs=0x%x ds=0x%x ss=0x%x%s",
+            prefix, regs->ax, regs->bx, regs->cx, regs->dx, regs->si, regs->di, postfix, prefix,
+            regs->sp, regs->bp, regs->cs, regs->pc, regs->flags, regs->cs, regs->ds, regs->ss, postfix);
+#endif
 }

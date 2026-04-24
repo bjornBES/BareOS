@@ -17,12 +17,12 @@
 
 extern uint64_t kernel_entry;
 
-void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOffset)
+void LogKernelSegment(uint8_t *segmentStart, uint32_t memSize, uint32_t entryOffset)
 {
-    printf("Kernel segment loaded: [%p - %p], size=%u bytes\n", 
+    printf("Kernel segment loaded: [%p - %p], size=%u bytes\n",
            segmentStart, segmentStart + memSize - 1, memSize);
 
-    uint8_t* entryPtr = segmentStart + entryOffset;
+    uint8_t *entryPtr = segmentStart + entryOffset;
     printf("Entry point at %p, first 16 bytes: ", entryPtr);
     for (int i = 0; i < 16; i++)
     {
@@ -31,8 +31,12 @@ void LogKernelSegment(uint8_t* segmentStart, uint32_t memSize, uint32_t entryOff
     printf("\n");
 }
 
-bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
+bool ELF_Read64(Partition *part, const char *path, void **entryPoint, boot_params *bp)
 {
+#undef KERNEL_VMA
+#undef KERNEL_LMA
+#define KERNEL_VMA (uint64_t)0xffffffff80000000
+#define KERNEL_LMA (uint64_t)0x00100000
     printf("ELF: Opening '%s'\n", path);
 
     FAT_File *fd = FAT_Open(part, path);
@@ -60,16 +64,17 @@ bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
         FAT_Close(fd);
         return false;
     }
-    
-    /* Return the VIRTUAL entry point */
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+
+/* Return the VIRTUAL entry point */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
     *entryPoint = (void *)elfHeader.ProgramEntryPosition;
     kernel_entry = elfHeader.ProgramEntryPosition;
-    printf("ELF: entry VADDR = 0x%x + 0x%x\n", (kernel_entry) >> 32, kernel_entry);
-    #pragma GCC diagnostic pop
-    uint8_t *dest;
+    printf("ELF: entry VADDR = 0x%llx ", (kernel_entry));
+    kernel_entry = elfHeader.ProgramEntryPosition;
+#pragma GCC diagnostic pop
+    uint64_t dest;
     int elfSize = 0;
 
     /* Load each PT_LOAD segment */
@@ -114,18 +119,19 @@ bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
             return false;
         }
 
-        uint64_t phys = progarmHeader.VirtualAddress - KERNEL_VMA + KERNEL_LMA;
-
-        dest = (uint8_t *)(uintptr_t)phys;
-
+        dest = progarmHeader.PhysicalAddress;
+        bp->kernel_address = (uint64_t)progarmHeader.VirtualAddress;
         printf("ELF: load seg %u\n", i);
-        printf("     VADDR 0x%x\n", progarmHeader.VirtualAddress);
-        printf("     PADDR 0x%x/0x%x\n", phys, progarmHeader.PhysicalAddress);
-        printf("     file size %u mem size %u\n", progarmHeader.FileSize, progarmHeader.MemorySize);
-        printf("     dest 0x%x \n", dest);
+        printf("     VADDR 0x%llx\n", progarmHeader.VirtualAddress);
+        printf("     PADDR 0x%llx\n", progarmHeader.PhysicalAddress);
+        printf("     file size %llu mem size %u\n", progarmHeader.FileSize, progarmHeader.MemorySize);
+        printf("     dest 0x%llx \n", dest);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
         /* Zero entire segment (BSS included) */
-        memset(dest, 0, progarmHeader.MemorySize);
+        memset((void *)dest, 0, progarmHeader.MemorySize);
 
         /* Load file-backed portion */
         if (!FAT_Seek(part, fd, progarmHeader.Offset))
@@ -136,7 +142,7 @@ bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
         }
 
         uint64_t remaining = progarmHeader.FileSize;
-        uint8_t *p = dest;
+        uint8_t *p = (void *)dest;
 
         while (remaining > 0)
         {
@@ -156,16 +162,32 @@ bool ELF_Read64(Partition *part, const char *path, void **entryPoint)
             remaining -= chunk;
             elfSize += chunk;
         }
+        printf("Kernel segment loaded: [p0x%llp - p0x%llp], size=%llp bytes\n",
+               dest, dest + elfSize - 1, elfSize);
+
+        uint8_t *entryPtr = (void *)dest;
+#pragma GCC diagnostic pop
+        printf("Entry point at p0x%llp, first 16 bytes: ", entryPtr);
+        for (int i = 0; i < 16; i++)
+        {
+            printf("%X ", entryPtr[i]);
+        }
+        printf("\n");
     }
 
     FAT_Close(fd);
     printf("ELF: kernel loaded successfully\n");
-    LogKernelSegment(dest, elfSize, 0);
+    uint8_t *check = (uint8_t *)0x100020;
+    printf("bytes at 0x100000: %x %x %x %x\n",
+           check[0], check[1], check[2], check[3]);
     return true;
+#undef KERNEL_VMA
+#undef KERNEL_LMA
+#define KERNEL_VMA 0x80000000
+#define KERNEL_LMA 0x00100000
 }
 
-
-bool ELF_Read(Partition *part, const char *path, void **entryPoint)
+bool ELF_Read(Partition *part, const char *path, void **entryPoint, boot_params *bp)
 {
     printf("ELF: Opening '%s'\n", path);
 
@@ -194,17 +216,17 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
         FAT_Close(fd);
         return false;
     }
-    
+
     if (elfHeader.Bitness == ELF_BITNESS_64BIT)
     {
         FAT_Close(fd);
-        return ELF_Read64(part, path, entryPoint);
+        return ELF_Read64(part, path, entryPoint, bp);
     }
 
     printf("ELF: entry VADDR = 0x%x\n", elfHeader.ProgramEntryPosition);
 
     /* Return the VIRTUAL entry point */
-    *entryPoint = (void *)(uintptr_t)elfHeader.ProgramEntryPosition + 0xFFFFFFFF00000000;
+    *entryPoint = (void *)elfHeader.ProgramEntryPosition;
     uint8_t *dest;
     int elfSize = 0;
 
@@ -253,7 +275,7 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
         uint32_t phys = progarmHeader.VirtualAddress - KERNEL_VMA + KERNEL_LMA;
 
         dest = (uint8_t *)(uintptr_t)phys;
-
+        bp->kernel_address = progarmHeader.VirtualAddress;
         printf("ELF: load seg %u\n", i);
         printf("     VADDR 0x%x\n", progarmHeader.VirtualAddress);
         printf("     PADDR 0x%x\n", phys);
@@ -299,4 +321,3 @@ bool ELF_Read(Partition *part, const char *path, void **entryPoint)
     // LogKernelSegment(dest, elfSize, 0);
     return true;
 }
-

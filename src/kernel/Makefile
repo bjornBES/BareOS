@@ -1,13 +1,15 @@
-TARGET64_ASMFLAGS += -f elf64
-TARGET64_CFLAGS += -ffreestanding -nostdlib -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR)
-TARGET64_LINKFLAGS += -T linker.ld -nostdlib
-TARGET64_LIBS +=
+KERNEL_TARGET_ASMFLAGS +=
+KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -D__$(arch)__=1
+KERNEL_TARGET_LINKFLAGS += -nostdlib
+KERNEL_TARGET_LIBS +=
 
 ifeq ($(arch),i686)
-TARGET64_ASMFLAGS += -Dx86=0
+KERNEL_TARGET_LINKFLAGS += -T linker32.ld
+KERNEL_TARGET_ASMFLAGS += -D__x86_64__=0
 endif
 ifeq ($(arch),x86_64)
-TARGET64_ASMFLAGS += -Di686=0
+KERNEL_TARGET_LINKFLAGS += -T linker64.ld
+KERNEL_TARGET_ASMFLAGS += -D__i686__=0
 endif
 
 BUILD_DIRKERNEL = $(BUILD_DIR)/kernel
@@ -41,18 +43,18 @@ all: kernel
 kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
 $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
-	@$(TARGET_LD) $(TARGET64_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(TARGET_LIBS)
+	@$(TARGET_LD) $(KERNEL_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(KERNEL_TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -o $@ $<
-#	@$(TARGET_CC) $(TARGET64_CFLAGS) -c -save-temps -o $@.c $<
+	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -o $@ $<
+#	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -save-temps -o $@.c $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
-	@$(TARGET_ASM) $(TARGET64_ASMFLAGS) -o $@ $<
+	@$(TARGET_ASM) $(KERNEL_TARGET_ASMFLAGS) -o $@ $<
 	@echo "--> Compiled: " $<
 
 always:

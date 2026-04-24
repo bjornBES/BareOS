@@ -27,7 +27,7 @@ export TARGET_AR  = $(binPath)/$(TARGET)-$(AR)
 export TARGET_CC  = $(binPath)/$(TARGET)-$(CC)
 export TARGET_CXX = $(binPath)/$(TARGET)-$(CXX)
 export TARGET_LD  = $(binPath)/$(TARGET)-$(LD)
-export TARGET_LIBS = $(BUILD_DIR)/libcore.a
+export TARGET_CORE_LIBS = $(BUILD_DIR)/libcore.a
 
 export TARGET32_ASM = nasm
 export TARGET32_AR  = $(TOOLCHAIN_DIR)/i686-elf/bin/i686-elf-$(AR)
@@ -56,10 +56,16 @@ export CFLAGS = -Wall -Werror -trigraphs                    \
 # I WILL FUCKING FIND YOU, AND KILL YOU.
 # - BjornBEs 24-03-2026 13:55
 
-export ASMFLAGS = -D PAGING=$(enable_paging)
+export ASMFLAGS = -D PAGING=$(enable_paging) -D__$(arch)__=1
 export LINKFLAGS = -static
-export LIBS = -lgcc
+export LIBS = -lgcc $(TARGET_CORE_LIBS)
 
+ifeq ($(arch),i686)
+ASMFLAGS += -D__x86_64__=0
+endif
+ifeq ($(arch),x86_64)
+ASMFLAGS += -D__i686__=0
+endif
 
 ifeq ($(config), debug)
     CFLAGS += -DDEBUG=1 -O0
@@ -68,17 +74,56 @@ endif
 
 export floppyOutput = $(BUILD_DIR)/image.img
 
-export TARGET32_ASMFLAGS  = $(ASMFLAGS) -f elf32 -D$(arch)=1 -I.
+export TARGET32_ASMFLAGS  = $(ASMFLAGS) -f elf32 -I.
 export TARGET32_CFLAGS    = $(CFLAGS) -std=c99
 export TARGET32_CXXFLAGS  = $(CFLAGS) -std=c++17 -fno-exceptions -fno-rtti
 export TARGET32_LINKFLAGS = $(LINKFLAGS) -nostdlib
 export TARGET32_LIBS      = $(LIBS)
 
-export TARGET64_ASMFLAGS  = $(ASMFLAGS) -f elf64 -D$(arch)=1 -I.
+export TARGET64_ASMFLAGS  = $(ASMFLAGS) -f elf64 -I.
 export TARGET64_CFLAGS    = $(CFLAGS) -std=c99 -mcmodel=kernel
 export TARGET64_CXXFLAGS  = $(CFLAGS) -std=c++17 -fno-exceptions -fno-rtti
 export TARGET64_LINKFLAGS = $(LINKFLAGS) -nostdlib
 export TARGET64_LIBS      = $(LIBS)
+
+export KERNEL_TARGET_ASMFLAGS = $(TARGET32_ASMFLAGS)
+export KERNEL_TARGET_CFLAGS = $(TARGET32_CFLAGS)
+export KERNEL_TARGET_CXXFLAGS = $(TARGET32_CXXFLAGS)
+export KERNEL_TARGET_LINKFLAGS = $(TARGET32_LINKFLAGS)
+export KERNEL_TARGET_LIBS = $(TARGET32_LIBS)
+
+export TARGET_ASMFLAGS = $(TARGET32_ASMFLAGS)
+export TARGET_CFLAGS = $(TARGET32_CFLAGS)
+export TARGET_CXXFLAGS = $(TARGET32_CXXFLAGS)
+export TARGET_LINKFLAGS = $(TARGET32_LINKFLAGS)
+export TARGET_LIBS = $(TARGET32_LIBS)
+
+export USER_TARGET_ASMFLAGS = $(TARGET32_ASMFLAGS)
+export USER_TARGET_CFLAGS = $(TARGET32_CFLAGS)
+export USER_TARGET_CXXFLAGS = $(TARGET32_CXXFLAGS)
+export USER_TARGET_LINKFLAGS = $(TARGET32_LINKFLAGS)
+export USER_TARGET_LIBS = $(TARGET32_LIBS)
+
+
+ifeq ($(arch),x86_64)
+    KERNEL_TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
+    KERNEL_TARGET_CFLAGS := $(TARGET64_CFLAGS)
+    KERNEL_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+    KERNEL_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+    KERNEL_TARGET_LIBS := $(TARGET64_LIBS)
+
+    USER_TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
+    USER_TARGET_CFLAGS := $(TARGET64_CFLAGS)
+    USER_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+    USER_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+    USER_TARGET_LIBS := $(TARGET64_LIBS)
+
+    TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
+    TARGET_CFLAGS := $(TARGET64_CFLAGS)
+    TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+    TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+    TARGET_LIBS := $(TARGET64_LIBS)
+endif
 
 export PAGING_ENABLE = 1
 export MAX_PATH_SIZE = 512

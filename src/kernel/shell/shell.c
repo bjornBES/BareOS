@@ -122,7 +122,7 @@ void shell_enter()
             char path[320];
             int count = sprintf(path, "%sbin/%s", mount_path, argv[1]);
             path[count] = '\0';
-            exec(path, argv);
+            process_exec(path, argv);
         }
         else if (!strcmp(command, "LS"))
         {
@@ -154,7 +154,7 @@ void shell_enter()
             char path[320];
             count = sprintf(path, "%sbin/INIT.ELF", mount_path);
             path[count] = '\0';
-            exec(path, argv);
+            process_exec(path, argv);
         }
         else if (!strcmp(command, "MOUNT"))
         {

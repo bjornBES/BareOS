@@ -11,7 +11,8 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
-#include "fs/mbr.h"
+#include <boot/bootparams.h>
+#include "partition/partition.h"
 
 #define ELF_MAGIC ("\x7F" "ELF")
 
@@ -156,4 +157,4 @@ typedef struct
 } ELF_program_header64;
 
 
-bool ELF_Read(Partition* part, const char* path, void** entryPoint);
+bool ELF_Read(Partition* part, const char* path, void** entryPoint, boot_params *bp);

@@ -1,9 +1,19 @@
+/*
+ * File: memory.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 12 Apr 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #include "memory.h"
 
-void* memcpy(void* dst, const void* src, uint16_t num)
+void *memcpy(void *dst, const void *src, uint16_t num)
 {
-    uint8_t* u8Dst = (uint8_t *)dst;
-    const uint8_t* u8Src = (const uint8_t *)src;
+    uint8_t *u8Dst = (uint8_t *)dst;
+    const uint8_t *u8Src = (const uint8_t *)src;
 
     for (uint16_t i = 0; i < num; i++)
         u8Dst[i] = u8Src[i];
@@ -11,9 +21,9 @@ void* memcpy(void* dst, const void* src, uint16_t num)
     return dst;
 }
 
-void * memset(void * ptr, int value, uint16_t num)
+void *memset(void *ptr, int value, uint16_t num)
 {
-    uint8_t* u8Ptr = (uint8_t *)ptr;
+    uint8_t *u8Ptr = (uint8_t *)ptr;
 
     for (uint16_t i = 0; i < num; i++)
         u8Ptr[i] = (uint8_t)value;
@@ -21,10 +31,10 @@ void * memset(void * ptr, int value, uint16_t num)
     return ptr;
 }
 
-int memcmp(const void* ptr1, const void* ptr2, uint16_t num)
+int memcmp(const void *ptr1, const void *ptr2, uint16_t num)
 {
-    const uint8_t* u8Ptr1 = (const uint8_t *)ptr1;
-    const uint8_t* u8Ptr2 = (const uint8_t *)ptr2;
+    const uint8_t *u8Ptr1 = (const uint8_t *)ptr1;
+    const uint8_t *u8Ptr2 = (const uint8_t *)ptr2;
 
     for (uint16_t i = 0; i < num; i++)
         if (u8Ptr1[i] != u8Ptr2[i])
@@ -33,9 +43,20 @@ int memcmp(const void* ptr1, const void* ptr2, uint16_t num)
     return 0;
 }
 
-void* segoffset_to_linear(void* addr)
+void *segoffset_to_linear(void *addr)
 {
     uint32_t offset = (uint32_t)(addr) & 0xFFFF;
     uint32_t segment = (uint32_t)(addr) >> 16;
-    return (void*)(segment * 16 + offset);
+    return (void *)(segment * 16 + offset);
+}
+void *segoffset_to_linear_real(uint16_t seg, uint16_t off)
+{
+    return (void *)(seg * 16 + off);
+}
+
+seg_off_t linear_to_segoff(void *linear) {
+    return (seg_off_t){
+        .segment = (uint16_t)((uint32_t)linear >> 4),
+        .offset  = (uint16_t)((uint32_t)linear & 0x0F),
+    };
 }

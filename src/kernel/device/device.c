@@ -71,3 +71,30 @@ device *device_get_by_index(uint32_t index)
 {
     return devices[index];
 }
+
+void device_debug()
+{
+    int dev_count = device_count();
+    log_info(MODULE, "device count: %u", dev_count);
+    char* DEVICE_TYPE_STRING[8] = {
+        [DEVICE_UNKNOWN] = "UNKNOWN",
+        [DEVICE_SERIAL] = "SERIAL",
+        [DEVICE_NET] = "NET",
+        [DEVICE_PSEUDO] = "PSEUDO",
+        [DEVICE_VIDEO] = "VIDEO",
+        [DEVICE_DISK] = "DISK",
+        [DEVICE_CHAR] = "CHAR",
+        [DEVICE_TTY] = "TTY",
+    };
+    for (size_t i = 0; i < dev_count; i++)
+    {
+        device *dev = device_get_by_index(i);
+        if (dev == NULL)
+        {
+            log_info(MODULE, "device: %u, NULL", i);
+            continue;
+        }
+        log_info(MODULE, "device: %u, id:%x, %s(%u), name:%s, read:%p, write:%p", i, dev->device_id, DEVICE_TYPE_STRING[dev->type], dev->type, dev->name, dev->read, dev->write);
+    }
+    
+}
