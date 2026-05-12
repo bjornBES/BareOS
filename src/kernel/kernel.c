@@ -45,3 +45,4 @@ void kernel_panic(char* message, ...)
     for (;;)
     ;
 }
+

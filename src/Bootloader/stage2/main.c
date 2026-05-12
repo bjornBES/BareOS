@@ -40,6 +40,7 @@ boot_params bss_bootParams;
 
 extern uint16_t BootPartitionSeg;
 extern uint16_t BootPartitionOff;
+extern char __trampoline_start;
 
 void hexdump(void *ptr, int len)
 {
@@ -68,6 +69,20 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     }
     hexdump(partition, 64);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
+    printf("bootParams @ 0x%x\n", bootParams);
+#pragma GCC diagnostic pop
+    
+    for (size_t i = 0; i < 512; i++)
+    {
+        bootParams->smp_trampoline[i] = *((uint8_t*)&__trampoline_start + i);
+    }
+/*     hexdump((uint8_t*)&__trampoline_start, 512);
+    hexdump(bootParams->smp_trampoline, 512); */
+    
+
     DISK disk;
     if (!DISK_Initialize(&disk, bootDrive))
     {
@@ -84,11 +99,6 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
         printf("FAT init error\r\n");
         goto end;
     }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
-    printf("bootParams @ 0x%x\n", bootParams);
-#pragma GCC diagnostic pop
     memset(bootParams, 0, sizeof(boot_params));
     bootParams->pageDirectory = 0x112255AA;
     bootParams->BootDevice = bootDrive;
@@ -102,7 +112,7 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     DetectPCI(bootParams);
     DetectEquipment(bootParams);
     DetectCPUID(bootParams);
-    // DetectACPI(bootParams);
+    DetectACPI(bootParams);
 
     printf("Hello world");
     vga_clear();

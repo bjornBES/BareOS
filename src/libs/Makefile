@@ -1,6 +1,6 @@
 KERNEL_TARGET_ASMFLAGS += -f elf64 -I.
-KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
-KERNEL_TARGET_CXXFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR)
+KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR) -I${SOURCE_ARCH}
+KERNEL_TARGET_CXXFLAGS += -ffreestanding -nostdlib -I. -I $(INCLUDE_DIR) -I${SOURCE_ARCH}
 KERNEL_TARGET_LIBS += -lgcc
 KERNEL_TARGET_LINKFLAGS += -nostdlib
 

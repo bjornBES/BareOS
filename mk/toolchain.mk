@@ -11,6 +11,7 @@ GCC_SRC        = toolchain/gcc-$(GCC_VERSION)
 GCC_BUILD      = toolchain/gcc-build-$(GCC_VERSION)
 
 toolchain_binutils: $(TOOLCHAIN_PREFIX)/bin/$(TARGET)-ld
+
 $(TOOLCHAIN_PREFIX)/bin/$(TARGET)-ld: $(BINUTILS_SRC).tar.xz $(BINUTILS_SRC)
 	mkdir -p $(BINUTILS_BUILD)
 	cd $(BINUTILS_BUILD) && CFLAGS= ASMFLAGS= CC=/usr/bin/gcc CXX=/usr/bin/g++ LD=/usr/bin/ld ASM= LINKFLAGS= TARGET= arch= config= LIBS= \

@@ -15,7 +15,8 @@
 #include <boot/bootparams.h>
 
 #define BUDDY_MAX_ORDER 11 // 2^0 * 4KiB to 2^10 * 4KiB = 4KiB to 4MiB
-
+#define MAX_SIZE (1 << (BUDDY_MAX_ORDER - 1)) * PAGE_SIZE
+#define LOW_SIZE 1 * PAGE_SIZE
 
 void buddy_init(boot_params *params);
 void buddy_map();

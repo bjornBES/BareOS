@@ -12,7 +12,9 @@
 #include "debug/debug.h"
 #include "partition_manager/partition_manager.h"
 #include "device/device.h"
+#include "memory/ioremap/ioremap.h"
 #include "memory/paging/paging.h"
+#include "memory/memdefs.h"
 
 #include "libs/malloc.h"
 #include "libs/stdio.h"
@@ -88,10 +90,10 @@ uint32_t ahci_find_cmdslot(ahci_port aport)
     return 0xFFFFFFFF;
 }
 
-uint8_t ahci_identify_device(ahci_port aport, void *buf)
+uint8_t ahci_identify_device(ahci_port aport, void *buf, void *buf_virt)
 {
     log_debug(MODULE, "ahci_identify_device(aport, p%p)", buf);
-    log_debug(MODULE, "buf = p%p / v%p", buf, paging_get_virtual(kernel_page, buf));
+    log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
     HBA_PORT *port = aport.port;
     port->is = 0xFFFFFFFF;
     uint32_t slot = ahci_find_cmdslot(aport);
@@ -105,7 +107,7 @@ uint8_t ahci_identify_device(ahci_port aport, void *buf)
 
     HBA_CMD_TBL *cmd_table = (HBA_CMD_TBL *)aport.ctba[slot];
 
-    uint32_64 dba_phys = (uint32_64)paging_get_physical(kernel_page, buf);
+    uint32_64 dba_phys = (uint32_64)buf;
     cmd_table->prdt_entry[0].dba = dba_phys & 0xFFFFFFFF;
 #ifdef __x86_64__
     cmd_table->prdt_entry[0].dbau = (dba_phys >> 32);
@@ -447,7 +449,7 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 ahci_port *aport = &ports[ahci_devices_count];
                 ahci_initialize_port(aport);
                 log_debug(MODULE, "Port %u initialized", ahci_devices_count);
-                ahci_identify_device(*aport, info);
+                ahci_identify_device(*aport, info, info_virt);
                 log_debug(MODULE, "Port %u identified", ahci_devices_count);
 
                 device *dev = (device *)malloc(sizeof(device));
@@ -489,12 +491,11 @@ void ahci_initialize(pci_device_id *pdev)
 {
     ports = (ahci_port *)malloc(sizeof(ahci_port) * MAX_PORTS);
     
-    allocator_print_blocks();
     phys_addr bar5 = (phys_addr)(uint32_64)pdev->header.header0.bar5;
-    virt_addr vbar5 = (virt_addr)(bar5 + (KERNEL_VIRT_BASE - KERNEL_PHYS_BASE));
-    paging_alloc_frame_region(bar5, (size_t)bar5 + sizeof(HBA_MEM));
+    virt_addr vbar5 = ioremap(bar5, sizeof(HBA_MEM));
+    // paging_alloc_frame_region(bar5, (size_t)bar5 + sizeof(HBA_MEM));
     allocator_print_blocks();
-    paging_map_region(kernel_page, vbar5, bar5, sizeof(HBA_MEM), PAGE_PRESENT | PAGE_WRITABLE | PAGE_PCD | PAGE_PWT);
+    paging_map_region(kernel_page, vbar5, bar5, sizeof(HBA_MEM), mmio_flags);
     allocator_print_blocks();
     ahci_initialize_abar((HBA_MEM *)vbar5);
     log_info(MODULE, "exit out");

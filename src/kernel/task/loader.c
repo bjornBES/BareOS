@@ -30,6 +30,7 @@ void Loader_register_loader(loader *loader)
 loader *Loader_probe(fd_t file)
 {
     uint8_t *buffer = malloc(1024);
+    VFS_read(file, buffer, 1024);
     for (size_t i = 0; i < loader_index; i++)
     {
         if (loaders[i] == NULL)
@@ -37,8 +38,7 @@ loader *Loader_probe(fd_t file)
             continue;
         }
 
-        VFS_read(file, buffer, 1024);
-        if (loaders[i]->probe(buffer, loaders[i]))
+        if (loaders[i]->probe(buffer, loaders[i]) == RETURN_GOOD)
         {
             free(buffer);
             return loaders[i];

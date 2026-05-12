@@ -8,6 +8,8 @@
 ; -----
 ;
 
+section .x86_text
+
 %macro x86_EnterRealMode 0
     [bits 32]
     jmp word 18h:.pmode16         ; 1 - jump to 16-bit protected mode segment
@@ -808,7 +810,7 @@ global x86_EnterLongMode
 x86_EnterLongMode:
     cli
     jmp    entry_but_long
-section .bss
+
 ;
 ; uint8_t menu_key = 0
 ;

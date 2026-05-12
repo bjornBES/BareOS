@@ -1,0 +1,126 @@
+/*
+ * File: process_types.h
+ * File Created: 05 May 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 11 May 2026 23:47:22
+ * Modified By: BjornBEs
+ * -----
+ */
+
+#pragma once
+
+#include "process_config.h"
+
+#include "signal_type.h"
+#include "threading/thread_type.h"
+#include "memory/paging/paging_type.h"
+#include "memory/vmm/vmm_types.h"
+
+#include <types.h>
+#include <pledge_types.h>
+
+struct process;
+struct __signal_table_t;
+
+typedef enum process_api
+{
+    Undefined,
+    API_SYSV64,
+    API_SYSV32,
+} process_api_t;
+
+typedef enum process_state
+{
+    PROC_STATE_RUNNING,
+    PROC_STATE_READY,
+    PROC_STATE_SLEEP,
+    PROC_STATE_ZOMBIE,
+} process_state_t;
+
+typedef enum process_section_type
+{
+    PROC_TYPE_TEXT,
+    PROC_TYPE_DATA,
+    PROC_TYPE_RODATA,
+    PROC_TYPE_BSS,
+    PROC_TYPE_HEAP,
+    PROC_TYPE_STACK,
+} process_section_type_t;
+
+typedef struct process_section
+{
+    virt_addr base;
+    size_t size;
+    process_section_type_t type;
+    uint32_t flags;
+} process_section_t;
+
+// the address this is a process
+typedef struct task_ladder
+{
+    // the next one on the level aka going down i+1
+    struct task_ladder *next;
+    // the last one on the level aka going up i-1
+    struct task_ladder *priv;
+} task_ladder_t;
+
+typedef union process_exit_code
+{
+    struct
+    {
+        uint8_t res1;
+        uint8_t exit_code2;
+        uint8_t exit_code1;
+        uint8_t signal;
+    };
+    uint32_t raw;
+} process_exit_code_t;
+
+
+typedef struct process
+{
+    // children and siblings
+    // siblings am i right?
+    task_ladder_t ladder;
+    
+    // the last one in the chain
+    struct process *parent;
+    
+    // child, just the child of this process
+    struct process *child;
+    
+    // process info
+    pid_t pid;
+    char volume[32];
+    uint16_t abi;
+    process_state_t state;
+    virt_addr entry;
+
+    pid_t wait_for;
+
+    // memory
+    vma_memory_t *vma;
+
+    // paging
+    paging_page_t page_dir;
+
+    // pledge
+    bool pledged;
+    pledge_flags_t pledges;
+
+    // sections
+    process_section_t sections[PROCESS_MAX_SECTIONS];
+    uint8_t section_count;
+
+    // signals
+    signal_pending signal_queue;
+    struct __signal_table_t signal_table;
+    process_exit_code_t exit_code;
+
+    // threads
+    thread *threads[MAX_THREADS_PER_PROCESS];
+    uint32_t thread_count;
+
+    // === later things ===
+} process_t;

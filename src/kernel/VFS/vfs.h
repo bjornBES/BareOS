@@ -3,7 +3,7 @@
  * File Created: 26 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 03 Mar 2026
+ * Last Modified: 12 May 2026 12:55:17
  * Modified By: BjornBEs
  * -----
  */
@@ -16,38 +16,30 @@
 
 #include "syscall/syscall.h"
 #include "device/device.h"
+#include "kernel.h"
 
 #define MAX_FILE_NAME 64
-
-typedef int fd_t;
-
-#define VFS_FD_STDIN (fd_t)0
-#define VFS_FD_STDOUT (fd_t)1
-#define VFS_FD_STDERR (fd_t)2
-#define VFS_FD_DEBUG (fd_t)3
-#define VFS_FS_NEXT (fd_t)4
-#define VFS_INVALID_FD (fd_t) -1
 
 
 struct __filesystem_t;
 
 typedef struct
 {
-    char *path;
+    char *name;
     device *dev;
     struct __filesystem_t *fs;
     void *fs_priv;
-} mount_point;
+} volume_point;
 typedef struct
 {
-    char name[256];
+    char path[256];
     uint32_t flags;
     size_t size;
     uint32_t inode;
     size_t offset;
     bool opened;
     struct __filesystem_t *fs;
-    mount_point *mount;
+    volume_point *volume;
     void *priv; // FS-private data
 } vfs_node;
 
@@ -62,13 +54,13 @@ typedef struct __filesystem_t
 {
     char *name;
     bool (*probe)(device *dev);
-    bool (*mount)(device *dev, mount_point *mnt);
-    bool (*umount)(device *dev, mount_point *mnt);
-    bool (*open)(vfs_node *node, device *dev, mount_point *mnt);
-    bool (*close)(vfs_node *node, device *dev, mount_point *mnt);
-    uint32_t (*read)(vfs_node *node, void *buffer, size_t offset, size_t length, device *dev, mount_point *mnt);
+    bool (*mount)(device *dev, volume_point *mnt);
+    bool (*umount)(device *dev, volume_point *mnt);
+    bool (*open)(vfs_node *node, device *dev, volume_point *mnt);
+    bool (*close)(vfs_node *node, device *dev, volume_point *mnt);
+    uint32_t (*read)(vfs_node *node, void *buffer, size_t offset, size_t length, device *dev, volume_point *mnt);
 
-    int (*read_dir)(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, mount_point *mnt);
+    int (*read_dir)(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, volume_point *mnt);
 } filesystem;
 
 int VFS_write(fd_t file, uint8_t *data, size_t size);
@@ -82,4 +74,4 @@ int VFS_read_dir(fd_t fd, vfs_dirent *out);
 
 void VFS_init();
 
-mount_point **vfs_get_mount_points(int *count);
+volume_point **vfs_get_volume_points(int *count);

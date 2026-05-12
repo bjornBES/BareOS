@@ -34,7 +34,7 @@ entry_but_long:
 
     mov     ecx, 0xC0000080
     rdmsr
-    or      eax, 1 << 8
+    or      eax, (1 << 8) | (1 << 11) | (1 << 0)
     wrmsr
 
     ; fuck yes 64 bits fuck yes
@@ -62,8 +62,7 @@ long_mode_entry:
     mov     fs, ax
     mov     gs, ax
     
-    mov     rdi,    GDTDesc_64
-    lgdt    [rdi]
+    lgdt    [GDTDesc_64]
 
     mov     rdi,    .reload
     push    0x8

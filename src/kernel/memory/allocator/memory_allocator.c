@@ -32,27 +32,26 @@ void alloc_new_page()
 {
     phys_addr phys = pmm_alloc_heap_frame();
     virt_addr virt = heap_end;  // next virtual page after current end
-	log_debug(MODULE, "mapping %p..%p", virt, phys);
-	paging_print_out = true;
-    paging_map_region(kernel_page, virt, phys, HEAP_FRAME, -1);
+	log_debug(MODULE, "mapping %p..%p for 4 page", virt, phys);
+    paging_map_region(kernel_page, virt, phys, HEAP_FRAME, kernel_data_flags);
 	reload_pages();
-	paging_print_out = false;
 	
     heap_size++;
-	log_debug(MODULE, "%p + (%u * 4096) = %p", heap_begin, heap_size, heap_begin + (heap_size * HEAP_FRAME));
+	log_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, HEAP_FRAME, heap_begin + (heap_size * HEAP_FRAME));
     heap_end = heap_begin + (heap_size * HEAP_FRAME);
 	memset(virt, 0, HEAP_FRAME);
 }
 
 void allocator_init()
 {
+	log_info(MODULE, "init heap");
 	heap_begin = MEMORY_HEAP_VIRT_BASE;
 	heap_end = heap_begin;
 	heap_size = 0;
 	last_alloc = heap_begin;
 	memory_used = 0;
 
-	alloc_new_page(); // right here
+	alloc_new_page();
 
 	allocator_print_status();
 
@@ -66,6 +65,7 @@ void allocator_print_status()
 	log_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
 	log_debug(MODULE, "Heap start: %p", heap_begin);
 	log_debug(MODULE, "Heap end: %p", heap_end);
+	log_debug(MODULE, "last_alloc: %p", last_alloc);
 }
 
 void allocator_print_blocks()
@@ -154,7 +154,7 @@ void *kmalloc(size_t size)
 		}
 		// KernelPanic(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
 	}
-	pmm_print_info_verbose();
+	// pmm_print_info_verbose();
 
 	alloc_t *alloc = (alloc_t *)last_alloc;
 	alloc->status |= STATUS_ALLOCATED;

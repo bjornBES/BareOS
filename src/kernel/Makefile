@@ -1,5 +1,5 @@
 KERNEL_TARGET_ASMFLAGS +=
-KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -D__$(arch)__=1
+KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I${SOURCE_ARCH} -D__$(arch)__=1
 KERNEL_TARGET_LINKFLAGS += -nostdlib
 KERNEL_TARGET_LIBS +=
 
@@ -58,10 +58,10 @@ $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@echo "--> Compiled: " $<
 
 always:
-	@if not exist $(BUILD_DIRASM) mkdir $(BUILD_DIRASM)
-	@if not exist $(BUILD_DIRC) mkdir $(BUILD_DIRC)
-	@if not exist $(BUILD_DIRCBL) mkdir $(BUILD_DIRCBL)
-	@if not exist $(TEMP_DIRCBL) mkdir $(TEMP_DIRCBL)
+	@mkdir -p $(BUILD_DIRASM)
+	@mkdir -p $(BUILD_DIRC)
+	@mkdir -p $(BUILD_DIRCBL)
+	@mkdir -p $(TEMP_DIRCBL)
 
 # arch/x86/isrs_gen.c arch/x86/isrs_gen.inc:
 # @$(SOURCE_DIR)/build_tools/generate_isrs.sh $@

@@ -8,8 +8,7 @@
  * -----
  */
 #include <stddef.h>
-
-#define inline_asm __asm__ __volatile__
+#include <defs.h>
 
 char *strcpy(char *dest, const char *src)
 {

@@ -3,7 +3,7 @@
  * File Created: 26 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 12 May 2026 12:31:54
  * Modified By: BjornBEs
  * -----
  */
@@ -13,7 +13,7 @@
 #include "debug/debug.h"
 #include "kernel.h"
 #include "video/VGATextDevice.h"
-#include "arch/x86/e9.h"
+#include "kernel/debug.h"
 
 #include "libs/malloc.h"
 #include "libs/string.h"
@@ -27,40 +27,40 @@
 filesystem **filesystems;
 int last_fs_id;
 
-mount_point **mount_points;
-int last_mount_id;
+volume_point **volume_points;
+int last_volume_id;
 
 static vfs_node *fd_table[MAX_OPEN_FILES];
 
-mount_point *vfs_check_mount_point(char *path)
+volume_point *vfs_check_volume_point(char *name)
 {
-    for (size_t i = 0; i < last_mount_id; i++)
+    for (size_t i = 0; i < last_volume_id; i++)
     {
-        mount_point *point = mount_points[i];
-        if (!point || !point->path)
+        volume_point *point = volume_points[i];
+        if (!point || !point->name)
         {
             continue;
         }
 
-        if (strcmp(path, point->path) == 0)
+        if (strcmp(name, point->name) == 0)
         {
-            return mount_points[i];
+            return volume_points[i];
         }
     }
     return NULL;
 }
 
-mount_point *vfs_path_resolve(char *path)
+volume_point *vfs_path_resolve(char *path)
 {
     // path structure is
-    // /device/partition/...
+    // /volume:/...
 
     /*
-/sata0/Home/file.txt
+/part:/Home/file.txt
   ↑      ↑
   │      │
   │      └─────── handed to FAT32 fs driver as "Home/file.txt"
-  └────────────── looked up in mount table → fat32_mount_t*
+  └────────────── volume
     */
 
     char *vfs_path = path;
@@ -69,7 +69,7 @@ mount_point *vfs_path_resolve(char *path)
     memset(cut_path, 0, path_length);
     int path_index = 1;
 
-    while (!vfs_check_mount_point(cut_path))
+    while (!vfs_check_volume_point(cut_path))
     {
         cut_path = memcpy(cut_path, vfs_path, path_index);
         path_index++;
@@ -83,15 +83,15 @@ mount_point *vfs_path_resolve(char *path)
         log_err(MODULE, "Path ('%s') can't be resolved", path);
     }
 
-    mount_point *mount = vfs_check_mount_point(vfs_path);
+    volume_point *volume = vfs_check_volume_point(vfs_path);
     free(cut_path);
-    return mount;
+    return volume;
 }
 
-mount_point **vfs_get_mount_points(int *count)
+volume_point **vfs_get_volume_points(int *count)
 {
-    *count = last_mount_id;
-    return mount_points;
+    *count = last_volume_id;
+    return volume_points;
 }
 
 int VFS_read_file(fd_t file, uint8_t *data, size_t size)
@@ -104,20 +104,24 @@ int VFS_read_file(fd_t file, uint8_t *data, size_t size)
     }
 
     uint32_t offset = node->offset;
-    device *dev = node->mount->dev;
-    uint32_t bytes = node->fs->read(node, data, offset, size, dev, node->mount);
+    device *dev = node->volume->dev;
+    uint32_t bytes = node->fs->read(node, data, offset, size, dev, node->volume);
     return bytes;
 }
 
 int VFS_write(fd_t file, uint8_t *data, size_t size)
 {
+/*     if ((uint32_64)data < (uint32_64)KERNEL_VIRT_BASE)
+    {
+        log_debug(MODULE, "writing %u bytes from %p to %u", size, data, file);
+    } */
     switch (file)
     {
     case VFS_INVALID_FD:
         log_debug("KERNEL", "why? just why?");
         __unreachable();
         return -1;
-        
+
     case VFS_FD_STDIN:
         return 0;
 
@@ -139,7 +143,7 @@ int VFS_write(fd_t file, uint8_t *data, size_t size)
         return -1;
     }
 }
-SYSCALL_DEFINE3(VFS_write, int, fd_t, void*, size_t)
+SYSCALL_DEFINE3(VFS_write, fd_t, void *, size_t)
 
 int VFS_read(fd_t file, void *data, size_t size)
 {
@@ -158,7 +162,7 @@ int VFS_read(fd_t file, void *data, size_t size)
     }
     return 0;
 }
-SYSCALL_DEFINE3(VFS_read, int, fd_t, void*, size_t)
+SYSCALL_DEFINE3(VFS_read, fd_t, void *, size_t)
 
 int VFS_seek(fd_t file, int offset)
 {
@@ -182,19 +186,19 @@ fd_t VFS_open(char *path)
                 return VFS_INVALID_FD;
             }
 
-            node->mount = vfs_path_resolve(path);
-            if (node->mount == NULL)
+            node->volume = vfs_path_resolve(path);
+            if (node->volume == NULL)
             {
                 free(node);
                 return VFS_INVALID_FD;
             }
 
-            node->fs = node->mount->fs;
+            node->fs = node->volume->fs;
             node->offset = 0;
-            int mount_length = strlen(node->mount->path);
-            strcpy(node->name, path + mount_length);
+            int volume_length = strlen(node->volume->name);
+            strcpy(node->path, path + volume_length);
 
-            node->fs->open(node, node->mount->dev, node->mount);
+            node->fs->open(node, node->volume->dev, node->volume);
 
             fd_table[fd] = node;
             return fd;
@@ -206,7 +210,7 @@ fd_t VFS_open(char *path)
 bool VFS_close(fd_t fd)
 {
     vfs_node *node = fd_table[fd];
-    node->fs->close(node, node->mount->dev, node->mount);
+    node->fs->close(node, node->volume->dev, node->volume);
 
     free(node);
     fd_table[fd] = NULL;
@@ -231,45 +235,45 @@ int VFS_read_dir(fd_t fd, vfs_dirent *out)
 
     // loop based on the current_index
     vfs_node *node = fd_table[fd];
-    int state = node->fs->read_dir(node, current_index, out, node->mount->dev, node->mount);
+    int state = node->fs->read_dir(node, current_index, out, node->volume->dev, node->volume);
     return state;
 }
 
-bool VFS_mount(char *path, device *dev)
+bool VFS_mount(char *volume_path, device *dev)
 {
-    log_info(MODULE, "getting: %s probe %p, mount %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->mount);
-    mount_point *mount = vfs_check_mount_point(path);
-    if (mount != NULL)
+    log_info(MODULE, "getting: %s probe %p, volume %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->volume);
+    volume_point *volume = vfs_check_volume_point(volume_path);
+    if (volume != NULL)
     {
-        log_crit(MODULE, "mount point (%s) already in use", path);
+        log_crit(MODULE, "volume point (%s) already in use", volume_path);
         return false;
     }
     allocator_print_status();
     allocator_print_blocks();
-    mount = (mount_point *)malloc(sizeof(mount_point));
+    volume = (volume_point *)malloc(sizeof(volume_point));
     allocator_print_status();
     allocator_print_blocks();
-    log_info(MODULE, "getting: %s probe %p, mount %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->mount);
-    memset(mount, 0, sizeof(mount_point));
-    mount_points[last_mount_id] = mount;
-    last_mount_id++;
+    log_info(MODULE, "getting: %s probe %p, volume %p", filesystems[0]->name, filesystems[0]->probe, filesystems[0]->volume);
+    memset(volume, 0, sizeof(volume_point));
+    volume_points[last_volume_id] = volume;
+    last_volume_id++;
 
-    size_t path_length = strlen(path) + 1;
-    mount->path = malloc(path_length);
-    if (!mount->path)
+    size_t path_length = strlen(volume_path) + 1;
+    volume->name = malloc(path_length);
+    if (!volume->name)
     {
-        free(mount);
+        free(volume);
         return false;
     }
-    memcpy(mount->path, path, path_length);
-    mount->dev = dev;
+    memcpy(volume->name, name, path_length);
+    volume->dev = dev;
 
     filesystem *fs = NULL;
 
     for (size_t i = 0; i < last_fs_id; i++)
     {
         fs = filesystems[i];
-        log_info(MODULE, "getting: %s probe %p, mount %p", fs->name, fs->probe, fs->mount);
+        log_info(MODULE, "getting: %s probe %p, volume %p", fs->name, fs->probe, fs->volume);
         if (fs->probe(dev))
         {
             break;
@@ -283,25 +287,25 @@ bool VFS_mount(char *path, device *dev)
     if (fs == NULL)
     {
         log_crit(MODULE, "Can't find a filesystem");
-        free(mount);
+        free(volume);
         return false;
     }
 
-    mount->fs = fs;
+    volume->fs = fs;
 
-    if (fs->mount(dev, mount))
+    if (fs->volume(dev, volume))
     {
         log_debug(MODULE, "mounted the device");
         return true;
     }
 
-    free(mount);
+    free(volume);
     return false;
 }
 
 void VFS_register_fs(filesystem *fs)
 {
-    log_info(MODULE, "registering: %s probe %p, mount %p", fs->name, fs->probe, fs->mount);
+    log_info(MODULE, "registering: %s probe %p, volume %p", fs->name, fs->probe, fs->volume);
     filesystems[last_fs_id] = fs;
     last_fs_id++;
 }
@@ -309,12 +313,12 @@ void VFS_register_fs(filesystem *fs)
 void VFS_init()
 {
     last_fs_id = 0;
-    last_mount_id = 0;
+    last_volume_id = 0;
 
     // syscall_register_handler(1, );
 
     filesystems = (filesystem **)calloc(4, sizeof(filesystem *));
-    mount_points = (mount_point **)calloc(8, sizeof(mount_point *));
+    volume_points = (volume_point **)calloc(8, sizeof(volume_point *));
     log_debug(MODULE, "done init");
 
     return;

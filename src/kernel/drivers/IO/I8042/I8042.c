@@ -1,5 +1,15 @@
 /*
  * File: I8042.c
+ * File Created: 06 Apr 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 30 Apr 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
+/*
+ * File: I8042.c
  * File Created: 12 Mar 2026
  * Author: BjornBEs
  * -----
@@ -9,8 +19,7 @@
  */
 
 #include "I8042.h"
-#include "arch/x86/irq.h"
-#include "arch/x86/i8259.h"
+#include "kernel/irq.h"
 #include "drivers/IO/Keyboard/Keyboard.h"
 #include "VFS/vfs.h"
 #include "debug/debug.h"
@@ -209,7 +218,7 @@ bool I8042_second_channel_wait_for_response()
     return false;
 }
 
-void I8042_first_channel_handler(Registers *regs)
+void I8042_first_channel_handler(registers *regs)
 {
     uint8_t status = I8042_read(I8042_STATUS_PORT);
     // check if there are data
@@ -246,7 +255,7 @@ void I8042_first_channel_handler(Registers *regs)
         // clear variables
         I8042_first_channel_buffer_pointer = 0;
     }
-    i8259_send_eoi(1);
+    driver->send_eoi(1);
 }
 
 void I8042_init()
@@ -256,7 +265,7 @@ void I8042_init()
     I8042_first_channel_present = I8042_DEVICE_NOT_PRESENT;
     I8042_second_channel_present = I8042_DEVICE_NOT_PRESENT;
     I8042_first_channel_buffer_pointer = 0;
-    // Initialize PS/2 devices
+    // initialize PS/2 devices
 
     // step 1: Disable devices
     I8042_write_cmd(0xAD); // disable 1st port
@@ -346,7 +355,7 @@ void I8042_init()
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)
     {
         BIT_UNSET(conf, 0); // disable interrupts
-        x86_irq_register_handler(1, I8042_first_channel_handler);
+        irq_register_handler(1, I8042_first_channel_handler);
         // handlers
     }
 #if SUPPORT_SECOND_PORT

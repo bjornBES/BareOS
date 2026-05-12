@@ -11,7 +11,7 @@
 #include "libs/stdio.h"
 #include "libs/string.h"
 #include "VFS/vfs.h"
-#include "arch/x86/e9.h"
+#include "kernel/debug.h"
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -22,26 +22,104 @@
 
 #define MODULE "stdio"
 
-void putc(char c)
+int fputc(char c, fd_t file)
 {
-    fputc(c, stdout);
+    return VFS_write(file, (uint8_t *)&c, 1);
 }
 
-void puts(const char *str)
-{
-    fputs(str, stdout);
-}
-
-void fputc(char c, fd_t file)
-{
-    VFS_write(file, (uint8_t *)&c, 1);
-}
-
-void fputs(const char *str, fd_t file)
+int fputs(const char *str, fd_t file)
 {
     int len = strlen(str);
-    VFS_write(file, (uint8_t *)str, len);
+    return VFS_write(file, (uint8_t *)str, len);
 }
+
+int putc(char c, fd_t file)
+{
+    return fputc(c, file);
+}
+
+int putchar(int c)
+{
+    return fputc(c, stdout);
+}
+
+int puts(const char *str)
+{
+    return fputs(str, stdout);
+}
+
+
+fd_t fopen(char *filename, const char *mode)
+{
+    return VFS_open(filename);
+}
+
+// fd_t fdopen(int fildes, const char *mode);
+// fd_t popen(const char *command, const char *mode);
+// fd_t freopen(const char *filename, const char *mode, fd_t file);
+
+int fclose(fd_t file)
+{
+    return VFS_close(file);
+}
+
+// int pclose(fd_t file);
+
+int fileno(fd_t file)
+{
+    return 0;
+}
+
+int feof(fd_t file)
+{
+    return 0;
+}
+
+int ferror(fd_t file)
+{
+    return 0;
+}
+
+int fflush(fd_t file)
+{
+    return 0;
+}
+
+
+int fseek(fd_t file, int64_t offset, int whence)
+{
+    return 0;
+}
+
+int fseeko(fd_t file, off_t offset, int whence)
+{
+    return 0;
+}
+
+
+int64_t ftell(fd_t stream)
+{
+    return 0;
+}
+
+off_t ftello(fd_t stream)
+{
+    return 0;
+}
+
+
+size_t fread(void *buffer, size_t size, size_t count, fd_t stream)
+{
+    size_t r_size = size * count;
+    return VFS_read(stream, (uint8_t*)buffer, r_size);
+}
+
+size_t fwrite(const void *buffer, size_t size, size_t count, fd_t stream)
+{
+    size_t r_size = size * count;
+    return VFS_write(stream, (uint8_t*)buffer, r_size);
+}
+
 
 int vfprintf(fd_t file, const char *fmt, va_list args)
 {
@@ -56,8 +134,6 @@ int fprintf(fd_t file, const char *fmt, ...)
     va_end(args);
     return ret;
 }
-
-const char g_HexChars[] = "0123456789abcdef";
 
 int printf(const char *fmt, ...)
 {

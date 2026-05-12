@@ -17,12 +17,13 @@
 #include "kernel.h"
 #include "buddy.h"
 
-#define HEAP_FRAME 4096*4
+#define HEAP_FRAME 0x4000
 
 extern phys_addr start;
 extern phys_addr end;
 
 virt_addr phys_to_virt_auto(phys_addr p);
+phys_addr virt_to_phys_auto(virt_addr p);
 
 /// @brief Allocate a range of physical frames as used.
 ///
@@ -39,6 +40,8 @@ phys_addr pmm_alloc_at(phys_addr addr);
 ///
 /// @return Physical address of the allocated frame or NULL on failure.
 phys_addr pmm_alloc_frame();
+
+phys_addr pmm_alloc_frame_at_size(size_t size);
 
 /// @brief Free a previously allocated physical frame.
 ///

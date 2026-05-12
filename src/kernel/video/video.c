@@ -23,6 +23,10 @@
 #include "video.h"
 #include "VGATextDevice.h"
 
+#include "memory/ioremap/ioremap.h"
+#include "memory/paging/paging.h"
+#include "memory/memdefs.h"
+
 #include "libs/stdio.h"
 #include "libs/memory.h"
 
@@ -31,6 +35,8 @@ int current_mode;
 video_mode *video_current_mode_data;
 video_mode **modes;
 int mode_count;
+
+#define MODULE "VIDEO"
 
 // Helper Functions
 video_mode *video_get_mode_data(int mode)
@@ -89,7 +95,11 @@ void video_set_mode(int mode)
     video_current_mode_data = video_get_mode_data(mode);
     vga_set_mode(video_current_mode_data);
 #ifdef __x86_64__
-    frame_buffer = (uint8_t *)(uint64_t)video_current_mode_data->frame_buffer;
+/*     frame_buffer = (uint8_t *)(uint64_t)video_current_mode_data->frame_buffer;
+    if ((uint32_64)frame_buffer < (uint32_64)MEMORY_MMIO_VIRT_BASE)
+    {
+        frame_buffer += (uint64_t)MEMORY_MMIO_VIRT_BASE;
+    } */
 #else
     frame_buffer = (uint8_t *)video_current_mode_data->frame_buffer;
 #endif
@@ -126,4 +136,16 @@ void video_init(boot_params *bp, void *mode_addr)
     }
 
     video_set_mode(bp->currentMode);
+
+    phys_addr fb = (phys_addr)((uint32_64)video_current_mode_data->frame_buffer);
+    size_t fb_size = (size_t)video_current_mode_data->pitch * video_current_mode_data->height;
+    log_debug(MODULE, "paging p%p mapped", fb);
+    virt_addr fb_virt = ioremap(fb, fb_size);
+    for (size_t i = 0; i < mode_count; i++)
+    {
+        modes[i]->frame_buffer = (uint32_64)fb_virt;
+    }
+    frame_buffer = (uint8_t*)fb_virt;
+    vga_check();
+    log_debug(MODULE, "paging %p mapped to virt %p/phys %p", fb, fb_virt, fb);
 }

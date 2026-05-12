@@ -1,7 +1,7 @@
 TARGET32_ASMFLAGS += -f elf -D__$(arch)__=1
 TARGET32_CFLAGS += -D__$(arch)__=1 -ffreestanding -nostdlib -I /usr/local/i686-elf/include -I ./ -I ./../../libs -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I $(TOOLCHAIN_DIR)/gcc-build-11.2.0/gcc/include -Werror=int-to-pointer-cast
 TARGET32_LIBS +=
-TARGET32_LINKFLAGS += -T linker.ld -nostdlib
+TARGET32_LINKFLAGS += -nostdlib
 
 BUILD_DIRSTAGE2 = $(BUILD_DIR)/stage2
 BUILD_DIRC = $(BUILD_DIRSTAGE2)/c
@@ -24,10 +24,13 @@ OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
 
 all: stage2
 
-stage2: $(BUILD_DIRSTAGE2)/stage2.bin
+stage2: $(BUILD_DIRSTAGE2)/stage2.bin $(BUILD_DIRSTAGE2)/stage2.elf
 
 $(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C)
-	@$(TARGET32_LD) $(TARGET32_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET32_LIBS)
+	@$(TARGET32_LD) -T linker.ld $(TARGET32_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET32_LIBS)
+	@echo "--> Created  stage2.bin"
+$(BUILD_DIRSTAGE2)/stage2.elf: $(OBJECTS_ASM) $(OBJECTS_C)
+	@$(TARGET32_LD) -T linker_debug.ld $(TARGET32_LINKFLAGS) -o $@ $^ $(TARGET32_LIBS)
 	@echo "--> Created  stage2.bin"
 
 $(BUILD_DIRC)/%.obj: %.c
@@ -43,8 +46,8 @@ $(BUILD_DIRASM)/%.obj: %.asm
 	@echo "--> Compiled: " $<
 
 always:
-	@if not exist $(BUILD_DIRASM) mkdir $(BUILD_DIRASM)
-	@if not exist $(BUILD_DIRC) mkdir $(BUILD_DIRC)
+	@mkdir -p $(BUILD_DIRASM)
+	@mkdir -p $(BUILD_DIRC)
 
 
 clean:

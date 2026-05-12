@@ -4,11 +4,13 @@ export $(shell cut -d= -f1 config/config.env | grep -v '^#')
 export SOURCE_DIR = $(abspath .)
 export BUILD_DIR = $(abspath build)/$(arch)_$(config)
 export TOOLCHAIN_DIR = $(abspath toolchain)
+export SYSROOT_DIR = $(abspath rootfs/user)
 
 export TARGET = ${arch}-elf
 binPath = $(TOOLCHAIN_DIR)/$(TARGET)/bin
 export TOOLCHAIN_INCLUDE_DIR = $(TOOLCHAIN_DIR)/$(TARGET)/lib/gcc/$(TARGET)/$(GCC_VERSION)
 export INCLUDE_DIR = $(TOOLCHAIN_INCLUDE_DIR)/include
+
 
 BINUTILS_VERSION = 2.37
 BINUTILS_URL = https://ftp.gnu.org/gnu/binutils/binutils-$(BINUTILS_VERSION).tar.xz
@@ -44,6 +46,8 @@ endif
 export SOURCE_ARCH = arch/$(SRCARCH)
 
 # --- Flags ---
+export SUMBOLS = -DENABLE_MULTI_CORE=$(enable_multi_core) -DUSE_EAGER_FORK=$(use_eager_fork)
+
 export CFLAGS = -Wall -Werror -trigraphs                    \
     -Wno-error=unused-variable -Wno-error=unused-function   \
     -Wno-error=unused-label -Wno-error=deprecated           \
@@ -51,12 +55,12 @@ export CFLAGS = -Wall -Werror -trigraphs                    \
     -masm=intel                                             \
     -DMAX_PATH_SIZE=$(max_path_length)                      \
     -DPAGING=$(enable_paging)                               \
-    -nostdlib -ffreestanding -MMD -MP
+    -nostdlib -ffreestanding -MMD -MP $(SUMBOLS)
 # DO NOT SWITCH IT FROM INTEL
 # I WILL FUCKING FIND YOU, AND KILL YOU.
 # - BjornBEs 24-03-2026 13:55
 
-export ASMFLAGS = -D PAGING=$(enable_paging) -D__$(arch)__=1
+export ASMFLAGS = -D PAGING=$(enable_paging) -D__$(arch)__=1 $(SUMBOLS)
 export LINKFLAGS = -static
 export LIBS = -lgcc $(TARGET_CORE_LIBS)
 
@@ -72,7 +76,7 @@ ifeq ($(config), debug)
 	LINKFLAGS += -DDEBUG=1
 endif
 
-export floppyOutput = $(BUILD_DIR)/image.img
+export floppyOutput = $(BUILD_DIR)/image.iso
 
 export TARGET32_ASMFLAGS  = $(ASMFLAGS) -f elf32 -I.
 export TARGET32_CFLAGS    = $(CFLAGS) -std=c99

@@ -22,6 +22,8 @@
 
 #include <boot/bootparams.h>
 
+#include "kernel.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -37,7 +39,7 @@ typedef struct
     uint8_t bpp;
 
     // ---- Linear frame_buffer ----
-    uint32_t frame_buffer;
+    uint32_64 frame_buffer;
     uint32_t pitch;
 
     // ---- Color layout ----

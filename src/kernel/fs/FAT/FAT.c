@@ -3,7 +3,7 @@
  * File Created: 09 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 09 Mar 2026
+ * Last Modified: 12 May 2026 12:25:22
  * Modified By: BjornBEs
  * -----
  */
@@ -396,7 +396,7 @@ bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_direct
     return result;
 }
 
-int fat_read_directory(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, mount_point *mnt)
+int fat_read_directory(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, volume_point *mnt)
 {
     // bool fat_read_directory_internal(FAT_entry *entry, device *dev, fat_priv_data *fat_priv, FAT_directory *out)
     PRINT_FUNCTION_INFO("fat_read_directory", "%p, %u, %p, %p, %p", dir, index, out, dev, mnt);
@@ -404,7 +404,7 @@ int fat_read_directory(vfs_node *dir, uint32_t index, vfs_dirent *out, device *d
     return false;
 }
 
-uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size, device *dev, mount_point *mnt)
+uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size, device *dev, volume_point *mnt)
 {
     log_debug(MODULE, "  fat_read_file(%p, %p, %u, %u, %p, %p)", node, buffer, offset, size, dev, mnt);
     
@@ -416,7 +416,7 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
     log_debug(MODULE, "  offset = %u", node->offset);
     log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
     log_debug(MODULE, "  fs = %p", node->fs);
-    log_debug(MODULE, "  mount = %p", node->mount);
+    log_debug(MODULE, "  volume = %p", node->volume);
     log_debug(MODULE, "  priv = %p", node->priv);
     log_debug(MODULE, "}"); */
    
@@ -446,7 +446,7 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
     log_debug(MODULE, "  offset = %u", node->offset);
     log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
     log_debug(MODULE, "  fs = %p", node->fs);
-    log_debug(MODULE, "  mount = %p", node->mount);
+    log_debug(MODULE, "  volume = %p", node->volume);
     log_debug(MODULE, "  priv = %p", node->priv);
     log_debug(MODULE, "}"); */
    
@@ -487,12 +487,6 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
         cluster = fat_next_cluster(cluster, dev, fat_priv);
     }
     return bytes_read;
-    
-/*     uint32_t offset_lba = offset / fat_priv->bytes_per_sector;
-    uint32_t lba = cluster_to_lba(cluster_number, fat_priv);
-    log_debug(MODULE, "reading from LBA = %u with an offset LBA = %u total LBA = %u", lba, offset_lba, lba + offset_lba);
-    uint32_t count = (size / fat_priv->bytes_per_sector) + 1;
-    return fat_read_sectors(buffer, lba + offset_lba, count, dev, fat_priv); */
 }
 
 bool fat_probe(device *dev)
@@ -529,7 +523,7 @@ bool fat_probe(device *dev)
     return true;
 }
 
-bool fat_open(vfs_node *node, device *dev, mount_point *mnt)
+bool fat_open(vfs_node *node, device *dev, volume_point *mnt)
 {
     if (!node)
     {
@@ -542,7 +536,7 @@ bool fat_open(vfs_node *node, device *dev, mount_point *mnt)
     fat_read_file(node, NULL, 0, 0, dev, mnt);
     return true;
 }
-bool fat_close(vfs_node *node, device *dev, mount_point *mnt)
+bool fat_close(vfs_node *node, device *dev, volume_point *mnt)
 {
     if (!node)
     {
@@ -556,10 +550,10 @@ bool fat_close(vfs_node *node, device *dev, mount_point *mnt)
     return true;
 }
 
-bool fat_mount(device *dev, mount_point *mount)
+bool fat_mount(device *dev, volume_point *volume)
 {
     fat_priv_data *fat_priv = malloc(sizeof(fat_priv_data));
-    mount->fs_priv = fat_priv;
+    volume->fs_priv = fat_priv;
     fat_priv->fat_cache_position = FAT_CACHE_INVALID;
 
     uint8_t buffer[512];
@@ -631,7 +625,7 @@ filesystem *fat_init()
     filesystem *fs = (filesystem *)malloc(sizeof(filesystem));
 
     fs->name = "FAT";
-    fs->mount = fat_mount;
+    fs->volume = fat_mount;
     fs->probe = fat_probe;
     fs->open = fat_open;
     fs->close = fat_close;

@@ -51,6 +51,8 @@ $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
 	@$(TARGET32_ASM) -f elf $< -DFILESYSTEM=$(imageFS) -o $@
 
+always:
+
 clean:
 	@rm -f $(BUILD_DIRSTAGE1)/*.bin
 	@rm -f $(BUILD_DIRSTAGE1)/*.map

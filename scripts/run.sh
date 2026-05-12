@@ -1,6 +1,6 @@
 #!/bin/bash
 
-QEMU_ARGS="-k da -debugcon stdio -m 1g -d guest_errors,int,invalid_mem -D debug.txt -netdev user,id=mynet0 -net nic,model=rtl8139,netdev=mynet0"
+QEMU_ARGS="-k da -debugcon stdio -m 1g -d guest_errors,int,invalid_mem,page,strace -D debug.txt -netdev user,id=mynet0 -net nic,model=rtl8139,netdev=mynet0"
 
 if [ "$#" -le 1 ]; then
     echo "Usage: ./run.sh <image_type> <arch> <image>"
@@ -24,6 +24,9 @@ fi
 
 QEMU_ARGS="${QEMU_ARGS} -device intel-hda"
 QEMU_ARGS="${QEMU_ARGS} -device sb16"
+
+# SMP
+QEMU_ARGS="${QEMU_ARGS} -smp cores=4,threads=1,sockets=1"
 
 QEMU_COMMAND=qemu-system
 if [ "$2" == "i686" ]; then

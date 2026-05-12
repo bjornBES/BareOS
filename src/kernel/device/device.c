@@ -71,6 +71,10 @@ device *device_get_by_index(uint32_t index)
 {
     return devices[index];
 }
+device *device_get_by_name(uint32_t index)
+{
+    return devices[index];
+}
 
 void device_debug()
 {

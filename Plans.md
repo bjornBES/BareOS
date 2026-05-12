@@ -17,9 +17,9 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
 
 - [ ] BIOS device management (hook functions)
 
-### 32 bit p mode Kernel
+## 32/64 bit Kernel
 
-#### Phase 1 simple DOS and Unix
+### Phase 1 simple DOS and Unix
 
 - [X] GDT & IDT + driver for 8259 PIC
 - [X] E9 driver + debug
@@ -35,7 +35,7 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
   - [X] UART
 - [X] VFS (read-only)
 
-#### Phase 2 Advanced device management
+### Phase 2 Advanced device management
 
 - [X] Keyboard API
   - [X] Make a keyboard API
@@ -49,7 +49,7 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
 - [X] FAT32 with write support
 - [X] VFS with write support
 
-#### Phase 3 64 bits
+### Phase 3 64 bits
 
 this is optional if the CPUID EAX=0x80000001 bit 29 in EDX is 0
 do it a kernel loader
@@ -66,20 +66,59 @@ This is what the kernel loader should do in order right after the bootloader is 
   - or eax, (1 << 8)
   - wrmsr
 - [X] Enable paging again
-- [ ] Rewrite the kernel and project again.
+- [X] Rewrite the kernel and project again.
 
-#### Phase 4 Processes in full
+### Phase 4 Processes in full
 
-- [ ] Process management
-  - [ ] Process scheduler
-  - [ ] Process states
-  - [ ] Process control block
-  - [ ] Process creation and termination
-    - [ ] Allocate memory for process
-    - [ ] Load executable into memory using file loader
-    - [ ] Allocate page tables for process
-    - [ ] Set up user space stack
-    - [ ] Set up user space heap
-    - [ ] Jump to user space using iret
-      - [ ] Switch to user space Page tables
-- [ ] Virtual memory management
+- [X] Process management
+  - [X] Process states
+  - [X] Process termination
+  - [X] Process creation
+    - [X] Allocate memory for process
+    - [X] Load executable into memory using file loader
+    - [X] Allocate page tables for process
+    - [X] Set up user space stack
+    - [X] Set up user space heap
+    - [X] Jump to user space using iret/iretq
+      - [X] Switch to user space Page tables
+- [X] Virtual memory management
+- [X] malloc/free in userspace
+
+#### Phase 5 SMP, Threads and Scheduler
+
+- [X] Process Control Block
+  - [X] Full PCB struct (registers, state, priority, timeslice)
+  - [X] Save/restore CPU context on switch (rsp, rbp, callee-saved regs)
+  - [X] Kernel stack per process
+
+- [X] Scheduler
+  - [X] Process queue
+    - [X] Ready queue
+    - [X] Sleep queue
+  - [X] Round-robin scheduler
+  - [X] Timer IRQ drives preemption
+    - [X] PIT or APIC timer
+      - [X] PIT
+      - [X] APIC
+  - [X] Voluntary yield() syscall
+  - [X] sleep() / wakeup()
+    - [X] Move between queues via PROC_STATE_SLEEP
+    - [X] sleep()
+    - [X] wakeup()
+  - [X] Idle process (pid 0, runs when ready queue is empty)
+
+- [X] Threads
+  - [X] Thread struct (shares vma_memory_t with parent process)
+  - [X] Thread creation / exit
+  - [X] Per-thread kernel stack
+  - [X] Thread scheduler integration
+
+- [X] SMP
+  - [X] ACPI/MADT parse — enumerate APs
+    - [X] Get the ACPI/MADT in a "working" state
+    - [X] Finish the job.
+  - [X] AP startup (SIPI sequence)
+  - [X] Per-CPU data structure
+    - [X] cpu_t — current process, kernel stack, GDT/TSS per core
+  - [X] APIC timer per core drives per-core scheduler
+  - [X] Spinlocks / basic SMP synchronisation

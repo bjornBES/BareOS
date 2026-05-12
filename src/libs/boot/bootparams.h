@@ -239,7 +239,9 @@ typedef union
 
         // INT 0x12 + E820
         memory_info memory;
+
+        uint8_t smp_trampoline[512];
     };
-    uint8_t raw[MAX_BOOTPARAMS_SIZE];
+    // uint8_t raw[(((sizeof(struct data)) + (0x1000) - 1) & ~((0x1000) - 1))];
 
 } boot_params;

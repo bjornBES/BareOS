@@ -111,6 +111,21 @@ def create_filesystem(target: str, filesystem, reserved_sectors=0, offset=0):
         
         if result.returncode != 0:
             raise ValueError(f'Failed to create FAT{fat_type} filesystem')
+    elif filesystem in ["ext2", "ext3", "ext4"]:
+        reserved_sectors += 1
+        if filesystem == 'fat32':
+            reserved_sectors = 32
+        
+        print(f"mkfs.{filesystem} -E offset={offset} -L BESOS")
+        result = subprocess.run([
+            f"mkfs.{filesystem}",
+            "-E", f"offset={offset}",
+            "-L", "BESOS",
+            target
+        ])
+        
+        if result.returncode != 0:
+            raise ValueError(f'Failed to create {filesystem} filesystem')
     else:
         raise ValueError('Unsupported filesystem ' + filesystem)
 
@@ -372,8 +387,8 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         stage2_sectors = (stage2_size + SECTOR_SIZE - 1) // SECTOR_SIZE
         print(f"> installing MBR...")
         install_mbr(image, mbr)
-
-    if not disk.use_mbr:
+        
+    if disk.use_mbr:
         header = gpt_image.table.Header(_disk.geometry)
         header.number_of_partition_entries = len(disk.partitions)
         
@@ -404,6 +419,7 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         with open(_disk.image_path, "r+b") as f:
             f.seek(1 * _disk.sector_size)  # LBA1
             f.write(header_bytes)
+    print(f"> Done")
 
 def build_disk(_disk : Disk, disk : DiskSpec, mbr : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0):
     if (size_sectors == 0):
@@ -470,7 +486,8 @@ def build_partition(image, disk : Disk, files, bin_files : list[str], partition 
         # load bin files
         if bin_files.__len__() > 0:
             user_path = os.path.join(project_root, f"build/{arch}_{config}", "user")
-            mmd(image, "bin", partition_offset)
+            if not os.path.exists(os.path.join(basePath, "bin")):
+                mmd(image, "bin", partition_offset)
             for file in bin_files:
                 file_src = os.path.join(user_path, file)
                 file_name = os.path.basename(file)
@@ -486,7 +503,7 @@ def build_partition(image, disk : Disk, files, bin_files : list[str], partition 
     
     
 
-files_dir = os.path.join(project_root, "files")
+files_dir = os.path.join(project_root, "rootfs")
 
 if not os.path.exists(files_dir):
     os.mkdir(files_dir)
@@ -500,9 +517,9 @@ stage1vbr = os.path.join(project_root, f"build/{arch}_{config}/stage1/vbr.bin")
 stage2 = os.path.join(project_root, f"build/{arch}_{config}/stage2/stage2.bin")
 kernel = os.path.join(project_root, f"build/{arch}_{config}/kernel/kernel.elf")
 
-disks.append(DiskSpec("main", "image.img", 0, imageFS, False, [
-    DiskPartitionSpec("boot", "root", 4096, "fat32", 4096, True, False, [], stage1vbr, stage2, kernel),
-    DiskPartitionSpec("User", "user", 8192, "fat32", 0, False, False, ["init.elf"])
+disks.append(DiskSpec("main", "image.iso", 0, imageFS, False, [
+    DiskPartitionSpec("boot", "root", 2048, "fat32", 20480, True, False, [], stage1vbr, stage2, kernel),
+    DiskPartitionSpec("User", "user", 0, "fat32", 0, False, False, ["init.elf", "echo.elf", "bash.elf"]),
     ], stage1mbr))
 
 for disk in disks:

@@ -150,7 +150,6 @@ void frame_init()
 
     log_debug("FRAME", "frame p%p v%p size is %x", frame_bitmap_phys, frame_bitmap_virt, FRAME_BITMAP_SIZE);
     memset(frame_bitmap, 0, FRAME_BITMAP_SIZE);
-    paging_print_out = true;
     log_debug("FRAME", "mapping frame bitmap");
     // paging_map_region(kernel_page, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
 
@@ -163,11 +162,9 @@ void frame_map()
 {
     phys_addr frame_bitmap_phys = (phys_addr)&__frame_bitmap_phys;
     virt_addr frame_bitmap_virt = (virt_addr)&__frame_bitmap;
-    paging_print_out = true;
     if (paging_get_virtual(kernel_page, frame_bitmap_phys + FRAME_BITMAP_SIZE) == 0)
     {
         log_debug("FRAME", "mapping frame bitmap v0x%p to p0x%p size is %u", frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE);
         paging_map_region(kernel_page, frame_bitmap_virt, frame_bitmap_phys, FRAME_BITMAP_SIZE, -1);
     }
-    paging_print_out = true;
 } */

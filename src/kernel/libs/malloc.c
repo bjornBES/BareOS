@@ -46,9 +46,9 @@ void *kmalloc_phys(size_t size, void **virt_out)
 	log_debug(MODULE, "malloc returned %p", virt);
 	memset(virt, 0, size);
 	*virt_out = virt;
-	void *phys = paging_get_physical(kernel_page, virt);
+	phys_addr phys = paging_get_physical(kernel_page, virt);
 	log_debug(MODULE, "p%p = kmalloc_phys(%u, v%p)", phys, size, virt);
-	return phys;
+	return (void*)phys;
 }
 void *kcalloc_phys(size_t num, size_t size, void **virt_out)
 {

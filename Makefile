@@ -1,6 +1,6 @@
 include mk/config.mk
 
-.PHONY: all floppy_image bootloader clean always debug libs kernel
+.PHONY: all floppy_image bootloader clean always debug libs kernel user
 
 all: floppy_image
 
@@ -9,9 +9,9 @@ include mk/toolchain.mk
 #
 # Floppy image
 #
-floppy_image: $(BUILD_DIR)/image.img
+floppy_image: $(BUILD_DIR)/image.iso
 
-$(BUILD_DIR)/image.img: bootloader kernel user
+$(BUILD_DIR)/image.iso: bootloader kernel user
 	@bash ./scripts/make_disk.sh $(imageType) $(imageFS) $(imageSize) $(arch) $(config)
 
 	@echo "--> Created: " $(floppyOutput)
@@ -61,8 +61,8 @@ user: $(TARGET_CORE_LIBS)
 
 runnow:
 	python tools/run_vm.py
-run: $(BUILD_DIR)/image.img
-	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.img
+run: $(BUILD_DIR)/image.iso
+	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
 #	python tools/run_vm.py
 debug_flags:
 	@echo "add -g"
@@ -76,18 +76,26 @@ debug_flags:
 debug: debug_flags clean all
 
 	@echo "running debug"
-	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
+	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
 
 debugnow:
-	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.img $(BUILD_DIR)/kernel/kernel.elf
+	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
 
+menuconfig-%:
+	$(MAKE) -C src/user/userland menuconfig-$*
+
+install:
+	$(MAKE) -C src/user/userland install
 
 #
 # Always
 #
 always:
-	@echo "mkdir -p $(BUILD_DIR)" 
 	@mkdir -p $(BUILD_DIR)
+	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) always
+	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) always
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) always
 
 toolchain:
 
@@ -98,4 +106,5 @@ clean:
 	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@rm -rf $(BUILD_DIR)/*

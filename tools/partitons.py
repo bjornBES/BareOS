@@ -22,6 +22,14 @@ PARTITION_TYPES = {
     "linux": "83"
 }
 
+PARTITION_NAMES = {
+    "fat12": "fat12",
+    "fat16": "fat16",
+    "fat32": "fat32_lba",
+    "ext3": "linux",
+    "ext2": "linux"
+}
+
 SECTOR_SIZE = 512
 PARTITION_TABLE_OFFSET = 0x1BE
 PART_ENTRY_SIZE = 128
@@ -71,7 +79,7 @@ def create_partition_table(disk : gpt_image.disk.Disk, start: int, size: int, pt
 def make_partitions(disk : gpt_image.disk.Disk, start, size, ptype, partition : DiskPartitionSpec, index):
 
     create_partition_table(
-        disk, int(start), int(size), int(PARTITION_TYPES[ptype], 16), int(index), partition)
+        disk, int(start), int(size), int(PARTITION_TYPES[PARTITION_NAMES[ptype]], 16), int(index), partition)
 
     print("partitions done")
 

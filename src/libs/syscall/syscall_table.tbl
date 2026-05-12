@@ -1,0 +1,33 @@
+/*
+ * File: syscall_table.inc
+ * File Created: 22 Mar 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 22 Mar 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+/*
+PLEDGE_STDIO
+PLEDGE_RPATH
+PLEDGE_WPATH
+PLEDGE_PROC
+PLEDGE_MALLOC
+PLEDGE_EXEC
+*/
+// syscall_table.inc
+// nr,  name,           syscall name,   syscall name upper, return,     pledge,         arg_types
+X(0,    VFS_read,       read,           READ,               true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
+X(1,    VFS_write,      write,          WRITE,              true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
+X(7,    process_waitpid,waitpid,        WAITPID,            true,       0,              pid_t, int *, int)
+X(9,    memory_mmap,    mmap,           MMAP,               true,       PLEDGE_MALLOC,  void*, size_t, int, int, fd_t, off_t)
+X(11,   memory_munmap,  munmap,         MUNMAP,             true,       PLEDGE_MALLOC,  void*, size_t, int, int, fd_t, off_t)
+X(13,   sig_action,     sigaction,      SIGACTION,          true,       PLEDGE_STDIO,   int, signal_action *)
+X(15,   signal_return,  sigreturn,      SIGRETURN,          false,      PLEDGE_STDIO)
+X(24,   scheduler_yield,yield,          YIELD,              true,       PLEDGE_PROC)
+X(39,   process_get_pid,getpid,         GETPID,             true,       PLEDGE_STDIO)
+X(57,   process_fork,   fork,           FORK,               true,       PLEDGE_PROC)
+X(59,   process_execve, execve,         EXECVE,             true,       PLEDGE_EXEC,    const char*, char*[], char*[])
+X(60,   exit_exit,      exit,           EXIT,               false,      0,              uint32_t)
+X(62,   signal_kill,    kill,           KILL,               true,       PLEDGE_PROC,    pid_t, int)
+X(512,  pledge_pledge,  pledge,         PLEDGE,             true,       0,              pledge_flags_t)

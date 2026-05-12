@@ -85,6 +85,7 @@ char vga_get_cell(int x, int y, uint32_t *fg_color, uint32_t *bg_color)
 }
 void vga_set_cell(int x, int y, char c, uint32_t fg_color, uint32_t bg_color)
 {
+    log("vga_set_cell(%u, %u, '%c'(%u), %x, %x)", x, y, c, c, fg_color, bg_color);
     uint8_t bytes_per_row = (glyph_width + 7) / 8;
     uint16_t bytes_per_glyph = bytes_per_row * glyph_height;
 
@@ -107,7 +108,7 @@ void vga_set_cell(int x, int y, char c, uint32_t fg_color, uint32_t bg_color)
     {
         uint16_t byte = glyph[row];
         int col = 0;
-        //log("%08b %02x", byte, byte);
+        // log("%08b %02x", byte, byte);
         for (; col < glyph_width; col++)
         {
             uint16_t offset = (7 - (col % 8));
@@ -149,13 +150,14 @@ void vga_get_cursor(int *x, int *y)
 
 void vga_clear()
 {
+    log_debug(MODULE, "clear start %ux%u", screen_width, screen_height);
     int save_screen_height = screen_height;
     int save_screen_width = screen_width;
     for (int y = 0; y < screen_height; y++)
     {
         for (int x = 0; x < screen_width; x++)
         {
-            vga_set_cell(x, y, ' ', 0, 0);
+            video_set_pixel(x, y, 0);
         }
     }
     screen_x = 0;
@@ -249,6 +251,7 @@ void vga_set_mode(video_mode *mode)
 
 void vga_init()
 {
+    default_color = 0x00FFFFFF;
 }
 
 void vga_check()

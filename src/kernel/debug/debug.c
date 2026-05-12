@@ -10,6 +10,7 @@
 
 #include "debug.h"
 #include "libs/stdio.h"
+#include "task/threading/spinlock/spinlock.h"
 #include <printf_driver/printf.h>
 
 static const char* const g_LogSeverityColors[] =
@@ -23,55 +24,31 @@ static const char* const g_LogSeverityColors[] =
 
 static const char* const g_ColorReset = "\033[0m";
 
+static spinlock_t logf_lock = {0};
 void logf(const char* module, DebugLevel level, const char* fmt, ...)
 {
+    spinlock_acquire(&logf_lock);
+
     va_list args;
     va_start(args, fmt);
     
     if (level < MIN_LOG_LEVEL)
-    return;
-    
-    /*
-    char* severity_color = g_LogSeverityColors[level];
-
-    do
     {
-        if (level == LVL_DEBUG)
-        {
-            severity_color = "\033[2;37m\0";
-            break;
-        }
-        if (level == LVL_INFO)
-        {
-            severity_color = "\033[37m\0";
-            break;
-        }
-        if (level == LVL_WARN)
-        {
-            severity_color = "\033[1;33m\0";
-            break;
-        }
-        if (level == LVL_ERROR)
-        {
-            severity_color = "\033[1;31m\0";
-            break;
-        }
-        if (level == LVL_CRITICAL)
-        {
-            severity_color = "\033[1;37;41m\0";
-            break;
-        }
-    } while (0); */
-
-    // 0x6f 0x6f 0x62 0x20
+        spinlock_release(&logf_lock);
+        return;
+    }
 
     fprintf(VFS_FD_DEBUG, "%s", g_LogSeverityColors[level]); // set color depending on level
-    fprintf(VFS_FD_DEBUG, "[%s] ", module);             // write module
+    if (*module != '\0')
+    {
+        fprintf(VFS_FD_DEBUG, "[%s] ", module);             // write module
+    }
     vprintf(VFS_FD_DEBUG, fmt, args);                   // write text
     fputs(g_ColorReset, VFS_FD_DEBUG);                  // reset format
     fputs("\n", VFS_FD_DEBUG);                          // newline
 
-    va_end(args);  
+    va_end(args);
+    spinlock_release(&logf_lock);
 }
 
 void strlogf(DebugLevel level, const char* str)

@@ -26,7 +26,19 @@ virt_addr phys_to_virt_auto(phys_addr p)
     }
     else
     {
-        return (virt_addr)((uint64_t)p + MEMORY_DIRECT_MAP_VIRT_BASE);
+        return (virt_addr)((uint64_t)p - (uint64_t)start + (uint32_64)MEMORY_DIRECT_MAP_VIRT_BASE);
+    }
+}
+phys_addr virt_to_phys_auto(virt_addr p)
+{
+    // log_debug("PMM", "phys_to_virt_auto(%p) : is %p < %p then kernel else heap", p, p, start);
+    if ((uint64_t)p < (uint64_t)start)
+    {
+        return (phys_addr)((uint64_t)p - (KERNEL_VIRT_BASE - KERNEL_PHYS_BASE));
+    }
+    else
+    {
+        return (phys_addr)((uint64_t)p - (uint64_t)start - (uint32_64)MEMORY_DIRECT_MAP_VIRT_BASE);
     }
 }
 
@@ -70,6 +82,23 @@ phys_addr pmm_alloc_at(phys_addr addr)
 phys_addr pmm_alloc_frame()
 {
     return buddy_alloc(0);
+}
+phys_addr pmm_alloc_frame_at_size(size_t size)
+{
+    if (size == 0 || size > MAX_SIZE)
+        return 0;
+
+    // Round size up to the nearest power of two, then find the order
+    size_t alloc_size = PAGE_SIZE; // minimum is order 0 = 1 page
+    uint32_t order = 0;
+
+    while (alloc_size < size && order < BUDDY_MAX_ORDER - 1)
+    {
+        alloc_size <<= 1;
+        order++;
+    }
+
+    return buddy_alloc(order);
 }
 phys_addr pmm_alloc_heap_frame()
 {

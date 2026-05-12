@@ -3,118 +3,35 @@
  * File Created: 16 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 16 Mar 2026
+ * Last Modified: 11 May 2026 23:29:01
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
+#include "process_types.h"
 
-#include "arch/x86/isr.h"
+#include "process_config.h"
+
+#include "kernel/registers.h"
 #include "memory/paging/paging.h"
 #include "syscall/pledge.h"
+#include "signal_type.h"
+#include "threading/thread_type.h"
+#include "kernel.h"
 
 #include <stdint.h>
 #include <stddef.h>
 
-typedef uint64_t pid;
+#define SECTION_FLAG_ALLOCATED  (1 << 0)
+#define SECTION_FLAG_EXEC       (1 << 1)
+#define SECTION_FLAG_WRITE      (1 << 2)
+#define SECTION_FLAG_USER       (1 << 3)
 
-typedef struct
-{
-    #ifdef __i686__
-    uint32_t pc;
-    uint32_t bp;
-    uint32_t sp;
-    uint32_t di;
-    uint32_t si;
-    uint32_t bx;
-    uint32_t dx;
-    uint32_t cx;
-    uint32_t ax;
-    #else
-    uint64_t r15;
-    uint64_t r14;
-    uint64_t r13;
-    uint64_t r12;
-    uint64_t r11;
-    uint64_t r10;
-    uint64_t r9;
-    uint64_t r8;
-    uint64_t pc;
-    uint64_t bp;
-    uint64_t sp;
-    uint64_t di;
-    uint64_t si;
-    uint64_t bx;
-    uint64_t dx;
-    uint64_t cx;
-    uint64_t ax;
-    #endif
-    uint16_t ds, cs;
-    uint16_t ss, es;
-    uint16_t gs, fs;
-    #ifdef __i686__
-    uint32_t flags;
-    #else
-    uint64_t flags;
-    #endif
-} process_regs;
+extern process_t *current_process;
 
-struct __process_t;
-
-// the address this is a process
-typedef struct __task_ladder_t
-{
-    // the next one on the level aka going down i+1
-    struct __task_ladder_t *next;
-    // the last one on the level aka going up i-1
-    struct __task_ladder_t *priv;
-} task_ladder;
-
-
-typedef struct __process_t
-{
-    // the last one in the chain
-    struct __process_t *parent;
-
-    // child, just the child of this process
-    struct __process_t *child;
-
-    // siblings am i right?
-    task_ladder ladder;
-    int ladder_count;
-    
-    pid pid;
-    virt_addr entry;
-
-    // === paging ===
-
-    struct paging_page_t page_dir_virt;
-    struct paging_page_t page_dir_phys;
-
-    // === stack ===
-    // fixed virtual address of stack top (USER_STACK_TOP)
-    virt_addr stack_top;
-
-    // current mapped size in bytes, grows by PAGE_SIZE
-    size_t stack_size;
-
-    virt_addr load_base;
-    virt_addr load_end;
-    phys_addr phys_load_base;
-
-    // pledge
-    bool pledged;
-    pledge_flags_t pledges;
-
-    // === later things ===
-
-    process_regs regs;
-} process;
-
-extern process *current_process;
-
-void process_unexec_process(pid pid);
-int process_exec(char *path, char *argv[]);
-int process_kill(pid pid, int sig);
+void kernel_init_process(const char *path, char *argv[], char *envp[]);
+int process_unexec_process(process_t *proc);
+int process_kill(pid_t pid, int sig);
+process_t* process_get_current();
 void process_init();

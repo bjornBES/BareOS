@@ -140,8 +140,6 @@ entry:
     cli
     hlt
 
-message: db "Hello world", 0xD, 0xA, 0
-
 puts:
     push si
     push ax
@@ -270,3 +268,4 @@ global BootPartitionSeg
 global BootPartitionOff
     BootPartitionOff: dw 0
 
+message: db "Hello world", 0xD, 0xA, 0

@@ -21,8 +21,9 @@ extern char __fat_driver;
 // 0x00000500 - 0x00000600 - Partitions
 
 // 0x00000600 - 0x00006600 - Bootparams
+#define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((a) - 1))
 #define MEMORY_BOOTPARAMS_ADDR ((void *)0x00000600)
-#define MEMORY_BOOTPARAMS_SIZE MAX_BOOTPARAMS_SIZE
+#define MEMORY_BOOTPARAMS_SIZE sizeof(boot_params)
 
 // 0x00006600 - 0x00008000 - stack
 

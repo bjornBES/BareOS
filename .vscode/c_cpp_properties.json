@@ -4,11 +4,14 @@
             "name": "GCC",
             "includePath": [
                 "${workspaceFolder}/src/libs",
+                "${workspaceFolder}/src/libs/arch/x86",
                 "${workspaceFolder}/src/kernel",
+                "${workspaceFolder}/src/kernel/arch/x86",
+                "${workspaceFolder}/src/user/userproc/libc",
                 "${workspaceFolder}/src/Bootloader/stage2",
                 "${workspaceFolder}/toolchain/gcc-build-11.2.0/gcc/include/"
             ],
-            "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE"],
+            "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE", "USE_EAGER_FORK=1"],
             "compilerPath": "${workspaceFolder}/toolchain/x86_64-elf/bin/x86_64-elf-gcc",
             "cStandard": "c99",
             "cppStandard": "c++14",

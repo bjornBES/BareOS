@@ -25,6 +25,8 @@ int kernel_page_index;
 bool paging_enabled;
 extern char __kernel_pages;
 
+extern void hexdump(void *ptr, int len);
+
 virt_addr paging_phys_to_virt(phys_addr phys)
 {
     return (virt_addr)((uint64_t)phys + (uint64_t)(KERNEL_VIRT_BASE - KERNEL_PHYS_BASE)); // kernel higher-half
@@ -53,10 +55,12 @@ void paging_init(boot_params *bootParams)
         }
     }
 
-    paging_x86_init(bootParams, start, end);
+    enable_interrupts();
+    arch_paging_init(bootParams, start, end);
     log_debug(MODULE, "paging done");
-
     pmm_map();
+
+    buddy_print_info();
 
     paging_alloc_frame_region((phys_addr)0, (size_t)KERNEL_PHYS_BASE);
     paging_alloc_frame_region((phys_addr)KERNEL_PHYS_BASE, (size_t)KERNEL_SIZE);
@@ -72,13 +76,8 @@ void paging_init(boot_params *bootParams)
     }
 
     paging_enabled = true;
-    paging_print_out = true;
-    paging_map_region(kernel_page, (virt_addr)0, (phys_addr)0, sizeof(boot_params)+PAGE_SIZE, -1);
-    paging_print_out = false;
+    // paging_map_region(kernel_page, (virt_addr)PAGE_SIZE, (phys_addr)0, sizeof(boot_params) + PAGE_SIZE, -1);
 
-    uint32_t some = bootParams->memory.memLower;
-
-    paging_x86_init(bootParams, start, end);
     log_debug(MODULE, "paging done");
 
     heap_init();
@@ -107,7 +106,7 @@ phys_addr paging_alloc_frame()
     }
 
     {
-        virt_addr addr_virt = phys_to_virt_auto(addr);
+/*         virt_addr addr_virt = phys_to_virt_auto(addr);
         uint64_t *test = (uint64_t *)addr_virt;
         uint64_t save_test = *test;
         *test = 0xFF00FF00;
@@ -122,7 +121,7 @@ phys_addr paging_alloc_frame()
             test = (uint64_t *)addr_virt;
             *test = 0xFF00FF00;
         }
-        *test = save_test;
+        *test = save_test; */
     }
 
     log_debug(MODULE, "got frame addr %p", addr);
@@ -161,7 +160,7 @@ void paging_free_frame(phys_addr physAddr)
 
 // Allocate a free frame AND map it at virtAddr in one step.
 // Returns the physical address on success, NULL on OOM.
-phys_addr paging_alloc_and_map(paging_page page_dir, virt_addr virtAddr, paging_flags flags)
+phys_addr paging_alloc_and_map(paging_page_t page_dir, virt_addr virtAddr, memory_flags_t flags)
 {
     phys_addr phys = paging_alloc_frame();
     if (phys == NULL)
@@ -171,7 +170,7 @@ phys_addr paging_alloc_and_map(paging_page page_dir, virt_addr virtAddr, paging_
     return phys;
 }
 
-phys_addr paging_alloc_and_map_region(paging_page page_dir, virt_addr virtAddr, size_t size, paging_flags flags)
+phys_addr paging_alloc_and_map_region(paging_page_t page_dir, virt_addr virtAddr, size_t size, memory_flags_t flags)
 {
     virt_addr virt = virtAddr;
     phys_addr org_phys = paging_alloc_frame();
@@ -185,6 +184,7 @@ phys_addr paging_alloc_and_map_region(paging_page page_dir, virt_addr virtAddr, 
         paging_map_page(page_dir, virt, phys, flags);
         virt += PAGE_SIZE;
         phys += PAGE_SIZE;
+        paging_alloc_frame();
     }
     return org_phys;
 }
@@ -192,16 +192,16 @@ phys_addr paging_alloc_and_map_region(paging_page page_dir, virt_addr virtAddr, 
 // Map a contiguous physical region [physAddr, physAddr + size) to
 // [virtAddr, virtAddr + size). Rounds up to page boundaries.
 // Used for MMIO regions and framebuffers where the physical address is fixed.
-void paging_map_region(paging_page page_dir, virt_addr virtAddr, phys_addr physAddr, size_t size, paging_flags flags)
+void paging_map_region(paging_page_t page_dir, virt_addr virtAddr, phys_addr physAddr, size_t size, memory_flags_t flags)
 {
     virt_addr virt = virtAddr;
     phys_addr phys = physAddr;
 
     // Round up to page boundary
     uint32_64 pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-    log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u",
+    log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with %i to %p",
              virtAddr, virtAddr + pages * PAGE_SIZE,
-             physAddr, physAddr + pages * PAGE_SIZE, pages);
+             physAddr, physAddr + pages * PAGE_SIZE, pages, flags, page_dir.page_dir);
     for (uint32_64 i = 0; i < pages; i++)
     {
         paging_map_page(page_dir, virt, phys, flags);
@@ -213,7 +213,7 @@ void paging_map_region(paging_page page_dir, virt_addr virtAddr, phys_addr physA
 }
 
 // Unmap [virtAddr, virtAddr + size) and free the backing frames.
-void paging_free_region(paging_page page_dir, virt_addr virtAddr, size_t size)
+void paging_free_region(paging_page_t page_dir, virt_addr virtAddr, size_t size)
 {
     virt_addr virt = virtAddr;
     // error things maybe?
@@ -228,6 +228,6 @@ void paging_free_region(paging_page page_dir, virt_addr virtAddr, size_t size)
     }
 }
 
-void paging_info()
+void paging_get_info()
 {
 }

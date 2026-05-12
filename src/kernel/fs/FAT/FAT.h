@@ -20,17 +20,17 @@
 typedef struct 
 {
     char Name[11];
-    uint8_t Attributes;
-    uint8_t _Reserved;
-    uint8_t CreatedTimeTenths;
-    uint16_t CreatedTime;
-    uint16_t CreatedDate;
-    uint16_t AccessedDate;
-    uint16_t FirstClusterHigh;
-    uint16_t ModifiedTime;
-    uint16_t ModifiedDate;
-    uint16_t FirstClusterLow;
-    uint32_t Size;
+    uint8_t Attributes; // 0x20
+    uint8_t _Reserved; // 0x00
+    uint8_t CreatedTimeTenths; // 0x20
+    uint16_t CreatedTime; // 0x5a72
+    uint16_t CreatedDate; // 0x305c
+    uint16_t AccessedDate; // 0x305c
+    uint16_t FirstClusterHigh; // 0x0000
+    uint16_t ModifiedTime; // 0x5a72
+    uint16_t ModifiedDate; // 0x305c
+    uint16_t FirstClusterLow; // 0x1200
+    uint32_t Size; // 0x183A0000
 } __attribute__((packed)) FAT_directory_entry;
 
 typedef struct 

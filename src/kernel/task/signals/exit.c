@@ -12,24 +12,37 @@
 
 #include "kernel.h"
 
+#include "task/threading/scheduling/scheduler.h"
 #include "task/process.h"
 
 int exit_exit(uint32_t code)
 {
-    return do_exit(code, current_process);
+    do_exit(code, process_get_current());
+    return 0;
 }
-SYSCALL_DEFINE1(exit_exit, int, uint32_t)
+SYSCALL_DEFINE1(exit_exit, uint32_t)
 
-int do_exit(uint32_t code, process *proc)
+void do_exit(uint32_t code, process_t *proc)
 {
     log_debug("EXIT", "exit from %u with code %u", proc->pid, code);
     if (proc->pid == 0)
     {
         kernel_panic("Attempted to kill init! exitcode=0x%08x", code);
-        return RETURN_ERROR;
     }
 
-    process_unexec_process(proc->pid);
+    proc->exit_code.exit_code1 = code;
+    proc->state = PROC_STATE_ZOMBIE;
 
-    return RETURN_FAILED;
+    if (proc->parent)
+    {
+        thread *parent_thread = scheduler_find_waiting(proc->parent);
+        if (parent_thread && proc->parent->wait_for == proc->pid)
+        {
+            scheduler_unblock(parent_thread);
+        }
+    }
+
+    process_unexec_process(proc);
+
+    schedule(NULL);
 }

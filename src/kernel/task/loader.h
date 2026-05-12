@@ -20,7 +20,7 @@ typedef struct __loader_t
 {
     char *name;
     int (*probe)(uint8_t *buffer, struct __loader_t *loader);
-    int (*load)(fd_t fd, process *proc, struct __loader_t *loader);
+    int (*load)(fd_t fd, process_t *proc, struct __loader_t *loader);
     void *priv;
 } loader;
 

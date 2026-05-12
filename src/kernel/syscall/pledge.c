@@ -24,9 +24,10 @@ int pledge_pledge(pledge_flags_t requested) {
     log_debug("PLEDGE", "process %u requesting %08b", current_process->pid, requested);
     current_process->pledges = requested;
     current_process->pledged = true;
+    log_debug("PLEDGE", "process %u got %08b", current_process->pid, requested);
     return RETURN_GOOD;
 }
-SYSCALL_DEFINE1(pledge_pledge, int, pledge_flags_t)
+SYSCALL_DEFINE1(pledge_pledge, pledge_flags_t)
 
 int pledge_check(pledge_flags_t function_pledge)
 {
@@ -50,6 +51,10 @@ char *pledge_get_missing(pledge_flags_t function_pledge)
         return "STDIO";
         case PLEDGE_RPATH:
         return "RPATH";
+        case PLEDGE_PROC:
+        return "PROC";
+        case PLEDGE_MALLOC:
+        return "MALLOC";
     
     default:
         break;

@@ -13,4 +13,6 @@
 #include "task/process.h"
 #include "task/signal.h"
 
-int do_exit(uint32_t code, process *proc);
+#define EXIT_CODE_MEMORY
+
+void do_exit(uint32_t code, process_t *proc);

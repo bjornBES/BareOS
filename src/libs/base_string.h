@@ -9,7 +9,7 @@
  */
 
 #pragma once
-#include <core/Defs.h>
+#include <defs.h>
 #include <stdint.h>
 #include <stddef.h>
 

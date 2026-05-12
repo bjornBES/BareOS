@@ -10,12 +10,15 @@
 
 #pragma once
 #include "libs/stdio.h"
+#include "task/threading/spinlock/spinlock.h"
 #include <stdbool.h>
 #if DEBUG
 #define MIN_LOG_LEVEL LVL_DEBUG
 #else
 #define MIN_LOG_LEVEL LVL_INFO
 #endif
+
+#define NO_MODULE "\0"
 
 #ifndef DEBUGLEVELDEF
 #define DEBUGLEVELDEF 1

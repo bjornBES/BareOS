@@ -9,8 +9,7 @@
  */
 
 #include <stddef.h>
-
-#define inline_asm __asm__ __volatile__
+#include <defs.h>
 
 void *memcpy(void *dest, const void *src, size_t n)
 {

@@ -1267,6 +1267,7 @@ void format_string_loop(output_gadget_t *output, const char *format, va_list arg
             if (*format == 's')
             {
                 const char *p = va_arg(args, char *);
+                
                 if (p == NULL)
                 {
                     out_rev_(output, ")llun(", 6, width, flags);
@@ -1350,6 +1351,7 @@ void format_string_loop(output_gadget_t *output, const char *format, va_list arg
         } while (0);
     }
 }
+
 
 // internal vsnprintf - used for implementing _all library functions
 int vsnprintf_impl(output_gadget_t *output, const char *format, va_list args)

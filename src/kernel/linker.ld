@@ -8,6 +8,10 @@ PHDRS
 
 SECTIONS
 {
+
+    . = 0x8000;
+    __trampoline_start = .;
+
     __KERNEL_VIRT = KERNEL_VMA;
     __KERNEL_PHYS = KERNEL_LMA;
     . = KERNEL_VMA;
@@ -31,7 +35,8 @@ SECTIONS
     .data               : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
     {
         __data_start = .;
-        *(.data .data*)
+        *(.data)
+        *(.data.*)
     } :data
 
     .bss                : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
@@ -40,11 +45,21 @@ SECTIONS
         *(.bss .bss*)
         *(COMMON)
     } :data
+
+    . = ALIGN(0x1000);
+    .vdso               : AT(ADDR(.vdso) - KERNEL_VMA + KERNEL_LMA)
+    {
+        __vdso_start_phys = . - KERNEL_VMA + KERNEL_LMA;
+        __vdso_start = .;
+        *(.vdso)
+    } :text
+    . = ALIGN(0x1000);
+    __vdso_end = .;
     
     /* Kernel Stack */
     . = ALIGN(4096);
     stack_bottom = .;
-    . += 16384;       /* 16 KB */
+    . += 4096;       /* 16 KB */
     stack_top = .;
     . = ALIGN(4096);
 
@@ -56,7 +71,7 @@ SECTIONS
     . = ALIGN(4096);
 
     __kernel_pages = . - KERNEL_VMA + KERNEL_LMA;
-    . += 0x400000;  /* 4 MiB */
+    . += 0x410000;  /* 4 MiB + 64 Kb */
 
     __frame_bitmap = .;
     __frame_bitmap_phys = . - KERNEL_VMA + KERNEL_LMA;
