@@ -3,7 +3,7 @@
  * File Created: 05 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 May 2026 23:47:22
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -92,7 +92,7 @@ typedef struct process
     
     // process info
     pid_t pid;
-    char volume[32];
+    char volume[MAX_VOLUME_NAME];
     uint16_t abi;
     process_state_t state;
     virt_addr entry;

@@ -3,7 +3,7 @@
  * File Created: 09 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 09 Mar 2026
+ * Last Modified: 12 May 2026 14:16:21
  * Modified By: BjornBEs
  * -----
  */
@@ -12,4 +12,4 @@
 
 #include "device/device.h"
 
-void partition_block_device_register(device *dev);
+void partition_block_device_register(device_t *dev);

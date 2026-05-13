@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "GCC",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../../toolchain/gcc-build-11.2.0/gcc/include/",
+                "${workspaceFolder}/../libs",
+                "${workspaceFolder}/../libs/arch/x86",
+                "${workspaceFolder}/../kernel",
+                "${workspaceFolder}/../kernel/arch/x86"
+            ],
+            "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE", "USE_EAGER_FORK=1"],
+            "compilerPath": "${workspaceFolder}/../../toolchain/x86_64-elf/bin/x86_64-elf-gcc",
+            "cStandard": "c99",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-x86",
+            "compilerArgs": [
+                "-std=c99",
+                "-ffreestanding",
+                "-nostdlib"
+            ]
+        }
+    ],
+    "version": 4
+}

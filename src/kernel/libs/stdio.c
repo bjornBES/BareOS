@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -24,13 +24,13 @@
 
 int fputc(char c, fd_t file)
 {
-    return VFS_write(file, (uint8_t *)&c, 1);
+    return vfs_write(file, (uint8_t *)&c, 1);
 }
 
 int fputs(const char *str, fd_t file)
 {
     int len = strlen(str);
-    return VFS_write(file, (uint8_t *)str, len);
+    return vfs_write(file, (uint8_t *)str, len);
 }
 
 int putc(char c, fd_t file)
@@ -51,7 +51,7 @@ int puts(const char *str)
 
 fd_t fopen(char *filename, const char *mode)
 {
-    return VFS_open(filename);
+    return vfs_open(filename, 0, 0);
 }
 
 // fd_t fdopen(int fildes, const char *mode);
@@ -60,7 +60,7 @@ fd_t fopen(char *filename, const char *mode)
 
 int fclose(fd_t file)
 {
-    return VFS_close(file);
+    return vfs_close(file);
 }
 
 // int pclose(fd_t file);
@@ -88,7 +88,7 @@ int fflush(fd_t file)
 
 int fseek(fd_t file, int64_t offset, int whence)
 {
-    return 0;
+    return vfs_seek(file, (off_t)offset, whence);
 }
 
 int fseeko(fd_t file, off_t offset, int whence)
@@ -111,13 +111,13 @@ off_t ftello(fd_t stream)
 size_t fread(void *buffer, size_t size, size_t count, fd_t stream)
 {
     size_t r_size = size * count;
-    return VFS_read(stream, (uint8_t*)buffer, r_size);
+    return vfs_read(stream, (uint8_t*)buffer, r_size);
 }
 
 size_t fwrite(const void *buffer, size_t size, size_t count, fd_t stream)
 {
     size_t r_size = size * count;
-    return VFS_write(stream, (uint8_t*)buffer, r_size);
+    return vfs_write(stream, (uint8_t*)buffer, r_size);
 }
 
 

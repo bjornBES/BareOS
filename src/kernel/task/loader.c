@@ -3,7 +3,7 @@
  * File Created: 16 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 16 Mar 2026
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -30,7 +30,7 @@ void Loader_register_loader(loader *loader)
 loader *Loader_probe(fd_t file)
 {
     uint8_t *buffer = malloc(1024);
-    VFS_read(file, buffer, 1024);
+    vfs_read(file, buffer, 1024);
     for (size_t i = 0; i < loader_index; i++)
     {
         if (loaders[i] == NULL)

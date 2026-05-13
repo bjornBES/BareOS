@@ -3,7 +3,7 @@
  * File Created: 02 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 02 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -370,8 +370,8 @@ void schedule(registers *regs)
         bsp_ticks++;
         if (bsp_ticks % 100 == 0)
         {
-            fprintf(VFS_FD_DEBUG, "[SCHEDULER] cpu0\n");
-            fprintf(VFS_FD_DEBUG, "[SCHEDULER] BSP tick=%u current=t%u\n", bsp_ticks, current_thread->tid);
+            // fprintf(VFS_FD_DEBUG, "[SCHEDULER] cpu0\n");
+            // fprintf(VFS_FD_DEBUG, "[SCHEDULER] BSP tick=%u current=t%u\n", bsp_ticks, current_thread->tid);
         }
     }
 

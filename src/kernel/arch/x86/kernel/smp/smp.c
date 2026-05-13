@@ -3,7 +3,7 @@
  * File Created: 08 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 08 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -44,7 +44,9 @@ void ap_startup(uint64_t apic_id)
         __asm__ volatile("hlt");
         tick++;
         if (tick % 100 == 0)
-            log_debug("CPU", "AP %u heartbeat tick=%u", apic_id, tick);
+        {
+            // log_debug("CPU", "AP %u heartbeat tick=%u", apic_id, tick);
+        }
     }
 }
 extern void hexdump(void *ptr, int len);

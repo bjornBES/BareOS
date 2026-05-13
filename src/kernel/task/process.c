@@ -3,7 +3,7 @@
  * File Created: 16 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 May 2026 23:50:11
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -48,39 +48,43 @@ void process_user_page_fault(paging_info *info)
     fprintf(VFS_FD_DEBUG, "[Page Fault] User process\n");
     paging_print_info(info->page_directory, info->fault_addr);
 
-    if (info->pc >= (uint64_t)KERNEL_VIRT_BASE)
+    if (current_process != NULL)
     {
-        schedule(NULL);
-    }
-
-    if (info->as_kernel)
-    {
-        fprintf(VFS_FD_DEBUG, "[Page Fault] active is kernels (%p)\n", kernel_page);
-    }
-    log_info(MODULE, "came from %p", info->page_directory.page_dir);
-
-    thread *current_thread = scheduler_get_current();
-    log_info(MODULE, "comes from thread %u", current_thread->tid);
-    if (current_thread->state == THREAD_DEAD)
-    {
-        KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
-    }
-    if (current_thread->tid != 0 && current_thread->state != THREAD_DEAD)
-    {
-        uint32_64 func = current_thread->ctx.regs.pc;
-        log_info(MODULE, "thread function %x", func);
-        scheduler_thread_exit();
-        return;
-    }
-
-    pmm_print_info_verbose();
-
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p\n", info->fault_addr);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] Physical address %p\n", paging_get_physical(kernel_page, (virt_addr)info->fault_addr));
-
-    if (info->as_kernel || current_process == NULL)
-    {
-        KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
+        
+        if (info->pc >= (uint64_t)KERNEL_VIRT_BASE)
+        {
+            schedule(NULL);
+        }
+        
+        if (info->as_kernel)
+        {
+            fprintf(VFS_FD_DEBUG, "[Page Fault] active is kernels (%p)\n", kernel_page);
+        }
+        log_info(MODULE, "came from %p", info->page_directory.page_dir);
+        
+        thread *current_thread = scheduler_get_current();
+        log_info(MODULE, "comes from thread %u", current_thread->tid);
+        if (current_thread->state == THREAD_DEAD)
+        {
+            KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
+        }
+        if (current_thread->tid != 0 && current_thread->state != THREAD_DEAD)
+        {
+            uint32_64 func = current_thread->ctx.regs.pc;
+            log_info(MODULE, "thread function %x", func);
+            scheduler_thread_exit();
+            return;
+        }
+        
+        pmm_print_info_verbose();
+        
+        fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p\n", info->fault_addr);
+        fprintf(VFS_FD_DEBUG, "[Page Fault] Physical address %p\n", paging_get_physical(kernel_page, (virt_addr)info->fault_addr));
+        
+        if (info->as_kernel || current_process == NULL)
+        {
+            KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
+        }
     }
     KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
     // process_kill(current_process->pid, SIGSEGV);
@@ -119,7 +123,7 @@ process_t *process_create()
 }
 int process_load(char *path, process_t *proc)
 {
-    proc->volume = strcpy(proc->volume, path);
+    strcpy(proc->volume, path);
 
     fd_t file = fopen(path, "");
     loader *loader = Loader_probe(file);
@@ -468,11 +472,11 @@ int process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc)
     char *path = proc_path;
     if (*proc_path != '/')
     {
-        path = malloc(MAX_PATH_SIZE);
+/*         path = malloc(MAX_PATH_SIZE);
         strcpy(path, proc->volume);
         char *colon_char = strchr(path, ':');
-        int colon_index = (int)(colon_char - path)
-        str
+        int colon_index = (int)(colon_char - path); */
+        // TODO
     }
 
     log_info(MODULE, "loading program %s", path);
@@ -519,8 +523,6 @@ int process_execve(const char *path, char *argv[], char *envp[], syscall_info *i
     process_t *proc = process_get_current();
 
     return process_exec((char *)path, argv, envp, proc);
-
-    return RETURN_ERROR;
 }
 SYSCALL_DEFINE3_REG(process_execve, const char *, char **, char **);
 

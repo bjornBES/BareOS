@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -51,7 +51,7 @@ void strlogf(DebugLevel level, const char *str);
 #define _log_err(str) strlogf(LVL_ERROR, str)
 #define _log_crit(str) strlogf(LVL_CRITICAL, str)
 
-#define FUNC_NOT_IMPLEMENTED(module, func) log_err(module, "%s: Not implemented", func)
+#define FUNC_NOT_IMPLEMENTED(module) log_err(module, "%s: Not implemented", __FUNCTION__)
 
 extern void arch_breakpoint();
 

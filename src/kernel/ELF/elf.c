@@ -3,7 +3,7 @@
  * File Created: 15 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 May 2026 16:08:06
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -20,6 +20,7 @@
 
 #include "kernel.h"
 
+#include "libs/stdio.h"
 #include "libs/malloc.h"
 #include "libs/memory.h"
 #include "libs/string.h"
@@ -56,18 +57,18 @@ int ELF_read64(fd_t fd, process_t *proc, loader *loader, ELF_header64 elf_header
         uint16_t section_entry_size = elf_header.section_header_table_entry_size;
 
         ELF_section_header64 section_name_entry;
-        VFS_seek(fd, elf_header.section_header_table_position + section_name_index * section_entry_size);
-        VFS_read(fd, &section_name_entry, sizeof(ELF_section_header64));
+        fseek(fd, elf_header.section_header_table_position + section_name_index * section_entry_size, SEEK_SET);
+        fread(&section_name_entry, sizeof(ELF_section_header64), 1, fd);
         char *strtable = malloc(section_name_entry.size);
         {
-            VFS_seek(fd, section_name_entry.offset);
-            VFS_read(fd, strtable, section_name_entry.size);
+            fseek(fd, section_name_entry.offset, SEEK_SET);
+            fread(strtable, section_name_entry.size, 1, fd);
         }
         for (size_t i = 0; i < section_count; i++)
         {
             ELF_section_header64 elf_section_entry;
-            VFS_seek(fd, elf_header.section_header_table_position + i * section_entry_size);
-            int bytes_read = VFS_read(fd, buffer, sizeof(ELF_section_header64));
+            fseek(fd, elf_header.section_header_table_position + i * section_entry_size, SEEK_SET);
+            int bytes_read = fread(buffer, sizeof(ELF_section_header64), 1, fd);
             if (bytes_read < sizeof(ELF_section_header64))
             {
                 // something is wrong
@@ -140,9 +141,9 @@ int ELF_read64(fd_t fd, process_t *proc, loader *loader, ELF_header64 elf_header
         log_debug(MODULE, "program header table postion = %u", elf_header.program_header_table_position);
         log_debug(MODULE, "program header table entry size = %u", elf_header.program_header_table_entry_size);
         log_debug(MODULE, "program header offset = %u", prog_header_offset);
-        VFS_seek(fd, prog_header_offset);
+        fseek(fd, prog_header_offset, SEEK_SET);
 
-        int bytes_read = VFS_read(fd, buffer, sizeof(ELF_program_header64));
+        int bytes_read = fread(buffer, sizeof(ELF_program_header64), 1, fd);
         if (bytes_read < sizeof(ELF_program_header64))
         {
             // something is wrong
@@ -186,8 +187,8 @@ int ELF_read64(fd_t fd, process_t *proc, loader *loader, ELF_header64 elf_header
         // only bss dose not have this
         if (elf_prog_header.file_size != 0)
         {
-            VFS_seek(fd, elf_prog_header.offset);
-            bytes_read = VFS_read(fd, dest, elf_prog_header.file_size);
+            fseek(fd, elf_prog_header.offset, SEEK_SET);
+            bytes_read = fread(dest, elf_prog_header.file_size, 1, fd);
             log_info(MODULE, "expected %u did %d", elf_prog_header.file_size, bytes_read);
             if (bytes_read != elf_prog_header.file_size)
             {
@@ -215,7 +216,7 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
     log_debug(MODULE, "proc (%p) = {%u}", proc, proc->entry);
     uint8_t buffer[1024];
     ELF_header elf_header;
-    VFS_seek(fd, 0);
+    fseek(fd, 0, SEEK_SET);
     // something is fucked in the read function tried to fix it
     // with a seek but have not tested it
     // i fucking hate loader and the ELF format
@@ -226,7 +227,7 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
 #ifdef __x86_64__
     header_size += sizeof(ELF_header64);
 #endif
-    size_t bytes_read = VFS_read(fd, buffer, header_size);
+    size_t bytes_read = fread(buffer, header_size, 1, fd);
     if (bytes_read < header_size)
     {
         // something is wrong
@@ -234,6 +235,7 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
         return RETURN_ERROR;
     }
     memcpy(&elf_header, buffer, header_size);
+    hexdump(&elf_header, header_size);
 
     if (elf_header.type != ELF_TYPE_EXECUTABLE)
     {
@@ -268,9 +270,9 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
         log_debug(MODULE, "program header table postion = %u", elf_header.program_header_table_position);
         log_debug(MODULE, "program header table entry size = %u", elf_header.program_header_table_entry_size);
         log_debug(MODULE, "program header offset = %u", prog_header_offset);
-        VFS_seek(fd, prog_header_offset);
+        fseek(fd, prog_header_offset, SEEK_SET);
 
-        bytes_read = VFS_read(fd, buffer, sizeof(ELF_program_header));
+        bytes_read = fread(buffer, sizeof(ELF_program_header), 1, fd);
         if (bytes_read < sizeof(ELF_program_header))
         {
             // something is wrong
@@ -297,9 +299,9 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
 
         memset(dest, 0, elf_prog_header.memory_size);
 
-        VFS_seek(fd, elf_prog_header.offset);
+        fseek(fd, elf_prog_header.offset, SEEK_SET);
 
-        VFS_read(fd, dest, elf_prog_header.file_size);
+        fread(dest, elf_prog_header.file_size, 1, fd);
     }
 
     proc->entry = (virt_addr)(uint32_64)elf_header.program_entry_position;

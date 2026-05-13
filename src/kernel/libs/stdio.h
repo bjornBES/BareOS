@@ -3,21 +3,15 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 Mar 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
-#include <stdint.h>
-#include <stdarg.h>
-#include <stddef.h>
 #include "IO.h"
 #include "VFS/vfs.h"
-
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#include "kernel.h"
 
 #ifndef EOF
 #define EOF (-1)

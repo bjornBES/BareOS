@@ -87,6 +87,9 @@ menuconfig-%:
 install:
 	$(MAKE) -C src/user/userland install
 
+userland:
+	$(MAKE) -C src/user/userland BUILD_DIR=$(abspath $(BUILD_DIR))
+
 #
 # Always
 #

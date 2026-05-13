@@ -37,7 +37,7 @@ $(BUILD_DIRC)/%.obj: %.c
 	@echo "--> Compiling: " $<
 	mkdir -p $(@D)
 	@$(TARGET32_CC) $(TARGET32_CFLAGS) -c -o $@ $<
-	@$(TARGET32_CC) $(TARGET32_CFLAGS) --save-temps -c -o $@ $<
+#	@$(TARGET32_CC) $(TARGET32_CFLAGS) --save-temps -c -o $@ $<
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm

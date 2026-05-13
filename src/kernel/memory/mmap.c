@@ -3,7 +3,7 @@
  * File Created: 28 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 28 Apr 2026
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -26,13 +26,13 @@ void *memory_mmap(void *addr, size_t length, int prot, int flags, fd_t fd, off_t
     log_debug(MODULE, "memory_mmap(%p, %u, %x, %x, %i, %u)", addr, length, prot, flags, fd, offset);
     if ((flags & MAP_ANONYMOUS) == 0 || fd >= VFS_FS_NEXT || offset != 0)
     {
-        FUNC_NOT_IMPLEMENTED(MODULE, "memory_mmap");
+        FUNC_NOT_IMPLEMENTED(MODULE);
         return MAP_FAILED;
     }
 
     if (addr != NULL)
     {
-        FUNC_NOT_IMPLEMENTED(MODULE, "memory_mmap");
+        FUNC_NOT_IMPLEMENTED(MODULE);
         return MAP_FAILED;
     }
 

@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 12 May 2026 12:25:55
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -44,7 +44,6 @@
 #include "drivers/IO/I8042/I8042.h"
 #include "drivers/IO/Keyboard/Keyboard.h"
 
-extern char VGAModesAddr;
 extern char default8x16Font;
 
 void hexdump(void *ptr, int len)
@@ -87,20 +86,8 @@ void test()
 
 void start_init()
 {
-    int count = 0;
-    volume_point **points = vfs_get_volume_points(&count);
-    int mount_index = 1;
-    volume_point *mnt = points[mount_index - 1];
-    log_debug("MAIN", "%u: MOUNT POINT %s IS %s\n", mount_index, mnt->path, mnt->dev->name);
-    char mount_path[320];
-    strcpy(mount_path, mnt->path);
-    char path[320];
-    count = sprintf(path, "%s/bin/INIT.ELF", mount_path);
-    path[count] = '\0';
-    log_debug("MAIN", "PATH = %s\n", path);
-    char *argv[16] = {0};
-    argv[0] = path;
-    kernel_init_process(path, argv, NULL);
+    char *argv[2] = { "/user:/bin/INIT.ELF", NULL };
+    kernel_init_process("/user:/bin/INIT.ELF", argv, NULL);
 }
 
 boot_params *main_boot_params;
@@ -125,23 +112,28 @@ __attribute__((noreturn)) void kernel_entry()
 
     pci_init(main_boot_params->pciBios);
     pci_init_devices();
-    VFS_init();
+    vfs_init();
 
     device_debug();
     {
-        filesystem *fat_fs = fat_init();
-        VFS_register_fs(fat_fs);
+        fat_init();
 
         log_info("MAIN", "mounting drives");
-        device *ahci;
+        device_t *ahci;
         log_info("MAIN", "Getting drive 0x101");
         ahci = device_get(0x101); // device 1 partition 1
         log_info("MAIN", "Mounting drive 0x101");
-        VFS_mount("/user", ahci);
+        vfs_mount("/user:/", ahci, 0);
         log_info("MAIN", "Getting drive 0x100");
         ahci = device_get(0x100); // device 1 partition 0
         log_info("MAIN", "Mounting drive 0x100");
-        VFS_mount("/boot", ahci);
+        vfs_mount("/boot:/boot", ahci, 0);
+        
+        fd_t file = vfs_open("/user:/home/test.txt", 0, 0);
+        uint8_t data[512];
+        vfs_read(file, data, 512);
+        hexdump(data, 512);
+
         I8042_init();
 
         Loader_init();
@@ -170,7 +162,7 @@ __attribute__((noreturn)) void kernel_entry()
         vga_init();
         vga_load_font((uint8_t *)&default8x16Font);
         vga_check();
-        video_init(main_boot_params, &VGAModesAddr);
+        video_init(main_boot_params);
         vga_clear();
         log_debug("main", "vesa mode %d %dx%dx%d %p", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp, vesaMode->frame_buffer);
         printf("Hello world");

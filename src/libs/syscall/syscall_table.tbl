@@ -17,8 +17,8 @@ PLEDGE_EXEC
 */
 // syscall_table.inc
 // nr,  name,           syscall name,   syscall name upper, return,     pledge,         arg_types
-X(0,    VFS_read,       read,           READ,               true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
-X(1,    VFS_write,      write,          WRITE,              true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
+X(0,    vfs_read,       read,           READ,               true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
+X(1,    vfs_write,      write,          WRITE,              true,       PLEDGE_STDIO,   fd_t,   void*,  size_t)
 X(7,    process_waitpid,waitpid,        WAITPID,            true,       0,              pid_t, int *, int)
 X(9,    memory_mmap,    mmap,           MMAP,               true,       PLEDGE_MALLOC,  void*, size_t, int, int, fd_t, off_t)
 X(11,   memory_munmap,  munmap,         MUNMAP,             true,       PLEDGE_MALLOC,  void*, size_t, int, int, fd_t, off_t)

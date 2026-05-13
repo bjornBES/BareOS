@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 19 Mar 2026
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -99,10 +99,10 @@ bool __unreachable()
     {
         return true;
     }
-    fd_t file = VFS_open("/boot/bare.txt");
+    fd_t file = vfs_open("/boot/bare.txt", 0, 0);
     uint8_t buf[255];
-    VFS_read(file, buf, 255);
-    VFS_close(file);
+    vfs_read(file, buf, 255);
+    vfs_close(file);
     if (memcmp(buf, "This file is required for booting.", 34))
     {
         panic("", "", 0x46, "what did the file say?");

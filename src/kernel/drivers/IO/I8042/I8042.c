@@ -3,7 +3,7 @@
  * File Created: 06 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 30 Apr 2026
+ * Last Modified: 12 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -517,7 +517,7 @@ void I8042_init()
     }
 #endif
     conf = 0x23;
-    // VFS_write(VFS_INVALID_FD, (uint8_t*)"Done I8042\n", 11);
+
     I8042_write_controller_conf(conf);
 
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)

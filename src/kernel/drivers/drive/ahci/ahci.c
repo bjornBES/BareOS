@@ -3,7 +3,7 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 Mar 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -375,8 +375,10 @@ bool ahci_write_sectors_command(ahci_port aport, uint32_t startl, uint32_t start
     return true;
 }
 
-uint32_t ahci_read(void *buffer, uint64_t sector, size_t count, device *device)
+size_t ahci_read(void *buffer, off_t offset, size_t count, device_t *device)
 {
+    log_debug(MODULE, "ahci_read(%p, %u, %u, %p)", buffer, offset, count, device);
+    uint64_t sector = (uint64_t)offset;
     sata_private_data *priv = (sata_private_data *)device->priv;
     uint16_t drive = priv->drive;
     ahci_port aport = ports[drive];
@@ -397,8 +399,9 @@ uint32_t ahci_read(void *buffer, uint64_t sector, size_t count, device *device)
     return -1;
 }
 
-uint32_t ahci_write(void *buffer, uint64_t sector, size_t count, device *device)
+size_t ahci_write(void *buffer, off_t offset, size_t count, device_t *device)
 {
+    uint64_t sector = (uint64_t)offset;
     sata_private_data *priv = (sata_private_data *)device->priv;
     uint16_t drive = priv->drive;
     ahci_port aport = ports[drive];
@@ -452,7 +455,7 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 ahci_identify_device(*aport, info, info_virt);
                 log_debug(MODULE, "Port %u identified", ahci_devices_count);
 
-                device *dev = (device *)malloc(sizeof(device));
+                device_t *dev = (device_t *)malloc(sizeof(device_t));
                 sata_private_data *priv = (sata_private_data *)malloc(sizeof(sata_private_data));
                 priv->drive = ahci_devices_count;
 

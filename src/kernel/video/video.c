@@ -3,7 +3,7 @@
  * File Created: 27 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 24 Mar 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -33,7 +33,7 @@
 uint8_t *frame_buffer;
 int current_mode;
 video_mode *video_current_mode_data;
-video_mode **modes;
+video_mode *modes;
 int mode_count;
 
 #define MODULE "VIDEO"
@@ -43,12 +43,12 @@ video_mode *video_get_mode_data(int mode)
 {
     for (size_t i = 0; i < mode_count; i++)
     {
-        video_mode *element = modes[i];
+        video_mode *element = &modes[i];
         // log_debug("VIDEO", "video mode %d==%d", element->mode, mode);
         if (element->mode == mode)
         {
             // log_debug("VIDEO", "found video mode %d %dx%dx%d fb=%p mode&=%p", i, element->width, element->height, element->bpp, element->frame_buffer, element);
-            return modes[i];
+            return &modes[i];
         }
     }
     return NULL;
@@ -106,44 +106,44 @@ void video_set_mode(int mode)
     current_mode = mode;
 }
 
-void video_init(boot_params *bp, void *mode_addr)
+void video_init(boot_params *bp)
 {
-    modes = (video_mode **)mode_addr;
+    log_debug(MODULE, "video_init(%p)", bp);
     mode_count = bp->vesaModeCount;
+    modes = (video_mode *)kcalloc(mode_count, sizeof(video_mode));
     VESA_bios_info vesa_info = bp->vesaBios;
     VESA_mode *vesa_modes = bp->vesaModes;
 
     for (size_t i = 0; i < mode_count; i++)
     {
-        modes[i] = (video_mode *)(mode_addr + sizeof(video_mode) * i);
-        modes[i]->mode_attributes = vesa_modes[i].mode_attributes;
-        modes[i]->memory_model = vesa_modes[i].memory_model;
-        modes[i]->width = vesa_modes[i].width;
-        modes[i]->height = vesa_modes[i].height;
-        modes[i]->bpp = vesa_modes[i].bpp;
-        modes[i]->frame_buffer = vesa_modes[i].frame_buffer;
-        modes[i]->pitch = vesa_modes[i].pitch;
-        modes[i]->red_mask_size = vesa_modes[i].red_mask_size;
-        modes[i]->red_field_position = vesa_modes[i].red_field_position;
-        modes[i]->greenMaskSize = vesa_modes[i].greenMaskSize;
-        modes[i]->greenFieldPosition = vesa_modes[i].greenFieldPosition;
-        modes[i]->blueMaskSize = vesa_modes[i].blueMaskSize;
-        modes[i]->blueFieldPosition = vesa_modes[i].blueFieldPosition;
-        modes[i]->alphaMaskSize = vesa_modes[i].alphaMaskSize;
-        modes[i]->alphaFieldPosition = vesa_modes[i].alphaFieldPosition;
-        modes[i]->mode = vesa_modes[i].mode;
+        video_mode *mode = &modes[i];
+        mode->mode_attributes = vesa_modes[i].mode_attributes;
+        mode->memory_model = vesa_modes[i].memory_model;
+        mode->width = vesa_modes[i].width;
+        mode->height = vesa_modes[i].height;
+        mode->bpp = vesa_modes[i].bpp;
+        mode->frame_buffer = vesa_modes[i].frame_buffer;
+        mode->pitch = vesa_modes[i].pitch;
+        mode->red_mask_size = vesa_modes[i].red_mask_size;
+        mode->red_field_position = vesa_modes[i].red_field_position;
+        mode->greenMaskSize = vesa_modes[i].greenMaskSize;
+        mode->greenFieldPosition = vesa_modes[i].greenFieldPosition;
+        mode->blueMaskSize = vesa_modes[i].blueMaskSize;
+        mode->blueFieldPosition = vesa_modes[i].blueFieldPosition;
+        mode->alphaMaskSize = vesa_modes[i].alphaMaskSize;
+        mode->alphaFieldPosition = vesa_modes[i].alphaFieldPosition;
+        mode->mode = vesa_modes[i].mode;
         // memcpy(modes[i] + 3, (&vesa_modes[i]) + 4, 23);
     }
 
     video_set_mode(bp->currentMode);
-
     phys_addr fb = (phys_addr)((uint32_64)video_current_mode_data->frame_buffer);
     size_t fb_size = (size_t)video_current_mode_data->pitch * video_current_mode_data->height;
     log_debug(MODULE, "paging p%p mapped", fb);
     virt_addr fb_virt = ioremap(fb, fb_size);
     for (size_t i = 0; i < mode_count; i++)
     {
-        modes[i]->frame_buffer = (uint32_64)fb_virt;
+        modes[i].frame_buffer = (uint32_64)fb_virt;
     }
     frame_buffer = (uint8_t*)fb_virt;
     vga_check();

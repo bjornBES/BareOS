@@ -3,7 +3,7 @@
  * File Created: 27 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 03 Mar 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -62,4 +62,4 @@ extern video_mode *video_current_mode_data;
 
 void video_set_pixel(uint32_t cursor_x, uint32_t cursor_y, uint32_t color_packed);
 void video_set_mode(int mode);
-void video_init(boot_params *bp, void *mode_addr);
+void video_init(boot_params *bp);

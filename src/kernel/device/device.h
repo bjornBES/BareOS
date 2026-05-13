@@ -3,15 +3,14 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 Mar 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#include <types.h>
 
 typedef enum __device_type {
 	DEVICE_UNKNOWN = 0,
@@ -24,21 +23,19 @@ typedef enum __device_type {
     DEVICE_TTY = 7,
 } device_type;
 
-struct device;
-
-typedef struct __device_t
+typedef struct device
 {
     char* name;
     device_type type;
     uint32_t device_id;
-    uint32_t (*read)(void *buffer, uint64_t offset, size_t count, struct __device_t * device);
-    uint32_t (*write)(void *buffer, uint64_t offset, size_t count, struct __device_t * device);
+    size_t (*read)(void *buffer, off_t offset, size_t count, struct device * device);
+    size_t (*write)(void *buffer, off_t offset, size_t count, struct device * device);
     void* priv;
-} device;
+} device_t;
 
 void device_init();
 void device_debug();
 uint32_t device_count();
-uint32_t device_add(device* dev);
-device *device_get(uint32_t id);
-device *device_get_by_index(uint32_t index);
+uint32_t device_add(device_t* dev);
+device_t *device_get(uint32_t id);
+device_t *device_get_by_index(uint32_t index);

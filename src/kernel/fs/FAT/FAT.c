@@ -3,187 +3,87 @@
  * File Created: 09 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 12 May 2026 12:25:22
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "FAT.h"
+#include "fat_name.h"
 
+#include "VFS/vfs_flags.h"
 #include "kernel.h"
 #include "libs/malloc.h"
 #include "libs/ctype.h"
 #include "libs/stdio.h"
+#include "libs/malloc.h"
 #include "libs/memory.h"
 #include "libs/string.h"
 
 #include "debug/debug.h"
 
-
 #define MODULE "FAT"
 
-#define PRINT_FUNCTION_INFO(func, ...)             \
+#define PRINT_FUNCTION_INFO(func, ...)              \
     fprintf(VFS_FD_DEBUG, "in function %s(", func); \
-    fprintf(VFS_FD_DEBUG, __VA_ARGS__);            \
+    fprintf(VFS_FD_DEBUG, __VA_ARGS__);             \
     fprintf(VFS_FD_DEBUG, ")\n");
 
-#define COMBINE_CLUSTERS(entry) (entry.FirstClusterHigh << 16) | entry.FirstClusterLow
-
-uint32_t cluster_to_lba(uint32_t cluster, fat_priv_data *priv)
+#define COMBINE_CLUSTERS(entry) (entry.first_cluster_high << 16) | entry.first_cluster_low
+extern void hexdump(void *ptr, int len);
+static inline lba bytes_to_lba(size_t bytes, fat_priv_data *sb)
 {
-    return priv->data_start_lba + (cluster - 2) * priv->sectors_per_cluster;
+    return bytes / sb->bytes_per_sector;
+}
+static inline size_t lba_to_bytes(lba lba, fat_priv_data *sb)
+{
+    return lba * sb->bytes_per_sector;
+}
+static inline cluster bytes_to_cluster(size_t bytes, fat_priv_data *sb)
+{
+    lba lba = bytes / sb->bytes_per_sector;
+    return ((lba - sb->data_start_lba) / sb->sectors_per_cluster) + 2;
+}
+static inline size_t cluster_to_bytes(cluster clusters, fat_priv_data *sb)
+{
+    lba l = sb->data_start_lba + (clusters - 2) * sb->sectors_per_cluster;
+    return l * sb->bytes_per_sector;
+}
+static inline lba cluster_to_lba(cluster cluster, fat_priv_data *sb)
+{
+    return sb->data_start_lba + (cluster - 2) * sb->sectors_per_cluster;
+}
+static inline cluster lba_to_cluster(lba lba, fat_priv_data *sb)
+{
+    return ((lba - sb->data_start_lba) / sb->sectors_per_cluster) + 2;
 }
 
-uint32_t fat_read_sectors(void *buffer, uint32_t sector, uint32_t sector_count, device *dev, fat_priv_data *priv)
+size_t fat_read_sectors(void *buffer, lba sector, lba sector_count, device_t *dev, fat_priv_data *sb)
 {
-    return dev->read(buffer, sector, sector_count, dev) * priv->bytes_per_sector;
+    log_debug(MODULE, "fat_read_sectors(%p, %u, %u, %p, %p)", buffer, sector, sector_count, dev, sb);
+    return dev->read(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
 }
-void fat_read_clusters(void *buffer, uint32_t cluster, uint32_t clusters_count, device *dev, fat_priv_data *priv)
+size_t fat_read_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
 {
-    uint32_t lba = cluster_to_lba(cluster, priv);
-    fat_read_sectors(buffer, lba, clusters_count * priv->sectors_per_cluster, dev, priv);
-}
-
-uint32_t fat_write_sectors(void *buffer, uint32_t sector, uint32_t sector_count, device *dev, fat_priv_data *priv)
-{
-    return dev->write(buffer, sector, sector_count, dev) * priv->bytes_per_sector;
-}
-void fat_write_clusters(void *buffer, uint32_t cluster, uint32_t clusters_count, device *dev, fat_priv_data *priv)
-{
-    uint32_t lba = cluster_to_lba(cluster, priv);
-    fat_write_sectors(buffer, lba, clusters_count * priv->sectors_per_cluster, dev, priv);
+    log_debug(MODULE, "fat_read_clusters(%p, %u, %u, %p, %p)", buffer, cluster_start, clusters_count, dev, sb);
+    lba lba = cluster_to_lba(cluster_start, sb);
+    size_t len = fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb);
+    return len;
 }
 
-
-bool fat_83_to_name(const char raw83[11], char out[13])
+uint32_t fat_write_sectors(void *buffer, lba sector, lba sector_count, device_t *dev, fat_priv_data *sb)
 {
-    if (!raw83 || !out)
-        return false;
-
-    // Deleted entry
-    if (raw83[0] == 0xE5)
-    {
-        return false;
-    }
-    // Empty (end-of-directory) entry
-    if (raw83[0] == 0x00)
-    {
-        return false;
-    }
-
-    char *p = out;
-
-    // ---- Name part (bytes 0-7) ----
-    for (int i = 0; i < 8; i++)
-    {
-        uint8_t c = raw83[i];
-        // trailing spaces = end of name
-        if (c == ' ')
-        {
-            break;
-        }
-        // Kanji / 0xE5 escape
-        if (i == 0 && c == 0x05)
-        {
-            c = 0xE5;
-        }
-        *p++ = (char)c;
-    }
-
-    // ---- Extension part (bytes 8-10) ----
-    // Check if there is a non-space extension
-    int has_ext = 0;
-    for (int i = 8; i < 11; i++)
-    {
-        if (raw83[i] != ' ')
-        {
-            has_ext = 1;
-            break;
-        }
-    }
-
-    if (has_ext)
-    {
-        *p++ = '.';
-        for (int i = 8; i < 11; i++)
-        {
-            if (raw83[i] == ' ')
-            {
-                break;
-            }
-            *p++ = (char)raw83[i];
-        }
-    }
-
-    *p = '\0';
-    return 1;
+    return dev->write(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
+}
+void fat_write_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
+{
+    lba lba = cluster_to_lba(cluster_start, sb);
+    fat_write_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb);
 }
 
-bool fat_name_to_83(const char *name, uint8_t out83[11])
+bool fat_is_eoc(fat_priv_data *sb, uint32_t cluster)
 {
-    if (!name || !out83 || name[0] == '\0')
-    {
-        return false;
-    }
-
-    // Pre-fill with spaces
-    out83 = memset(out83, ' ', 11);
-
-    // Find the LAST dot to split name / extension.
-    // Special case: a leading dot (e.g. ".hidden") is part of the name, not
-    // a name/ext separator.
-    const char *dot = (const char *)0;
-    for (const char *p = name + 1; *p; p++)
-    { // start at +1 to skip leading dot
-        if (*p == '.')
-        {
-            dot = p;
-        }
-    }
-
-    const char *ext_start = dot ? dot + 1 : (const char *)0;
-    int name_len = dot ? (int)(dot - name) : (int)strlen(name);
-
-    // ---- Write name (bytes 0-7) ----
-    int ni = 0;
-    for (int i = 0; i < name_len && ni < 8; i++)
-    {
-        char c = toupper(name[i]);
-        // skip spaces (illegal in FAT)
-        if (c == ' ' || c == '\0')
-        {
-            continue;
-        }
-        out83[ni++] = (uint8_t)c;
-    }
-
-    // Kanji / deleted-entry escape
-    if (out83[0] == 0xE5)
-    {
-        out83[0] = 0x05;
-    }
-
-    // ---- Write extension (bytes 8-10) ----
-    if (ext_start)
-    {
-        int ei = 8;
-        for (int i = 0; ext_start[i] != '\0' && ei < 11; i++)
-        {
-            char c = toupper(ext_start[i]);
-            if (c == ' ')
-            {
-                continue;
-            }
-            out83[ei++] = (uint8_t)c;
-        }
-    }
-
-    return true;
-}
-
-bool fat_is_eoc(fat_priv_data *priv, uint32_t cluster)
-{
-    switch (priv->type)
+    switch (sb->type)
     {
     case FAT12:
         return cluster >= FAT12_EOC;
@@ -195,273 +95,81 @@ bool fat_is_eoc(fat_priv_data *priv, uint32_t cluster)
     return true;
 }
 
-uint32_t fat_next_cluster(uint32_t current_cluster, device *dev, fat_priv_data *fat_priv)
+cluster fat_next_cluster(cluster current_cluster, device_t *dev, fat_priv_data *sb)
 {
+    log_debug(MODULE, "fat_next_cluster(%u, %p, %p)", current_cluster, dev, sb);
     uint32_t fat_index;
-    if (fat_priv->type == FAT12)
+    if (sb->type == FAT12)
     {
         fat_index = current_cluster * 3 / 2;
     }
-    else if (fat_priv->type == FAT16)
+    else if (sb->type == FAT16)
     {
         fat_index = current_cluster * 2;
     }
-    else if (fat_priv->type == FAT32)
+    else if (sb->type == FAT32)
     {
         fat_index = current_cluster * 4;
     }
 
-    uint32_t fat_index_sector = fat_index / fat_priv->bytes_per_sector;
-    if (fat_index_sector < fat_priv->fat_cache_position || fat_index_sector >= fat_priv->fat_cache_position + FAT_CACHE_SIZE)
+    lba fat_index_sector = fat_index / sb->bytes_per_sector;
+    if (fat_index_sector < sb->fat_cache_position || fat_index_sector >= sb->fat_cache_position + FAT_CACHE_SIZE)
     {
-        dev->read(fat_priv->fat_cache, fat_priv->fat_start_lba + fat_index_sector, FAT_CACHE_SIZE, dev);
-        fat_priv->fat_cache_position = fat_index_sector;
+        dev->read(sb->fat_cache, sb->fat_start_lba + fat_index_sector, FAT_CACHE_SIZE, dev);
+        sb->fat_cache_position = fat_index_sector;
     }
 
-    fat_index -= fat_priv->fat_cache_position * fat_priv->bytes_per_sector;
+    fat_index -= sb->fat_cache_position * sb->bytes_per_sector;
 
-    uint32_t next_cluster;
+    cluster next_cluster;
 
-    if (fat_priv->type == FAT12)
+    if (sb->type == FAT12)
     {
         if (current_cluster % 2 == 0)
         {
-            next_cluster = (*(uint16_t *)(fat_priv->fat_cache + fat_index)) & 0x0FFF;
+            next_cluster = (*(uint16_t *)(sb->fat_cache + fat_index)) & 0x0FFF;
         }
         else
         {
-            next_cluster = (*(uint16_t *)(fat_priv->fat_cache + fat_index)) >> 4;
+            next_cluster = (*(uint16_t *)(sb->fat_cache + fat_index)) >> 4;
         }
     }
-    else if (fat_priv->type == FAT16)
+    else if (sb->type == FAT16)
     {
-        next_cluster = *(uint16_t *)(fat_priv->fat_cache + fat_index);
+        next_cluster = *(uint16_t *)(sb->fat_cache + fat_index);
     }
-    else if (fat_priv->type == FAT32)
+    else if (sb->type == FAT32)
     {
-        next_cluster = *(uint32_t *)(fat_priv->fat_cache + fat_index) & 0x0FFFFFFF;
+        next_cluster = *(uint32_t *)(sb->fat_cache + fat_index) & 0x0FFFFFFF;
     }
 
-    if (fat_is_eoc(fat_priv, next_cluster))
+    if (fat_is_eoc(sb, next_cluster))
     {
         return 0xFFFFFFFF;
     }
 
     return next_cluster;
 }
-/*
-void get_directory_entry_count(FAT_directory *directory, device *dev, fat_priv_data *fat_priv)
+
+size_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, device_t *dev, mountpoint_t *mnt)
 {
-
-} */
-
-void fat_get_root_directory(device *dev, fat_priv_data *fat_priv, FAT_directory *out)
-{
-    uint32_t root_directory_count = fat_priv->root_sector_count;
-    if (fat_priv->type == FAT32)
-    {
-        uint32_t cluster_count = 0;
-        uint32_t current = fat_priv->root_cluster;
-
-        while (!fat_is_eoc(fat_priv, current))
-        {
-            cluster_count++;
-
-            uint32_t next = fat_next_cluster(current, dev, fat_priv);
-            if (next == 0)
-            {
-                break; // Error or end
-            }
-            current = next;
-        }
-
-        root_directory_count = cluster_count * fat_priv->sectors_per_cluster;
-    }
-
-    log_debug(MODULE, "reading from %u(%u), %u times", fat_priv->root_start_lba, fat_priv->root_cluster, root_directory_count);
-    fat_read_sectors(out->entries, fat_priv->root_start_lba, root_directory_count, dev, fat_priv);
-    uint32_t directory_size_bytes = fat_priv->root_start_lba * fat_priv->bytes_per_sector;
-    out->entry_count = directory_size_bytes / 32;
-}
-
-bool fat_read_directory_internal(FAT_entry *entry, device *dev, fat_priv_data *fat_priv, FAT_directory *out)
-{
-    uint32_t directory_cluster = COMBINE_CLUSTERS(entry->entry);
-    uint32_t directory_count = 0;
-
-    {
-        uint32_t cluster_count = 0;
-        uint32_t current = fat_priv->root_cluster;
-
-        while (!fat_is_eoc(fat_priv, current))
-        {
-            cluster_count++;
-
-            uint32_t next = fat_next_cluster(current, dev, fat_priv);
-            if (next == 0)
-            {
-                break; // Error or end
-            }
-            current = next;
-        }
-
-        directory_count = cluster_count * fat_priv->sectors_per_cluster;
-    }
-
-    uint32_t directory_sector = cluster_to_lba(directory_cluster, fat_priv);
-    log_debug(MODULE, "reading from %u(%u), %u times", directory_sector, directory_cluster, directory_count);
-    fat_read_sectors(out->entries, directory_sector, directory_count, dev, fat_priv);
-    uint32_t directory_size_bytes = directory_sector * fat_priv->bytes_per_sector;
-    out->entry_count = directory_size_bytes / 32;
-    return true;
-}
-
-bool fat_find_entry(char *path, device *dev, fat_priv_data *fat_priv, FAT_directory *directory, FAT_entry **entry_out)
-{
-    PRINT_FUNCTION_INFO("fat_find_entry", "%s, %p, %p, %p", path, dev, fat_priv, entry_out);
-    char *org_path = path;
-    if (*org_path != '/')
-    {
-        log_err(MODULE, "path '%s' wasn't rooted", path);
-        PRINT_FUNCTION_INFO("fat_find_entry", "%s, %p, %p, %p", path, dev, fat_priv, entry_out);
-        return false;
-    }
-    org_path++;
-
-    // path segment in a human readable format
-    char *path_segment_hr = malloc(MAX_FILE_NAME);
-    memset(path_segment_hr, 0, MAX_FILE_NAME);
-    {
-        const char *temp = strchr(org_path, '/') - 1;
-        int count = (int)(temp - org_path);
-        if (count == -1 || (uint32_64)temp == 0xffffffffffffffff)
-        {
-            count = strlen(org_path);
-        }
-        else
-        {
-            log_debug(MODULE, "check temp: %p, org_path: %p, count: %u", temp, org_path, count);
-        }
-        log_debug(MODULE, "check %s - %s, %u", path_segment_hr, org_path, count);
-        memcpy(path_segment_hr, org_path, count + 1);
-        log_debug(MODULE, "here3");
-        log_debug(MODULE, "path_segment = %s", path_segment_hr);
-        org_path += count + 1;
-    }
-    log_debug(MODULE, "post shit");
-    log_debug(MODULE, "in fat_find_entry directory = %p with org_path = %s (%u)", directory, org_path, *org_path);
-
-    // path segment in the 8.3 format
-    char segment83[12];
-    memset(segment83, 0, 12);
-    fat_name_to_83(path_segment_hr, (uint8_t *)segment83);
-    free(path_segment_hr);
-    log_debug(MODULE, "after 8.3 segment %s", segment83);
-
-    for (size_t i = 0; i < directory->entry_count; i++)
-    {
-        FAT_entry *entry = &(directory->entries[i]);
-        log_debug(MODULE, "%u: entry at %p with name %s", i, entry, entry->entry.Name);
-
-        if (memcmp(segment83, entry->entry.Name, 4) == 0)
-        {
-            log_debug(MODULE, "found entry at %p", entry);
-            *entry_out = entry;
-            break;
-        }
-    }
-
-    if (*org_path == 0 || ((*entry_out)->entry.Attributes & FAT_ATTRIBUTE_DIRECTORY) == 0)
-    {
-        // done
-        return true;
-    }
-    if (*(org_path - 1) == '/')
-    {
-        org_path--;
-    }
-
-    // read the entry
-    if (!fat_read_directory_internal(*entry_out, dev, fat_priv, directory))
-    {
-        log_err(MODULE, "failed to read %s entry's directories", (*entry_out)->entry.Name);
-        PRINT_FUNCTION_INFO("fat_find_entry", "%s, %p, %p, %p", path, dev, fat_priv, entry_out);
-        return false;
-    }
-
-    log_debug(MODULE, "entry 0 is %s", directory->entries[0].entry.Name);
+    log_debug(MODULE, "fat_read_file(%p, %p, %u, %u, %p, %p)", node, buffer, offset, size, dev, mnt);
+    volume_t *vol = mnt->volume;
+    fat_priv_data *sb = (fat_priv_data *)vol->sb;
     
-    bool result = fat_find_entry(org_path, dev, fat_priv, directory, entry_out);
-    log_debug(MODULE, "done now");
-    return result;
-}
-
-int fat_read_directory(vfs_node *dir, uint32_t index, vfs_dirent *out, device *dev, volume_point *mnt)
-{
-    // bool fat_read_directory_internal(FAT_entry *entry, device *dev, fat_priv_data *fat_priv, FAT_directory *out)
-    PRINT_FUNCTION_INFO("fat_read_directory", "%p, %u, %p, %p, %p", dir, index, out, dev, mnt);
-    FUNC_NOT_IMPLEMENTED(MODULE, "fat_read_directory");
-    return false;
-}
-
-uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size, device *dev, volume_point *mnt)
-{
-    log_debug(MODULE, "  fat_read_file(%p, %p, %u, %u, %p, %p)", node, buffer, offset, size, dev, mnt);
-    
-/*     log_debug(MODULE, "got node {");
-    log_debug(MODULE, "  name = %s", node->name);
-    log_debug(MODULE, "  flags = 0x%x", node->flags);
-    log_debug(MODULE, "  size = %u", node->size);
-    log_debug(MODULE, "  inode = %u", node->inode);
-    log_debug(MODULE, "  offset = %u", node->offset);
-    log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
-    log_debug(MODULE, "  fs = %p", node->fs);
-    log_debug(MODULE, "  volume = %p", node->volume);
-    log_debug(MODULE, "  priv = %p", node->priv);
-    log_debug(MODULE, "}"); */
-   
-    fat_priv_data *fat_priv = mnt->fs_priv;
-
-    uint32_t cluster_number = node->inode;
-    if (cluster_number == 0)
-    {
-        char *path = node->name;
-        FAT_directory *current_directory = malloc(sizeof(FAT_directory));
-        fat_get_root_directory(dev, fat_priv, current_directory);
-        log_debug(MODULE, "post root current_directory = %p", current_directory);
-        FAT_entry *entry = NULL;
-        fat_find_entry(path, dev, fat_priv, current_directory, &entry);
-        free(current_directory);
-        log_debug(MODULE, "got entry at %p", entry);
-        cluster_number = (entry->entry.FirstClusterHigh << 16) | entry->entry.FirstClusterLow;
-        node->inode = cluster_number;
-        node->size = entry->entry.Size;
-    }
-    
-/*     log_debug(MODULE, "updated node {");
-    log_debug(MODULE, "  name = %s", node->name);
-    log_debug(MODULE, "  flags = 0x%x", node->flags);
-    log_debug(MODULE, "  size = %u", node->size);
-    log_debug(MODULE, "  inode = %u", node->inode);
-    log_debug(MODULE, "  offset = %u", node->offset);
-    log_debug(MODULE, "  opened = %s", node->opened BOOT_TO_STRING);
-    log_debug(MODULE, "  fs = %p", node->fs);
-    log_debug(MODULE, "  volume = %p", node->volume);
-    log_debug(MODULE, "  priv = %p", node->priv);
-    log_debug(MODULE, "}"); */
-   
     if (!buffer)
     {
         return 0;
     }
-    uint32_t cluster = node->inode;
-    uint32_t offset_cluster = offset / fat_priv->bytes_per_cluster;
+    fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
+    cluster cluster_start = fat_ino->first_cluster;
+    cluster offset_cluster = offset / sb->bytes_per_cluster;
     if (offset_cluster != 0)
     {
         for (size_t i = 0; i < offset_cluster; i++)
         {
-            cluster = fat_next_cluster(cluster, dev, fat_priv);
-            if (cluster >= FAT_CACHE_INVALID)
+            cluster_start = fat_next_cluster(cluster_start, dev, sb);
+            if (cluster_start >= FAT_CACHE_INVALID)
             {
                 return 0;
             }
@@ -469,91 +177,188 @@ uint32_t fat_read_file(vfs_node *node, void *buffer, size_t offset, size_t size,
     }
 
     uint32_t bytes_read = 0;
-    uint32_t intra = offset % fat_priv->bytes_per_cluster;
-
-    while (size > 0 && cluster < FAT_CACHE_INVALID)
+    uint32_t intra = offset % sb->bytes_per_cluster;
+    log_debug(MODULE, "cluster_start = %u", cluster_start);
+    while (size > 0 && cluster_start < FAT_CACHE_INVALID)
     {
-        uint8_t tmp[fat_priv->bytes_per_cluster];
-        fat_read_clusters(tmp, cluster, 1, dev, fat_priv);
+        uint8_t tmp[sb->bytes_per_cluster];
+        fat_read_clusters(tmp, cluster_start, 1, dev, sb);
 
-        uint32_t available = fat_priv->bytes_per_cluster - intra;
+        uint32_t available = sb->bytes_per_cluster - intra;
         uint32_t to_copy = size < available ? size : available;
+        log_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
         memcpy(buffer + bytes_read, tmp + intra, to_copy);
 
         bytes_read += to_copy;
         size -= to_copy;
         intra = 0;
 
-        cluster = fat_next_cluster(cluster, dev, fat_priv);
+        cluster_start = fat_next_cluster(cluster_start, dev, sb);
     }
+    node->offset += bytes_read;
     return bytes_read;
 }
 
-bool fat_probe(device *dev)
+int fat_entries_match(FAT_entry *entry, FAT_directory *directory, int entry_index, const char *name)
 {
-    if (!dev->read)
+    if (entry->entry.attributes & FAT_ATTRIBUTE_LFN)
     {
-        return false;
+        // TODO
     }
 
-    uint8_t buffer[512];
-    FAT_boot_sector *bpb = (FAT_boot_sector *)buffer;
-    dev->read(buffer, 0, 1, dev);
-
-    uint16_t sig = *(uint16_t *)(buffer + 510);
-    if (sig != 0xAA55)
+    char entry_name[13] = {0};
+    if (fat_83_to_name(entry->entry.name, entry_name) != RETURN_GOOD)
     {
-        return false;
+        log_err(MODULE, "entry name %s is not the right format", entry->entry.name);
+        return RETURN_FAILED;
     }
 
-    // bytes per sector must be 512, 1024, 2048, or 4096
-    uint16_t bps = bpb->bytes_per_sector;
-    if (bps != 512 && bps != 1024 && bps != 2048 && bps != 4096)
+    if (strcasecmp(name, entry_name) == 0)
     {
-        return false;
+        return RETURN_GOOD;
     }
-
-    // sectors per cluster must be a power of 2
-    uint8_t spc = bpb->sectors_per_cluster;
-    if (spc == 0 || (spc & (spc - 1)) != 0)
-    {
-        return false;
-    }
-
-    return true;
+    return RETURN_FAILED;
 }
 
-bool fat_open(vfs_node *node, device *dev, volume_point *mnt)
+int fat_read_directory(fat_inode_t *directory, FAT_directory *out, int entry_count, device_t *dev, mountpoint_t *mnt, fat_priv_data *sb)
+{
+    log_debug(MODULE, "fat_read_directory(%p, %p, %u, %p, %p, %p)", directory, out, entry_count, dev, mnt, sb);
+    if (directory->base.type != DT_DIR)
+    {
+        return RETURN_ERROR;
+    }
+    uint32_64 byte_count = entry_count * sizeof(FAT_directory_entry);
+    if (directory->first_cluster != sb->root_cluster)
+    {
+        // it is not the root dir
+        if (byte_count > directory->base.size)
+        {
+            log_warn(MODULE, "reading more then directory size");
+        }
+    }
+    cluster cluster_count = byte_count / sb->bytes_per_cluster;
+    int bytes_read = fat_read_clusters(out->entries, directory->first_cluster, cluster_count, dev, sb);
+    log_debug(MODULE, "read %i bytes", bytes_read);
+    int entry_count_read = bytes_read / sizeof(FAT_directory_entry);
+    return entry_count_read;
+}
+
+int fat_find_entry(fat_inode_t *parent, const char *entry_name, inode_t *entry_out, device_t *dev, mountpoint_t *mnt, fat_priv_data *sb)
+{
+    if (parent->base.type != DT_DIR)
+    {
+        log_warn(MODULE, "parent is not a directory");
+        return RETURN_FAILED;
+    }
+    fat_inode_t *fat_ino = (fat_inode_t *)entry_out;
+
+    size_t entries_in_cluster = (size_t)sb->bytes_per_cluster;
+
+    FAT_entry *entries = malloc(entries_in_cluster);
+    FAT_directory directory;
+    directory.entries = entries;
+    int entries_read = fat_read_directory(parent, &directory, entries_in_cluster / sizeof(FAT_directory_entry), dev, mnt, sb);
+    if (entries_read <= 0)
+    {
+        free(entries);
+        return RETURN_FAILED;
+    }
+    log_debug(MODULE, "printing %u entries", entries_read);
+    size_t entry_name_length = strlen(entry_name);
+    for (size_t i = 0; i < entries_read; i++)
+    {
+        FAT_directory_entry *entry = &(entries[i].entry);
+        if (fat_entries_match(&entries[i], &directory, i, entry_name) == RETURN_GOOD)
+        {
+            log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS((*entry)), entry->size);
+            fat_ino->first_cluster = COMBINE_CLUSTERS((*entry));
+            fat_ino->base.size = entry->size;
+            if (entry->attributes & FAT_ATTRIBUTE_DIRECTORY)
+            {
+                fat_ino->base.type = DT_DIR;
+            }
+            free(entries);
+            return RETURN_GOOD;
+        }
+    }
+    free(entries);
+    return RETURN_FAILED;
+}
+
+// fat driver
+int fat_lookup(inode_t *parent, const char *name, inode_t *out, device_t *dev, mountpoint_t *mnt)
+{
+    log_debug(MODULE, "fat_lookup(%p, %s(%p), %p, %p, %p)", parent, name, name, out, dev, mnt);
+    fat_priv_data *sb = (fat_priv_data *)mnt->volume->sb;
+
+    fat_inode_t *fat_ino = (fat_inode_t *)out;
+    if (parent == NULL && strcmp(name, "/") == 0)
+    {
+        // root inode request
+        fat_ino->first_cluster = sb->root_cluster;
+        out->ino = 0;
+        out->type = DT_DIR;
+        out->size = 0;
+        return RETURN_GOOD;
+    }
+
+    fat_inode_t *fat_parent = (fat_inode_t *)parent;
+    if (fat_find_entry(fat_parent, name, out, dev, mnt, sb) != RETURN_GOOD)
+    {
+        log_err(MODULE, "something is fucked");
+    }
+    return RETURN_GOOD;
+}
+
+int fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
 {
     if (!node)
     {
-        return false;
+        return RETURN_FAILED;
     }
+    
+    fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
 
-    node->opened = true;
-    node->offset = 0;
     // get the cluster number and size
-    fat_read_file(node, NULL, 0, 0, dev, mnt);
-    return true;
+    // fat_read_file(node, NULL, 0, 0, dev, mnt);
+    return RETURN_GOOD;
 }
-bool fat_close(vfs_node *node, device *dev, volume_point *mnt)
+int fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
 {
     if (!node)
     {
-        return false;
+        return RETURN_FAILED;
     }
 
     node->opened = false;
     node->offset = 0;
     node->inode = 0;
     node->size = 0;
-    return true;
+    return RETURN_GOOD;
 }
 
-bool fat_mount(device *dev, volume_point *volume)
+inode_t *fat_alloc_inode(volume_t *vol)
 {
+    fat_inode_t *ino = malloc(sizeof(fat_inode_t));
+    memset(ino, 0, sizeof(fat_inode_t));
+    ino->base.volume = vol;
+    ino->base.fs = vol->fs;
+    return &ino->base; // VFS only sees the base
+}
+
+void fat_free_inode(inode_t *ino)
+{
+    fat_inode_t *fat_ino = (fat_inode_t *)ino;
+    free(fat_ino->cluster_chain);
+    free(fat_ino);
+}
+
+int fat_mount(device_t *dev, mountpoint_t *mnt)
+{
+    volume_t *vol = mnt->volume;
     fat_priv_data *fat_priv = malloc(sizeof(fat_priv_data));
-    volume->fs_priv = fat_priv;
+    memset(fat_priv, 0, sizeof(fat_priv_data));
+    vol->sb = fat_priv;
     fat_priv->fat_cache_position = FAT_CACHE_INVALID;
 
     uint8_t buffer[512];
@@ -617,20 +422,55 @@ bool fat_mount(device *dev, volume_point *volume)
         fat_priv->data_start_lba = fat_priv->root_start_lba + root_sectors;
     }
 
-    return true;
+    return RETURN_GOOD;
 }
 
-filesystem *fat_init()
+int fat_probe(device_t *dev)
 {
-    filesystem *fs = (filesystem *)malloc(sizeof(filesystem));
+    if (!dev->read && dev->type == DEVICE_DISK)
+    {
+        return RETURN_FAILED;
+    }
 
-    fs->name = "FAT";
-    fs->volume = fat_mount;
-    fs->probe = fat_probe;
-    fs->open = fat_open;
-    fs->close = fat_close;
-    fs->read = fat_read_file;
-    fs->read_dir = fat_read_directory;
+    uint8_t buffer[512];
+    FAT_boot_sector *bpb = (FAT_boot_sector *)buffer;
+    dev->read(buffer, 0, 1, dev);
 
-    return fs;
+    uint16_t sig = *(uint16_t *)(buffer + 510);
+    if (sig != 0xAA55)
+    {
+        return RETURN_FAILED;
+    }
+
+    // bytes per sector must be 512, 1024, 2048, or 4096
+    uint16_t bps = bpb->bytes_per_sector;
+    if (bps != 512 && bps != 1024 && bps != 2048 && bps != 4096)
+    {
+        return RETURN_FAILED;
+    }
+
+    // sectors per cluster must be a power of 2
+    uint8_t spc = bpb->sectors_per_cluster;
+    if (spc == 0 || (spc & (spc - 1)) != 0)
+    {
+        return RETURN_FAILED;
+    }
+
+    return RETURN_GOOD;
+}
+
+static filesystem_t fat_driver;
+
+void fat_init()
+{
+    fat_driver.name = "FAT";
+    fat_driver.probe = fat_probe;
+    fat_driver.mount = fat_mount;
+    fat_driver.alloc_inode = fat_alloc_inode;
+    fat_driver.free_inode = fat_free_inode;
+    fat_driver.lookup = fat_lookup;
+    fat_driver.open = fat_open;
+    fat_driver.close = fat_close;
+    fat_driver.read = fat_read_file;
+    vfs_register_fs(&fat_driver);
 }

@@ -63,13 +63,6 @@ SECTIONS
     stack_top = .;
     . = ALIGN(4096);
 
-    /* VGA buffer */
-    . = ALIGN(4096);
-    VGAModesAddr = .;
-    . += 8192;
-
-    . = ALIGN(4096);
-
     __kernel_pages = . - KERNEL_VMA + KERNEL_LMA;
     . += 0x410000;  /* 4 MiB + 64 Kb */
 
