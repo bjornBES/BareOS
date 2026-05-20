@@ -107,7 +107,7 @@ void itoa(char *buf, uint32_t n, int base)
         buf[i] = tmp;
     }
 }
-void atoi(char *str, int *a)
+int atoi(char *str)
 {
     int k = 0;
     while (*str)
@@ -115,7 +115,7 @@ void atoi(char *str, int *a)
         k = (k << 3) + (k << 1) + (*str) - '0';
         str++;
     }
-    *a = k;
+    return k;
 }
 
 // internal ASCII string to size_t conversion

@@ -3,7 +3,7 @@
  * File Created: 02 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 02 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -23,10 +23,10 @@
 
 static uint32_t next_tid = 0;
 
-thread *thread_create(void (*entry)())
+thread_t *thread_create(void (*entry)())
 {
     log_debug(MODULE, "thread_create(%p)", entry);
-    thread *new_thread = kmalloc(sizeof(thread));
+    thread_t *new_thread = kmalloc(sizeof(thread_t));
     void *stack = kstack_alloc();
 
     uint8_t *sp = (uint8_t *)stack - sizeof(registers);
@@ -47,9 +47,9 @@ thread *thread_create(void (*entry)())
     return new_thread;
 }
 
-thread *thread_create_user(process_t *proc, uint64_t user_stack_top)
+thread_t *thread_create_user(process_t *proc, uint64_t user_stack_top)
 {
-    thread *t = kmalloc(sizeof(thread));
+    thread_t *t = kmalloc(sizeof(thread_t));
 
     void *kstack = kstack_alloc();
 
@@ -70,9 +70,9 @@ thread *thread_create_user(process_t *proc, uint64_t user_stack_top)
     return t;
 }
 
-thread *thread_create_main()
+thread_t *thread_create_main()
 {
-    thread *t = kmalloc(sizeof(thread));
+    thread_t *t = kmalloc(sizeof(thread_t));
     void *stack_top = kstack_alloc();
     t->stack_base = stack_top;
     t->tid = next_tid++;
@@ -86,12 +86,12 @@ thread *thread_create_main()
     return t;
 }
 
-thread *thread_create_from(thread *thr)
+thread_t *thread_create_from(thread_t *thr)
 {
-    thread *t = kmalloc(sizeof(thread));
+    thread_t *t = kmalloc(sizeof(thread_t));
     void *stack_top = kstack_alloc();
 
-    memcpy(t, thr, sizeof(thread));
+    memcpy(t, thr, sizeof(thread_t));
     t->stack_base = stack_top;
     t->tid = next_tid++;
     t->state = THREAD_READY;

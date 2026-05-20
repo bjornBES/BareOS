@@ -1,0 +1,30 @@
+
+If:
+  PathMatch: Bootloader/state2/.*
+CompileFlags:
+  Add: [--target=i686-elf]
+---
+If:
+  PathMatch: kernel/.*
+CompileFlags:
+  Add: [--target=x86_64-elf]
+
+CompileFlags:
+  Compiler: clang
+  Add:
+    - -ffreestanding
+    - -nostdlib
+    - -nostdinc
+  Remove:
+    - -march=*                 # clangd doesn't understand some gcc-specific march values
+    - -mno-*                   # strip gcc-only flags that confuse clangd
+    - -fno-pie
+    - -fno-stack-protector
+
+Diagnostics:
+  UnusedIncludes: None         # freestanding builds have weird include chains
+
+InlayHints:
+  Enabled: true
+  ParameterNames: true
+  DeducedTypes: true

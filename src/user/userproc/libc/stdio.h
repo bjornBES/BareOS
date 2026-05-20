@@ -3,12 +3,11 @@
  * File Created: 28 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 28 Apr 2026
+ * Last Modified: 17 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
-#include <printf_driver/printf.h>
 #include <types.h>
 
 #ifndef EOF
@@ -22,8 +21,11 @@ static __attribute__((unused)) fd_t const stddebug = (fd_t)3;
 
 void fputc(char c, fd_t fd);
 
-int fprintf(fd_t file, const char *fmt, ...);
-int vfprintf(fd_t file, const char *fmt, va_list args);
 int printf(const char *fmt, ...);
-int snprintf(char *s, size_t n, const char *format, ...);
+int fprintf(fd_t file, const char *fmt, ...);
 int sprintf(char *s, const char *format, ...);
+int snprintf(char *s, size_t n, const char *format, ...);
+int vprintf(fd_t file, const char *format, va_list arg);
+int vfprintf(fd_t file, const char *fmt, va_list args);
+int vsprintf(char *s, const char *format, va_list arg);
+int vsnprintf(char *s, size_t n, const char *format, va_list arg);

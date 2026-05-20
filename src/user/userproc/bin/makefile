@@ -13,6 +13,7 @@ BINS := $(patsubst %.c, $(BUILD)/%.elf, $(SOURCES_C))
 all: always $(BINS)
 	@echo "BINS" $(BINS)
 	@$(MAKE) -C bash BUILD=$(abspath $(BUILD))
+	@$(MAKE) -C BASIC BUILD=$(abspath $(BUILD))
 
 $(BUILD)/%.elf: %.c
 	@mkdir -p $(@D)

@@ -3,7 +3,7 @@
  * File Created: 05 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 12 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -119,7 +119,7 @@ typedef struct process
     process_exit_code_t exit_code;
 
     // threads
-    thread *threads[MAX_THREADS_PER_PROCESS];
+    thread_t *threads[MAX_THREADS_PER_PROCESS];
     uint32_t thread_count;
 
     // === later things ===

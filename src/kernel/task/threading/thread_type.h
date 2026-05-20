@@ -3,7 +3,7 @@
  * File Created: 05 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -24,7 +24,7 @@ typedef enum
     THREAD_REMAINS = 0xFFFF,
 } thread_state;
 
-typedef struct
+typedef struct thread
 {
     context ctx;
     uint32_t tid;
@@ -42,4 +42,6 @@ typedef struct
     uint32_t timeslice_reset; // what to reload when quantum expires
 
     struct process *proc;
-} thread;
+
+    struct thread *next_runnable;
+} thread_t;

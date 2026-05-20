@@ -3,7 +3,7 @@
  * File Created: 16 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 12 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -62,7 +62,7 @@ void process_user_page_fault(paging_info *info)
         }
         log_info(MODULE, "came from %p", info->page_directory.page_dir);
         
-        thread *current_thread = scheduler_get_current();
+        thread_t *current_thread = scheduler_get_current();
         log_info(MODULE, "comes from thread %u", current_thread->tid);
         if (current_thread->state == THREAD_DEAD)
         {
@@ -151,7 +151,7 @@ pid_t process_fork(syscall_info *info)
     child->child = NULL;
 
     child->thread_count = 0;
-    memset(child->threads, 0, sizeof(thread *) * MAX_THREADS_PER_PROCESS);
+    memset(child->threads, 0, sizeof(thread_t *) * MAX_THREADS_PER_PROCESS);
 
     // 2.
     log_info(MODULE, "creating new user directory");
@@ -192,8 +192,8 @@ pid_t process_fork(syscall_info *info)
     log_info(MODULE, "DONE signals");
 
     // 5, 6, N.
-    thread *parent_thread = scheduler_get_current();
-    thread *child_thread = thread_create_from(parent_thread);
+    thread_t *parent_thread = scheduler_get_current();
+    thread_t *child_thread = thread_create_from(parent_thread);
     registers *child_regs = (registers *)child_thread->ctx.stack_pointer;
     log_info(MODULE, "t%u entry = %p", child_thread->tid, child_regs->pc);
     child_thread->proc = child;
@@ -217,7 +217,7 @@ SYSCALL_DEFINE0_REG(process_fork);
 
 void process_run(process_t *proc)
 {
-    thread *curr = scheduler_get_current();
+    thread_t *curr = scheduler_get_current();
     log_debug(MODULE, "USER: stack = %p", proc->vma->start_stack);
     log_debug(MODULE, "TSS: sp = %p", tss_entry.sp0);
     log_debug(MODULE, "jumping to %p", proc->entry);
@@ -354,7 +354,7 @@ pid_t process_waitpid(pid_t child_pid, int *wstatus, int options)
 
     if (child->state != PROC_STATE_ZOMBIE)
     {
-        thread *parent_thread = scheduler_get_current();
+        thread_t *parent_thread = scheduler_get_current();
         scheduler_block(parent_thread);
         parent->wait_for = child_pid;
         scheduler_yield();
@@ -484,13 +484,13 @@ int process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc)
 
     int argc = process_parse_args(proc, argv, envp); // shit with args
 
-    thread *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack); // thread
+    thread_t *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack); // thread_t
     proc->threads[proc->thread_count] = user;
     proc->thread_count++;
 
     paging_load_cr3(current_page); // load cr3
 
-    process_run(proc); // add the thread to the scheduler
+    process_run(proc); // add the thread_t to the scheduler
 
     return process_wait(proc);
 }
@@ -506,13 +506,13 @@ void kernel_init_process(const char *path, char *argv[], char *envp[])
     current_process = proc;
     int argc = process_parse_args(proc, argv, envp); // shit with args
 
-    thread *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack); // thread
+    thread_t *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack); // thread_t
     proc->threads[proc->thread_count] = user;
     proc->thread_count++;
 
     paging_load_cr3(current_page); // load cr3
 
-    process_run(proc); // add the thread to the scheduler
+    process_run(proc); // add the thread_t to the scheduler
 
     waitpid_loop();
 }
@@ -541,7 +541,7 @@ int process_kill(pid_t pid, int sig)
 
 process_t *process_get_current()
 {
-    thread *t = scheduler_get_current();
+    thread_t *t = scheduler_get_current();
     return t->proc;
 }
 pid_t process_get_pid()

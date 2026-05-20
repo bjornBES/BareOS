@@ -18,12 +18,12 @@ typedef enum {
     KBD_STATE_BREAK,        // saw 0xF0
     KBD_STATE_EXTENDED,     // saw 0xE0
     KBD_STATE_EXTENDED_BREAK, // saw 0xE0 0xF0
-} KeyboardState;
+} keyboard_state;
 
 typedef enum {
     KEY_PRESSED,
     KEY_RELEASED,
-} KeyAction;
+} key_action;
 
 typedef enum {
     KEY_UNKNOWN = 0,
@@ -43,11 +43,27 @@ typedef enum {
     KEY_INSERT, KEY_DELETE,
     KEY_COUNT,
     KEY_COMMA, KEY_PERIOD, KEY_MINUS,
-} KeyCode;
+} key_code;
+
+typedef enum {
+    MOD_NONE   = 0,
+    MOD_LSHIFT = (1 << 0),
+    MOD_RSHIFT = (1 << 1),
+    MOD_LCTRL  = (1 << 2),
+    MOD_RCTRL  = (1 << 3),
+    MOD_LALT   = (1 << 4),
+    MOD_RALT   = (1 << 5),
+    MOD_CAPS   = (1 << 6),
+} key_modifiers;
+
+#define MOD_SHIFT  (MOD_LSHIFT | MOD_RSHIFT)
+#define MOD_CTRL   (MOD_LCTRL  | MOD_RCTRL)
+#define MOD_ALT    (MOD_LALT   | MOD_RALT)
 
 typedef struct {
-    KeyCode key;
-    KeyAction action;
+    key_code key;
+    key_action action;
+    
 } key_event;
 
 bool keyboard_process_byte(uint8_t raw, key_event *out);

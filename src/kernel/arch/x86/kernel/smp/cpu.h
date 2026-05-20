@@ -3,7 +3,7 @@
  * File Created: 08 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 08 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -25,8 +25,8 @@ typedef struct cpu
     bool online;      // has this AP finished init
 
     // scheduler
-    thread *current; // thread running on this core
-    thread *idle;    // this core's idle thread
+    thread_t *current; // thread_t running on this core
+    thread_t *idle;    // this core's idle thread_t
 
     // per-core kernel stack (used during interrupt entry)
     void *kernel_stack;

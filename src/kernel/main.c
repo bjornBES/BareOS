@@ -18,6 +18,7 @@
 #include "libs/malloc.h"
 #include "task/threading/priority.h"
 
+#include "task/threading/thread_type.h"
 #include "video/video.h"
 #include "video/VGATextDevice.h"
 #include "debug/debug.h"
@@ -53,7 +54,9 @@ void hexdump(void *ptr, int len)
     for (size_t i = 0; i < len; ++i)
     {
         if ((i & 0xF) == 0)
+        {
             fprintf(VFS_FD_DEBUG, "\n%04x: ", i);
+        }
         fprintf(VFS_FD_DEBUG, "%02x ", p[i]);
     }
     fprintf(VFS_FD_DEBUG, "\n");
@@ -68,7 +71,7 @@ void kernel_page_fault(void *_info)
 
 void kernel_breakpoint(registers *regs)
 {
-    thread *current_thread = scheduler_get_current();
+    thread_t *current_thread = scheduler_get_current();
     log_info("breakpoint", "comes from thread %u", current_thread->tid);
 }
 
@@ -86,12 +89,12 @@ void test()
 
 void start_init()
 {
-    char *argv[2] = { "/user:/bin/INIT.ELF", NULL };
+    char *argv[2] = {"/user:/bin/INIT.ELF", NULL};
     kernel_init_process("/user:/bin/INIT.ELF", argv, NULL);
 }
 
 boot_params *main_boot_params;
-thread *main_thread;
+thread_t *main_thread;
 __attribute__((noreturn)) void kernel_entry()
 {
     exception_register_kernel_handler(EXC_PAGE, kernel_page_fault);
@@ -99,7 +102,7 @@ __attribute__((noreturn)) void kernel_entry()
     UART_write_fstr(COM1, "UART is done\r\n");
     log_debug("MAIN", "Hello world from Kernel");
 
-    thread *t = thread_create(test);
+    thread_t *t = thread_create(test);
     scheduler_add(t);
 
     main_thread->timeslice = 10;
@@ -128,7 +131,7 @@ __attribute__((noreturn)) void kernel_entry()
         ahci = device_get(0x100); // device 1 partition 0
         log_info("MAIN", "Mounting drive 0x100");
         vfs_mount("/boot:/boot", ahci, 0);
-        
+
         fd_t file = vfs_open("/user:/home/test.txt", 0, 0);
         uint8_t data[512];
         vfs_read(file, data, 512);
@@ -147,7 +150,9 @@ __attribute__((noreturn)) void kernel_entry()
         for (size_t i = 0; i < main_boot_params->vesaModeCount; i++)
         {
             VESA_mode *element = &main_boot_params->vesaModes[i];
-            log_debug("main", "vesa mode %d %dx%dx%d @ %p", element->mode, element->width, element->height, element->bpp, element->frame_buffer);
+            log_debug("main", "vesa mode %d %dx%dx%d @ %p", element->mode,
+                      element->width, element->height, element->bpp,
+                      element->frame_buffer);
             if (element->mode == mode)
             {
                 vesaMode = element;
@@ -158,13 +163,16 @@ __attribute__((noreturn)) void kernel_entry()
         {
             log_crit("main", "Something is fucked");
         }
-        log_debug("main", "vesa mode %d %dx%dx%d", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp);
+        log_debug("main", "vesa mode %d %dx%dx%d", vesaMode->mode,
+                  vesaMode->width, vesaMode->height, vesaMode->bpp);
         vga_init();
         vga_load_font((uint8_t *)&default8x16Font);
         vga_check();
         video_init(main_boot_params);
         vga_clear();
-        log_debug("main", "vesa mode %d %dx%dx%d %p", vesaMode->mode, vesaMode->width, vesaMode->height, vesaMode->bpp, vesaMode->frame_buffer);
+        log_debug("main", "vesa mode %d %dx%dx%d %p", vesaMode->mode,
+                  vesaMode->width, vesaMode->height, vesaMode->bpp,
+                  vesaMode->frame_buffer);
         printf("Hello world");
     }
 
@@ -176,7 +184,9 @@ __attribute__((noreturn)) void kernel_entry()
     log_debug("MAIN", "Got back");
 
     {
-        log_debug("MAIN", "loop until something happens main_thread->state = %u", main_thread->state);
+        log_debug("MAIN",
+                  "loop until something happens main_thread->state = %u",
+                  main_thread->state);
 
         while (main_thread->state != THREAD_DEAD)
         {

@@ -3,7 +3,7 @@
  * File Created: 15 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 15 Apr 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -35,7 +35,7 @@ void do_exit(uint32_t code, process_t *proc)
 
     if (proc->parent)
     {
-        thread *parent_thread = scheduler_find_waiting(proc->parent);
+        thread_t *parent_thread = scheduler_find_waiting(proc->parent);
         if (parent_thread && proc->parent->wait_for == proc->pid)
         {
             scheduler_unblock(parent_thread);

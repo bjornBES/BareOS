@@ -3,7 +3,7 @@
  * File Created: 02 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 02 May 2026
+ * Last Modified: 13 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -25,8 +25,8 @@
 // mark dead and yield — scheduler will skip dead threads
 // implemented after scheduler exists
 
-thread *thread_create_from_current();
-thread *thread_create_main();
-thread *thread_create_from(thread *thr);
-thread *thread_create(void (*entry)(void));
-thread *thread_create_user(process_t *proc, uint64_t user_stack_top);
+thread_t *thread_create_from_current();
+thread_t *thread_create_main();
+thread_t *thread_create_from(thread_t *thr);
+thread_t *thread_create(void (*entry)(void));
+thread_t *thread_create_user(process_t *proc, uint64_t user_stack_top);

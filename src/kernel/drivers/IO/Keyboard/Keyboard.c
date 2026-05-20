@@ -10,8 +10,10 @@
 
 #include "Keyboard.h"
 #include "libs/malloc.h"
+#include "device/device.h"
 
 #include "libs/memory.h"
+#include <stdint.h>
 
 // Set 2 base scancode -> KeyCode (index = scancode byte)
 // Only need up to 0x84, everything else is KEY_UNKNOWN
@@ -172,7 +174,9 @@ static const uint32_t ascii[256] = {
     [KEY_DELETE] = '\x7f',
 };
 
-static KeyboardState kbd_state = KBD_STATE_NORMAL;
+
+
+static keyboard_state kbd_state = KBD_STATE_NORMAL;
 
 #define BUFFER_SIZE 1024
 
@@ -270,6 +274,11 @@ uint32_t keyboard_get_ascii(key_event *key)
         return 0;
     }
     return ascii[key->key];
+}
+
+int keyboard_get_input()
+{
+    
 }
 
 void keyboard_init()

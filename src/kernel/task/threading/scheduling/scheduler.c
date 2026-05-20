@@ -36,18 +36,18 @@
 
 #define current_thread (cpu_get_current()->current)
 
-static thread *queue[MAX_THREADS] = {0};
+static thread_t *queue[MAX_THREADS] = {0};
 static uint32_t queue_size = 0;
 
-static thread *sleep_queue[MAX_THREADS] = {0};
+static thread_t *sleep_queue[MAX_THREADS] = {0};
 static uint32_t sleep_queue_size = 0;
 
-static thread *blocked_queue[MAX_THREADS] = {0};
+static thread_t *blocked_queue[MAX_THREADS] = {0};
 static uint32_t blocked_queue_size = 0;
 
 static uint32_t queue_head = 0;
 
-void scheduler_init(thread *main_thread)
+void scheduler_init(thread_t *main_thread)
 {
     log_info(MODULE, "set main thread");
     main_thread->state = THREAD_RUNNING;
@@ -63,7 +63,7 @@ void scheduler_thread_info()
     fprintf(VFS_FD_DEBUG, "\n===== Active queue =====\n");
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
-        thread *candidate = queue[i];
+        thread_t *candidate = queue[i];
         if (candidate == NULL)
         {
             fprintf(VFS_FD_DEBUG, "thread[%u] = %p\n", i, candidate);
@@ -88,7 +88,7 @@ void scheduler_thread_info()
         fprintf(VFS_FD_DEBUG, "Sleep queue\n");
         for (uint32_t i = 0; i < MAX_THREADS; i++)
         {
-            thread *candidate = sleep_queue[i];
+            thread_t *candidate = sleep_queue[i];
             if (candidate == NULL)
             {
                 fprintf(VFS_FD_DEBUG, "thread[%u] = %p\n", i, candidate);
@@ -109,7 +109,7 @@ void scheduler_thread_info()
     }
 }
 
-void scheduler_add(thread *t)
+void scheduler_add(thread_t *t)
 {
     log_debug(MODULE, "adding thread %u", t->tid);
     log_debug(MODULE, "thread = %p { tid: %u, state: %u, stack_base: %p, proc: %p}", t, t->tid, t->state, t->stack_base, t->proc);
@@ -118,7 +118,7 @@ void scheduler_add(thread *t)
         bool has_space = false;
         for (uint32_t i = 0; i < MAX_THREADS; i++)
         {
-            thread *candidate = queue[i];
+            thread_t *candidate = queue[i];
             if (candidate == NULL)
             {
                 has_space = true;
@@ -135,7 +135,7 @@ void scheduler_add(thread *t)
 
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
-        thread *candidate = queue[i];
+        thread_t *candidate = queue[i];
         if (candidate != NULL)
         {
             log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, stack_base: %p, proc: %p}", i, candidate, candidate->tid, candidate->state, candidate->stack_base, candidate->proc);
@@ -149,13 +149,13 @@ void scheduler_add(thread *t)
         }
     }
 }
-void scheduler_remove(thread *t)
+void scheduler_remove(thread_t *t)
 {
     log_debug(MODULE, "removing thread %u", t->tid);
 
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
-        thread *candidate = queue[i];
+        thread_t *candidate = queue[i];
         if (candidate != NULL)
         {
             log_debug(MODULE, "candidate[%u] @ %p = {state = %u, tid = %u}", i, candidate, candidate->state, candidate->tid);
@@ -205,7 +205,7 @@ void scheduler_wakeup_check()
     time_t now = timer_elapsed_time(0);
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
-        thread *t = sleep_queue[i];
+        thread_t *t = sleep_queue[i];
         if (t == NULL)
         {
             continue;
@@ -222,7 +222,7 @@ void scheduler_wakeup_check()
     }
 }
 
-void scheduler_block(thread *t)
+void scheduler_block(thread_t *t)
 {
     // remove from run queue
     for (uint32_t i = 0; i < MAX_THREADS; i++)
@@ -246,7 +246,7 @@ void scheduler_block(thread *t)
     }
     t->state = THREAD_BLOCKED;
 }
-void scheduler_unblock(thread *t)
+void scheduler_unblock(thread_t *t)
 {
     // remove from blocked queue
     for (uint32_t i = 0; i < MAX_THREADS; i++)
@@ -261,14 +261,14 @@ void scheduler_unblock(thread *t)
     t->state = THREAD_READY;
     scheduler_add(t);
 }
-thread *scheduler_find_waiting(process_t *proc)
+thread_t *scheduler_find_waiting(process_t *proc)
 {
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
-        thread *blocked_thread = blocked_queue[i];
+        thread_t *blocked_thread = blocked_queue[i];
         for (size_t j = 0; j < MAX_THREADS_PER_PROCESS; j++)
         {
-            thread *process_thread = proc->threads[i];
+            thread_t *process_thread = proc->threads[i];
             if (process_thread == blocked_thread)
             {
                 return process_thread;
@@ -278,12 +278,12 @@ thread *scheduler_find_waiting(process_t *proc)
     return NULL;
 }
 
-static thread *scheduler_next()
+static thread_t *scheduler_next()
 {
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
         uint32_t idx = (queue_head + i) % MAX_THREADS;
-        thread *candidate = queue[idx];
+        thread_t *candidate = queue[idx];
 
         if (candidate == NULL)
         {
@@ -321,10 +321,10 @@ static thread *scheduler_next()
             return candidate;
         }
     }
-    return queue[0]; // no other thread ready, run the main thread
+    return queue[0]; // no other thread_t ready, run the main thread_t
 }
 
-thread *scheduler_get_current()
+thread_t *scheduler_get_current()
 {
     cpu_t *cpu = cpu_get_current();
     if (cpu == NULL)
@@ -393,7 +393,7 @@ void schedule(registers *regs)
 
     // log_debug(MODULE, "try to schedule");
 
-    thread *next = scheduler_next();
+    thread_t *next = scheduler_next();
     if (next == current_thread)
     {
         current_thread->timeslice = current_thread->timeslice_reset; // reload
@@ -437,7 +437,7 @@ void schedule(registers *regs)
 
     tss_set_kernel_sp((reg_t)next->stack_base);
 
-    thread *old = current_thread;
+    thread_t *old = current_thread;
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
