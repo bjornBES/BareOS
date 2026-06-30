@@ -9,6 +9,7 @@
                 "${workspaceFolder}/src/kernel/arch/x86",
                 "${workspaceFolder}/src/user/userproc/libc",
                 "${workspaceFolder}/src/Bootloader/stage2",
+                "${workspaceFolder}/src/optional/BSW/ntdll/include",
                 "${workspaceFolder}/toolchain/gcc-build-11.2.0/gcc/include/"
             ],
             "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE", "USE_EAGER_FORK=1"],
