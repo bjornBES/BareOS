@@ -3,7 +3,7 @@
  * File Created: 12 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 09 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -12,14 +12,13 @@
 #include "vfs_flags.h"
 #include "vfs_config.h"
 
-#include "memory/allocator/memory_allocator.h"
+#include "mm/allocator/memory_allocator.h"
 
-#include "libs/malloc.h"
-#include "libs/string.h"
-#include "libs/memory.h"
-#include "libs/math.h"
+#include "kernel/string.h"
+#include "kernel/memory.h"
 #include "debug/debug.h"
 
+#include "math.h"
 #include "dentry.h"
 #include "inode.h"
 #include "volume.h"

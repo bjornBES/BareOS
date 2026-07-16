@@ -3,7 +3,7 @@
  * File Created: 09 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 08 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -13,12 +13,12 @@
 
 #include "VFS/vfs_flags.h"
 #include "kernel.h"
-#include "libs/malloc.h"
-#include "libs/ctype.h"
-#include "libs/stdio.h"
-#include "libs/malloc.h"
-#include "libs/memory.h"
-#include "libs/string.h"
+#include "ctype.h"
+#include "stdio.h"
+#include "kernel/memory.h"
+#include "kernel/memory.h"
+#include "kernel/memory.h"
+#include "kernel/string.h"
 
 #include "debug/debug.h"
 
@@ -60,12 +60,12 @@ static inline cluster lba_to_cluster(lba lba, fat_priv_data *sb)
 
 size_t fat_read_sectors(void *buffer, lba sector, lba sector_count, device_t *dev, fat_priv_data *sb)
 {
-    log_debug(MODULE, "fat_read_sectors(%p, %u, %u, %p, %p)", buffer, sector, sector_count, dev, sb);
+    // log_debug(MODULE, "fat_read_sectors(%p, %u, %u, %p, %p)", buffer, sector, sector_count, dev, sb);
     return dev->read(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
 }
 size_t fat_read_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
 {
-    log_debug(MODULE, "fat_read_clusters(%p, %u, %u, %p, %p)", buffer, cluster_start, clusters_count, dev, sb);
+    // log_debug(MODULE, "fat_read_clusters(%p, %u, %u, %p, %p)", buffer, cluster_start, clusters_count, dev, sb);
     lba lba = cluster_to_lba(cluster_start, sb);
     size_t len = fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb);
     return len;
@@ -97,7 +97,7 @@ bool fat_is_eoc(fat_priv_data *sb, uint32_t cluster)
 
 cluster fat_next_cluster(cluster current_cluster, device_t *dev, fat_priv_data *sb)
 {
-    log_debug(MODULE, "fat_next_cluster(%u, %p, %p)", current_cluster, dev, sb);
+    // ENTER_FUNC(MODULE, "%u, %p, %p", current_cluster, dev, sb);
     uint32_t fat_index;
     if (sb->type == FAT12)
     {
@@ -178,7 +178,7 @@ size_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, 
 
     uint32_t bytes_read = 0;
     uint32_t intra = offset % sb->bytes_per_cluster;
-    log_debug(MODULE, "cluster_start = %u", cluster_start);
+    // log_debug(MODULE, "cluster_start = %u", cluster_start);
     while (size > 0 && cluster_start < FAT_CACHE_INVALID)
     {
         uint8_t tmp[sb->bytes_per_cluster];
@@ -186,8 +186,9 @@ size_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, 
 
         uint32_t available = sb->bytes_per_cluster - intra;
         uint32_t to_copy = size < available ? size : available;
-        log_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
+        // log_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
         memcpy(buffer + bytes_read, tmp + intra, to_copy);
+        // log_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
 
         bytes_read += to_copy;
         size -= to_copy;
@@ -264,10 +265,11 @@ int fat_find_entry(fat_inode_t *parent, const char *entry_name, inode_t *entry_o
         return RETURN_FAILED;
     }
     log_debug(MODULE, "printing %u entries", entries_read);
-    size_t entry_name_length = strlen(entry_name);
+    // size_t entry_name_length = strlen(entry_name);
     for (size_t i = 0; i < entries_read; i++)
     {
         FAT_directory_entry *entry = &(entries[i].entry);
+        log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS((*entry)), entry->size);
         if (fat_entries_match(&entries[i], &directory, i, entry_name) == RETURN_GOOD)
         {
             log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS((*entry)), entry->size);
@@ -317,10 +319,10 @@ int fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
         return RETURN_FAILED;
     }
     
-    fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
+    // fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
 
     // get the cluster number and size
-    // fat_read_file(node, NULL, 0, 0, dev, mnt);
+    fat_read_file(node, NULL, 0, 0, dev, mnt);
     return RETURN_GOOD;
 }
 int fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
@@ -427,7 +429,7 @@ int fat_mount(device_t *dev, mountpoint_t *mnt)
 
 int fat_probe(device_t *dev)
 {
-    if (!dev->read && dev->type == DEVICE_DISK)
+    if (!dev->read && dev->type == DEVICE_BLOCK)
     {
         return RETURN_FAILED;
     }

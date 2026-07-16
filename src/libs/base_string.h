@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 17 May 2026
+ * Last Modified: 30 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -16,7 +16,7 @@
 #define UNICODE_COMBINING_ACUTE 0x0301
 #define UNICODE_COMBINING_CARON 0x030C
 
-#define BOOT_TO_STRING ? "TRUE" : "FALSE" 
+#define BOOL_TO_STRING ? "TRUE" : "FALSE" 
 
 typedef char* string;
 

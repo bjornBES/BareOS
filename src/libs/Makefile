@@ -5,34 +5,34 @@ KERNEL_TARGET_LIBS += -lgcc
 KERNEL_TARGET_LINKFLAGS += -nostdlib
 
 
-HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*") \
+HEADERS_C = 	$(shell find . -type f -name "*.h" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.h")
 
-SOURCES_C = $(shell find . -type f -name "*.c" -not -path "./arch/*") \
+SOURCES_C = 	$(shell find . -type f -name "*.c" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.c")
 
-OBJECTS_C = $(patsubst %.c, $(BUILD_DIR)/libcore/c/%.obj, $(SOURCES_C))
+OBJECTS_C = 	$(patsubst %.c, $(BUILD_DIR)/libcore/c/%.obj, $(SOURCES_C))
 
-HEADERS_CXX = $(shell find . -type f -name "*.hpp" -not -path "./arch/*") \
+HEADERS_CXX = 	$(shell find . -type f -name "*.hpp" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.hpp")
 
-SOURCES_CXX = $(shell find . -type f -name "*.cpp" -not -path "./arch/*") \
+SOURCES_CXX = 	$(shell find . -type f -name "*.cpp" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.cpp")
 
-OBJECTS_CXX = $(patsubst %.cpp, $(BUILD_DIR)/libcore/cpp/%.obj, $(SOURCES_CXX))
+OBJECTS_CXX = 	$(patsubst %.cpp, $(BUILD_DIR)/libcore/cpp/%.obj, $(SOURCES_CXX))
 
-HEADERS_ASM = $(shell find . -type f -name "*.inc" -not -path "./arch/*") \
+HEADERS_ASM = 	$(shell find . -type f -name "*.inc" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.inc")
 
-SOURCES_ASM = $(shell find . -type f -name "*.asm" -not -path "./arch/*") \
+SOURCES_ASM = 	$(shell find . -type f -name "*.asm" -not -path "./arch/*") \
 				$(shell find ${SOURCE_ARCH} -type f -name "*.asm")
 
-OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIR)/libcore/asm/%.obj, $(SOURCES_ASM))
+OBJECTS_ASM = 	$(patsubst %.asm, $(BUILD_DIR)/libcore/asm/%.obj, $(SOURCES_ASM))
 
 libcore: $(BUILD_DIR)/libcore.a
 
 $(BUILD_DIR)/libcore.a: $(OBJECTS_ASM) $(OBJECTS_C) $(OBJECTS_CXX)
-	@$(TARGET_AR) rcs $@ $^
+	$(TARGET_AR) rcs $@ $^
 	@echo "--> Created:  libcore.a"
 
 $(BUILD_DIR)/libcore/cpp/%.obj: %.cpp $(HEADERS_CXX)
@@ -41,6 +41,7 @@ $(BUILD_DIR)/libcore/cpp/%.obj: %.cpp $(HEADERS_CXX)
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIR)/libcore/c/%.obj: %.c $(HEADERS_C)
+	@echo path = ${SOURCE_ARCH}
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -o $@ $<
 #	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -save-temps -o $@.c $<

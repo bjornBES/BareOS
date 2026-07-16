@@ -3,7 +3,7 @@ USER_TARGET_ASMFLAGS +=
 USER_TARGET_CFLAGS += -std=c99 -ffreestanding -nostdlib -nostdinc \
            		 -Wall -Wextra -fno-omit-frame-pointer
 USER_TARGET_LINKFLAGS +=
-USER_TARGET_LIBS +=
+USER_TARGET_LIBS += $(BUILD)/libc.a
 
 BUILD_DIRC = $(BUILD)/c
 BUILD_DIRASM = $(BUILD)/asm
@@ -19,6 +19,7 @@ all: always $(BUILD)/init.elf
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@
+# 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c -save-temps $< -o $@
 	@echo "--> Compiled: " $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
@@ -27,7 +28,7 @@ $(BUILD_DIRASM)/%.obj: %.asm
 	@echo "--> Compiled: " $<
 
 $(BUILD)/init.elf: $(OBJECTS_C) $(OBJECTS_ASM)
-	@$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(USER_TARGET_LIBS)
+	$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(BUILD)/libc.a $(USER_TARGET_LIBS)
 
 always:
 

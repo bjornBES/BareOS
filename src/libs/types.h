@@ -3,7 +3,7 @@
  * File Created: 28 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 28 Apr 2026
+ * Last Modified: 08 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -25,19 +25,49 @@ typedef uint32_t reg_t;
 typedef void *phys_addr;
 typedef void *virt_addr;
 
-typedef int32_t off_t;
-typedef uint64_t time_t;
-typedef uint64_t pid_t;
+typedef int64_t off_t;
+
+typedef int64_t time_t;
+typedef int64_t suseconds_t;
+
+typedef int64_t tid_t;
+
+typedef int64_t ino_t;
+typedef int64_t dev_t;
+
+typedef int64_t ssize_t;
+
+typedef int32_t pid_t;
+typedef uint32_t uid_t;
+typedef uint32_t gid_t;
+typedef uint32_t id_t;
+typedef uint32_t useconds_t;
+
 typedef uint64_t cpu_id;
+typedef uint32_64 paddr_t;
+typedef uint32_64 vaddr_t;
+typedef uint64_t sigset_t;
 
-typedef struct
+typedef struct timeval
 {
-    uint8_t second;
-    uint8_t minute;
-    uint8_t hour;
-    uint8_t day;
-    uint8_t month;
-    uint32_t year;
-} time_struct;
+    time_t tv_sec;
+    suseconds_t tv_usec;
+} timeval_t;
 
-typedef int fd_t;
+typedef struct timespec
+{
+    time_t tv_sec;
+    int64_t tv_nsec;
+} timespec_t;
+
+typedef struct time_struct
+{
+    uint32_t second;
+    uint32_t minute;
+    uint32_t hour;
+    uint32_t day;
+    uint32_t month;
+    uint32_t year;
+} time_struct_t;
+
+typedef int32_t fd_t;

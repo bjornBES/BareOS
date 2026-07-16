@@ -18,6 +18,7 @@ all: $(BUILD)/libc.a
 
 $(BUILD)/libc.a: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET_AR) rcs $@ $^
+	@echo "--> Created:  libc.a"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)

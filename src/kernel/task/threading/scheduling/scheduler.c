@@ -3,7 +3,7 @@
  * File Created: 02 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 06 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -14,27 +14,31 @@
 #include "task/threading/thread_type.h"
 #include "task/threading/thread.h"
 
-#include "kernel/threading/context.h"
+#include "kernel/ctx.h"
 #include "kernel/threading/threading.h"
-#include "kernel/exceptions/exception.h"
-#include "kernel/smp/cpu.h"
-#include "kernel/task/tss.h"
+#include "kernel/threading/scheduler.h"
+#include "kernel/cpu.h"
+#include "kernel/mmu.h"
+#include "kernel/irq.h"
+#include "kernel/ivt.h"
+#include "kernel/memory.h"
+#include "kernel.h"
 
 #include "time/timer.h"
-#include "kernel/irq.h"
-
-#include "memory/paging/paging.h"
-
-#include "libs/malloc.h"
 
 #include "task/process.h"
 #include "debug/debug.h"
 
+#include "math.h"
 #include <stddef.h>
 
 #define MODULE "SCHEDULER"
 
-#define current_thread (cpu_get_current()->current)
+#define SCHEDULER_TICK_NS 1000000ull // 1ms
+
+#define current_thread (cpu_arch_get_current()->current)
+
+uint32_t total_threads = 0;
 
 static thread_t *queue[MAX_THREADS] = {0};
 static uint32_t queue_size = 0;
@@ -47,17 +51,6 @@ static uint32_t blocked_queue_size = 0;
 
 static uint32_t queue_head = 0;
 
-void scheduler_init(thread_t *main_thread)
-{
-    log_info(MODULE, "set main thread");
-    main_thread->state = THREAD_RUNNING;
-    cpu_t *cpu = cpu_get_current();
-    cpu->current = main_thread;
-    queue[0] = main_thread;
-    queue_size = 1;
-    queue_head = 0;
-}
-
 void scheduler_thread_info()
 {
     fprintf(VFS_FD_DEBUG, "\n===== Active queue =====\n");
@@ -69,15 +62,10 @@ void scheduler_thread_info()
             fprintf(VFS_FD_DEBUG, "thread[%u] = %p\n", i, candidate);
             continue;
         }
-        registers *next_regs = (registers *)candidate->ctx.stack_pointer;
-        fprintf(VFS_FD_DEBUG, "thread[%u] = %p { tid: %u, state: %u, stack_base: %p, proc: %p, %p}\n", i, candidate, candidate->tid, candidate->state, candidate->stack_base, candidate->proc, next_regs);
-        if (next_regs != NULL)
+        fprintf(VFS_FD_DEBUG, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p, %p}\n", i, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc, candidate->ctx.frame.sp);
+        if (candidate->ctx.frame.regs != NULL)
         {
-            fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%llx, bx = 0x%llx, cx = 0x%llx, dx = %llx }\n", next_regs->ax, next_regs->bx, next_regs->cx, next_regs->dx);
-            fprintf(VFS_FD_DEBUG, "\t{ di = 0x%llx, si = 0x%llx, r8 = 0x%llx, r9 = %llx }\n", next_regs->di, next_regs->si, next_regs->r8, next_regs->r9);
-            fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%llx, r11 = 0x%llx, r12 = 0x%llx, r13 = %llx }\n", next_regs->r10, next_regs->r11, next_regs->r12, next_regs->r13);
-            fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%llx, r15 = 0x%llx, bp = 0x%llx, flags = %llx }\n", next_regs->r14, next_regs->r15, next_regs->bp, next_regs->flags);
-            fprintf(VFS_FD_DEBUG, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }\n", next_regs->cs, next_regs->pc, next_regs->ss, next_regs->sp);
+            ctx_dump(&candidate->ctx);
         }
     }
     fprintf(VFS_FD_DEBUG, "===== Active queue =====\n");
@@ -94,25 +82,41 @@ void scheduler_thread_info()
                 fprintf(VFS_FD_DEBUG, "thread[%u] = %p\n", i, candidate);
                 continue;
             }
-            registers *next_regs = (registers *)candidate->ctx.stack_pointer;
-            fprintf(VFS_FD_DEBUG, "thread[%u] = %p { tid: %u, state: %u, stack_base: %p, proc: %p, %p}\n", i, candidate, candidate->tid, candidate->state, candidate->stack_base, candidate->proc, next_regs);
-            if (next_regs != NULL)
+            fprintf(VFS_FD_DEBUG, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p, %p}\n", i, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc, candidate->ctx.frame.sp);
+            if (candidate->ctx.frame.regs != NULL)
             {
-                fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%llx, bx = 0x%llx, cx = 0x%llx, dx = %llx }\n", next_regs->ax, next_regs->bx, next_regs->cx, next_regs->dx);
-                fprintf(VFS_FD_DEBUG, "\t{ di = 0x%llx, si = 0x%llx, r8 = 0x%llx, r9 = %llx }\n", next_regs->di, next_regs->si, next_regs->r8, next_regs->r9);
-                fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%llx, r11 = 0x%llx, r12 = 0x%llx, r13 = %llx }\n", next_regs->r10, next_regs->r11, next_regs->r12, next_regs->r13);
-                fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%llx, r15 = 0x%llx, bp = 0x%llx, flags = %llx }\n", next_regs->r14, next_regs->r15, next_regs->bp, next_regs->flags);
-                fprintf(VFS_FD_DEBUG, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }\n", next_regs->cs, next_regs->pc, next_regs->ss, next_regs->sp);
+                ctx_dump(&candidate->ctx);
             }
         }
         fprintf(VFS_FD_DEBUG, "===== Sleep queue =====\n");
+    }
+
+    if (blocked_queue_size != 0)
+    {
+        fprintf(VFS_FD_DEBUG, "\n===== block queue =====\n");
+        fprintf(VFS_FD_DEBUG, "Block queue\n");
+        for (uint32_t i = 0; i < MAX_THREADS; i++)
+        {
+            thread_t *candidate = blocked_queue[i];
+            if (candidate == NULL)
+            {
+                fprintf(VFS_FD_DEBUG, "thread[%u] = %p\n", i, candidate);
+                continue;
+            }
+            fprintf(VFS_FD_DEBUG, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p, %p}\n", i, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc, candidate->ctx.frame.sp);
+            if (candidate->ctx.frame.regs != NULL)
+            {
+                ctx_dump(&candidate->ctx);
+            }
+        }
+        fprintf(VFS_FD_DEBUG, "===== block queue =====\n");
     }
 }
 
 void scheduler_add(thread_t *t)
 {
     log_debug(MODULE, "adding thread %u", t->tid);
-    log_debug(MODULE, "thread = %p { tid: %u, state: %u, stack_base: %p, proc: %p}", t, t->tid, t->state, t->stack_base, t->proc);
+    log_debug(MODULE, "thread = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", t, t->tid, t->state, t->kernel_stack, t->proc);
     if (queue_size > MAX_THREADS)
     {
         bool has_space = false;
@@ -122,7 +126,6 @@ void scheduler_add(thread_t *t)
             if (candidate == NULL)
             {
                 has_space = true;
-                queue_size++;
             }
         }
         if (has_space == false)
@@ -138,10 +141,11 @@ void scheduler_add(thread_t *t)
         thread_t *candidate = queue[i];
         if (candidate != NULL)
         {
-            log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, stack_base: %p, proc: %p}", i, candidate, candidate->tid, candidate->state, candidate->stack_base, candidate->proc);
+            log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", i, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc);
         }
         if (queue[i] == NULL)
         {
+            total_threads++;
             log_debug(MODULE, "found thread[%u]", i);
             queue[i] = t;
             queue_size++;
@@ -149,6 +153,7 @@ void scheduler_add(thread_t *t)
         }
     }
 }
+
 void scheduler_remove(thread_t *t)
 {
     log_debug(MODULE, "removing thread %u", t->tid);
@@ -167,6 +172,7 @@ void scheduler_remove(thread_t *t)
                 t->state = THREAD_REMAINS;
                 continue;
             }
+            total_threads--;
             log_info(MODULE, "found %u", t->tid);
             THREAD_EXIT(queue[i]);
             queue[i] = NULL;
@@ -175,9 +181,9 @@ void scheduler_remove(thread_t *t)
     }
 }
 
-void scheduler_sleep_ms(time_t ms)
+void scheduler_sleep(uint64_t ns)
 {
-    current_thread->wake_time = timer_elapsed_time(0) + ms;
+    current_thread->wake_time = timer_now_ns() + ns;
     current_thread->state = THREAD_BLOCKED;
     // add to sleep queue
     for (uint32_t i = 0; i < MAX_THREADS; i++)
@@ -198,11 +204,22 @@ void scheduler_sleep_ms(time_t ms)
         }
     }
 
-    __asm__("int 0x22");
+    scheduler_yield();
 }
+
+void scheduler_sleep_ms(uint64_t ms)
+{
+    scheduler_sleep(MS_TO_NS(ms));
+}
+
+void scheduler_sleep_sec(time_t sec)
+{
+    scheduler_sleep(SEC_TO_NS(sec));
+}
+
 void scheduler_wakeup_check()
 {
-    time_t now = timer_elapsed_time(0);
+    uint64_t now = timer_now_ns();
     for (uint32_t i = 0; i < MAX_THREADS; i++)
     {
         thread_t *t = sleep_queue[i];
@@ -245,7 +262,10 @@ void scheduler_block(thread_t *t)
         }
     }
     t->state = THREAD_BLOCKED;
+
+    scheduler_thread_info();
 }
+
 void scheduler_unblock(thread_t *t)
 {
     // remove from blocked queue
@@ -261,6 +281,7 @@ void scheduler_unblock(thread_t *t)
     t->state = THREAD_READY;
     scheduler_add(t);
 }
+
 thread_t *scheduler_find_waiting(process_t *proc)
 {
     for (uint32_t i = 0; i < MAX_THREADS; i++)
@@ -306,8 +327,9 @@ static thread_t *scheduler_next()
         if (candidate->state == THREAD_REMAINS && candidate != current_thread)
         {
             log_debug(MODULE, "cleaning up thread @ candidate[%u]", idx);
-            log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, stack_base: %p, proc: %p}", idx, candidate, candidate->tid, candidate->state, candidate->stack_base, candidate->proc);
+            log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", idx, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc);
             queue[idx] = NULL;
+            total_threads++;
             THREAD_EXIT(candidate);
             queue_size--;
             log_debug(MODULE, "cleaned up and done with candidate[%u]", idx);
@@ -326,56 +348,25 @@ static thread_t *scheduler_next()
 
 thread_t *scheduler_get_current()
 {
-    cpu_t *cpu = cpu_get_current();
-    if (cpu == NULL)
-    {
-        uint32_t lo, hi;
-        __asm__ volatile(
-            "mov ecx, 0xC0000101\n"
-            "rdmsr\n"
-            : "=a"(lo), "=d"(hi)
-            :
-            : "ecx");
-        log_crit(MODULE, "CPU is null getting %08x%08x", hi, lo);
-    }
+    cpu_t *cpu = cpu_arch_get_current();
+    // log_debug(MODULE, "cpu @ %p, cpu->current @ %p", cpu, cpu->current);
     return cpu->current;
 }
 
 int scheduler_yield()
 {
-    __asm__("int 0x22");
-    return RETURN_GOOD;
+    return scheduler_arch_yield();
 }
+
 SYSCALL_DEFINE0(scheduler_yield);
 
-spinlock_t schedule_lock;
-static uint64_t bsp_ticks = 0;
-void schedule(registers *regs)
+void scheduler_tick()
 {
-    // spinlock_acquire(&schedule_lock);
-    cpu_t *cpu = cpu_get_current();
-    if (cpu == NULL)
-    {
-        driver->send_eoi(0);
-        return;
-    }
-    if (cpu->current == NULL)
-    {
-        driver->send_eoi(0);
-        return;
-    }
-
-    if (cpu->cpu_id == 0)
-    {
-        bsp_ticks++;
-        if (bsp_ticks % 100 == 0)
-        {
-            // fprintf(VFS_FD_DEBUG, "[SCHEDULER] cpu0\n");
-            // fprintf(VFS_FD_DEBUG, "[SCHEDULER] BSP tick=%u current=t%u\n", bsp_ticks, current_thread->tid);
-        }
-    }
-
     scheduler_wakeup_check();
+
+    // rearm — next tick or next wakeup whichever sooner
+    uint64_t next = SCHEDULER_TICK_NS;
+    timer_set_oneshot(next, scheduler_tick);
 
     if (current_thread->state == THREAD_RUNNING)
     {
@@ -386,71 +377,98 @@ void schedule(registers *regs)
 
         if (current_thread->timeslice > 0)
         {
-            driver->send_eoi(0);
+            scheduler_yield();
             return;
         }
     }
+}
 
-    // log_debug(MODULE, "try to schedule");
-
-    thread_t *next = scheduler_next();
-    if (next == current_thread)
-    {
-        current_thread->timeslice = current_thread->timeslice_reset; // reload
-        driver->send_eoi(0);
-        return;
-    }
-
-    if (regs != NULL)
-    {
-        /*         log_debug(MODULE, "switch from t%u -> t%u regs = %p", current_thread->tid, next->tid, regs);
-                log_debug(MODULE, "switch from t%u stack_base = %p", next->tid, next->ctx.stack_pointer);
-                log_debug(MODULE, "switch from t%u stack_base = %p", current_thread->tid, current_thread->ctx.stack_pointer); */
-        current_thread->ctx.stack_pointer = (uint64_t)regs;
-    }
-    else
-    {
-        /* log_debug(MODULE, "switching to t%u regs = %p", next->tid, regs); */
-        scheduler_thread_info();
-    }
-    registers *next_regs = (registers *)next->ctx.stack_pointer;
-    /*     fprintf(VFS_FD_DEBUG, "ax=0x%llx bx=0x%llx cx=0x%llx dx=0x%llx si=0x%llx di=0x%llx\nsp=0x%llx bp=0x%llx pc=0x%04x:0x%llx flags=0x%x cs=0x%x ds=0x%x ss=0x%x\n",
-                next_regs->ax, next_regs->bx, next_regs->cx, next_regs->dx, next_regs->si, next_regs->di,
-                next_regs->sp, next_regs->bp, next_regs->cs, next_regs->pc, next_regs->flags, next_regs->cs, next_regs->ds, next_regs->ss);
-        log_debug(MODULE, "here1"); */
-    if (next->proc != current_thread->proc)
-    {
-        /*         log_debug(MODULE, "here2");
-                log_debug(MODULE, "curr.proc %p next.proc %p", current_thread->proc, next->proc); */
-        if (next->tid == 0 || next->proc == NULL)
-        {
-            // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
-            paging_load_cr3(kernel_page);
-        }
-        else
-        {
-            // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
-            paging_load_cr3(next->proc->page_dir);
-        }
-        log_debug(MODULE, "here3");
-    }
-
-    tss_set_kernel_sp((reg_t)next->stack_base);
+__attribute__((noreturn)) void schedule_switch(thread_t *next)
+{
 
     thread_t *old = current_thread;
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
-    /*     log_debug(MODULE, "t%u running for %u cycles", current_thread->tid, current_thread->timeslice); */
 
     if (old->state == THREAD_RUNNING)
     {
         old->state = THREAD_READY;
     }
+    log_debug(MODULE, "here4");
     // spinlock_release(&schedule_lock);
-    driver->send_eoi(0);
-    /*     log_debug(MODULE, "send eoi"); */
-    context_switch(current_thread->ctx.stack_pointer);
+    vaddr_t stack_pointer = ctx_arch_get_sp(&current_thread->ctx);
+    page_table_t table;
+    mmu_arch_current_table(&table);
+    log_debug(MODULE, "here5 %p phys = %p", stack_pointer, mmu_arch_virt_to_phys(&table, stack_pointer));
+
+    if (current_thread->ctx.frame.regs != NULL)
+    {
+        ctx_dump(&current_thread->ctx);
+    }
+    
+    log_debug(MODULE, "here6 switching to 0x%lx", current_thread->kernel_stack);
+    ivt_dump_frame(current_thread->ctx.frame.regs);
+    irq_arch_eoi(0);
+    ctx_arch_switch(current_thread->kernel_stack);
+
+    log_debug(MODULE, "something is wrong");
+    KernelPanic(MODULE, "something is wrong");
+
+    // loop
+    for (;;);
+}
+
+int schedule(intr_frame_t *regs)
+{
+    // spinlock_acquire(&schedule_lock);
+    cpu_t *cpu = cpu_arch_get_current();
+    if (cpu == NULL)
+    {
+        irq_arch_eoi(0);
+        return RETURN_FAILED;
+    }
+    if (cpu->current == NULL)
+    {
+        irq_arch_eoi(0);
+        return RETURN_FAILED;
+    }
+
+    thread_t *next = scheduler_next();
+    if (next == current_thread)
+    {
+        current_thread->timeslice = current_thread->timeslice_reset; // reload
+        irq_arch_eoi(0);
+        return RETURN_GOOD;
+    }
+
+    if (regs != NULL)
+    {
+        // ctx_arch_set_sp(&current_thread->ctx, (vaddr_t)regs);
+    }
+    else
+    {
+        scheduler_thread_info();
+    }
+    if (next->proc != current_thread->proc)
+    {
+        if (next->tid == 0 || next->proc == NULL)
+        {
+            // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
+            mmu_arch_load_table(&kernel_page);
+        }
+        else
+        {
+            // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
+            mmu_arch_load_table(next->proc->page_dir);
+        }
+        log_debug(MODULE, "here3");
+    }
+
+    cpu_arch_set_kernel_stack((vaddr_t)next->kernel_stack);
+
+    schedule_switch(next);
+    return RETURN_GOOD;
 }
 
 void scheduler_thread_exit()
@@ -459,4 +477,19 @@ void scheduler_thread_exit()
     current_thread->state = THREAD_REMAINS;
     log_debug(MODULE, "find new");
     schedule(NULL); // never returns
+}
+
+void scheduler_init(thread_t *main_thread)
+{
+    memcpy(main_thread->name, "MAIN\0", 4);
+    log_info(MODULE, "setting T%u (%s) as the main thread", main_thread->tid, main_thread->name);
+    main_thread->state = THREAD_RUNNING;
+    cpu_t *cpu = cpu_arch_get_current();
+    cpu->current = main_thread;
+    queue[0] = main_thread;
+    queue_size = 1;
+    queue_head = 0;
+    total_threads++;
+    timer_set_oneshot(SCHEDULER_TICK_NS, scheduler_tick);
+    ivt_arch_set_handler(0x7F, schedule);
 }

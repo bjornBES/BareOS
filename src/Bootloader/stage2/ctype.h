@@ -1,6 +1,14 @@
+/*
+ * File: ctype.h
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 29 May 2026
+ * Modified By: BjornBEs
+ * -----
+ */
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
 
-bool islower(char chr);
-char toupper(char chr);
+#include "libc/base_ctype.h"

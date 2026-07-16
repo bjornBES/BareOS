@@ -2,7 +2,7 @@ USER_TARGET_ASMFLAGS +=
 USER_TARGET_CFLAGS += -std=c99 -ffreestanding -nostdlib -nostdinc \
            		 -Wall -Wextra -Ilibc -fno-omit-frame-pointer -I $(INCLUDE_DIR) -I. -I $(SOURCE_DIR)/src/libs -I ../libc
 USER_TARGET_LINKFLAGS += -nostdlib -T $(abspath linker.ld)
-USER_TARGET_LIBS += $(LIBC) $(LIBS)
+USER_TARGET_LIBS += $(LIBS)
 
 BUILD   = $(BUILD_DIR)/user
 LIBC    = $(BUILD)/libc.a
@@ -18,10 +18,10 @@ all: $(LIBC) $(INIT) bin
 $(LIBC):
 	@$(MAKE) -C libc BUILD=$(abspath $(BUILD))
 
-bin:
+bin: $(LIBC)
 	$(MAKE) -C bin BUILD=$(abspath $(BUILD))
 
-$(INIT):
+$(INIT): $(LIBC)
 	@$(MAKE) -C init BUILD=$(abspath $(BUILD))
 
 

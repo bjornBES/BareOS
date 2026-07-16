@@ -17,7 +17,7 @@ all: always $(BINS)
 
 $(BUILD)/%.elf: %.c
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@ -lc
+	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@ -lc $(BUILD)/libc.a $(USER_TARGET_LIBS)
 	@echo "--> Compiled: " $<
 
 always:

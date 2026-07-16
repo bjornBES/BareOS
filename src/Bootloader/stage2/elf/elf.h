@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 Mar 2026
+ * Last Modified: 02 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -157,4 +157,4 @@ typedef struct
 } ELF_program_header64;
 
 
-bool ELF_Read(Partition* part, const char* path, void** entryPoint, boot_params *bp);
+bool ELF_Read(Partition* part, const char* path, void** entryPoint, boot_params_t *bp);

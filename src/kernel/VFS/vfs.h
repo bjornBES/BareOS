@@ -3,7 +3,7 @@
  * File Created: 26 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 01 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -14,9 +14,16 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <types.h>
 
 #include "syscall/syscall.h"
-#include "kernel.h"
+
+#define VFS_FD_STDIN (fd_t)0
+#define VFS_FD_STDOUT (fd_t)1
+#define VFS_FD_STDERR (fd_t)2
+#define VFS_FD_DEBUG (fd_t)3
+#define VFS_FS_NEXT (fd_t)4
+#define VFS_INVALID_FD (fd_t) -1
 
 #define SEEK_SET 0
 #define SEEK_CUR 1

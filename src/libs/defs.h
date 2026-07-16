@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 23 Mar 2026
+ * Last Modified: 10 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -17,5 +17,7 @@
 #endif
 #define ARCH_CALL ASMCALL
 #define PACKED __attribute__((packed))
+#define NORETURN __attribute__((noreturn))
+#define INLINE static inline
 
 #define inline_asm __asm__ __volatile__

@@ -3,7 +3,7 @@
  * File Created: 15 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 May 2026 15:59:10
+ * Last Modified: 02 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
+/* 
 typedef struct
 {
     uint8_t magic[4];
@@ -94,9 +94,9 @@ enum ELF_instruction_set
     ELF_INSTRUCTION_SET_RISCV = 0xF3,
 };
 
-enum ELF_type
+enum elf_type
 {
-    ELF_TYPE_RELOCATABLE = 1,
+    ET_REL = 1,
     ELF_TYPE_EXECUTABLE = 2,
     ELF_TYPE_SHARED = 3,
     ELF_TYPE_CORE = 4,
@@ -170,8 +170,6 @@ enum ELF_program_flags
     ELF_PROGRAM_FLAGS_WRITE = 0x02,
 
     ELF_PROGRAM_FLAGS_READ = 0x04,
-
-    ELF_PROGRAM_FLAGS_LOAD = 0x08,
 };
 
 typedef struct
@@ -301,6 +299,6 @@ enum ELF_section_flags
 
     // Processor-specific
     ELF_SECTION_FLAGS_MASKPROC = 0xF0000000,
-};
+}; */
 
 void ELF_init();

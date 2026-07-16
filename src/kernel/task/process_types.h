@@ -3,7 +3,7 @@
  * File Created: 05 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 08 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -12,10 +12,10 @@
 
 #include "process_config.h"
 
-#include "signal_type.h"
+#include "signal/signal_type.h"
 #include "threading/thread_type.h"
-#include "memory/paging/paging_type.h"
-#include "memory/vmm/vmm_types.h"
+#include "mm/paging/paging_type.h"
+#include "mm/vmm/vmm_types.h"
 
 #include <types.h>
 #include <pledge_types.h>
@@ -23,12 +23,12 @@
 struct process;
 struct __signal_table_t;
 
-typedef enum process_api
+typedef enum process_abi
 {
     Undefined,
-    API_SYSV64,
-    API_SYSV32,
-} process_api_t;
+    ABI_SYSV64,
+    ABI_SYSV32,
+} process_abi_t;
 
 typedef enum process_state
 {
@@ -50,7 +50,7 @@ typedef enum process_section_type
 
 typedef struct process_section
 {
-    virt_addr base;
+    vaddr_t base;
     size_t size;
     process_section_type_t type;
     uint32_t flags;
@@ -92,10 +92,12 @@ typedef struct process
     
     // process info
     pid_t pid;
+    char path[MAX_PATH_SIZE];
     char volume[MAX_VOLUME_NAME];
     uint16_t abi;
+    uid_t user;
     process_state_t state;
-    virt_addr entry;
+    vaddr_t entry;
 
     pid_t wait_for;
 
@@ -103,11 +105,11 @@ typedef struct process
     vma_memory_t *vma;
 
     // paging
-    paging_page_t page_dir;
+    page_table_t *page_dir;
 
     // pledge
     bool pledged;
-    pledge_flags_t pledges;
+    pledge_flags_t pledge_mask;
 
     // sections
     process_section_t sections[PROCESS_MAX_SECTIONS];

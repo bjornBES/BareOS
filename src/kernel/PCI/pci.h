@@ -3,15 +3,14 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 Mar 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
-#include <stdint.h>
-#include <boot/bootparams.h>
-
 #pragma once
+
+#include <stdint.h>
 
 #define PCI_COMMAND 0x04
 #define PCI_STATUS 0x06
@@ -146,4 +145,4 @@ typedef struct
 } pci_driver;
 
 void pci_init_devices();
-void pci_init(PCI_bios_info bios_info);
+void pci_init();

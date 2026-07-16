@@ -19,13 +19,9 @@ menuconfig-busybox:
 
 install:
 	mkdir -p $(SYSROOT_DIR)
-	CFLAGS= ASMFLAGS= CC= CXX= LD= ASM= LINKFLAGS= TARGET= arch= config= LIBS= \
-	$(MAKE) -j16 -C $(BUSYBOX_SRC) \
-		CONFIG_SYSROOT=$(SYSROOT_DIR) CONFIG_PREFIX=$(SYSROOT_DIR) \
-		CROSS_COMPILE=$(CROSS) \
-		CFLAGS="--sysroot=$(SYSROOT_DIR)/include -nostdlib -ffreestanding -I$(SYSROOT_DIR)/include" \
-		LDFLAGS="--sysroot=$(SYSROOT_DIR)/include -static -I$(SYSROOT_DIR)/include" \
-		install
+	$(MAKE) -C $(BUSYBOX_SRC)
+
+	$(MAKE) -j16 -C $(BUSYBOX_SRC) install
 
 musl_make: $(MUSL_SRC) rootfs_external
 	@mkdir -p $(MUSL_SRC)
@@ -35,6 +31,8 @@ musl_make: $(MUSL_SRC) rootfs_external
 	  --prefix=$(SYSROOT_DIR) \
 	  --target=x86_64-elf \
 	  --syslibdir=$(SYSROOT_DIR)/lib \
+	  --enable-debug \
+	  --enable-optimize=false \
 	  CC=x86_64-elf-gcc \
 	  CROSS_COMPILE=x86_64-elf-
 	
@@ -61,18 +59,11 @@ busybox_make: $(BUSYBOX_SRC)/.config musl_make
 	@mkdir -p $(BUSYBOX_SRC)
 	@mkdir -p $(SYSROOT_DIR)/bin
 
-	CFLAGS= ASMFLAGS= CC= CXX= LD= ASM= LINKFLAGS= TARGET= arch= config= LIBS= \
-	$(MAKE) -j16 -C $(BUSYBOX_SRC) \
-		CROSS_COMPILE=$(CROSS) \
-		CFLAGS="--sysroot=$(SYSROOT_DIR)/include -nostdlib -ffreestanding -I$(SYSROOT_DIR)/include" \
-		LDFLAGS="--sysroot=$(SYSROOT_DIR)/include -static -I$(SYSROOT_DIR)/include" \
-		install
-
 $(BUSYBOX_SRC)/.config: $(BUSYBOX_SRC)
 	$(MAKE) -C $(BUSYBOX_SRC) CROSS_COMPILE=$(CROSS) allnoconfig
 
 $(BUSYBOX_SRC):
-	git clone git://busybox.net/busybox.git	busybox
+	git clone git://busybox.net/busybox.git	busybox --depth=1
 
 always:
 

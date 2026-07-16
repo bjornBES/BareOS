@@ -1,11 +1,12 @@
+/*
+ * File: ctype.c
+ * File Created: 20 Jan 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 26 May 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
+
 #include "ctype.h"
-
-bool islower(char chr)
-{
-    return chr >= 'a' && chr <= 'z';
-}
-
-char toupper(char chr)
-{
-    return islower(chr) ? (chr - 'a' + 'A') : chr;
-}

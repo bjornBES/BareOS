@@ -3,12 +3,13 @@
  * File Created: 28 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 17 May 2026
+ * Last Modified: 29 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include <types.h>
+#include <stdarg.h>
 
 #ifndef EOF
 #define EOF (-1)
@@ -23,9 +24,9 @@ void fputc(char c, fd_t fd);
 
 int printf(const char *fmt, ...);
 int fprintf(fd_t file, const char *fmt, ...);
-int sprintf(char *s, const char *format, ...);
-int snprintf(char *s, size_t n, const char *format, ...);
-int vprintf(fd_t file, const char *format, va_list arg);
+int sprintf(char *s, const char *fmt, ...);
+int snprintf(char *s, size_t n, const char *fmt, ...);
+int vprintf(fd_t file, const char *fmt, va_list args);
 int vfprintf(fd_t file, const char *fmt, va_list args);
-int vsprintf(char *s, const char *format, va_list arg);
-int vsnprintf(char *s, size_t n, const char *format, va_list arg);
+int vsprintf(char *s, const char *fmt, va_list args);
+int vsnprintf(char *s, size_t n, const char *fmt, va_list args);

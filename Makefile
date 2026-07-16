@@ -26,7 +26,7 @@ stage1: $(BUILD_DIR)/stage1.bin
 $(BUILD_DIR)/stage1.bin: always
 	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR))
 
-stage2: libs $(BUILD_DIR)/stage2.bin
+stage2: $(BUILD_DIR)/stage2.bin
 
 $(BUILD_DIR)/stage2.bin: always
 	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR))
@@ -60,7 +60,8 @@ user: $(TARGET_CORE_LIBS)
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
-	python tools/run_vm.py
+#	python tools/run_vm.py
+	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
 run: $(BUILD_DIR)/image.iso
 	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
 #	python tools/run_vm.py
@@ -68,27 +69,39 @@ debug_flags:
 	@echo "add -g"
 	$(eval KERNEL_TARGET_ASMFLAGS += -g)
 	$(eval KERNEL_TARGET_CFLAGS += -g)
+	$(eval KERNEL_TARGET_CXXFLAGS += -g)
+
+	$(eval USER_TARGET_ASMFLAGS += -g)
+	$(eval USER_TARGET_CFLAGS += -g)
+	$(eval USER_TARGET_CXXFLAGS += -g)
+
 	$(eval TARGET_ASMFLAGS += -g)
 	$(eval TARGET_CFLAGS += -g)
+	$(eval TARGET_CXXFLAGS += -g)
+
 	$(eval ASMFLAGS += -g)
 	$(eval CFLAGS += -g)
 
 debug: debug_flags clean all
 
 	@echo "running debug"
-	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
+	python tools/run_vm.py debug
+# 	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
 
 debugnow:
-	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
+	python tools/run_vm.py debug
+# 	bash scripts/debug.sh disk $(arch) $(BUILD_DIR)/image.iso $(BUILD_DIR)/kernel/kernel.elf
 
 menuconfig-%:
 	$(MAKE) -C src/user/userland menuconfig-$*
 
-install:
-	$(MAKE) -C src/user/userland install
+userland-install:
+	$(MAKE) -C src/user/userland install BUILD_DIR=$(abspath $(BUILD_DIR))
 
 userland:
 	$(MAKE) -C src/user/userland BUILD_DIR=$(abspath $(BUILD_DIR))
+userland-clean:
+	$(MAKE) -C src/user/userland clean BUILD_DIR=$(abspath $(BUILD_DIR))
 
 #
 # Always
@@ -99,8 +112,6 @@ always:
 	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) always
 	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) always
-
-toolchain:
 
 #
 # Clean

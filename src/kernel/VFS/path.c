@@ -3,15 +3,14 @@
  * File Created: 12 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 02 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "path.h"
-#include "libs/string.h"
-#include "libs/memory.h"
-#include "libs/malloc.h"
+#include "kernel/string.h"
+#include "kernel/memory.h"
 #include "debug/debug.h"
 
 #include "vfs_flags.h"
@@ -21,6 +20,29 @@
 #include "inode.h"
 
 #define MODULE "VFS-PATH"
+
+int path_has_volume(char *path)
+{
+    const char *colon = strchr(path, ':');
+    // /VOLUME:/../../..
+    if (colon != NULL)
+    {
+        if (*colon == ':' && *(colon + 1) == '/')
+        {
+            return RETURN_GOOD;
+        }
+    }
+    return RETURN_FAILED;
+}
+
+int path_is_rooted(char *path)
+{
+    if (*path == '/')
+    {
+        return RETURN_GOOD;
+    }
+    return RETURN_FAILED;
+}
 
 // full resolver: prefix parse + segment walk
 int path_lookup(const char *path, vfs_node_t **node_out)
@@ -279,5 +301,37 @@ int path_resolve_segment(dentry_t *parent, const char *name, inode_t **inode_out
     dcache_insert(new_dentry);
 
     *inode_out = inode_get(ino);
+    return RETURN_GOOD;
+}
+
+int path_insert_volume(char *path, char *volume)
+{
+    if (path_has_volume(path))
+    {
+        return RETURN_ERROR;
+    }
+
+    if (!path_is_rooted(path))
+    {
+        path = strcat(path, "/");
+    }
+
+    sprintf(path, "/%s:%s", volume, path);
+    return RETURN_GOOD;
+}
+
+int path_combind(char *path, char *path2)
+{
+    if (path_has_volume(path2))
+    {
+        return RETURN_ERROR;
+    }
+    
+    if (path_is_rooted(path2))
+    {
+        return RETURN_ERROR;
+    }
+
+    sprintf(path, "%s/%s", path, path2);
     return RETURN_GOOD;
 }

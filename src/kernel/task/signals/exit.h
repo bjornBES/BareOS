@@ -3,7 +3,7 @@
  * File Created: 15 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 15 Apr 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,7 +11,7 @@
 #pragma once
 
 #include "task/process.h"
-#include "task/signal.h"
+#include "signal/signal.h"
 
 #define EXIT_CODE_MEMORY
 

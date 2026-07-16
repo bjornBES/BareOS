@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 Mar 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -12,7 +12,7 @@
 
 #include <defs.h>
 #include <stdint.h>
-#include "libs/stdio.h"
+#include "stdio.h"
 #include "debug/debug.h"
 
 #define X86_EFLAGS_CF_BIT		0 /* Carry Flag */

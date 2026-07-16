@@ -3,14 +3,14 @@
  * File Created: 29 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 29 Apr 2026
+ * Last Modified: 09 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "CMOS.h"
 
-#include "libs/IO.h"
+#include "kernel/io.h"
 
 #include <stdbool.h>
 
@@ -38,7 +38,7 @@
 
 int century_register = 0x00;
 
-#define FROM_BCD(val) ((val / 16) * 10 + (val & 0xf))
+#define FROM_BCD(val) ((val >> 4) * 10 + (val & 0xf))
 
 static inline void CMOS_write_register(uint8_t reg, uint8_t data)
 {

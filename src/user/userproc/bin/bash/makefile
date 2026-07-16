@@ -27,7 +27,7 @@ $(BUILD_DIRASM)/%.obj: %.asm
 	@echo "--> Compiled: " $<
 
 $(BUILD)/bash.elf: $(OBJECTS_C) $(OBJECTS_ASM)
-	@$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/bash.map -o $@ $^ $(USER_TARGET_LIBS)
+	@$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/bash.map -o $@ $^ $(BUILD)/libc.a $(USER_TARGET_LIBS)
 
 always:
 	@mkdir -p $(BUILD)

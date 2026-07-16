@@ -3,7 +3,7 @@
  * File Created: 26 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 10 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -14,13 +14,12 @@
 #include "device/device.h"
 #include "debug/debug.h"
 #include "kernel.h"
-#include "video/VGATextDevice.h"
+#include "drivers/video/vga/vga_text_device.h"
 #include "kernel/debug.h"
 
-#include "libs/malloc.h"
-#include "libs/string.h"
-#include "libs/memory.h"
-#include "libs/IO.h"
+#include "kernel/string.h"
+#include "kernel/memory.h"
+#include "kernel/io.h"
 
 // VFS subsystems
 #include "dentry.h"
@@ -185,12 +184,29 @@ int vfs_readdir(fd_t dir, vfs_dirent_t *out)
 
 int vfs_stat(const char *path, vfs_stat_t *out)
 {
-    return RETURN_FAILED;
+    vfs_node_t *node = NULL;
+    if (path_lookup(path, &node) != RETURN_GOOD)
+    {
+        fd_t fd = vfs_open(path, VFS_O_RDWR, 0);
+        int state = vfs_fstat(fd, out);
+        vfs_close(fd);
+        return state;
+    }
+    if (node->fs->stat(node, out, node->mountpoint->volume->device, node->mountpoint) != RETURN_GOOD)
+    {
+        return RETURN_FAILED;
+    }
+    return RETURN_GOOD;
 }
 
 int vfs_fstat(fd_t file, vfs_stat_t *out)
 {
-    return RETURN_FAILED;
+    vfs_node_t *node = fd_get(file);
+    if (node->fs->stat(node, out, node->mountpoint->volume->device, node->mountpoint) != RETURN_GOOD)
+    {
+        return RETURN_FAILED;
+    }
+    return RETURN_GOOD;
 }
 
 int vfs_mkdir(const char *path, int mode)

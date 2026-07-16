@@ -3,13 +3,13 @@
 ; File Created: 20 Jan 2026
 ; Author: BjornBEs
 ; -----
-; Last Modified: 21 Mar 2026
+; Last Modified: 01 Jul 2026
 ; Modified By: BjornBEs
 ; -----
 ;
 
 extern stack_top
-extern main
+extern kernel_main
 
 section .text
 
@@ -28,7 +28,7 @@ entry:
 
     mov al, 'H'
     out 0xe9, al
-    call main
+    call kernel_main
 
 .end:
     jmp .end
@@ -46,7 +46,7 @@ entry:
 
     mov al, 'H'
     out 0xe9, al
-    call main
+    call kernel_main
 
 .end:
     jmp .end

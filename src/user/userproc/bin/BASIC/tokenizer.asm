@@ -1,3 +1,13 @@
+;
+; File: tokenizer.asm
+; File Created: 16 May 2026
+; Author: BjornBEs
+; -----
+; Last Modified: 26 May 2026
+; Modified By: BjornBEs
+; -----
+;
+
 
 .intel_syntax
 
@@ -38,6 +48,6 @@ next_token:
     
     ; TODO: check a lot
 
-
+.next_token_ret:
 
 

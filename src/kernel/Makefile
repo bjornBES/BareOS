@@ -1,5 +1,9 @@
 KERNEL_TARGET_ASMFLAGS +=
-KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -I. -I $(SOURCE_DIR)/src/libs -I $(INCLUDE_DIR) -I${SOURCE_ARCH} -D__$(arch)__=1
+KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+-I ${SOURCE_DIR}/src/kernel/arch/include -I ${SOURCE_DIR}/src/kernel/include -I. -I ${SOURCE_DIR}/src/libs \
+-I ${SOURCE_DIR}/src/libs/${SOURCE_ARCH} -I $(INCLUDE_DIR) -I ${SOURCE_DIR}/src/kernel/${SOURCE_ARCH} \
+-D__$(arch)__=1
+
 KERNEL_TARGET_LINKFLAGS += -nostdlib
 KERNEL_TARGET_LIBS +=
 
@@ -19,22 +23,24 @@ BUILD_DIRCBL = $(BUILD_DIRKERNEL)/cobol
 TEMP_DIRCBL = $(BUILD_DIRKERNEL)/cobol/temp
 
 HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*") \
-			$(shell find ${SOURCE_ARCH} -type f -name "*.h")
+			$(shell find ${SOURCE_ARCH} -type f -name "*.h") \
+			$(shell find ./arch/include -type f -name "*.h")
 
 SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c" -not -path "./arch/*") \
-				$(shell find ${SOURCE_ARCH} -type f -name "*.c"))
+	$(shell find ${SOURCE_ARCH} -type f -name "*.c") \
+	$(shell find ./arch/include -type f -name "*.c"))
 
 OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
 
 HEADERS_ASM = $(shell find . -type f -name "*.inc" -not -path "./arch/*") \
-			  $(shell find ${SOURCE_ARCH} -type f -name "*.inc")
+			$(shell find ${SOURCE_ARCH} -type f -name "*.inc") \
+			$(shell find ./arch/include -type f -name "*.inc")
 
 SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm" -not -path "./arch/*") \
-				$(shell find ${SOURCE_ARCH} -type f -name "*.asm"))
+	$(shell find ${SOURCE_ARCH} -type f -name "*.asm") \
+	$(shell find ./arch/include -type f -name "*.asm"))
 
 OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
-
-LIBS = $(BUILD_DIR)/libcore.a
 
 .PHONY: all kernel clean always
 
@@ -42,7 +48,7 @@ all: kernel
 
 kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
-$(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C) $(LIBS)
+$(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET_LD) $(KERNEL_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(KERNEL_TARGET_LIBS)
 	@echo "--> Created:  kernel.elf"
 

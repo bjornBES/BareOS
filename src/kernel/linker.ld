@@ -63,9 +63,6 @@ SECTIONS
     stack_top = .;
     . = ALIGN(4096);
 
-    __kernel_pages = . - KERNEL_VMA + KERNEL_LMA;
-    . += 0x410000;  /* 4 MiB + 64 Kb */
-
     __frame_bitmap = .;
     __frame_bitmap_phys = . - KERNEL_VMA + KERNEL_LMA;
     . += FRAME_BITMAP_SIZE;

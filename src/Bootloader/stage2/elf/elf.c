@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 Mar 2026
+ * Last Modified: 30 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -31,7 +31,7 @@ void LogKernelSegment(uint8_t *segmentStart, uint32_t memSize, uint32_t entryOff
     printf("\n");
 }
 
-bool ELF_Read64(Partition *part, const char *path, void **entryPoint, boot_params *bp)
+bool ELF_Read64(Partition *part, const char *path, void **entryPoint, boot_params_t *bp)
 {
 #undef KERNEL_VMA
 #undef KERNEL_LMA
@@ -187,7 +187,7 @@ bool ELF_Read64(Partition *part, const char *path, void **entryPoint, boot_param
 #define KERNEL_LMA 0x00100000
 }
 
-bool ELF_Read(Partition *part, const char *path, void **entryPoint, boot_params *bp)
+bool ELF_Read(Partition *part, const char *path, void **entryPoint, boot_params_t *bp)
 {
     printf("ELF: Opening '%s'\n", path);
 

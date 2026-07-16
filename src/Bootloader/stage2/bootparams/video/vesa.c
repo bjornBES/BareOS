@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 19 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -18,59 +18,26 @@
 #include <stdbool.h>
 
 uint16_t VESAModes[] = {
-    0x100,
-    0x101,
-    0x102,
-    0x103,
-    0x105,
-    0x107,
-    0x110,
-    0x111,
-    0x112,
-    0x113,
-    0x114,
     0x115,
-    0x116,
-    0x117,
     0xFFFF,
 };
 
-#define MAX_REGIONS MAX_VESA_MODES
-
-bool VESASupported;
-vesa_mode_info_t g_VesaEntries[MAX_REGIONS];
-VbeInfoBlock *Info;
+#define MAX_REGIONS MAX_VIDEO_MODES
 
 void hexdump(void *ptr, int len);
 
-void DetectVESA(boot_params *bp)
+void DetectVESA(boot_params_t *bp)
 {
-    int g_VesaEntriesCount;
-    Info = (VbeInfoBlock *)(void *)&bp->vesaBios;
-    VESASupported = x86_VESASupported(Info);
-    bp->vesaBios.capabilities = Info->Capabilities;
-    bp->vesaBios.totalMemory = Info->TotalMemory;
-    bp->vesaBios.vbeVersion = Info->VbeVersion;
+    VbeInfoBlock local_info;
+    bool vesa_supported = x86_VESASupported(&local_info);
 
-    uint32_t phys = (Info->VideoModePtr[1] << 4) + Info->VideoModePtr[0];
-    uint16_t *src = (uint16_t *)phys;
-    int count = 0;
-    while (*src != 0xFFFF && count < MAX_VESA_MODES)
-    {
-        bp->vesaBios.modeList[count++] = *src;
-        src++;
-    }
-    if (*src != 0xFFFF)
-    {
-        printf("Vesa has more modes");
-    }
-
-    if (VESASupported)
+    int vesa_entries_count;
+    if (vesa_supported)
     {
         uint32_t index = 0;
         int ret = 1;
 
-        g_VesaEntriesCount = 0;
+        vesa_entries_count = 0;
 
         vesa_mode_info_t pmode;
         while (ret > 0)
@@ -81,30 +48,25 @@ void DetectVESA(boot_params *bp)
                 break;
             }
             ret = x86_GetVESAEntry(0x2000 | (moderaw & 0x1FF), &pmode);
-            printf("vesa mode %d %dx%dx%d ret=%u pmode=0x%x\n", moderaw, pmode.width, pmode.height, pmode.bpp, ret, pmode);
-            bp->vesaModes[index].mode_attributes = pmode.attributes;
-            bp->vesaModes[index].memory_model = pmode.memory_model;
-            bp->vesaModes[index].mode = moderaw;
-            bp->vesaModes[index].width = pmode.width;
-            bp->vesaModes[index].height = pmode.height;
-            bp->vesaModes[index].bpp = pmode.bpp;
-            bp->vesaModes[index].frame_buffer = pmode.frame_buffer;
-            bp->vesaModes[index].pitch = pmode.pitch;
-            bp->vesaModes[index].red_mask_size = pmode.red_mask;
-            bp->vesaModes[index].red_field_position = pmode.red_position;
-            bp->vesaModes[index].greenMaskSize = pmode.green_mask;
-            bp->vesaModes[index].greenFieldPosition = pmode.green_position;
-            bp->vesaModes[index].blueMaskSize = pmode.blue_mask;
-            bp->vesaModes[index].blueFieldPosition = pmode.blue_position;
-            bp->vesaModes[index].alphaMaskSize = pmode.reserved_mask;
-            bp->vesaModes[index].alphaFieldPosition = pmode.reserved_position;
-            g_VesaEntriesCount++;
+            printf("vesa mode %d %dx%dx%d ret=%u pmode=0x%x\n", moderaw,
+                   pmode.width, pmode.height, pmode.bpp, ret, pmode);
+            bp->video.entries[index].mode = moderaw;
+            bp->video.entries[index].width = pmode.width;
+            bp->video.entries[index].height = pmode.height;
+            bp->video.entries[index].bpp = pmode.bpp;
+            bp->video.entries[index].addr = (uint64_t)pmode.frame_buffer;
+            bp->video.entries[index].pitch = pmode.pitch;
+            bp->video.entries[index].red_shift = pmode.red_position;
+            bp->video.entries[index].green_shift = pmode.green_position;
+            bp->video.entries[index].blue_shift = pmode.blue_position;
+            bp->video.entries[index].fmt = FB_PIXEL_BITMASK;
+            vesa_entries_count++;
             index++;
         }
     }
 
-    bp->vesaModeCount = g_VesaEntriesCount;
-    printf("VESA: got %u entries\n", bp->vesaModeCount);
+    bp->video.count = vesa_entries_count;
+    printf("VESA: got %u entries\n", vesa_entries_count);
 }
 
 void SetVESAMode(int mode)

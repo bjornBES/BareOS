@@ -3,7 +3,7 @@
  * File Created: 01 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 May 2026
+ * Last Modified: 01 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -43,7 +43,7 @@ int execve(const char *filename, const char *argv[], const char *envp[])
     return syscall3(SYS_EXECVE, (uintptr_t)filename, (uintptr_t)argv, (uintptr_t)envp);
 }
 
-void pledge(uint32_t pledges)
+void pledge(uint32_t pledge_mask)
 {
-    syscall1(SYS_PLEDGE, (uintptr_t)pledges);
+    syscall1(SYS_PLEDGE, (uintptr_t)pledge_mask);
 }

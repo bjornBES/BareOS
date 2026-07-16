@@ -262,7 +262,6 @@ def mmd(image, file_dst, offset_sectors = 0):
     offset_bytes = offset_sectors * SECTOR_SIZE
     image_arg = f"{image}@@{offset_bytes}" if offset_bytes else image
     print(f"mdd(image={image}, file_dst={file_dst}, offset_sectors={offset_sectors})")
-    print(f"  offset_bytes={offset_bytes}")
     subprocess.run(["mmd", 
                     "-i", image_arg,
                     file_dst], check=True)
@@ -271,7 +270,6 @@ def mcopy(image, file_src, file_dst, offset_sectors = 0):
     offset_bytes = offset_sectors * SECTOR_SIZE
     image_arg = f"{image}@@{offset_bytes}" if offset_bytes else image
     print(f"mcopy(image={image}, file_src={file_src}, file_dst={file_dst}, offset_sectors={offset_sectors})")
-    print(f"  offset_bytes={offset_bytes}")
     subprocess.run(["mcopy", 
                     "-i", image_arg,
                     file_src,
@@ -279,28 +277,28 @@ def mcopy(image, file_src, file_dst, offset_sectors = 0):
 
 def loadFiles(image, files, baseDir, imageDir = "::/", partition_offset = 0):
 
-    print(f"loadFiles({image}, {files}, {baseDir}, {imageDir}, {partition_offset})")
+    # print(f"loadFiles({image}, {files}, {baseDir}, {imageDir}, {partition_offset})")
     # copy rest of files
     src_root = baseDir
 
-    print(f"> copying dirs...")
+    # print(f"> copying dirs...")
     for file in files:
         file_src = file
         file_rel = os.path.relpath(file_src, src_root)
         file_dst = os.path.join(imageDir, file_rel)
         if os.path.isdir(file_src):
-            print(f"entry dir {file_dst}")
+            # print(f"entry dir {file_dst}")
             mmd(image, file_dst, partition_offset)
             
-    print(f"> copying files...")
+    # print(f"> copying files...")
     for file in files:
-        print(f'have file {file}')
+        # print(f'have file {file}')
         file_src = file
         file_rel = os.path.relpath(file_src, src_root)
         file_dst = os.path.join(imageDir, file_rel)
 
         if not os.path.isdir(file_src):
-            print('    ... copying', file_rel)
+            # print('    ... copying', file_rel)
             mcopy(image, file_src, file_dst, partition_offset)
             
 MAX_WORKERS = 8
@@ -359,7 +357,6 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         
         rootDir = os.path.join(filesDir, partition.root_dir)
         files = GlobRecursive('*', rootDir)
-        print(f"got {files} from {rootDir}")
         
         stage2 = os.path.join(buildDir, partition.stage2) if partition.bootable else ""
         kernel = os.path.join(buildDir, partition.kernel) if partition.bootable else ""
@@ -492,7 +489,7 @@ def build_partition(image, disk : Disk, files, bin_files : list[str], partition 
                 file_src = os.path.join(user_path, file)
                 file_name = os.path.basename(file)
                 file_dst = os.path.join("::/bin", file_name)
-                print(f'    ... copying {file_src} to {file_dst}')
+                # print(f'    ... copying {file_src} to {file_dst}')
                 if not os.path.isdir(file_src):
                     mcopy(image, file_src, file_dst, partition_offset)
                 

@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 10 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -19,24 +19,24 @@
 
 #include "paging/paging.h"
 #include "x86.h"
+#include "bios/bios.h"
 #include "memdefs.h"
 #include "partition/gpt.h"
 #include "partition/partition.h"
 #include "fs/disk.h"
 #include "fs/fat.h"
 #include "elf/elf.h"
+#include "cpuID/CPUID.h"
 #include "bootparams/memory/memdetect.h"
-#include "bootparams/pci/pci.h"
 #include "bootparams/video/vesa.h"
-#include "bootparams/equipment/CPUID.h"
-#include "bootparams/equipment/Equipment.h"
 #include "bootparams/ACPI/ACPI.h"
 #include "menu/menu.h"
+#include <time.h>
 
-typedef void (*BootStart)(boot_params *boot);
+typedef void (*BootStart)(boot_params_t *boot);
 
 BootStart kernelEntry;
-boot_params bss_bootParams;
+boot_params_t bss_bootParams;
 
 extern uint16_t BootPartitionSeg;
 extern uint16_t BootPartitionOff;
@@ -50,7 +50,9 @@ void hexdump(void *ptr, int len)
     for (size_t i = 0; i < len; ++i)
     {
         if ((i & 0xF) == 0)
+        {
             printf("\n%x: ", i);
+        }
         printf("%x ", p[i]);
     }
     printf("\n");
@@ -71,17 +73,14 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-    boot_params *bootParams = (boot_params *)MEMORY_BOOTPARAMS_ADDR;
+    boot_params_t *bootParams = (boot_params_t *)MEMORY_BOOTPARAMS_ADDR;
     printf("bootParams @ 0x%x\n", bootParams);
 #pragma GCC diagnostic pop
-    
-    for (size_t i = 0; i < 512; i++)
-    {
-        bootParams->smp_trampoline[i] = *((uint8_t*)&__trampoline_start + i);
-    }
-/*     hexdump((uint8_t*)&__trampoline_start, 512);
-    hexdump(bootParams->smp_trampoline, 512); */
-    
+
+    hexdump(bootParams, 512);
+    printf("from bootparams @ 0x%x\n", bootParams);
+    /*     hexdump((uint8_t*)&__trampoline_start, 512);
+        hexdump(bootParams->smp_trampoline, 512); */
 
     DISK disk;
     if (!DISK_Initialize(&disk, bootDrive))
@@ -93,39 +92,25 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     Partition part;
     MBR_detect_partition(&part, &disk, partition);
 
-
     if (!FAT_Initialize(&part))
     {
         printf("FAT init error\r\n");
         goto end;
     }
-    memset(bootParams, 0, sizeof(boot_params));
-    bootParams->pageDirectory = 0x112255AA;
-    bootParams->BootDevice = bootDrive;
 
-    bootParams->bootLoader.bootFlags = 1;
-    strcpy(bootParams->bootLoader.bootloaderName, "BESOS Bootloader");
-    strcpy(bootParams->bootLoader.cmdline, "");
+    /*     printf("Hello world");
+        vga_set_cursor(31, 23);
+        printf("Press DEL for menu");
+        vga_set_cursor(0, 0);
+        menu_key = 0x53;
+        if (X86_checkForKeys())
+        {
+            printf("pressed key\n");
+            menuEntry(bootParams);
+        }
+        printf("to kernel\n"); */
 
-    DetectMemory(bootParams);
-    DetectVESA(bootParams);
-    DetectPCI(bootParams);
-    DetectEquipment(bootParams);
-    DetectCPUID(bootParams);
-    DetectACPI(bootParams);
-
-    printf("Hello world");
-    vga_clear();
-    vga_set_cursor(31, 23);
-    printf("Press DEL for menu");
-    vga_set_cursor(0, 0);
-    menu_key = 0x53;
-    if (X86_checkForKeys())
-    {
-        printf("pressed key\n");
-        menuEntry(bootParams);
-    }
-    printf("to kernel\n");
+    memset(bootParams, 0, sizeof(boot_params_t));
     disableOutput = true;
     if (!ELF_Read(&part, "/boot/kernel.elf", (void **)&kernelEntry, bootParams))
     {
@@ -137,48 +122,102 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     readyToJump = true;
 
     x86_SetVESAMode(0x115);
-    bootParams->currentMode = 0x115;
+    bootParams->current_mode = 0x115;
 
-    printf("from bootparams @ 0x%llx\n", bootParams);
+    {
+        biosregs in_regs;
+        biosregs out_regs;
+        memset(&in_regs, 0, sizeof(biosregs));
+        memset(&out_regs, 0, sizeof(biosregs));
+
+        in_regs.ah = 0x04;
+        intcall(0x1A, &in_regs, &out_regs);
+        uint8_t century = 0;
+        if (BIT_GET(out_regs.flags, X86_EFLAGS_CF_BIT))
+        {
+            if (out_regs.ch == 0)
+            {
+                century = 20;
+            }
+        }
+        else
+        {
+            century = out_regs.ch;
+        }
+        uint8_t year = out_regs.cl;
+        uint8_t day = out_regs.dl;
+        uint8_t month = out_regs.dh;
+
+        memset(&in_regs, 0, sizeof(biosregs));
+        memset(&out_regs, 0, sizeof(biosregs));
+
+        in_regs.ah = 0x02;
+        intcall(0x1A, &in_regs, &out_regs);
+        if (BIT_GET(out_regs.flags, X86_EFLAGS_CF_BIT))
+        {
+        }
+        uint8_t hour = out_regs.ch;
+        uint8_t minute = out_regs.cl;
+        uint8_t second = out_regs.dh;
+        bootParams->boot_time = bcd_time_to_unix(century, year, month, day, hour, minute, second);
+    }
+    
+    for (size_t i = 0; i < 512; i++)
+    {
+        bootParams->cpu_core_trampoline[i] = *((uint8_t *)&__trampoline_start + i);
+    }
+
+    bootParams->page_directory = 0x112255AA;
+    bootParams->boot_device = bootDrive;
+
+    bootParams->bootloader.boot_flags = 1;
+    strcpy(bootParams->bootloader.bootloader_name, "BESOS Bootloader");
+    strcpy(bootParams->bootloader.cmd_line, "");
+
+    DetectVESA(bootParams);
+    DetectACPI(bootParams);
+    DetectMemory(bootParams);
+
+    printf("from bootparams @ 0x%x\n", bootParams);
     printf("kernel_address: %p\n", bootParams->kernel_address);
-    printf("BootDevice: %x\n", bootParams->BootDevice);
-    printf("currentMode: %x\n", bootParams->currentMode);
-    printf("pageDirectory: %x\n", bootParams->pageDirectory);
-    printf("day: %x\n", bootParams->rtc.day);
-    printf("month: %x\n", bootParams->rtc.month);
-    printf("year: %x\n", bootParams->rtc.year);
-    printf("second: %x\n", bootParams->rtc.second);
-    printf("minute: %x\n", bootParams->rtc.minute);
-    printf("hour: %x\n", bootParams->rtc.hour);
-    printf("floppyFlag: %x\n", bootParams->equipment.floppyFlag);
-    printf("hasCoprocessor: %x\n", bootParams->equipment.hasCoprocessor);
-    printf("hasFpu: %x\n", bootParams->equipment.hasFpu);
-    printf("numFloppies: %x\n", bootParams->equipment.numFloppies);
-    printf("reserved: %x\n", bootParams->equipment.reserved);
-    printf("vesaModeCount: %x\n", bootParams->vesaModeCount);
-    printf("e820Count: %x\n", bootParams->e820Count);
+    printf("BootDevice: %x\n", bootParams->boot_device);
+    printf("currentMode: %x\n", bootParams->current_mode);
+    printf("e820Count: %x\n", bootParams->memory.count);
+    printf("boot_flags: %x\n", bootParams->bootloader.boot_flags);
+    printf("vesaModeCount: %x\n", bootParams->video.count);
+    printf("rsdp_address: %p\n", bootParams->acpi.rsdp_address);
+
+    hexdump(bootParams, 512);
 
     cpuid_regs reg;
     INIT_CPUID_REG(&reg);
     CPUID(0x80000001, 0, &reg);
-#ifdef __x86_64__
     if (BIT_GET(reg.edx, 29))
     {
-        // strcpy(bootParams->bootLoader.cmdline, "LM");
+        bootParams->stage.mode = USE_64_BIT_MODE;
         printf("To 64 bit mode\n");
+
+        printf("from bootparams @ 0x%x\n", bootParams);
+        printf("kernel_address: %p\n", bootParams->kernel_address);
+        printf("BootDevice: %x\n", bootParams->boot_device);
+        printf("currentMode: %x\n", bootParams->current_mode);
+        printf("e820Count: %x\n", bootParams->memory.count);
+        printf("boot_flags: %x\n", bootParams->bootloader.boot_flags);
+        printf("vesaModeCount: %x\n", bootParams->video.count);
+        printf("rsdp_address: %p\n", bootParams->acpi.rsdp_address);
+
         x86_EnterLongMode();
     }
     else
-#endif
     {
-        // strcpy(bootParams->bootLoader.cmdline, "PM");
+        bootParams->stage.mode = USE_32_BIT_MODE;
     }
 
     if (readyToJump)
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-        bootParams->pageDirectory = (uint32_t)(uint32_t *)(((void *)&page_directory_table) + KERNEL_VMA);
+        bootParams->page_directory = (uint32_t)(uint32_t *)(((void *)&page_directory_table) + KERNEL_VMA);
 #pragma GCC diagnostic pop
         fill_32bit_table();
         printf("jump to 0x%p\n", *kernelEntry);
@@ -197,6 +236,5 @@ void __attribute__((cdecl)) start(uint32_t bootDrive, void *partition)
     }
 
 end:
-    for (;;)
-        ;
+    for (;;);
 }

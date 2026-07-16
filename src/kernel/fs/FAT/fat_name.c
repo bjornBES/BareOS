@@ -3,16 +3,16 @@
  * File Created: 12 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 01 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "fat_name.h"
 #include "kernel.h"
-#include "libs/memory.h"
-#include "libs/string.h"
-#include "libs/ctype.h"
+#include "kernel/memory.h"
+#include "kernel/string.h"
+#include "ctype.h"
 
 int fat_83_to_name(const char raw83[11], char out[13])
 {

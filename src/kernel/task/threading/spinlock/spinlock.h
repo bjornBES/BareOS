@@ -3,20 +3,16 @@
  * File Created: 09 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 09 May 2026
+ * Last Modified: 10 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
 
-#include "kernel.h"
-#include "kernel/threading/spinlock.h"
-
-typedef struct spinlock
-{
-    volatile uint32_t lock;
-} spinlock_t;
+#include "spinlock_types.h"
+#include <types.h>
+#include "kernel/threading/spinlock/spinlock.h"
 
 static inline void spinlock_acquire(spinlock_t *s)
 {

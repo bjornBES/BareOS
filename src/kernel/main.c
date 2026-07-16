@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 11 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,25 +11,23 @@
 #include <stdint.h>
 #include <boot/bootparams.h>
 #include <util/binary.h>
-#include "libs/stdio.h"
-#include "libs/memory.h"
-#include "libs/IO.h"
-#include "libs/string.h"
-#include "libs/malloc.h"
+#include "stdio.h"
+#include "kernel/io.h"
 #include "task/threading/priority.h"
 
-#include "task/threading/thread_type.h"
-#include "video/video.h"
-#include "video/VGATextDevice.h"
-#include "debug/debug.h"
+#include "kernel/memory.h"
+#include "kernel/string.h"
 #include "kernel/setup.h"
+#include "kernel/mmu.h"
+#include "kernel/cpu.h"
+#include "kernel/smp.h"
+
+#include "task/threading/thread_type.h"
+#include "debug/debug.h"
 #include "time/timer.h"
-#include "kernel/exceptions/exception.h"
-#include "memory/ioremap/ioremap.h"
-#include "memory/paging/paging.h"
-#include "memory/pmm/pmm.h"
-#include "memory/memdefs.h"
-#include "hal/hal.h"
+#include "mm/ioremap/ioremap.h"
+#include "mm/pmm.h"
+#include "mm/memdefs.h"
 #include "PCI/pci.h"
 #include "VFS/vfs.h"
 #include "device/device.h"
@@ -41,15 +39,17 @@
 #include "task/threading/thread.h"
 #include "task/threading/scheduling/scheduler.h"
 
+#include "drivers/video/video.h"
 #include "drivers/serial/UART/UART.h"
-#include "drivers/IO/I8042/I8042.h"
-#include "drivers/IO/Keyboard/Keyboard.h"
+#include "drivers/IO/tty/tty.h"
+#include "drivers/IO/tty/tty_flags.h"
 
 extern char default8x16Font;
 
 void hexdump(void *ptr, int len)
 {
-    fprintf(VFS_FD_DEBUG, "from address %p", ptr);
+    fprintf(VFS_FD_DEBUG, "========= HEXDUMP =========\n");
+    fprintf(VFS_FD_DEBUG, "hexdump at %p length %u\n", ptr, len);
     unsigned char *p = (unsigned char *)ptr;
     for (size_t i = 0; i < len; ++i)
     {
@@ -60,19 +60,6 @@ void hexdump(void *ptr, int len)
         fprintf(VFS_FD_DEBUG, "%02x ", p[i]);
     }
     fprintf(VFS_FD_DEBUG, "\n");
-}
-
-extern void process_user_page_fault(paging_info *info);
-void kernel_page_fault(void *_info)
-{
-    paging_info *info = (paging_info *)_info;
-    process_user_page_fault(info);
-}
-
-void kernel_breakpoint(registers *regs)
-{
-    thread_t *current_thread = scheduler_get_current();
-    log_info("breakpoint", "comes from thread %u", current_thread->tid);
 }
 
 void test()
@@ -90,17 +77,49 @@ void test()
 void start_init()
 {
     char *argv[2] = {"/user:/bin/INIT.ELF", NULL};
-    kernel_init_process("/user:/bin/INIT.ELF", argv, NULL);
+    process_exec("/user:/bin/INIT.ELF", argv, NULL, NULL);
 }
 
-boot_params *main_boot_params;
+boot_params_t *main_boot_params;
 thread_t *main_thread;
+
 __attribute__((noreturn)) void kernel_entry()
 {
-    exception_register_kernel_handler(EXC_PAGE, kernel_page_fault);
+    device_init();
+
+    tty_struct_t *stdin = NULL;
+    tty_struct_t *stdout = NULL;
+    {
+        video_init(main_boot_params);
+        device_t *vga_dev = device_get_by_id(DEVICE_VIDEO, 1);
+
+        vfs_init();
+
+        stdin = tty_create(device_get_by_name("kbd0"), NULL);
+        termios_t stdin_term;
+        stdin_term.c_lflag &= ~(ISIG | ECHO | ICRNL);
+        stdin_term.c_lflag |= ICANON;
+        tty_termios_set(stdin, &stdin_term);
+
+        stdout = tty_create(NULL, vga_dev);
+        /* tty_struct_t *stderr = */ tty_create(NULL, vga_dev);
+
+        device_ioctl(vga_dev, VIDEO_IOCTL_CLEAR, NULL);
+        tty_write(stdout, (const uint8_t *)"VGA is done\n", 12);
+    }
+
+    UART_init(COM1);
+    termios_t uart_term = {0};
+    tty_struct_t *uart = tty_create(NULL, device_get_by_name("uart0"));
+    tty_baudrate_encode_baud_rate(&uart_term, 0, 38400);
+    uart_term.c_cflag |= CS8;
+    uart_term.c_oflag |= ONLCR;
+    tty_termios_set(uart, &uart_term);
+    tty_write(uart, (const uint8_t *)"UART is done\n", 13);
+
     log_info("MAIN", "main_boot_params @ %p", main_boot_params);
-    UART_write_fstr(COM1, "UART is done\r\n");
     log_debug("MAIN", "Hello world from Kernel");
+    // for (;;);
 
     thread_t *t = thread_create(test);
     scheduler_add(t);
@@ -109,13 +128,10 @@ __attribute__((noreturn)) void kernel_entry()
 
     allocator_print_status();
 
-    // FADT_shutdown();
+    // fadt_shutdown();
 
-    device_init();
-
-    pci_init(main_boot_params->pciBios);
+    pci_init();
     pci_init_devices();
-    vfs_init();
 
     device_debug();
     {
@@ -124,11 +140,11 @@ __attribute__((noreturn)) void kernel_entry()
         log_info("MAIN", "mounting drives");
         device_t *ahci;
         log_info("MAIN", "Getting drive 0x101");
-        ahci = device_get(0x101); // device 1 partition 1
-        log_info("MAIN", "Mounting drive 0x101");
+        ahci = device_get_by_name("sata1_13"); // device 1 partition 1
+        log_info("MAIN", "Mounting drive %p", ahci);
         vfs_mount("/user:/", ahci, 0);
         log_info("MAIN", "Getting drive 0x100");
-        ahci = device_get(0x100); // device 1 partition 0
+        ahci = device_get_by_name("sata1_02"); // device 1 partition 0
         log_info("MAIN", "Mounting drive 0x100");
         vfs_mount("/boot:/boot", ahci, 0);
 
@@ -137,43 +153,9 @@ __attribute__((noreturn)) void kernel_entry()
         vfs_read(file, data, 512);
         hexdump(data, 512);
 
-        I8042_init();
-
         Loader_init();
         ELF_init();
         syscall_init();
-    }
-    {
-        uint16_t mode = main_boot_params->currentMode;
-        VESA_mode *vesaMode = NULL;
-        log_debug("main", "vesa count = %u", main_boot_params->vesaModeCount);
-        for (size_t i = 0; i < main_boot_params->vesaModeCount; i++)
-        {
-            VESA_mode *element = &main_boot_params->vesaModes[i];
-            log_debug("main", "vesa mode %d %dx%dx%d @ %p", element->mode,
-                      element->width, element->height, element->bpp,
-                      element->frame_buffer);
-            if (element->mode == mode)
-            {
-                vesaMode = element;
-                break;
-            }
-        }
-        if (vesaMode == NULL)
-        {
-            log_crit("main", "Something is fucked");
-        }
-        log_debug("main", "vesa mode %d %dx%dx%d", vesaMode->mode,
-                  vesaMode->width, vesaMode->height, vesaMode->bpp);
-        vga_init();
-        vga_load_font((uint8_t *)&default8x16Font);
-        vga_check();
-        video_init(main_boot_params);
-        vga_clear();
-        log_debug("main", "vesa mode %d %dx%dx%d %p", vesaMode->mode,
-                  vesaMode->width, vesaMode->height, vesaMode->bpp,
-                  vesaMode->frame_buffer);
-        printf("Hello world");
     }
 
     process_init();
@@ -194,35 +176,43 @@ __attribute__((noreturn)) void kernel_entry()
         log_crit("MAIN", "main thread died");
         KernelPanic("MAIN", "main thread died");
     }
-end:
     // loop
-    for (;;)
-        ;
+    for (;;);
 }
 
-void main(boot_params *bootParams)
+void kernel_main(boot_params_t *bootParams)
 {
-    if (UART_init(COM1))
-    {
-    }
-    UART_write_fstr(COM1, "UART has started\r\n");
-    ioremap_init();
+    hexdump(bootParams, sizeof(boot_params_t));
 
+    log_debug(NO_MODULE, "from bootparams @ %p", bootParams);
+    log_debug(NO_MODULE, "kernel_address: %p", bootParams->kernel_address);
+    log_debug(NO_MODULE, "BootDevice: %x", bootParams->boot_device);
+    log_debug(NO_MODULE, "currentMode: %x", bootParams->current_mode);
+    log_debug(NO_MODULE, "e820Count: %x", bootParams->memory.count);
+    log_debug(NO_MODULE, "boot_flags: %x", bootParams->bootloader.boot_flags);
+    log_debug(NO_MODULE, "vesaModeCount: %x", bootParams->video.count);
+    log_debug(NO_MODULE, "rsdp_address: %p", bootParams->acpi.rsdp_address);
+
+    ioremap_init();
     kstack_init();
 
-    paging_print_out = false;
     main_boot_params = setup_arch(bootParams);
-    HALInit();
+
+    smp_arch_init(main_boot_params);
+
+    timer_init(main_boot_params);
+
+    // HALInit();
 
     log_debug("MAIN", "init main thread");
     allocator_print_blocks();
     main_thread = thread_create_main();
 
-    log_debug("MAIN", "new rsp = %p", main_thread->stack_base);
-    __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->stack_base));
+    log_debug("MAIN", "new rsp = %p", main_thread->kernel_stack);
+    __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->kernel_stack));
 
     scheduler_init(main_thread);
-    log_debug("MAIN", "main thread stack @ %p", main_thread->stack_base);
+    log_debug("MAIN", "main thread stack @ %p", main_thread->kernel_stack);
     __asm__("jmp kernel_entry");
     __builtin_unreachable();
 }

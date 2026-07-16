@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 03 Mar 2026
+ * Last Modified: 29 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -63,10 +63,10 @@ output_gadget_t function_gadget();
 // internal vsnprintf - used for implementing _all library functions
 int vsnprintf_impl(output_gadget_t *output, const char *format, va_list args);
 
-int vprintf(fd_t file, const char *format, va_list arg);
+int vprintf_int(fd_t file, const char *format, va_list arg);
 
-int vsnprintf(char *s, size_t n, const char *format, va_list arg);
+int vsnprintf_int(char *s, size_t n, const char *format, va_list arg);
 
-int vsprintf(char *s, const char *format, va_list arg);
+int vsprintf_int(char *s, const char *format, va_list arg);
 
 int vfctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, va_list arg);

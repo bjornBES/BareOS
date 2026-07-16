@@ -3,15 +3,14 @@
  * File Created: 09 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 08 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "partition_manager.h"
 #include "debug/debug.h"
-#include "libs/malloc.h"
-#include "libs/memory.h"
+#include "kernel/memory.h"
 
 #define MODULE "PARTITION"
 
@@ -38,7 +37,7 @@ typedef struct
 extern void hexdump(void *ptr, int len);
 size_t partition_read(void *buffer, off_t offset, size_t len, device_t *dev)
 {
-    log_debug(MODULE, "partition_read(%p, %u, %u, %p)", buffer, offset, len, dev);
+    // log_debug(MODULE, "partition_read(%p, %u, %u, %p)", buffer, offset, len, dev);
     partition_info *part_info = (partition_info *)(dev->priv);
     off_t lba = part_info->lba_start + offset;
     if (offset >= part_info->sector_count)
@@ -103,19 +102,19 @@ void partition_scan(device_t *dev)
         device_t *pdev = malloc(sizeof(device_t));
         memset(pdev, 0, sizeof(device_t));
 
-        char *name = malloc(16);
-        int count = snprintf(name, 16, "part%d", i);
+        char *name = malloc(DEVICE_NAME_MAX);
+        int count = snprintf(name, DEVICE_NAME_MAX, "%s_%d", dev->name, i);
         name[count] = '\0';
-        pdev->name = name;
+        pdev->class_name = name;
 
-        pdev->type = DEVICE_DISK;
-        pdev->device_id = (dev->device_id << 8) + i;
+        pdev->type = DEVICE_BLOCK;
+        dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
         pdev->read = partition_read;
         pdev->write = partition_write;
         pdev->priv = pinfo;
 
         // Register partition device
-        device_add(pdev);
+        device_register(pdev);
 
         log_info(MODULE,
                  "Found partition %d on %s: start=0x%X, size=0x%X, type=0x%02X -> %s",

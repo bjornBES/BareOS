@@ -3,7 +3,7 @@
  * File Created: 13 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,7 +11,7 @@
 #include "fd_table.h"
 
 #include "debug/debug.h"
-#include "libs/memory.h"
+#include "kernel/memory.h"
 
 #define MODULE "VFS-FD"
 

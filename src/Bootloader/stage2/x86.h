@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 23 Mar 2026
+ * Last Modified: 30 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -59,9 +59,7 @@ typedef struct
     uint64_t addr;
     uint64_t size;
     uint32_t type;
-    uint32_t ACPI;
-
-} E820MemoryBlock;
+} E820_memory_block;
 
 enum E820MemoryBlockType 
 {
@@ -72,4 +70,4 @@ enum E820MemoryBlockType
     E820_BAD_MEMORY = 5,
 };
 
-int __attribute__((cdecl)) x86_E820GetNextBlock(E820MemoryBlock* block, uint32_t* continuationId);
+int __attribute__((cdecl)) x86_E820GetNextBlock(E820_memory_block* block, uint32_t* continuationId);

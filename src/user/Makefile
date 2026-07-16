@@ -1,3 +1,8 @@
+USER_TARGET_ASMFLAGS +=
+USER_TARGET_CFLAGS +=
+USER_TARGET_LINKFLAGS +=
+USER_TARGET_LIBS +=
+
 .PHONY: all clean always userproc
 
 all: userproc

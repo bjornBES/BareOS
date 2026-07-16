@@ -3,7 +3,7 @@
  * File Created: 01 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 May 2026
+ * Last Modified: 01 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -17,6 +17,6 @@ size_t read(fd_t fd, void *buf, size_t len);
 size_t write(fd_t fd, const void *buf, size_t len);
 pid_t getpid();
 pid_t fork();
-void pledge(uint32_t pledges);
+void pledge(uint32_t pledge_mask);
 int execve(const char *filename, const char *argv[], const char *envp[]);
 void _exit(int status);

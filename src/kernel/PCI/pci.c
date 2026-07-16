@@ -3,7 +3,7 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 Mar 2026
+ * Last Modified: 09 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -14,10 +14,9 @@
 #include "debug/debug.h"
 #include "drivers/serial/UART/UART.h"
 #include "drivers/drive/ahci/ahci.h"
-#include "libs/malloc.h"
 
-#include "libs/IO.h"
-#include "libs/memory.h"
+#include "kernel/io.h"
+#include "kernel/memory.h"
 #include <util/binary.h>
 
 #define MODULE "PCI"
@@ -115,10 +114,10 @@ void pci_disable_interrupts(uint16_t bus, uint16_t slot, uint16_t function)
     pci_config_write_word(bus, slot, function, PCI_COMMAND, command);
 }
 
-void pci_get_bar(pci_device_id *pdev)
+/* void pci_get_bar(pci_device_id *pdev)
 {
     uint32_t bar = pci_config_read_device_dword(pdev, PCI_HEADER_BAR0);
-}
+} */
 
 void pci_init_device(pci_device_id *pdev)
 {
@@ -230,7 +229,7 @@ void pci_check_buses()
     }
 }
 
-void pci_init(PCI_bios_info bios_info)
+void pci_init()
 {
     devs = (pci_device_id **)malloc(PCI_MAX_DEVICES * sizeof(pci_device_id));
     pci_check_buses();

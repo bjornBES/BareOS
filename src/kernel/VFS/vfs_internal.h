@@ -3,18 +3,17 @@
  * File Created: 12 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 11 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
 #include "vfs_config.h"
-#include "kernel.h"
+#include <types.h>
 
 #include "device/device.h"
 
-struct filesystem;
 
 typedef struct vfs_dirent
 {
@@ -23,6 +22,7 @@ typedef struct vfs_dirent
     uint32_t type;             // DT_REG, DT_DIR, DT_LNK, etc.
 } vfs_dirent_t;
 
+struct filesystem;
 struct mountpoint;
 
 typedef struct volume

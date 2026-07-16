@@ -3,7 +3,7 @@
  * File Created: 07 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 07 Mar 2026
+ * Last Modified: 26 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -83,14 +83,14 @@ void allocator_print_blocks()
 /* 	log_debug(MODULE, "=== End of Blocks ==="); */
 }
 
-void kfree(void *mem)
+void impl_free(void *mem)
 {
 	alloc_t *alloc = (mem - sizeof(alloc_t));
 	memory_used -= alloc->size + sizeof(alloc_t);
 	alloc->status = 0;
 }
 
-void *kmalloc(size_t size)
+void *impl_malloc(size_t size)
 {
 	if (!size)
 	{
@@ -160,10 +160,10 @@ void *kmalloc(size_t size)
 	return (char *)((virt_addr)alloc + sizeof(alloc_t));
 }
 
-void *kcalloc(size_t num, size_t size)
+void *impl_calloc(size_t num, size_t size)
 {
 	size_t total_size = num * size;
-	void *ptr = kmalloc(total_size);
+	void *ptr = impl_malloc(total_size);
 	if (ptr)
 	{
 		memset(ptr, 0, total_size);
@@ -171,14 +171,14 @@ void *kcalloc(size_t num, size_t size)
 	}
 	return NULL;
 }
-void *krealloc(void *ptr, size_t size)
+void *impl_realloc(void *ptr, size_t size)
 {
-	void *new_ptr = kmalloc(size);
+	void *new_ptr = impl_malloc(size);
 	if (new_ptr)
 	{
 		alloc_t *old = (alloc_t *)((virt_addr)ptr - sizeof(alloc_t));
 		memcpy(new_ptr, ptr, old->size < size ? old->size : size);
-		kfree(ptr);
+		impl_free(ptr);
 	}
 	return new_ptr;
 }

@@ -3,7 +3,7 @@
  * File Created: 11 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 Mar 2026
+ * Last Modified: 30 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -12,4 +12,4 @@
 
 #include <boot/bootparams.h>
 
-void DetectACPI(boot_params* bp);
+void DetectACPI(boot_params_t* bp);

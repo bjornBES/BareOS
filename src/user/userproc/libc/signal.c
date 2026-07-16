@@ -3,7 +3,7 @@
  * File Created: 01 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -13,7 +13,7 @@
 
 int sigaction(int signum, signal_handler handler)
 {
-    signal_action act = {
+    signal_action_t act = {
         .handler    = handler,
         .flags      = 0,
     };

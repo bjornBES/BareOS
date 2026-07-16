@@ -3,13 +3,12 @@
  * File Created: 04 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 04 Mar 2026
+ * Last Modified: 08 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <types.h>
 
 #define COM1 0x3F8
 #define COM2 0x2F8
@@ -39,7 +38,6 @@ typedef enum
 
 uint8_t UART_read(uint16_t port, UART_port off);
 void UART_write(uint16_t port, UART_port off, uint8_t data);
-bool UART_init(uint16_t port);
-void UART_write_char(uint16_t port, uint8_t data);
+int UART_init(uint16_t port);
 void UART_write_str(uint16_t port, char* data);
 void UART_write_fstr(uint16_t port, const char* format, ...);

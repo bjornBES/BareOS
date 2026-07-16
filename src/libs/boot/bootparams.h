@@ -1,247 +1,43 @@
 /*
  * File: bootparams.h
- * File Created: 20 Jan 2026
+ * File Created: 30 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 03 Mar 2026
+ * Last Modified: 19 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #pragma once
+
 #include <stdint.h>
+#include <stddef.h>
+#include <types.h>
 
-#define MEMORY_AVAILABLE 1
-#define MEMORY_RESERVED 2
-#define MEMORY_ACPI_RECLAIMABLE 3
-#define MEMORY_NVS 4
-#define MEMORY_BADRAM 5
+#include "asm/boot/bootparams.h"
+#include "asm/boot/bp_config.h"
+#include "asm/boot/bp_memory.h"
 
-#define MAX_E820_ENTRIES 32
-#define MAX_VESA_MODES 64
-#define MAX_CMDLINE 128
-#define MAX_BOOTLOADER_NAME 32
-#define MAX_CPU_BRAND_STRING 48
-#define MAX_BOOTPARAMS_SIZE 0x1000
+#include "boot_stage/bp_stage.h"
+#include "video/bp_video.h"
+#include "acpi/bp_acpi.h"
+#include "time/bp_time.h"
+#include "bootloader/bp_bootloader.h"
 
-// ==================== Equipment list flags ====================
-// Source: INT 0x11 — Get Equipment List
-// Return: AX = equipment flags
-// Bit meanings come from AX bitfield
-typedef struct
+typedef struct boot_params
 {
-    uint8_t hasFpu : 1;         // AX bit 1 (math coprocessor present)
-    uint8_t hasCoprocessor : 1; // AX bit 2 (obsolete, often same as FPU)
-    uint8_t floppyFlag : 1;     // AX bit 0 = floppy installed
-    uint8_t numFloppies : 2;    // AX bit 6: number of floppies minus 1 if floppyFlag set
-    uint8_t reserved : 3;       // fill remaining bits
-} __attribute__((packed)) equipment_flags;
+    uint64_t kernel_address;
+    uint8_t boot_device;     // DL at boot
+    uint16_t current_mode;
+    uint32_t page_directory; // bootload paging32 page directory phys address
+    time_t boot_time;
 
-// ==================== E820 memory map ====================
-// Source: INT 0x15, AX=0xE820
-// Inputs:
-//   EAX = 0xE820
-//   EDX = 'SMAP'
-//   EBX = continuation
-// Output (written to buffer pointed by ES:DI):
-//   uint64_t BaseAddr
-//   uint64_t Length
-//   uint32_t Type
-typedef struct
-{
-    uint64_t addr; // BaseAddr (ES:DI + 0)
-    uint64_t size; // Length   (ES:DI + 8)
-    uint32_t type; // Type     (ES:DI + 16)
-} __attribute__((packed)) E820_entry;
+    bp_stage_t stage;
+    bp_memory_t memory;
+    bp_bootloader_t bootloader;
+    bp_video_t video;
+    bp_acpi_t acpi;
 
-// ==================== VESA BIOS info ====================
-// Source: INT 0x10, AX=0x4F00 — Get VBE Controller Info
-// Output: ES:DI points to VbeInfoBlock
-typedef struct
-{
-    uint16_t vbeVersion;   // VbeVersion (offset 0x04)
-    uint32_t capabilities; // Capabilities (offset 0x06)
-    uint16_t totalMemory;  // TotalMemory in 64 KB blocks (offset 0x12)
-    // Mode list copied from far pointer at offset 0x0E (VideoModePtr)
-    uint16_t modeList[MAX_VESA_MODES];
-} __attribute__((packed)) VESA_bios_info;
 
-// ==================== VESA mode info ====================
-// Source: INT 0x10, AX=0x4F01 — Get VBE Mode Info
-// Input: CX = mode number
-// Output: ES:DI -> ModeInfoBlock
-typedef struct
-{
-    // ---- Mode validity & layout ----
-    uint16_t mode_attributes; // ModeAttributes (offset 0x00)
-    uint8_t memory_model;     // MemoryModel (offset 0x1B)
-    uint8_t reserved0;
-
-    // ---- Resolution & format ----
-    uint16_t width;  // XResolution (offset 0x12)
-    uint16_t height; // YResolution (offset 0x14)
-    uint8_t bpp;     // BitsPerPixel (offset 0x19)
-
-    // ---- Linear frame_buffer ----
-    uint64_t frame_buffer; // PhysBasePtr (offset 0x28)
-    uint32_t pitch;        // BytesPerScanLine (offset 0x10)
-
-    // ---- Color layout ----
-    uint8_t red_mask_size;      // RedMaskSize (offset 0x1F)
-    uint8_t red_field_position; // RedFieldPosition (offset 0x20)
-    uint8_t greenMaskSize;      // GreenMaskSize (offset 0x21)
-    uint8_t greenFieldPosition; // GreenFieldPosition (offset 0x22)
-    uint8_t blueMaskSize;       // BlueMaskSize (offset 0x23)
-    uint8_t blueFieldPosition;  // BlueFieldPosition (offset 0x24)
-    uint8_t alphaMaskSize;      // RsvdMaskSize (offset 0x25)
-    uint8_t alphaFieldPosition; // RsvdFieldPosition (offset 0x26)
-
-    uint16_t mode;
-} __attribute__((packed)) VESA_mode;
-
-// ==================== PCI BIOS info ====================
-// Source: INT 0x1A, AX=0xB101 — PCI BIOS Present
-// Output:
-//   AH = major version
-//   AL = minor version
-//   CL = last bus number
-//   EDX = "PCI "
-typedef struct
-{
-    uint8_t majorVersion; // AH
-    uint8_t minorVersion; // AL
-    uint8_t lastBus;      // CL
-    uint8_t numDevices;   // counted manually
-    uint32_t signature;   // EDX = 'PCI '
-} __attribute__((packed)) PCI_bios_info;
-
-// ==================== Boot drive params ====================
-// Source: INT 0x13, AH=0x08 — Get Drive Parameters
-// Input: DL = drive number
-// Output:
-//   CH, CL = cylinders
-//   DH = heads
-//   CL bits 0–5 = sectors per track
-typedef struct
-{
-    uint8_t driveNumber; // DL
-    uint16_t cylinders;  // from CH + CL
-    uint8_t heads;       // DH
-    uint8_t sectors;     // CL & 0x3F
-    uint16_t sectorSize; // from BPB or assumed 512
-} __attribute__((packed)) boot_drive_params;
-
-// ==================== CPU info ====================
-// Source: CPUID instruction
-// Vendor: CPUID EAX=0
-// Features: CPUID EAX=1 (EDX/ECX)
-// Brand string: CPUID EAX=0x80000002–0x80000004
-typedef struct
-{
-    char vendor[13];   // EBX, EDX, ECX (EAX=0)
-    uint32_t features; // EDX (EAX=1)
-    uint8_t family;    // EAX bits 8–11
-    uint8_t model;     // EAX bits 4–7
-    uint8_t stepping;  // EAX bits 0–3
-    char brand[MAX_CPU_BRAND_STRING];
-} __attribute__((packed)) CPU_info;
-
-// ==================== Bootloader info ====================
-// Source: bootloader internal (not BIOS)
-typedef struct
-{
-    char cmdline[MAX_CMDLINE]; // parsed by bootloader
-    char bootloaderName[MAX_BOOTLOADER_NAME];
-    uint32_t bootFlags;
-} __attribute__((packed)) BootLoaderInfo;
-
-// ==================== RTC / time ====================
-// Source: INT 0x1A, AH=0x02 — Read RTC Time
-// Output:
-//   CH = hours
-//   CL = minutes
-//   DH = seconds
-// Source: INT 0x1A, AH=0x04 — Read RTC Date
-// Output:
-//   CH = century
-//   CL = year
-//   DH = month
-//   DL = day
-typedef struct
-{
-    uint8_t hour;
-    uint8_t minute;
-    uint8_t second;
-    uint8_t day;
-    uint8_t month;
-    uint16_t year;
-} __attribute__((packed)) RTC_info;
-
-// ==================== ACPI info ====================
-// Source:
-//   RSDP: BIOS scan 0xE0000–0xFFFFF for "RSD PTR "
-//   LAPIC ID: CPUID EAX=1, EBX[31:24]
-typedef struct
-{
-    uint64_t rsdpAddress;
-    uint32_t lapicId;
-} __attribute__((packed)) ACPI_info;
-
-// ==================== Memory info ====================
-// Source: INT 0x12 — Get Conventional Memory Size
-// Return: AX = KB below 1 MB
-// Upper memory derived from E820
-typedef struct
-{
-    uint32_t memLower; // AX from INT 0x12
-    uint32_t memUpper; // calculated from E820
-} __attribute__((packed)) memory_info;
-
-// ==================== boot_params ====================
-// Aggregate structure passed from bootloader to kernel
-typedef union
-{
-    struct
-    {
-        uint64_t kernel_address;
-        uint8_t BootDevice; // DL at boot
-        uint16_t currentMode;
-        uint32_t pageDirectory; // bootload paging32 page directory phys address
-
-        // INT 0x1A RTC
-        RTC_info rtc;
-
-        equipment_flags equipment; // INT 0x11
-
-        // INT 0x15, E820
-        uint32_t e820Count;
-        E820_entry e820Entries[MAX_E820_ENTRIES];
-
-        // INT 0x10, VESA
-        VESA_bios_info vesaBios;
-        uint32_t vesaModeCount;
-        VESA_mode vesaModes[MAX_VESA_MODES];
-
-        // INT 0x1A, PCI BIOS
-        PCI_bios_info pciBios;
-
-        // INT 0x13
-        boot_drive_params bootDrive;
-
-        // CPUID
-        CPU_info cpu;
-
-        // Bootloader internal
-        BootLoaderInfo bootLoader;
-
-        // ACPI scan + CPUID
-        ACPI_info acpi;
-
-        // INT 0x12 + E820
-        memory_info memory;
-
-        uint8_t smp_trampoline[512];
-    };
-    // uint8_t raw[(((sizeof(struct data)) + (0x1000) - 1) & ~((0x1000) - 1))];
-
-} boot_params;
+    uint8_t cpu_core_trampoline[TRAMPOLINE_SIZE]; // TRAMPOLINE_SIZE = 255
+} __attribute__((packed)) boot_params_t;

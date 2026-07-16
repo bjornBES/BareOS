@@ -3,7 +3,7 @@
  * File Created: 07 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 07 Mar 2026
+ * Last Modified: 26 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -22,7 +22,7 @@ void allocator_init();
 void allocator_print_status();
 void allocator_print_blocks();
 
-void* kmalloc(size_t size);
-void kfree(void* ptr);
-void* kcalloc(size_t num, size_t size);
-void* krealloc(void* ptr, size_t size);
+void* 	impl_malloc(size_t size);
+void 	impl_free(void* ptr);
+void* 	impl_calloc(size_t num, size_t size);
+void* 	impl_realloc(void* ptr, size_t size);

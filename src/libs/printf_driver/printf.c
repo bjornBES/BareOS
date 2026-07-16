@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 05 Mar 2026
+ * Last Modified: 29 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -1367,22 +1367,22 @@ int vsnprintf_impl(output_gadget_t *output, const char *format, va_list args)
     return (int)output->pos;
 }
 
-int vprintf(fd_t file, const char *format, va_list arg)
+int vprintf_int(fd_t file, const char *format, va_list arg)
 {
     output_gadget_t gadget = extern_putchar_gadget();
     gadget.file = file;
     return vsnprintf_impl(&gadget, format, arg);
 }
 
-int vsnprintf(char *s, size_t n, const char *format, va_list arg)
+int vsnprintf_int(char *s, size_t n, const char *format, va_list arg)
 {
     output_gadget_t gadget = buffer_gadget(s, n);
     return vsnprintf_impl(&gadget, format, arg);
 }
 
-int vsprintf(char *s, const char *format, va_list arg)
+int vsprintf_int(char *s, const char *format, va_list arg)
 {
-    return vsnprintf(s, PRINTF_MAX_POSSIBLE_BUFFER_SIZE, format, arg);
+    return vsnprintf_int(s, PRINTF_MAX_POSSIBLE_BUFFER_SIZE, format, arg);
 }
 
 int vfctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, va_list arg)

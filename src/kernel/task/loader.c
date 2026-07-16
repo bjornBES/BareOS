@@ -3,15 +3,14 @@
  * File Created: 16 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 12 May 2026
+ * Last Modified: 30 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "loader.h"
 
-#include "libs/malloc.h"
-#include "libs/memory.h"
+#include "kernel/memory.h"
 
 #include "debug/debug.h"
 

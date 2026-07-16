@@ -7,7 +7,7 @@ export TOOLCHAIN_DIR = $(abspath toolchain)
 export SYSROOT_DIR = $(abspath rootfs/user)
 
 export TARGET = ${arch}-elf
-binPath = $(TOOLCHAIN_DIR)/$(TARGET)/bin
+export binPath = $(TOOLCHAIN_DIR)/$(TARGET)/bin
 export TOOLCHAIN_INCLUDE_DIR = $(TOOLCHAIN_DIR)/$(TARGET)/lib/gcc/$(TARGET)/$(GCC_VERSION)
 export INCLUDE_DIR = $(TOOLCHAIN_INCLUDE_DIR)/include
 
@@ -48,13 +48,11 @@ export SOURCE_ARCH = arch/$(SRCARCH)
 # --- Flags ---
 export SUMBOLS = -DENABLE_MULTI_CORE=$(enable_multi_core) -DUSE_EAGER_FORK=$(use_eager_fork)
 
-export CFLAGS = -Wall -Werror -trigraphs                    \
-    -Wno-error=unused-variable -Wno-error=unused-function   \
-    -Wno-error=unused-label -Wno-error=deprecated           \
-    -Wno-error=trigraphs -Werror=int-to-pointer-cast        \
-    -masm=intel                                             \
-    -DMAX_PATH_SIZE=$(max_path_length)                      \
-    -DPAGING=$(enable_paging)                               \
+export CFLAGS = -Wall -Werror                   \
+    -trigraphs -Wno-error=trigraphs             \
+    -masm=intel                                 \
+    -DMAX_PATH_SIZE=$(max_path_length)          \
+    -DPAGING=$(enable_paging)                   \
     -nostdlib -ffreestanding -MMD -MP $(SUMBOLS)
 # DO NOT SWITCH IT FROM INTEL
 # I WILL FUCKING FIND YOU, AND KILL YOU.
@@ -62,10 +60,11 @@ export CFLAGS = -Wall -Werror -trigraphs                    \
 
 export ASMFLAGS = -D PAGING=$(enable_paging) -D__$(arch)__=1 $(SUMBOLS)
 export LINKFLAGS = -static
-export LIBS = -lgcc $(TARGET_CORE_LIBS)
+export LIBS = -lgcc
 
 ifeq ($(arch),i686)
 ASMFLAGS += -D__x86_64__=0
+LIBS += $(TARGET_CORE_LIBS)
 endif
 ifeq ($(arch),x86_64)
 ASMFLAGS += -D__i686__=0
@@ -88,7 +87,7 @@ export TARGET64_ASMFLAGS  = $(ASMFLAGS) -f elf64 -I.
 export TARGET64_CFLAGS    = $(CFLAGS) -std=c99 -mcmodel=kernel
 export TARGET64_CXXFLAGS  = $(CFLAGS) -std=c++17 -fno-exceptions -fno-rtti
 export TARGET64_LINKFLAGS = $(LINKFLAGS) -nostdlib
-export TARGET64_LIBS      = $(LIBS)
+export TARGET64_LIBS      = $(LIBS) $(TARGET_CORE_LIBS)
 
 export KERNEL_TARGET_ASMFLAGS = $(TARGET32_ASMFLAGS)
 export KERNEL_TARGET_CFLAGS = $(TARGET32_CFLAGS)
@@ -111,22 +110,22 @@ export USER_TARGET_LIBS = $(TARGET32_LIBS)
 
 ifeq ($(arch),x86_64)
     KERNEL_TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
-    KERNEL_TARGET_CFLAGS := $(TARGET64_CFLAGS)
-    KERNEL_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
-    KERNEL_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
-    KERNEL_TARGET_LIBS := $(TARGET64_LIBS)
+	KERNEL_TARGET_CFLAGS := $(TARGET64_CFLAGS)
+	KERNEL_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+	KERNEL_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+	KERNEL_TARGET_LIBS := $(TARGET64_LIBS)
 
     USER_TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
-    USER_TARGET_CFLAGS := $(TARGET64_CFLAGS)
-    USER_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
-    USER_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
-    USER_TARGET_LIBS := $(TARGET64_LIBS)
+	USER_TARGET_CFLAGS := $(TARGET64_CFLAGS)
+	USER_TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+	USER_TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+	USER_TARGET_LIBS := $(TARGET64_LIBS)
 
     TARGET_ASMFLAGS := $(TARGET64_ASMFLAGS)
-    TARGET_CFLAGS := $(TARGET64_CFLAGS)
-    TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
-    TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
-    TARGET_LIBS := $(TARGET64_LIBS)
+	TARGET_CFLAGS := $(TARGET64_CFLAGS)
+	TARGET_CXXFLAGS := $(TARGET64_CXXFLAGS)
+	TARGET_LINKFLAGS := $(TARGET64_LINKFLAGS)
+	TARGET_LIBS := $(TARGET64_LIBS)
 endif
 
 export PAGING_ENABLE = 1

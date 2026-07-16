@@ -3,7 +3,7 @@
  * File Created: 01 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 01 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -47,9 +47,9 @@
 
 typedef void (*signal_handler)(int signal_number);
 
-typedef struct
+typedef struct signal_action
 {
     signal_handler handler;
     void *trampoline;
     uint32_t flags;
-} signal_action;
+} signal_action_t;

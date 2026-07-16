@@ -3,7 +3,7 @@
  * File Created: 20 Jan 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 27 Feb 2026
+ * Last Modified: 09 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -95,7 +95,7 @@ void draw()
         }
     }
 }
-void menuEntry(boot_params *bootParams)
+void menuEntry(boot_params_t *bootParams)
 {
     // mmInit((uint32_t)(uint32_t *)&__end);
     biosregs regs;
@@ -113,12 +113,12 @@ void menuEntry(boot_params *bootParams)
             puts("Hello world"); // y = 4+5
             
             vga_set_cursor(1, 6);
-            printf("Memory sections %u", bootParams->e820Count); // y=6
+            printf("Memory sections %u", bootParams->memory.count); // y=6
             vga_set_cursor(1, 7);
             puts("> See Memory sections"); // y=7+8
             
             vga_set_cursor(1, 9);
-            printf("Memory sections %u\n", bootParams->e820Count);
+            printf("Memory sections %u\n", bootParams->memory.count);
 
         }
         break;
@@ -150,5 +150,4 @@ void menuEntry(boot_params *bootParams)
     for (;;)
     {
     }
-    end:
 }

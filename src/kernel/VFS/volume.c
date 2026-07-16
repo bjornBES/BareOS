@@ -3,7 +3,7 @@
  * File Created: 12 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -13,9 +13,8 @@
 
 #include "debug/debug.h"
 
-#include "libs/string.h"
-#include "libs/memory.h"
-#include "libs/malloc.h"
+#include "kernel/string.h"
+#include "kernel/memory.h"
 
 #include "fs_registry.h"
 #include "path.h"

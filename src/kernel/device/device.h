@@ -3,7 +3,7 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 11 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,31 +11,32 @@
 #pragma once
 
 #include <types.h>
+#include <util/binary.h>
 
-typedef enum __device_type {
-	DEVICE_UNKNOWN = 0,
-	DEVICE_SERIAL = 1,
-	DEVICE_NET = 2,
-    DEVICE_PSEUDO = 3,
-    DEVICE_VIDEO = 4,
-    DEVICE_DISK = 5,
-    DEVICE_CHAR = 6,
-    DEVICE_TTY = 7,
-} device_type;
+#include "device_types.h"
 
-typedef struct device
-{
-    char* name;
-    device_type type;
-    uint32_t device_id;
-    size_t (*read)(void *buffer, off_t offset, size_t count, struct device * device);
-    size_t (*write)(void *buffer, off_t offset, size_t count, struct device * device);
-    void* priv;
-} device_t;
+// flags
+#define DEVICE_FLAG_READABLE BIT(0)
+#define DEVICE_FLAG_WRITABLE BIT(1)
+#define DEVICE_FLAG_RW       BIT(0) | BIT(1)
+#define DEVICE_FLAG_BLOCKDEV BIT(2)
+#define DEVICE_FLAG_VIRTUAL  BIT(3) // pseudo devices
+
 
 void device_init();
 void device_debug();
-uint32_t device_count();
-uint32_t device_add(device_t* dev);
-device_t *device_get(uint32_t id);
-device_t *device_get_by_index(uint32_t index);
+
+// registration
+int device_register(device_t *dev);
+void device_unregister(device_t *dev);
+
+// lookup
+device_t *device_get_by_name(const char *name);
+device_t *device_get_by_id(device_type_t type, dev_t id);
+device_t *device_get_first(device_type_t type);
+device_t *device_get_next(device_t *dev);
+
+// ops wrappers — null checks the function pointer
+size_t device_read(device_t *dev, void *buf, off_t off, size_t count);
+size_t device_write(device_t *dev, void *buf, off_t off, size_t count);
+int device_ioctl(device_t *dev, uint32_t cmd, void *arg);

@@ -3,7 +3,7 @@
  * File Created: 28 Apr 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 11 May 2026 23:34:36
+ * Last Modified: 02 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 {
     pledge(PLEDGE_STDIO | PLEDGE_MALLOC | PLEDGE_PROC | PLEDGE_EXEC);
     write(stdout, "hello from C\n", 13);
-
+    
     fprintf(stddebug, "argv @ %p\n", argv);
     fprintf(stddebug, "argc = %u\n", argc);
     fprintf(stddebug, "got args:\n");
@@ -32,20 +32,23 @@ int main(int argc, char *argv[])
     {
         fprintf(stddebug, "\t[%i] = \"%s\" @ %p\n", i, argv[i], argv[i]);
     }
-
+    
     /*     void *addr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        fprintf(stddebug, "hello %p\n", addr); */
-
+    fprintf(stddebug, "hello %p\n", addr); */
+    
     pid_t curr_proc = getpid();
     fprintf(stddebug, "process is %u\n", curr_proc);
-
+    
     sigaction(SIGABRT, signal_abort);
     kill(curr_proc, SIGABRT);                        // or however you send signals to self
     fprintf(stddebug, "back from signal handler\n"); // if this prints, it worked
-
-    fprintf(stddebug, "hello %d\n", 42);
-
+    
     pid_t child = fork();
+    if (child == 0)
+    {
+        pledge(PLEDGE_STDIO | PLEDGE_MALLOC | PLEDGE_PROC | PLEDGE_EXEC);
+    }
+    fprintf(stddebug, "X got %u back from fork\n", child);
     if (child == 0)
     {
         pid_t child_proc = getpid();

@@ -3,12 +3,14 @@
  * File Created: 26 Feb 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 23 Mar 2026
+ * Last Modified: 19 Jun 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "paging.h"
+#include <boot/bootparams.h>
+#include "memdefs.h"
 #include "stdio.h"
 #include <memory.h>
 #include <string.h>
@@ -32,8 +34,21 @@ cr3_t _cr3 __attribute__((aligned(4096)));
 #define VA_PT_IDX(va) (((va) >> 12) & 0x1FF)
 #define VA_PAGE_OFF(va) ((va) & 0xFFF)
 
+extern void hexdump(void *ptr, int len);
+
 void fill_64bit_table()
 {
+    boot_params_t *bootParams = (boot_params_t *)MEMORY_BOOTPARAMS_ADDR;
+
+    printf("from bootparams @ 0x%x\n", bootParams);
+    printf("kernel_address: %p\n", bootParams->kernel_address);
+    printf("BootDevice: %x\n", bootParams->boot_device);
+    printf("currentMode: %x\n", bootParams->current_mode);
+    printf("e820Count: %x\n", bootParams->memory.count);
+    printf("boot_flags: %x\n", bootParams->bootloader.boot_flags);
+    printf("vesaModeCount: %x\n", bootParams->video.count);
+    printf("rsdp_address: %p\n", bootParams->acpi.rsdp_address);
+
     uint32_t stack;
     uint32_t stack_ebp;
     __asm__ ("mov %0, esp" : "=r" (stack));
@@ -46,9 +61,6 @@ void fill_64bit_table()
     // use to see uint32_t damn
     // - BjornBEs 23-03-2026 00:42
     pt_t *page_table_low64 = (pt_t *)page_table_low;
-    pt_t *page_table_kernel64 = (pt_t *)page_table_kernel;
-    pt_t *page_table_kernel64_high = (pt_t *)page_table_kernel32;
-    pt_t *page_table_kernel64_high2 = (pt_t *)page_table_low32;
     memset(&page_map_level_4_table, 0, 4096);
     memset(&page_directory_pointer_table, 0, 4096);
     memset(&page_directory_pointer_table_kernel, 0, 4096);
@@ -147,7 +159,18 @@ void fill_64bit_table()
     // we meet again.
     // - BjornBEs 23-03-2026 01:23
     __asm__ ("mov %0, esp" : "=r" (stack));
-    paging_end:
+    
+    printf("from bootparams @ 0x%x\n", bootParams);
+    printf("kernel_address: %p\n", bootParams->kernel_address);
+    printf("BootDevice: %x\n", bootParams->boot_device);
+    printf("currentMode: %x\n", bootParams->current_mode);
+    printf("e820Count: %x\n", bootParams->memory.count);
+    printf("boot_flags: %x\n", bootParams->bootloader.boot_flags);
+    printf("vesaModeCount: %x\n", bootParams->video.count);
+    printf("rsdp_address: %p\n", bootParams->acpi.rsdp_address);
+
+    hexdump(bootParams, sizeof(boot_params_t));
+
     printf("return = %x\n", *(uint32_t*)(stack_ebp + 4));
     printf("esp = %x\n", stack);
 #pragma GCC diagnostic pop

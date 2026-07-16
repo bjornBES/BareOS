@@ -3,7 +3,7 @@
  * File Created: 05 Mar 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 10 Jul 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -12,13 +12,12 @@
 #include "debug/debug.h"
 #include "partition_manager/partition_manager.h"
 #include "device/device.h"
-#include "memory/ioremap/ioremap.h"
-#include "memory/paging/paging.h"
-#include "memory/memdefs.h"
+#include "mm/ioremap/ioremap.h"
+#include "mm/mmu/mmu.h"
+#include "mm/memdefs.h"
 
-#include "libs/malloc.h"
-#include "libs/stdio.h"
-#include "libs/memory.h"
+#include "stdio.h"
+#include "kernel/memory.h"
 
 #include <stdbool.h>
 
@@ -377,14 +376,14 @@ bool ahci_write_sectors_command(ahci_port aport, uint32_t startl, uint32_t start
 
 size_t ahci_read(void *buffer, off_t offset, size_t count, device_t *device)
 {
-    log_debug(MODULE, "ahci_read(%p, %u, %u, %p)", buffer, offset, count, device);
+    // log_debug(MODULE, "ahci_read(%p, %u, %u, %p)", buffer, offset, count, device);
     uint64_t sector = (uint64_t)offset;
     sata_private_data *priv = (sata_private_data *)device->priv;
     uint16_t drive = priv->drive;
     ahci_port aport = ports[drive];
     if (aport.abar != 0)
     {
-        uint16_t *u16Buffer = (uint16_t *)paging_get_physical(kernel_page, buffer);
+        uint16_t *u16Buffer = (uint16_t *)mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)buffer);
         uint32_t startl = sector & 0xFFFFFFFF;
         uint32_t starth = (sector >> 32) & 0xFFFFFFFF;
         if (ahci_read_sectors_command(aport, startl, starth, count, u16Buffer))
@@ -407,7 +406,7 @@ size_t ahci_write(void *buffer, off_t offset, size_t count, device_t *device)
     ahci_port aport = ports[drive];
     if (aport.abar != 0)
     {
-        uint16_t *u16Buffer = (uint16_t *)paging_get_physical(kernel_page, buffer);
+        uint16_t *u16Buffer = (uint16_t *)mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)buffer);
         uint32_t startl = sector & 0xFFFFFFFF;
         uint32_t starth = (sector >> 32) & 0xFFFFFFFF;
         if (ahci_read_sectors_command(aport, startl, starth, count, u16Buffer))
@@ -460,17 +459,13 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 priv->drive = ahci_devices_count;
 
                 dev->priv = priv;
-                dev->device_id = 1;
-                dev->type = DEVICE_DISK;
+                dev->type = DEVICE_BLOCK;
                 dev->read = ahci_read;
                 dev->write = ahci_write;
-                device_add(dev);
+                dev->class_name = "sata";
+                dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
+                device_register(dev);
 
-                char *name = (char *)malloc(40);
-                memset(name, 0, 40);
-                int count = sprintf(name, "sata%u", ahci_devices_count);
-                name[count] = '\0';
-                dev->name = name;
 
                 partition_block_device_register(dev);
 
@@ -481,7 +476,7 @@ void ahci_initialize_abar(HBA_MEM *abar)
                 }
 
                 // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
-                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
+                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", info_virt->model, total_sectors / 2048);
                 ahci_devices_count++;
 
                 free(info_virt);
@@ -494,12 +489,12 @@ void ahci_initialize(pci_device_id *pdev)
 {
     ports = (ahci_port *)malloc(sizeof(ahci_port) * MAX_PORTS);
     
-    phys_addr bar5 = (phys_addr)(uint32_64)pdev->header.header0.bar5;
-    virt_addr vbar5 = ioremap(bar5, sizeof(HBA_MEM));
+    paddr_t bar5 = (paddr_t)pdev->header.header0.bar5;
+    vaddr_t vbar5 = ioremap(bar5, sizeof(HBA_MEM));
     // paging_alloc_frame_region(bar5, (size_t)bar5 + sizeof(HBA_MEM));
-    allocator_print_blocks();
-    paging_map_region(kernel_page, vbar5, bar5, sizeof(HBA_MEM), mmio_flags);
-    allocator_print_blocks();
+
+    mmu_map_region(&kernel_page, vbar5, bar5, sizeof(HBA_MEM), mmio_flags);
+
     ahci_initialize_abar((HBA_MEM *)vbar5);
     log_info(MODULE, "exit out");
 }

@@ -3,15 +3,14 @@
  * File Created: 13 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
 
 #include "inode.h"
-#include "libs/malloc.h"
-#include "libs/string.h"
-#include "libs/memory.h"
+#include "kernel/string.h"
+#include "kernel/memory.h"
 #include "debug/debug.h"
 
 #define MODULE "VFS-INODE"

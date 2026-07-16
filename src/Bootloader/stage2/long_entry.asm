@@ -3,7 +3,7 @@
 ; File Created: 23 Mar 2026
 ; Author: BjornBEs
 ; -----
-; Last Modified: 23 Mar 2026
+; Last Modified: 19 Jun 2026
 ; Modified By: BjornBEs
 ; -----
 ;
@@ -70,11 +70,18 @@ long_mode_entry:
     retfq
 global .reload
 .reload:
+    
+    mov al, 'R'
+    out 0xe9, al
+
     mov     ax, 0x10            ; data selector (offset 0x30)
     mov     ds, ax
     mov     es, ax
     mov     fs, ax
     mov     gs, ax
+
+    mov al, 'J'
+    out 0xe9, al
     
     lea     rdi, [0x600]     ; bootparams
     mov     rax, [kernel_entry]

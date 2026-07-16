@@ -1,15 +1,25 @@
+/*
+ * File: vesa.h
+ * File Created: 06 Apr 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 30 May 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
 #pragma once
 
 #include "stdint.h"
 #include <boot/bootparams.h>
 
 typedef struct {
-   char     VbeSignature[4];         // == "VESA"
-   uint16_t VbeVersion;              // == 0x0300 for VBE 3.0
-   uint16_t OemStringPtr[2];         // isa vbeFarPtr
-   uint32_t  Capabilities;
-   uint16_t VideoModePtr[2];         // isa vbeFarPtr
-   uint16_t TotalMemory;             // as # of 64KB blocks
+   char     vbe_signature[4];         // == "VESA"
+   uint16_t vbe_version;              // == 0x0300 for VBE 3.0
+   uint16_t oem_string_ptr[2];         // isa vbeFarPtr
+   uint32_t  capabilities;
+   uint16_t video_mode_ptr[2];         // isa vbeFarPtr
+   uint16_t total_memory;             // as # of 64KB blocks
    uint8_t  Reserved[492];
 } __attribute__((packed)) VbeInfoBlock;
 
@@ -51,5 +61,5 @@ typedef struct {
 	uint8_t reserved1[206];
 } __attribute__((packed)) vesa_mode_info_t;
 
-void DetectVESA(boot_params* bp);
+void DetectVESA(boot_params_t* bp);
 void SetVESAMode(int mode);

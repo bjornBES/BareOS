@@ -3,7 +3,7 @@
  * File Created: 13 May 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 13 May 2026
+ * Last Modified: 31 May 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,9 +11,8 @@
 #include "dentry.h"
 #include "vfs_config.h"
 #include "debug/debug.h"
-#include "libs/malloc.h"
-#include "libs/memory.h"
-#include "libs/string.h"
+#include "kernel/memory.h"
+#include "kernel/string.h"
 
 #define MODULE "VFS-DENTRY"
 
