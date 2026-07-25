@@ -58,16 +58,16 @@ static inline cluster lba_to_cluster(lba lba, fat_priv_data *sb)
     return ((lba - sb->data_start_lba) / sb->sectors_per_cluster) + 2;
 }
 
-size_t fat_read_sectors(void *buffer, lba sector, lba sector_count, device_t *dev, fat_priv_data *sb)
+ssize_t fat_read_sectors(void *buffer, lba sector, lba sector_count, device_t *dev, fat_priv_data *sb)
 {
     // log_debug(MODULE, "fat_read_sectors(%p, %u, %u, %p, %p)", buffer, sector, sector_count, dev, sb);
     return dev->read(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
 }
-size_t fat_read_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
+ssize_t fat_read_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
 {
-    // log_debug(MODULE, "fat_read_clusters(%p, %u, %u, %p, %p)", buffer, cluster_start, clusters_count, dev, sb);
+    ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, cluster_start, clusters_count, dev, sb);
     lba lba = cluster_to_lba(cluster_start, sb);
-    size_t len = fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb);
+    ssize_t len = fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb);
     return len;
 }
 
@@ -151,13 +151,13 @@ cluster fat_next_cluster(cluster current_cluster, device_t *dev, fat_priv_data *
     return next_cluster;
 }
 
-size_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, device_t *dev, mountpoint_t *mnt)
+ssize_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, device_t *dev, mountpoint_t *mnt)
 {
-    log_debug(MODULE, "fat_read_file(%p, %p, %u, %u, %p, %p)", node, buffer, offset, size, dev, mnt);
+    ENTER_FUNC(MODULE, "%p, %p, %u, %u, %p, %p", node, buffer, offset, size, dev, mnt);
     volume_t *vol = mnt->volume;
     fat_priv_data *sb = (fat_priv_data *)vol->sb;
     
-    if (!buffer)
+    if (!buffer && offset != 0 && size != 0)
     {
         return 0;
     }
@@ -176,7 +176,12 @@ size_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, 
         }
     }
 
-    uint32_t bytes_read = 0;
+    if (!buffer)
+    {
+        return 0;
+    }
+
+    ssize_t bytes_read = 0;
     uint32_t intra = offset % sb->bytes_per_cluster;
     // log_debug(MODULE, "cluster_start = %u", cluster_start);
     while (size > 0 && cluster_start < FAT_CACHE_INVALID)

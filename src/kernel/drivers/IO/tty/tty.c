@@ -27,8 +27,8 @@
 
 int tty_count = 0;
 
-size_t tty_read_dev(void *buf, off_t offset, size_t count, device_t *dev);
-size_t tty_write_dev(void *buf, off_t offset, size_t count, device_t *dev);
+ssize_t tty_read_dev(void *buf, off_t offset, size_t count, device_t *dev);
+ssize_t tty_write_dev(void *buf, off_t offset, size_t count, device_t *dev);
 int tty_ioctl_dev(uint32_t cmd, void *arg, device_t *dev);
 void tty_destroy_dev(device_t *dev);
 
@@ -278,20 +278,13 @@ ssize_t tty_write(tty_struct_t *tty, const uint8_t *buf, size_t n)
     return n;
 }
 
-// called from your ioctl() syscall handler
-int tty_ioctl(tty_struct_t *tty, uint32_t cmd, void *arg)
-{
-
-    return RETURN_FAILED;
-}
-
-size_t tty_read_dev(void *buf, off_t offset, size_t count, device_t *dev)
+ssize_t tty_read_dev(void *buf, off_t offset, size_t count, device_t *dev)
 {
     tty_struct_t *tty = dev->priv;
     return tty_read(tty, buf, count);
 }
 
-size_t tty_write_dev(void *buf, off_t offset, size_t count, device_t *dev)
+ssize_t tty_write_dev(void *buf, off_t offset, size_t count, device_t *dev)
 {
     tty_struct_t *tty = dev->priv;
     return tty_write(tty, buf, count);

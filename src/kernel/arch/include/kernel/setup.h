@@ -13,3 +13,4 @@
 #include <boot/bootparams.h>
 
 boot_params_t *setup_arch(boot_params_t *bootParams);
+void setup_arch_post();

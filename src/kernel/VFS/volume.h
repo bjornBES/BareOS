@@ -14,6 +14,8 @@
 // probe fs drivers, alloc + insert volume
 volume_t *volume_register(const char *volume_id, device_t *dev);
 
+volume_t *volume_create_synthetic(const char *volume_id, const char *fs_name, device_t *dev);
+
 // remove from registry, free
 void volume_unregister(const char *volume_id);
 

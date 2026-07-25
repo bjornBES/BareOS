@@ -14,5 +14,7 @@
 
 #define PROCESS_MAX_SECTIONS    8
 
+#define PROCESS_MAX_FDS         8
+
 #define MAX_PROCESSES           64
 #define MAX_ARGS                64

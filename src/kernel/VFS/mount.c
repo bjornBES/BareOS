@@ -77,42 +77,48 @@ mountpoint_t *mount_create(volume_t *vol, const char *path, uint32_t flags)
         return NULL;
     }
 
-    // allocate root inode — driver fills it in via alloc_inode
-    inode_t *root_ino = inode_alloc(vol);
-    if (root_ino == NULL)
+    inode_t *root_ino;
+    dentry_t *root_dentry;
+    log_debug(MODULE, "vol->flags = 0x%x, vol->device = %p", vol->flags, vol->device);
+    if (vol->device != NULL)
     {
-        vol->fs->umount(vol->device, mnt);
-        free(mnt);
-        return NULL;
-    }
+        // allocate root inode — driver fills it in via alloc_inode
+        root_ino = inode_alloc(vol);
+        if (root_ino == NULL)
+        {
+            vol->fs->umount(vol->device, mnt);
+            free(mnt);
+            return NULL;
+        }
 
-    if (vol->fs->lookup == NULL)
-    {
-        log_err(MODULE, "%s lookup function is NULL", vol->fs->name);
-    }
-    // ask driver to fill root inode (ino=0 or ino=2 for ext2 etc.)
-    if (vol->fs->lookup(NULL, "/", root_ino, vol->device, mnt) != RETURN_GOOD)
-    {
-        log_err(MODULE, "driver failed to provide root inode");
-        inode_free(root_ino);
-        vol->fs->umount(vol->device, mnt);
-        free(mnt);
-        return NULL;
-    }
+        if (vol->fs->lookup == NULL)
+        {
+            log_err(MODULE, "%s lookup function is NULL", vol->fs->name);
+        }
+        // ask driver to fill root inode (ino=0 or ino=2 for ext2 etc.)
+        if (vol->fs->lookup(NULL, "/", root_ino, vol->device, mnt) != RETURN_GOOD)
+        {
+            log_err(MODULE, "driver failed to provide root inode");
+            inode_free(root_ino);
+            vol->fs->umount(vol->device, mnt);
+            free(mnt);
+            return NULL;
+        }
 
-    // allocate root dentry
-    dentry_t *root_dentry = dentry_alloc("/", root_ino, NULL);
-    if (root_dentry == NULL)
-    {
-        inode_free(root_ino);
-        vol->fs->umount(vol->device, mnt);
-        free(mnt);
-        return NULL;
-    }
+        // allocate root dentry
+        root_dentry = dentry_alloc("/", root_ino, NULL);
+        if (root_dentry == NULL)
+        {
+            inode_free(root_ino);
+            vol->fs->umount(vol->device, mnt);
+            free(mnt);
+            return NULL;
+        }
 
-    root_dentry->flags |= DENTRY_FLAG_ROOT;
-    mnt->root_dentry = root_dentry;
-    mnt->dentry = root_dentry;
+        root_dentry->flags |= DENTRY_FLAG_ROOT;
+        mnt->root_dentry = root_dentry;
+        mnt->dentry = root_dentry;
+    }
 
     // back pointer on volume
     vol->mountpoint = mnt;
@@ -124,8 +130,11 @@ mountpoint_t *mount_create(volume_t *vol, const char *path, uint32_t flags)
     mount_table[mount_count++] = mnt;
     spinlock_release(&mount_lock);
 
-    icache_insert(root_ino);
-    dcache_insert(root_dentry);
+    if (vol->device != NULL)
+    {
+        icache_insert(root_ino);
+        dcache_insert(root_dentry);
+    }
 
     log_info(MODULE, "mounted '%s' at '%s'", vol->volume_id, path);
     return mnt;
@@ -135,7 +144,9 @@ mountpoint_t *mount_create(volume_t *vol, const char *path, uint32_t flags)
 void mount_destroy(mountpoint_t *mnt)
 {
     if (mnt == NULL)
+    {
         return;
+    }
 
     // call driver umount — frees vol->sb
     mnt->volume->fs->umount(mnt->volume->device, mnt);
@@ -160,9 +171,13 @@ void mount_destroy(mountpoint_t *mnt)
         if (curr == mnt)
         {
             if (prev == NULL)
+            {
                 mount_list = mnt->next;
+            }
             else
+            {
                 prev->next = mnt->next;
+            }
             break;
         }
         prev = curr;
@@ -189,7 +204,9 @@ mountpoint_t *mount_find(const char *path)
 {
     log_debug(MODULE, "mount_find(%s(%p))", path, path);
     if (path == NULL)
+    {
         return NULL;
+    }
 
     spinlock_acquire(&mount_lock);
 
@@ -217,7 +234,9 @@ mountpoint_t *mount_find_for_volume(volume_t *vol)
 {
     log_debug(MODULE, "mount_find_for_volume(%p)");
     if (vol == NULL)
+    {
         return NULL;
+    }
 
     // fastest path — use the back pointer
     return vol->mountpoint;
@@ -227,7 +246,9 @@ mountpoint_t *mount_find_for_volume(volume_t *vol)
 dentry_t *mount_get_root(mountpoint_t *mnt)
 {
     if (mnt == NULL)
+    {
         return NULL;
+    }
     return mnt->root_dentry;
 }
 
@@ -235,9 +256,13 @@ dentry_t *mount_get_root(mountpoint_t *mnt)
 mountpoint_t *mount_cross(dentry_t *dentry)
 {
     if (dentry == NULL)
+    {
         return NULL;
+    }
     if (!(dentry->flags & DENTRY_FLAG_MOUNTED))
+    {
         return NULL;
+    }
     return dentry->mountpoint;
 }
 

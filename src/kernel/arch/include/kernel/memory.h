@@ -15,13 +15,15 @@
 
 #include "kernel/asm/memory.h"
 
-static inline void copy_to_user(void *dst, void *src, size_t size)
+static inline int copy_to_user(void *dst, void *src, size_t size)
 {
     memcpy(dst, src, size);
+    return RETURN_GOOD;
 }
-static inline void copy_from_user(void *dst, void *src, size_t size)
+static inline int copy_from_user(void *dst, void *src, size_t size)
 {
     memcpy(dst, src, size);
+    return RETURN_GOOD;
 }
 
 void *kmalloc_phys(size_t size, void **virt_out);

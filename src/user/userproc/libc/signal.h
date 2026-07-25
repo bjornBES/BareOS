@@ -10,7 +10,21 @@
 
 #pragma once
 
-#include <signals.h>
+#include <siginfo.h>
+
+typedef void (*signal_handler)(int signal_number);
+typedef void (*signal_restore)();
+typedef struct sigaction
+{
+    union
+    {
+        signal_handler sa_handler;
+        void (*sa_sigaction)(int, siginfo_t *, void *);
+    } handler;
+    sigset_t sa_mask;
+    uint64_t sa_flags;
+    signal_restore sa_restorer;
+} sigaction_t;
 
 int sigaction(int signum, signal_handler handler);
 int sigreturn();

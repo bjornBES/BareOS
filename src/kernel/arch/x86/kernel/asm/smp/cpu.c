@@ -17,8 +17,11 @@
 
 #include "mm/kstack/kstack_allocator.h"
 
+#define MODULE "X86-CPU"
+
 cpu_t cpus[MAX_CPUS] = {0};
 cpu_t *bsp_cpu = NULL;
+
 
 // called once per CPU during init
 void cpu_set_gs(cpu_t *cpu)

@@ -170,11 +170,13 @@ void vga_set_mode(framebuffer_t *mode)
 
 void vga_write_char(device_t *dev, char c)
 {
+    ENTER_FUNC(MODULE, "%p, %c", dev, c);
     vga_put_char(c);
 }
 
-size_t vga_write(void *buf, off_t offset, size_t count, device_t *dev)
+ssize_t vga_write(void *buf, off_t offset, size_t count, device_t *dev)
 {
+    ENTER_FUNC(MODULE, "%p, 0x%lx, 0x%lx, %p", buf, offset, count, dev);
     uint32_t offset_x = 0;
     uint32_t offset_y = 0;
     fb_unpack_index(&fb, offset, &offset_x, &offset_y);
@@ -205,6 +207,7 @@ int vga_ioctl(uint32_t cmd, void *arg, device_t *dev)
 
 void vga_get_ops_dev(device_t *dev, tty_dev_ops_t *out)
 {
+    ENTER_FUNC(MODULE, "%p, %p", dev, out);
     out->write_char = vga_write_char;
 }
 

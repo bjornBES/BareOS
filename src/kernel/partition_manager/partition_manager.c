@@ -34,8 +34,10 @@ typedef struct
     uint8_t type;       // partition type
     uint8_t index;      // partition index (1..4)
 } partition_info;
+
 extern void hexdump(void *ptr, int len);
-size_t partition_read(void *buffer, off_t offset, size_t len, device_t *dev)
+
+ssize_t partition_read(void *buffer, off_t offset, size_t len, device_t *dev)
 {
     // log_debug(MODULE, "partition_read(%p, %u, %u, %p)", buffer, offset, len, dev);
     partition_info *part_info = (partition_info *)(dev->priv);
@@ -46,11 +48,11 @@ size_t partition_read(void *buffer, off_t offset, size_t len, device_t *dev)
         return 0; // out of bounds
     }
     device_t *parent = part_info->parent;
-    size_t bytes = parent->read(buffer, lba, len, parent);
+    ssize_t bytes = parent->read(buffer, lba, len, parent);
     return bytes;
 }
 
-size_t partition_write(void *buffer, off_t offset, size_t len, device_t *dev)
+ssize_t partition_write(void *buffer, off_t offset, size_t len, device_t *dev)
 {
     partition_info *part_info = (partition_info *)(dev->priv);
     uint64_t lba = part_info->lba_start + offset;
@@ -102,19 +104,16 @@ void partition_scan(device_t *dev)
         device_t *pdev = malloc(sizeof(device_t));
         memset(pdev, 0, sizeof(device_t));
 
-        char *name = malloc(DEVICE_NAME_MAX);
-        int count = snprintf(name, DEVICE_NAME_MAX, "%s_%d", dev->name, i);
-        name[count] = '\0';
-        pdev->class_name = name;
+        pdev->class_name = dev->name;
 
         pdev->type = DEVICE_BLOCK;
-        dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
+        pdev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
         pdev->read = partition_read;
         pdev->write = partition_write;
         pdev->priv = pinfo;
 
         // Register partition device
-        device_register(pdev);
+        device_register_under_dev_id(pdev, dev->device_id);
 
         log_info(MODULE,
                  "Found partition %d on %s: start=0x%X, size=0x%X, type=0x%02X -> %s",

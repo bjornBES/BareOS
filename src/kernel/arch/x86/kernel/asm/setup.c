@@ -13,6 +13,7 @@
 #include "kernel/asm/acpi/hpet/hpet.h"
 #include "kernel/asm/timer/pit.h"
 #include "kernel/asm/MSR/MSR.h"
+#include "kernel/debug.h"
 #include "kernel/irq.h"
 #include "kernel/ivt.h"
 #include "kernel/syscall.h"
@@ -107,6 +108,13 @@ int page_fault(intr_frame_t *regs)
     return RETURN_FAILED;
 }
 
+void setup_arch_post()
+{
+    e9_init();
+
+    I8042_init();
+}
+
 boot_params_t *setup_arch(boot_params_t *bootParams)
 {
     x86_GDT_initialize();
@@ -153,12 +161,10 @@ boot_params_t *setup_arch(boot_params_t *bootParams)
     irq_arch_initialize();
     log_debug(MODULE, "IRQ init");
 
-    pit_init();
-
-    hpet_init();
     fadt_init();
 
-    I8042_init();
+    hpet_init();
+    pit_init();
 
     log_debug(MODULE, "here");
 

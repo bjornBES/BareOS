@@ -34,7 +34,9 @@ typedef enum
 #endif
 
 void logfl(const char *module, DebugLevel level, const char *fmt, ...);
+void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void logf(const char *module, DebugLevel level, const char *fmt, ...);
+void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void strlogf(DebugLevel level, const char *str);
 
 #if DEBUG

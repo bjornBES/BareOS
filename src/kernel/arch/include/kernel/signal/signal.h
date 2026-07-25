@@ -18,10 +18,14 @@
 #include "kernel/syscall.h"
 #include "kernel/ctx.h"
 
+#define UC_FP_XSTATE	0x1
+#define UC_SIGCONTEXT_SS	0x2
+#define UC_STRICT_RESTORE_SS	0x4
+
 typedef struct signal_arch_frame signal_arch_frame_t;
 
 // full setup — does everything needed to redirect execution to handler:
-void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, signal_info *info, signal_action_t *sa);
+void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, sigaction_t *sa);
 
 // restores frame saved by signal_arch_setup_frame
 // called by signal_return() after sys_sigreturn comes in

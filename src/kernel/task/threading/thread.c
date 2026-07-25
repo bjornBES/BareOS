@@ -99,7 +99,7 @@ thread_t *thread_create_from(thread_t *parent, intr_frame_t *current_frame, uint
     child->timeslice = 20;
 
     // signal state — copy mask, but pending signals start empty
-    child->signal_mask = parent->signal_mask;
+    child->blocked_signals = parent->blocked_signals;
     // child->pending_signals = 0;
     // memcpy(child->sigactions, parent->sigactions, sizeof(child->sigactions));
 

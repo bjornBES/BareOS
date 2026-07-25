@@ -342,6 +342,15 @@ page_table_entry64 *paging64_get_entry(page_table_t *page_table, vaddr_t virtAdd
 // If alloc=1, missing intermediate tables are allocated and zeroed.
 void *paging64_get_table(page_table_t *page_table, vaddr_t virtAddr, paging_level target_level, int alloc, bool user)
 {
+    if (paging_print_out)
+    {
+        ENTER_FUNC(MODULE, "%p, %p, %i, %s, %s", page_table, virtAddr, target_level, alloc BOOL_TO_STRING, user BOOL_TO_STRING);
+    }
+    char *table_name[4] = {
+        "PML4",
+        "PDPT",
+        "PD",
+        "PT"};
     uint64_t idx[4] = {
         GET_PML4_IDX((uint64_t)virtAddr),
         GET_PDPT_IDX((uint64_t)virtAddr),
@@ -353,7 +362,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virtAddr, paging_leve
     page_table_entry64 *table = pml4->e;
     if (paging_print_out)
     {
-        log_debug(MODULE, "table at %p", table);
+        log_info(MODULE, "trying to find pml4[%u]->pdpt[%u]->pd[%u]->pt[%u]", idx[0], idx[1], idx[2], idx[3]);
     }
 
     for (int level = 4; level >= (int)target_level; level--)
@@ -362,19 +371,19 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virtAddr, paging_leve
         {
             if (paging_print_out)
             {
-                log_debug(MODULE, "result level %u at %p", target_level, table);
+                log_info(MODULE, "found %s @ %p", table_name[4 - level], table);
             }
             return (void *)table;
             // cast to page_map_level_4/page_directory64/etc. at call site
         }
         if (paging_print_out)
         {
-            log_debug(MODULE, "table[%u] at %p", idx[4 - level], &table[idx[4 - level]]);
+            log_debug(MODULE, "%s[%u] at %p", table_name[4 - level], idx[4 - level], &table[idx[4 - level]]);
         }
         page_table_entry64 *entry = &table[idx[4 - level]];
         if (paging_print_out)
         {
-            log_debug(MODULE, "at level %u(%u): entry raw = 0x%016llx entry@v%p", level, idx[4 - level], entry->raw, entry);
+            log_debug(MODULE, "at level %u(%u): %s raw = 0x%016llx entry@v%p", level, idx[4 - level], table_name[4 - level], entry->raw, entry);
             log_debug(MODULE, "addr = phys%p, flags = 0x%x", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK);
         }
 
@@ -387,7 +396,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virtAddr, paging_leve
 
             if (paging_print_out)
             {
-                log_debug(MODULE, "allocating new at level %u at index %u", level, idx[4 - level]);
+                log_debug(MODULE, "allocating new at level %u for level %u at index %u", level, level - 1, idx[4 - level]);
             }
 
             paddr_t new_phys = pmm_alloc_frame();
@@ -680,8 +689,8 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     int pd_idx = GET_PD_IDX(virt);
     int pt_idx = GET_PT_IDX(virt);
 
-    uint64_t resolved_flags = mm_flags_to_pte(flags) & 0x0FF;
     uint64_t leaf_resolved_flags = mm_flags_to_pte(flags);
+    uint64_t resolved_flags = leaf_resolved_flags & 0x0FF;
 
     if (paging_print_out)
     {
@@ -707,18 +716,20 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
         log_err(MODULE, "%s[%u] %p is null", #table, table##_idx, entry);                                                                           \
         return RETURN_ERROR;                                                                                                                        \
     }                                                                                                                                               \
-    log_debug(MODULE, "%s @ %p = 0x%lx { addr = %p, flags = 0x%llx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
+    log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
     if (paging_print_out)                                                                                                                           \
     {                                                                                                                                               \
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK);                                           \
     }
 
-#define PRINT_INT(table, entry)                        \
-    PRINT(table, entry)                                \
-    {                                                  \
-        uint64_t addr = entry->addr;                   \
-        entry->raw = resolved_flags & PAGE_FLAGS_MASK; \
-        entry->addr = addr;                            \
+#define PRINT_INT(table, entry)                                                                                                                         \
+    PRINT(table, entry)                                                                                                                                 \
+    {                                                                                                                                                   \
+        uint64_t addr = entry->addr;                                                                                                                    \
+        uint64_t raw = (resolved_flags & PAGE_FLAGS_MASK);                                                                                              \
+        /* log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */ \
+        log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", addr << 12, raw);                                                                             \
+        entry->raw = raw;                                                                                                                               \
+        entry->addr = addr;                                                                                                                             \
     }
 
 #define PRINT_HP(table, entry)                                                                  \

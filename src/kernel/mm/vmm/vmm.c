@@ -22,6 +22,7 @@
 // find the VMA containing addr — the #PF handler's first call
 vma_t *vma_find(vma_memory_t *mm, vaddr_t addr)
 {
+    ENTER_FUNC(MODULE, "%p, %p", mm, addr);
     vma_t *vma = mm->mmap;
     while (vma)
     {
@@ -388,6 +389,12 @@ vma_memory_t *vma_clone(process_t *parent, process_t *proc)
 vaddr_t vma_find_free(vma_memory_t *mm, vaddr_t hint, size_t len, vaddr_t search_start, vaddr_t search_end)
 {
     len = ALIGN_UP(len, PAGE_SIZE);
+
+    if (hint == 0)
+    {
+        hint = search_start;
+    }
+    
 
     vaddr_t candidate = hint ? PAGE_ALIGN_DOWN(hint) : search_start;
     if (candidate < search_start)

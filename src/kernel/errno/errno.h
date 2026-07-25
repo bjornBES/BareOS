@@ -14,4 +14,10 @@
 #include "debug/debug.h"
 
 #define PRINT_ERROR(number) log_err(MODULE, "func %s outputting %u", __FUNCTION__, number)
-#define SET_ERROR(number) PRINT_ERROR(number)
+#define SET_ERROR(number)   PRINT_ERROR(number)
+#define ERRNO_RETURN(number, message, ...)                               \
+    {                                                                    \
+        log_err(MODULE, "func %s outputting %s", __FUNCTION__, #number); \
+        logfl(MODULE, LVL_INFO, message, __VA_ARGS__);                   \
+        return -number;                                                  \
+    }

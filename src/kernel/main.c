@@ -30,8 +30,10 @@
 #include "mm/memdefs.h"
 #include "PCI/pci.h"
 #include "VFS/vfs.h"
+#include "VFS/vfs_flags.h"
 #include "device/device.h"
 #include "fs/FAT/FAT.h"
+#include "fs/devfs/devfs.h"
 #include "task/loader.h"
 #include "ELF/elf.h"
 #include "syscall/syscall.h"
@@ -86,49 +88,66 @@ thread_t *main_thread;
 __attribute__((noreturn)) void kernel_entry()
 {
     device_init();
+    devfs_init();
+    vfs_init();
 
+    setup_arch_post();
+
+    
     tty_struct_t *stdin = NULL;
     tty_struct_t *stdout = NULL;
     {
         video_init(main_boot_params);
         device_t *vga_dev = device_get_by_id(DEVICE_VIDEO, 1);
-
-        vfs_init();
-
+        
+        
         stdin = tty_create(device_get_by_name("kbd0"), NULL);
         termios_t stdin_term;
         stdin_term.c_lflag &= ~(ISIG | ECHO | ICRNL);
         stdin_term.c_lflag |= ICANON;
         tty_termios_set(stdin, &stdin_term);
-
+        
         stdout = tty_create(NULL, vga_dev);
         /* tty_struct_t *stderr = */ tty_create(NULL, vga_dev);
-
+        
         device_ioctl(vga_dev, VIDEO_IOCTL_CLEAR, NULL);
+        device_debug();
         tty_write(stdout, (const uint8_t *)"VGA is done\n", 12);
     }
 
+    
     UART_init(COM1);
     termios_t uart_term = {0};
-    tty_struct_t *uart = tty_create(NULL, device_get_by_name("uart0"));
+    tty_struct_t *stddebug = tty_create(NULL, device_get_by_name("debug0"));
     tty_baudrate_encode_baud_rate(&uart_term, 0, 38400);
     uart_term.c_cflag |= CS8;
     uart_term.c_oflag |= ONLCR;
-    tty_termios_set(uart, &uart_term);
-    tty_write(uart, (const uint8_t *)"UART is done\n", 13);
+    tty_termios_set(stddebug, &uart_term);
+    tty_write(stddebug, (const uint8_t *)"UART is done\n", 13);
+
+    vfs_init_done();
 
     log_info("MAIN", "main_boot_params @ %p", main_boot_params);
     log_debug("MAIN", "Hello world from Kernel");
-    // for (;;);
 
+    // var test : void = 0  invalid syntax
+    // var test : void ptr = @cast(0, void ptr) // is 0
+    // (*(void*)0xFFFFFFFFFFFFFFFF) = 0
+    // ((*(void*)0xFFFFFFFFFFFFFFFF) - (*(void*)0xFFFFFFFFFFFFFFFF)) = 0
+    /* 
+    _ = f(a,b)
+    {
+    void sinkN = *(void*)f(a,b)
+    f(a,b)
+    <expr> = ; <=> <expr> = 0;
+    }
+    */
     thread_t *t = thread_create(test);
     scheduler_add(t);
 
     main_thread->timeslice = 10;
 
     allocator_print_status();
-
-    // fadt_shutdown();
 
     pci_init();
     pci_init_devices();
@@ -140,11 +159,11 @@ __attribute__((noreturn)) void kernel_entry()
         log_info("MAIN", "mounting drives");
         device_t *ahci;
         log_info("MAIN", "Getting drive 0x101");
-        ahci = device_get_by_name("sata1_13"); // device 1 partition 1
+        ahci = device_get_by_dev_id(MKDEV(DEVICE_BLOCK, 1, 2)); // device 1 partition 1
         log_info("MAIN", "Mounting drive %p", ahci);
         vfs_mount("/user:/", ahci, 0);
         log_info("MAIN", "Getting drive 0x100");
-        ahci = device_get_by_name("sata1_02"); // device 1 partition 0
+        ahci = device_get_by_dev_id(MKDEV(DEVICE_BLOCK, 1, 1)); // device 1 partition 0
         log_info("MAIN", "Mounting drive 0x100");
         vfs_mount("/boot:/boot", ahci, 0);
 

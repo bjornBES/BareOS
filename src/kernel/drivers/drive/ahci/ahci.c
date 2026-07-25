@@ -374,7 +374,7 @@ bool ahci_write_sectors_command(ahci_port aport, uint32_t startl, uint32_t start
     return true;
 }
 
-size_t ahci_read(void *buffer, off_t offset, size_t count, device_t *device)
+ssize_t ahci_read(void *buffer, off_t offset, size_t count, device_t *device)
 {
     // log_debug(MODULE, "ahci_read(%p, %u, %u, %p)", buffer, offset, count, device);
     uint64_t sector = (uint64_t)offset;
@@ -398,7 +398,7 @@ size_t ahci_read(void *buffer, off_t offset, size_t count, device_t *device)
     return -1;
 }
 
-size_t ahci_write(void *buffer, off_t offset, size_t count, device_t *device)
+ssize_t ahci_write(void *buffer, off_t offset, size_t count, device_t *device)
 {
     uint64_t sector = (uint64_t)offset;
     sata_private_data *priv = (sata_private_data *)device->priv;

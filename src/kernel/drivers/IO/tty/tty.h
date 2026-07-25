@@ -44,9 +44,10 @@ void tty_baudrate_encode_baud_rate(termios_t *termios, speed_t ibaud, speed_t ob
 
 // tty_ioctl.c
 
-int tty_ioctl_mode(tty_struct_t *tty, uint32_t cmd, void *arg);
 
 // tty_io.c
+
+int tty_ioctl(tty_struct_t *tty, uint32_t cmd, void *arg);
 
 void tty_io_drain_output(tty_struct_t *tty);
 

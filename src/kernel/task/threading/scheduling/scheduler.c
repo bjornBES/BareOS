@@ -348,8 +348,10 @@ static thread_t *scheduler_next()
 
 thread_t *scheduler_get_current()
 {
+    // ENTER_FUNC(MODULE, "", "");
     cpu_t *cpu = cpu_arch_get_current();
-    // log_debug(MODULE, "cpu @ %p, cpu->current @ %p", cpu, cpu->current);
+    // log_debug(MODULE, "cpu @ %p", cpu);
+    // log_debug(MODULE, "cpu->current @ %p", cpu->current);
     return cpu->current;
 }
 

@@ -13,7 +13,7 @@
 
 int sigaction(int signum, signal_handler handler)
 {
-    signal_action_t act = {
+    sigaction_t act = {
         .handler    = handler,
         .flags      = 0,
     };

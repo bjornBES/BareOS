@@ -239,10 +239,18 @@ static inline int get_exp2(double_with_bit_access x)
 
 // kernel and user both has this.
 extern void fputc(char c, fd_t fd);
+extern void debug_write_char(char c);
 
 void k_fputc(char c, fd_t fd)
 {
-    fputc(c, fd);
+    if (fd == 3)
+    {
+        debug_write_char(c);
+    }
+    else
+    {
+        fputc(c, fd);
+    }
 }
 
 // Note in particular the behavior here on LONG_MIN or LLONG_MIN; it is valid

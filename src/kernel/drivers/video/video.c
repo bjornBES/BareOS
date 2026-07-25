@@ -54,7 +54,7 @@ video_backend_t *active_backend;
 
 extern char default8x16Font;
 
-size_t video_write(void *buf, off_t offset, size_t count, device_t *dev)
+ssize_t video_write(void *buf, off_t offset, size_t count, device_t *dev)
 {
     video_priv_t *priv = (video_priv_t *)dev->priv;
     spinlock_acquire(&priv->lock);

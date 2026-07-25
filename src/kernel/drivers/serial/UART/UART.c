@@ -47,7 +47,7 @@ void UART_write(uint16_t port, UART_port off, uint8_t data)
     outb(port + off, data);
 }
 
-size_t UART_write_data(void *buffer, off_t offset, size_t count, device_t *device)
+ssize_t UART_write_data(void *buffer, off_t offset, size_t count, device_t *device)
 {
     uint8_t *data = (uint8_t *)buffer;
     UART_dev_priv_t *priv = device->priv;

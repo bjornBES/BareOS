@@ -45,10 +45,10 @@ void signal_kernel_signal_handler_core(thread_t *t, int signum)
 kernel_signal_action kernel_default[32] = {0};
 #define KERNEL_HANDLER(n)                                          \
     kernel_default[n].handler = signal_kernel_signal_handler;      \
-    memset(&kernel_default[n].action, 0, sizeof(signal_action_t));
+    memset(&kernel_default[n].action, 0, sizeof(sigaction_t));
 #define KERNEL_HANDLER_CORE(n)                                     \
     kernel_default[n].handler = signal_kernel_signal_handler_core; \
-    memset(&kernel_default[n].action, 0, sizeof(signal_action_t));
+    memset(&kernel_default[n].action, 0, sizeof(sigaction_t));
 
 int signal_send(thread_t *t, int signum)
 {
@@ -64,12 +64,12 @@ int signal_send_group(process_t *proc, int signum)
 
 void signal_mask(thread_t *t, int signum)
 {
-    BIT_SET(t->signal_mask, signum);
+    BIT_SET(t->blocked_signals, signum);
 }
 
 void signal_unmask(thread_t *t, int signum)
 {
-    BIT_UNSET(t->signal_mask, signum);
+    BIT_UNSET(t->blocked_signals, signum);
 }
 
 bool signal_is_pending(thread_t *t, int signum)
@@ -83,14 +83,14 @@ bool signal_is_pending(thread_t *t, int signum)
 
 bool signal_is_masked(thread_t *t, int signum)
 {
-    if (t->signal_mask)
+    if (t->blocked_signals)
     {
-        return t->signal_mask & signum;
+        return t->blocked_signals & signum;
     }
     return false;
 }
 
-void signal_dequeue(process_t *proc, int signal_number, signal_info *info)
+void signal_dequeue(process_t *proc, int signal_number, siginfo_t *info)
 {
     if (BIT_GET(proc->signal_queue.signal, signal_number) == 1)
     {
@@ -98,12 +98,12 @@ void signal_dequeue(process_t *proc, int signal_number, signal_info *info)
         proc->signal_queue.signal &= ~(1u << signal_number);
 
         // fill in the info
-        info->signal_number = signal_number;
-        info->proc_id = proc->pid;
+        info->si_signo = signal_number;
+        info->si_common.si_pid = proc->pid;
     }
 }
 
-int signal_get(thread_t *t, signal_info *info, signal_action_t **action)
+int signal_get(thread_t *t, siginfo_t *info, sigaction_t **action)
 {
     process_t *proc = t->proc;
 
@@ -131,7 +131,7 @@ int signal_get(thread_t *t, signal_info *info, signal_action_t **action)
     return RETURN_FAILED;
 }
 
-int signal_get_action(thread_t *t, int signum, signal_action_t *out)
+int signal_get_action(thread_t *t, int signum, sigaction_t *out)
 {
     if (!signal_is_pending(t, signum))
     {
@@ -145,52 +145,45 @@ int signal_get_action(thread_t *t, int signum, signal_action_t *out)
     return RETURN_GOOD;
 }
 
-int signal_set_action(thread_t *t, int signum, signal_action_t *action)
+int signal_set_action(thread_t *t, int signum, sigaction_t *action)
 {
     // copy from userspace
-    signal_action_t *k_action = &t->proc->signal_table.actions[signum];
+    sigaction_t *k_action = &t->proc->signal_table.actions[signum];
     log_debug(MODULE, "action @ %p", k_action);
-    memcpy(k_action, action, sizeof(signal_action_t));
-    return RETURN_GOOD;
+
+    int state = copy_from_user(k_action, action, sizeof(sigaction_t));
+    return state;
 }
-
-int sig_action(int signum, signal_action_t *action)
-{
-    if (signum < 0 || signum >= NUMBER_SIGNAL)
-    {
-        return -EINVAL;
-    }
-    if (signum == SIGKILL || signum == SIGSTOP)
-    {
-        return -EINVAL; // can't override these
-    }
-
-    thread_t *t = scheduler_get_current();
-
-    return signal_set_action(t, signum, action);
-}
-
-SYSCALL_DEFINE2(sig_action, int, signal_action_t *);
-
 
 extern void hexdump(void *ptr, int len);
+
+void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, sigaction_t *action, siginfo_t *info)
+{
+    intr_frame_t sig_frame;
+    memcpy(&sig_frame, regs, sizeof(intr_frame_t));
+    log_debug(MODULE, "doing setup");
+    signal_arch_setup_frame(t, &sig_frame, info, action);
+    ivt_dump_frame(&sig_frame);
+    log_debug(MODULE, "running dispatch");
+    signal_arch_dispatch(&sig_frame);
+}
 
 void signal_try_deliver(thread_t *t, syscall_info *arch_info, intr_frame_t *regs)
 {
     {
-        signal_action_t kill;
+        sigaction_t kill;
         if (signal_get_action(t, SIGKILL, &kill) == RETURN_GOOD)
         {
             log_debug(MODULE, "got kill to %u", t->proc->pid);
-            if (kill.handler == NULL)
+            if (kill.handler.sa_sigaction == NULL)
             {
                 signal_default_action(t, SIGKILL);
                 return;
             }
         }
     }
-    signal_info info;
-    signal_action_t *h = NULL;
+    siginfo_t info;
+    sigaction_t *h = NULL;
     int state = signal_get(t, &info, &h);
 
     if (state == RETURN_FAILED)
@@ -201,18 +194,11 @@ void signal_try_deliver(thread_t *t, syscall_info *arch_info, intr_frame_t *regs
     if (h == NULL)
     {
         log_debug(MODULE, "use kernel handler");
-        signal_default_action(t, info.signal_number);
+        signal_default_action(t, info.si_signo);
         return;
     }
-    
-    signal_action_t *sig_ac = h;
-    intr_frame_t sig_frame;
-    memcpy(&sig_frame, regs, sizeof(intr_frame_t));
-    log_debug(MODULE, "doing setup");
-    signal_arch_setup_frame(t, &sig_frame, &info, sig_ac);
-    ivt_dump_frame(&sig_frame);
-    log_debug(MODULE, "running dispatch");
-    signal_arch_dispatch(&sig_frame);
+
+    deliver_signal(t, arch_info, regs, h, &info);
 }
 
 int signal_kill(pid_t proc_id, int sig)

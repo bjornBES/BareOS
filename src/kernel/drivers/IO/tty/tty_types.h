@@ -40,6 +40,13 @@ typedef struct
     speed_t c_ospeed; /* output speed */
 } termios_t;
 
+typedef struct winsize {
+	uint16_t ws_row;
+	uint16_t ws_col;
+	uint16_t ws_xpixel;
+	uint16_t ws_ypixel;
+} winsize_t;
+
 #define TTY_BUF_SIZE 256
 
 typedef struct
@@ -69,6 +76,8 @@ typedef struct tty_struct
     // ops
     tty_dev_ops_t in_ops;
     tty_dev_ops_t out_ops;
+
+    winsize_t winsize;
 
     // blocking read support
     // wait_queue_t read_wait; // threads blocked in read() sleep here

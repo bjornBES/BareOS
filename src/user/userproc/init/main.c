@@ -22,7 +22,7 @@ void signal_abort(int signum)
 
 int main(int argc, char *argv[])
 {
-    pledge(PLEDGE_STDIO | PLEDGE_MALLOC | PLEDGE_PROC | PLEDGE_EXEC);
+    pledge(PLEDGE_STDIO | PLEDGE_RPATH | PLEDGE_WPATH | PLEDGE_PROC | PLEDGE_MALLOC | PLEDGE_EXEC);
     write(stdout, "hello from C\n", 13);
     
     fprintf(stddebug, "argv @ %p\n", argv);
@@ -39,14 +39,14 @@ int main(int argc, char *argv[])
     pid_t curr_proc = getpid();
     fprintf(stddebug, "process is %u\n", curr_proc);
     
-    sigaction(SIGABRT, signal_abort);
-    kill(curr_proc, SIGABRT);                        // or however you send signals to self
-    fprintf(stddebug, "back from signal handler\n"); // if this prints, it worked
+    // sigaction(SIGABRT, signal_abort);
+    // kill(curr_proc, SIGABRT);                        // or however you send signals to self
+    // fprintf(stddebug, "back from signal handler\n"); // if this prints, it worked
     
     pid_t child = fork();
     if (child == 0)
     {
-        pledge(PLEDGE_STDIO | PLEDGE_MALLOC | PLEDGE_PROC | PLEDGE_EXEC);
+        pledge(0xFFFF);
     }
     fprintf(stddebug, "X got %u back from fork\n", child);
     if (child == 0)

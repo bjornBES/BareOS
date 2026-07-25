@@ -72,6 +72,14 @@ typedef struct __syscall_function_info_t
         ENTER_FUNC(NO_MODULE, "0x%lx, 0x%lx, 0x%lx", arg1, arg2, arg3);       \
         return (uintptr_t)func(arg1, arg2, arg3);                             \
     }
+#define SYSCALL_DEFINE3_NON_PRINT(func, t1, t2, t3)                           \
+    uintptr_t sys_##func(syscall_info *info, syscall_function_info *sys_info) \
+    {                                                                         \
+        t1 arg1 = (t1)(uintptr_t)(info->arg1);                                \
+        t2 arg2 = (t2)(uintptr_t)(info->arg2);                                \
+        t3 arg3 = (t3)(uintptr_t)(info->arg3);                                \
+        return (uintptr_t)func(arg1, arg2, arg3);                             \
+    }
 #define SYSCALL_DEFINE3_REG(func, t1, t2, t3)                                 \
     uintptr_t sys_##func(syscall_info *info, syscall_function_info *sys_info) \
     {                                                                         \

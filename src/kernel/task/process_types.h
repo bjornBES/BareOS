@@ -16,6 +16,7 @@
 #include "threading/thread_type.h"
 #include "mm/paging/paging_type.h"
 #include "mm/vmm/vmm_types.h"
+#include "VFS/vfs_types.h"
 
 #include <types.h>
 #include <pledge_types.h>
@@ -123,6 +124,9 @@ typedef struct process
     // threads
     thread_t *threads[MAX_THREADS_PER_PROCESS];
     uint32_t thread_count;
+
+    // process
+    fd_table_t fd_table;
 
     // === later things ===
 } process_t;

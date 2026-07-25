@@ -103,7 +103,7 @@ paddr_t mmu_map_region(page_table_t *table, vaddr_t virt, paddr_t phys, size_t s
 
     // Round up to page boundary
     size_t pages = PAGE_ALIGN_UP(size) / PAGE_SIZE;
-    log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with %i to %p",
+    log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with 0x%lx to %p",
              _virt, _virt + pages * PAGE_SIZE,
              _phys, _phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
     for (size_t i = 0; i < pages; i++)

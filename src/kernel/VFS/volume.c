@@ -28,16 +28,8 @@ volume_t *volume_table[MAX_VOLUMES] = {0};
 int volume_count = 0;
 
 // probe fs drivers, alloc + insert volume
-volume_t *volume_register(const char *volume_id, device_t *dev)
+volume_t *volume_register_internal(const char *volume_id, device_t *dev, filesystem_t *fs)
 {
-    log_debug(MODULE, "volume_register(%s(%p), %p)", volume_id, volume_id, dev);
-    filesystem_t *fs = fs_probe(dev);
-    if (fs == NULL && dev != NULL)
-    {
-        log_err(MODULE, "no filesystem found on device");
-        return NULL;
-    }
-
     log_debug(MODULE, "spinlock");
     spinlock_acquire(&volume_lock);
 
@@ -69,13 +61,13 @@ volume_t *volume_register(const char *volume_id, device_t *dev)
     strncpy(vol->volume_id, volume_id, MAX_VOLUME_NAME - 1);
     vol->device = dev;
     vol->fs = fs;
-    
+
     if (dev == NULL)
     {
         log_debug(MODULE, "volume is virtual");
         vol->flags |= VOLUME_VIRTUAL;
     }
-    
+
     log_debug(MODULE, "insert volume");
     vol->next = volume_registry;
     volume_registry = vol;
@@ -83,6 +75,44 @@ volume_t *volume_register(const char *volume_id, device_t *dev)
 
     spinlock_release(&volume_lock);
     return vol;
+}
+
+// probe fs drivers, alloc + insert volume
+volume_t *volume_register(const char *volume_id, device_t *dev)
+{
+    log_debug(MODULE, "volume_register(%s(%p), %p)", volume_id, volume_id, dev);
+    filesystem_t *fs = fs_probe(dev);
+    if (fs == NULL && dev != NULL)
+    {
+        log_err(MODULE, "no filesystem found on device");
+        return NULL;
+    }
+
+    return volume_register_internal(volume_id, dev, fs);
+}
+
+// probe fs drivers, alloc + insert volume
+volume_t *volume_create_synthetic(const char *volume_id, const char *fs_name, device_t *dev)
+{
+    log_debug(MODULE, "volume_create_synthetic(%s(%p), (%s(%p), %p)", volume_id, volume_id, fs_name, fs_name, dev);
+    filesystem_t *fs;
+    if (dev == NULL)
+    {
+        fs = fs_find(fs_name);
+    }
+    else
+    {
+        FLAG_SET(dev->flags, DEVICE_FLAG_DEV);
+        fs = fs_probe(dev);
+        FLAG_UNSET(dev->flags, DEVICE_FLAG_DEV);
+    }
+    if (fs == NULL && dev != NULL)
+    {
+        log_err(MODULE, "no filesystem found on device");
+        return NULL;
+    }
+
+    return volume_register_internal(volume_id, dev, fs);
 }
 
 // remove from registry, free
@@ -139,7 +169,9 @@ volume_t *volume_find(const char *volume_id)
     while (vol != NULL)
     {
         if (strcmp(vol->volume_id, volume_id) == 0)
+        {
             break;
+        }
         vol = vol->next;
     }
     spinlock_release(&volume_lock);
@@ -164,7 +196,9 @@ int volume_list(volume_t **buf, int buf_size)
     spinlock_acquire(&volume_lock);
     int count = volume_count < buf_size ? volume_count : buf_size;
     for (int i = 0; i < count; i++)
+    {
         buf[i] = volume_table[i];
+    }
     spinlock_release(&volume_lock);
     return count;
 }

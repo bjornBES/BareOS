@@ -202,7 +202,7 @@ void i8042_set_leds(device_t *dev, uint8_t leds)
     I8042_write(I8042_DATA_PORT, leds & 0x07);
 }
 
-size_t kbd_read(void *buffer, off_t offset, size_t count, device_t *dev)
+ssize_t kbd_read(void *buffer, off_t offset, size_t count, device_t *dev)
 {
     keyboard_priv_t *priv = (keyboard_priv_t *)dev->priv;
     return ringbuf_read(priv->buffer_index, buffer, count) * count;

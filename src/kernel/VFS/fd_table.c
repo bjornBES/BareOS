@@ -35,6 +35,38 @@ fd_t fd_alloc(vfs_node_t *node)
     return VFS_INVALID_FD;
 }
 
+// find lowest free slot, store node ptr
+fd_t fd_alloc_for_process(vfs_node_t *node, fd_table_t *table)
+{
+    spinlock_acquire(&fd_lock);
+    for (fd_t fd = 0; fd < MAX_OPEN_FILES; fd++)
+    {
+        if (table->entries[fd] == NULL)
+        {
+            table->entries[fd] = malloc(sizeof(fd_entry_t));
+            table->entries[fd]->node = node;
+            spinlock_release(&fd_lock);
+            return fd;
+        }
+    }
+    spinlock_release(&fd_lock);
+    return VFS_INVALID_FD;
+}
+
+// validate fd, return node ptr
+fd_entry_t *fd_get_for_process(fd_t fd, fd_table_t *table)
+{
+    // ENTER_FUNC(MODULE, "%u, %p", fd, table);
+    if (fd == VFS_INVALID_FD)
+    {
+        log_err(MODULE, "fd is invalid");
+        return NULL;
+    }
+    
+    fd_entry_t *node = table->entries[fd];
+    return node;
+}
+
 // validate fd, return node ptr
 vfs_node_t *fd_get(fd_t fd)
 {
@@ -46,6 +78,11 @@ vfs_node_t *fd_get(fd_t fd)
     }
     
     vfs_node_t *node = fd_table[fd];
+    if (node == NULL)
+    {
+        log_err(MODULE, "fd is not open");
+        return NULL;
+    }
     return node;
 }
 

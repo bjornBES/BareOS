@@ -13,6 +13,11 @@
 #include <printf_driver/printf.h>
 #include "syscall.h"
 
+ void debug_write_char(char c)
+ {
+    fputc(c, 3);
+ }
+
 void fputc(char c, fd_t fd)
 {
     write(fd, &c, 1);

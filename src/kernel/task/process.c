@@ -29,6 +29,7 @@
 #include "kernel.h"
 
 #include "VFS/vfs.h"
+#include "VFS/vfs_flags.h"
 #include "VFS/path.h"
 #include "debug/debug.h"
 
@@ -227,18 +228,6 @@ process_t *process_create()
 
     vma_init(proc);
 
-    /* log_info(MODULE, "mmap stack proc->vma = %p", proc->vma);
-    vma_t *stack = do_mmap_eager(proc->vma, USER_STACK_TOP, PAGE_SIZE * 2, VMA_ANONYMOUS, stack_flags);
-    log_info(MODULE, "stack @ %p = {%p, %p}", stack, stack->start, stack->end);
-    log_info(MODULE, "mmap heap proc->vma = %p", proc->vma);
-    vma_t *heap = do_mmap_eager(proc->vma, USER_HEAP_BASE, PAGE_SIZE * 2, VMA_ANONYMOUS, data_flags);
-
-    proc->vma->start_stack = stack->end;
-    proc->vma->start_heap = heap->start;
-    proc->vma->end_heap = heap->end;
-    proc->vma->heap_vma = heap;
-    proc->vma->stack_vma = stack; */
-
     log_info(MODULE, "mapping signals mapping %p to %p", KERNEL_VDSO_PHYS, USER_VDSO_VIRT);
     // kernel side, when setting up a new process
     mmu_arch_map(proc->page_dir, USER_VDSO_VIRT, KERNEL_VDSO_PHYS, vdso_text_flags);
@@ -246,6 +235,12 @@ process_t *process_create()
     proc->pid = next_pid;
     pid_table[next_pid] = proc;
     next_pid = next_pid + 1;
+
+    vfs_user_do_open("/DEVFS:/dev/tty0", VFS_O_RDONLY, 0, proc);
+    vfs_user_do_open("/DEVFS:/dev/tty1", VFS_O_RDONLY, 0, proc);
+    vfs_user_do_open("/DEVFS:/dev/tty2", VFS_O_RDONLY, 0, proc);
+    vfs_user_do_open("/DEVFS:/dev/tty3", VFS_O_RDONLY, 0, proc);
+
     return proc;
 }
 
@@ -301,6 +296,15 @@ process_t *process_clone(process_t *parent)
     child->state = PROC_STATE_RUNNING;
 
     child->pledge_mask = parent->pledge_mask;
+
+    for (int i = 0; i < FD_SIZE; i++)
+    {
+        child->fd_table.entries[i] = parent->fd_table.entries[i];
+        if (child->fd_table.entries[i])
+        {
+            child->fd_table.entries[i]->refcount++;
+        }
+    }
 
     log_info(MODULE, "creating new user directory");
     child->page_dir = mmu_arch_create_table();
@@ -664,8 +668,10 @@ int process_kill(pid_t pid, int sig)
 
 process_t *process_get_current()
 {
+    // ENTER_FUNC(MODULE, "", "");
     thread_t *t = scheduler_get_current();
-    // log_debug(MODULE, "t @ %p, t->proc @ %p", t, t->proc);
+    // log_debug(MODULE, "t @ %p", t);
+    // log_debug(MODULE, "t->proc @ %p", t->proc);
     return t->proc;
 }
 
@@ -675,6 +681,7 @@ pid_t process_get_pid()
     // log_debug(MODULE, "get pid from %u", t->proc->pid);
     return t->proc->pid;
 }
+
 SYSCALL_DEFINE0(process_get_pid);
 
 pid_t proc_get_ppid()
@@ -683,8 +690,8 @@ pid_t proc_get_ppid()
     // log_debug(MODULE, "get pid from %u", t->proc->pid);
     return t->proc->parent->pid;
 }
-SYSCALL_DEFINE0(proc_get_ppid);
 
+SYSCALL_DEFINE0(proc_get_ppid);
 
 void process_init()
 {

@@ -19,6 +19,7 @@
 #include "task/process.h"
 #include "errno/errno.h"
 #include "kernel.h"
+#include "math.h"
 #include <util/binary.h>
 
 #define MAP_FAILED ((void *)-1)
@@ -32,7 +33,52 @@ vaddr_t sys_mm_mmap(vma_memory_t *mm, vaddr_t addr_hint, size_t length, mmu_flag
     vaddr_t target;
     if (FLAG_IS_SET(flags, MAP_FIXED))
     {
-        return -ENOSYS;
+        target = addr_hint;
+        vma_t *vma = vma_find(mm, target);
+
+        vaddr_t start = target & PAGE_MASK;
+        vaddr_t end = PAGE_ALIGN_UP(target + length);
+        while (start < end)
+        {
+            vaddr_t chunk_end = min(end, vma->end);
+
+            if (start > vma->start)
+            {
+                vma = vma_split(mm, vma, start); // vma now starts exactly at "start"
+            }
+
+            if (end < vma->end)
+            {
+                vma_split(mm, vma, end); // chops the tail off; discard return value
+            }
+
+            for (vaddr_t va = start; va < chunk_end; va += PAGE_SIZE)
+            {
+                if (mmu_arch_is_present(mm->page_directory, va))
+                {
+                    paddr_t frame = mmu_arch_unmap(mm->page_directory, va);
+                    if (frame == 0)
+                    {
+                        continue;
+                    }
+                    pmm_deref_frame(frame);
+                }
+            }
+
+            vma->flags = mmu_flags;
+            vma->type = VMA_ANONYMOUS;
+            vma->flags.user = 1;
+            vma->flags.present = 0;
+
+            start = chunk_end;
+            if (start < end)
+            {
+                vma = vma->next; // assumes sorted-list adjacency, no gap
+            }
+        }
+
+        // vma now covers exactly [target, target+len) — same bookkeeping win as mprotect
+        return target;
     }
     else
     {
@@ -65,23 +111,25 @@ void *memory_mmap(void *addr, size_t length, int prot, int flags, fd_t fd, off_t
     int grows = FLAG_GET(prot, PROT_GROWSDOWN | PROT_GROWSUP);
     if (grows == (PROT_GROWSDOWN | PROT_GROWSUP))
     {
+        log_err(MODULE, "Both PROT_GROWSUP and PROT_GROWSDOWN were specified in prot");
         // Both PROT_GROWSUP and PROT_GROWSDOWN were specified in prot.
-        return (void*)-EINVAL;
+        return (void *)-EINVAL;
     }
 
     if (length == 0)
     {
+        log_err(MODULE, "length was 0");
         // (since Linux 2.6.12) length was 0.
-        return (void*)-EINVAL;
+        return (void *)-EINVAL;
     }
 
     vaddr_t start = (vaddr_t)addr;
     if (start & ~PAGE_MASK || length & ~PAGE_MASK || offset & ~PAGE_MASK)
     {
-        log_debug(MODULE, "i dont like addr, length, or offset");
+        log_err(MODULE, "i dont like addr, length, or offset");
         // We don't like addr, length, or offset (e.g., they are too large,
         // or not aligned on a page boundary).
-        return (void*)-EINVAL;
+        return (void *)-EINVAL;
     }
 
     {
@@ -97,7 +145,7 @@ void *memory_mmap(void *addr, size_t length, int prot, int flags, fd_t fd, off_t
     }
 
     process_t *proc = process_get_current();
-    vma_t *vma;
+    vma_t *vma = NULL;
     mmu_flags_t mmu_flags = {0};
     if (addr != NULL)
     {
@@ -109,6 +157,7 @@ void *memory_mmap(void *addr, size_t length, int prot, int flags, fd_t fd, off_t
         {
             mmu_flags = vma->flags;
         }
+        mmu_flags.user = 1;
         mmu_flags.present = FLAG_IS_SET(prot, PROT_READ);
         mmu_flags.write = FLAG_IS_SET(prot, PROT_WRITE);
         mmu_flags.exec = FLAG_IS_SET(prot, PROT_EXEC);
@@ -122,7 +171,7 @@ void *memory_mmap(void *addr, size_t length, int prot, int flags, fd_t fd, off_t
         }
     }
 
-    return (void*)sys_mm_mmap(proc->vma, start, length, mmu_flags, flags, fd, offset, pledge);
+    return (void *)sys_mm_mmap(proc->vma, start, length, mmu_flags, flags, fd, offset, pledge);
 }
 
 SYSCALL_DEFINE6_PLEDGE(memory_mmap, void *, size_t, int, int, fd_t, off_t);

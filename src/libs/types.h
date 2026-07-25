@@ -36,6 +36,7 @@ typedef int64_t ino_t;
 typedef int64_t dev_t;
 
 typedef int64_t ssize_t;
+typedef int64_t clock_t;
 
 typedef int32_t pid_t;
 typedef uint32_t uid_t;

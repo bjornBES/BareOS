@@ -110,12 +110,13 @@ typedef struct filesystem
     int (*lookup)(inode_t *dir, const char *name, inode_t *out, device_t *dev, mountpoint_t *mnt);
     int (*open)(vfs_node_t *node, device_t *dev, mountpoint_t *mnt);
     int (*close)(vfs_node_t *node, device_t *dev, mountpoint_t *mnt);
-    size_t (*read)(vfs_node_t *node, void *buf, off_t offset, size_t len, device_t *dev, mountpoint_t *mnt);
-    size_t (*write)(vfs_node_t *node, const void *buf, off_t offset, size_t len, device_t *dev, mountpoint_t *mnt);
+    ssize_t (*read)(vfs_node_t *node, void *buf, off_t offset, size_t len, device_t *dev, mountpoint_t *mnt);
+    ssize_t (*write)(vfs_node_t *node, const void *buf, off_t offset, size_t len, device_t *dev, mountpoint_t *mnt);
     int (*read_dir)(vfs_node_t *dir, uint32_t index, vfs_dirent_t *out, device_t *dev, mountpoint_t *mnt);
     int (*stat)(vfs_node_t *node, vfs_stat_t *out, device_t *dev, mountpoint_t *mnt);
     int (*mkdir)(vfs_node_t *dir, const char *name, uint32_t flags, device_t *dev, mountpoint_t *mnt);
     int (*unlink)(vfs_node_t *dir, const char *name, device_t *dev, mountpoint_t *mnt);
+    int (*ioctl)(vfs_node_t *dir, int op, void *arg, device_t *dev, mountpoint_t *mnt);
 
     inode_t *(*alloc_inode)(volume_t *vol); // fs allocates its own type
     void (*free_inode)(inode_t *ino);       // fs frees its own type

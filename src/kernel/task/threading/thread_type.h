@@ -50,7 +50,7 @@ typedef struct thread
     int *clear_child_tid;
 
     // signals
-    sigset_t signal_mask;
+    sigset_t blocked_signals;
     signal_pending signal_queue;
 
     struct thread *next_runnable;
