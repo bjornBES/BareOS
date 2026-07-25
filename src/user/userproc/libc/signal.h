@@ -11,6 +11,7 @@
 #pragma once
 
 #include <siginfo.h>
+#include <signals.h>
 
 typedef void (*signal_handler)(int signal_number);
 typedef void (*signal_restore)();
@@ -26,6 +27,6 @@ typedef struct sigaction
     signal_restore sa_restorer;
 } sigaction_t;
 
-int sigaction(int signum, signal_handler handler);
+int sigaction(int signum, sigaction_t *action, sigaction_t *old_action);
 int sigreturn();
 int kill(pid_t pid, int sig);

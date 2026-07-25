@@ -20,17 +20,18 @@ $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@
 # 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c -save-temps $< -o $@
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(USER_TARGET_ASMFLAGS) $< -o $@
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<
 
 $(BUILD)/init.elf: $(OBJECTS_C) $(OBJECTS_ASM)
-	$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(BUILD)/libc.a $(USER_TARGET_LIBS)
+	@$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/init.map -o $@ $^ $(BUILD)/libc.a $(USER_TARGET_LIBS)
+	@echo "$(LD_PREFIX) init.elf"
 
 always:
 
 clean:
-	rm -f $(BUILD)/init.elf
+	@rm -f $(BUILD)/init.elf

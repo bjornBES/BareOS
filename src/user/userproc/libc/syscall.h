@@ -49,6 +49,15 @@ static inline uintptr_t syscall3(int number, uintptr_t arg1, uintptr_t arg2, uin
     return result;
 }
 
+static inline uintptr_t syscall4(int number, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+{
+    uintptr_t result;
+    inline_asm(
+        "mov r10, %[arg4]\n\t"
+        "int 0x80" : "=a"(result) : "a"(number), "D"(arg1), "S"(arg2), "d"(arg3), [arg4] "m"(arg4) : "memory", "rcx", "r11");
+    return result;
+}
+
 static inline uintptr_t syscall6(int number, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5, uintptr_t arg6)
 {
     uintptr_t result;

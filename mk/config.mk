@@ -46,19 +46,17 @@ endif
 export SOURCE_ARCH = arch/$(SRCARCH)
 
 # --- Flags ---
-export SUMBOLS = -DENABLE_MULTI_CORE=$(enable_multi_core) -DUSE_EAGER_FORK=$(use_eager_fork)
-
 export CFLAGS = -Wall -Werror                   \
     -trigraphs -Wno-error=trigraphs             \
     -masm=intel                                 \
     -DMAX_PATH_SIZE=$(max_path_length)          \
     -DPAGING=$(enable_paging)                   \
-    -nostdlib -ffreestanding -MMD -MP $(SUMBOLS)
+    -nostdlib -ffreestanding -MMD -MP
 # DO NOT SWITCH IT FROM INTEL
 # I WILL FUCKING FIND YOU, AND KILL YOU.
 # - BjornBEs 24-03-2026 13:55
 
-export ASMFLAGS = -D PAGING=$(enable_paging) -D__$(arch)__=1 $(SUMBOLS)
+export ASMFLAGS = -D__$(arch)__=1
 export LINKFLAGS = -static
 export LIBS = -lgcc
 
@@ -128,5 +126,7 @@ ifeq ($(arch),x86_64)
 	TARGET_LIBS := $(TARGET64_LIBS)
 endif
 
-export PAGING_ENABLE = 1
-export MAX_PATH_SIZE = 512
+export ASM_PREFIX = "AS: "
+export CC_PREFIX =  "CC: "
+export LD_PREFIX = 	"LD: "
+export AR_PREFIX = 	"AR: "

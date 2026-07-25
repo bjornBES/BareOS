@@ -11,17 +11,16 @@ SOURCES_C := $(shell find . -maxdepth 1 -name "*.c")
 BINS := $(patsubst %.c, $(BUILD)/%.elf, $(SOURCES_C))
 
 all: always $(BINS)
-	@echo "BINS" $(BINS)
 	@$(MAKE) -C bash BUILD=$(abspath $(BUILD))
 	@$(MAKE) -C BASIC BUILD=$(abspath $(BUILD))
 
 $(BUILD)/%.elf: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@ -lc $(BUILD)/libc.a $(USER_TARGET_LIBS)
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $@
 
 always:
-	mkdir -p $(BUILD)
+	@mkdir -p $(BUILD)
 
 clean:
-	rm -f $(BINS)
+	@rm -f $(BINS)

@@ -14,36 +14,37 @@ floppy_image: $(BUILD_DIR)/image.iso
 $(BUILD_DIR)/image.iso: bootloader kernel user
 	@bash ./scripts/make_disk.sh $(imageType) $(imageFS) $(imageSize) $(arch) $(config)
 
-	@echo "--> Created: " $(floppyOutput)
+	@echo "--> Created: $(floppyOutput)"
 
 #
 # Bootloader
 #
-bootloader: stage1 stage2
+bootloader: src/bootloader/bios/stage2/include/config.h build_bootloader
 
-stage1: $(BUILD_DIR)/stage1.bin
-
-$(BUILD_DIR)/stage1.bin: always
-	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR))
-
-stage2: $(BUILD_DIR)/stage2.bin
-
-$(BUILD_DIR)/stage2.bin: always
-	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR))
+build_bootloader:
+	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) -s
 
 #
 # Kernel
 #
-kernel: libs $(BUILD_DIR)/kernel/kernel.elf
+kernel: libs src/kernel/include/kernel/config.h $(BUILD_DIR)/kernel/kernel.elf
 
 
 $(BUILD_DIR)/kernel/kernel.elf: always
-	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) -s
+
+config/config.env:
+
+src/kernel/include/kernel/config.h: config/config.env scripts/gen_config.sh
+	sh scripts/gen_config.sh config/config.env $@ src/kernel/include/kernel/config.inc
+
+src/bootloader/bios/stage2/include/config.h: config/config.env scripts/gen_config.sh
+	sh scripts/gen_config.sh config/config.env $@ src/bootloader/bios/stage2/include/config.inc
 
 libs: $(BUILD_DIR)/libcore.a
 
 $(BUILD_DIR)/libcore.a:
-	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR)) -s
 
 #
 # Tools
@@ -51,13 +52,13 @@ $(BUILD_DIR)/libcore.a:
 tools_fat: $(BUILD_DIR)/tools/fat
 $(BUILD_DIR)/tools/fat: always tools/fat/fat.c
 	@mkdir -p $(BUILD_DIR)/tools
-	@$(MAKE) -C tools/fat BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C tools/fat BUILD_DIR=$(abspath $(BUILD_DIR)) -s
 
 #
 # user
 #
 user: $(TARGET_CORE_LIBS)
-	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) -s
 
 runnow:
 #	python tools/run_vm.py
@@ -108,17 +109,15 @@ userland-clean:
 #
 always:
 	@mkdir -p $(BUILD_DIR)
-	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) always
-	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) always
-	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always
+	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) always
 
 #
 # Clean
 #
 clean:
-	@$(MAKE) -C src/Bootloader/stage1 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
-	@$(MAKE) -C src/Bootloader/stage2 BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@rm -rf $(BUILD_DIR)/*

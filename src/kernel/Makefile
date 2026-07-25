@@ -1,4 +1,4 @@
-KERNEL_TARGET_ASMFLAGS +=
+KERNEL_TARGET_ASMFLAGS += -I ${SOURCE_DIR}/src/kernel/include
 KERNEL_TARGET_CFLAGS += -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
 -I ${SOURCE_DIR}/src/kernel/arch/include -I ${SOURCE_DIR}/src/kernel/include -I. -I ${SOURCE_DIR}/src/libs \
 -I ${SOURCE_DIR}/src/libs/${SOURCE_ARCH} -I $(INCLUDE_DIR) -I ${SOURCE_DIR}/src/kernel/${SOURCE_ARCH} \
@@ -22,25 +22,32 @@ BUILD_DIRASM = $(BUILD_DIRKERNEL)/asm
 BUILD_DIRCBL = $(BUILD_DIRKERNEL)/cobol
 TEMP_DIRCBL = $(BUILD_DIRKERNEL)/cobol/temp
 
-HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*") \
+HEADERS_C = $(shell find . -type f -name "*.h" -not -path "./arch/*" -not -path "./modules/*") \
 			$(shell find ${SOURCE_ARCH} -type f -name "*.h") \
 			$(shell find ./arch/include -type f -name "*.h")
 
-SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c" -not -path "./arch/*") \
+SOURCES_C := $(patsubst ./%,%,$(shell find . -type f -name "*.c" -not -path "./arch/*" -not -path "./modules/*") \
 	$(shell find ${SOURCE_ARCH} -type f -name "*.c") \
 	$(shell find ./arch/include -type f -name "*.c"))
 
 OBJECTS_C = $(patsubst %.c, $(BUILD_DIRC)/%.obj, $(SOURCES_C))
 
-HEADERS_ASM = $(shell find . -type f -name "*.inc" -not -path "./arch/*") \
+HEADERS_ASM = $(shell find . -type f -name "*.inc" -not -path "./arch/*" -not -path "./modules/*") \
 			$(shell find ${SOURCE_ARCH} -type f -name "*.inc") \
 			$(shell find ./arch/include -type f -name "*.inc")
 
-SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm" -not -path "./arch/*") \
+SOURCES_ASM := $(patsubst ./%,%,$(shell find . -type f -name "*.asm" -not -path "./arch/*" -not -path "./modules/*") \
 	$(shell find ${SOURCE_ARCH} -type f -name "*.asm") \
 	$(shell find ./arch/include -type f -name "*.asm"))
 
 OBJECTS_ASM = $(patsubst %.asm, $(BUILD_DIRASM)/%.obj, $(SOURCES_ASM))
+
+ifeq ($(module_bsw),1)
+  MODULE_SRCS_C += $(shell find ./modules/bsw -type f -name "*.c")
+  MODULE_SRCS_ASM += $(shell find ./modules/bsw -type f -name "*.asm")
+  KERNEL_TARGET_CFLAGS += -DCONFIG_INCLUDE_BSW=1
+  KERNEL_TARGET_ASMFLAGS += -DCONFIG_INCLUDE_BSW=1
+endif
 
 .PHONY: all kernel clean always
 
@@ -50,18 +57,18 @@ kernel: $(BUILD_DIRKERNEL)/kernel.elf
 
 $(BUILD_DIRKERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET_LD) $(KERNEL_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD_DIRKERNEL)/kernel.map -o $@ $^ $(KERNEL_TARGET_LIBS)
-	@echo "--> Created:  kernel.elf"
+	@echo "$(LD_PREFIX) kernel.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -o $@ $<
 #	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -save-temps -o $@.c $<
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(KERNEL_TARGET_ASMFLAGS) -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<
 
 always:
 	@mkdir -p $(BUILD_DIRASM)
@@ -73,4 +80,4 @@ always:
 # @$(SOURCE_DIR)/build_tools/generate_isrs.sh $@
 
 clean:
-	rm -f $(BUILD_DIRKERNEL)/kernel.elf
+	@rm -f $(BUILD_DIRKERNEL)/kernel.elf

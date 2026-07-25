@@ -11,14 +11,11 @@
 #include "signal.h"
 #include "syscall.h"
 
-int sigaction(int signum, signal_handler handler)
+int sigaction(int signum, sigaction_t *action, sigaction_t *old_action)
 {
-    sigaction_t act = {
-        .handler    = handler,
-        .flags      = 0,
-    };
-    return syscall2(SYS_SIGACTION, (uintptr_t)signum, (uintptr_t)&act);
+    return syscall4(SYS_SIGACTION, (uintptr_t)signum, (uintptr_t)action, (uintptr_t)old_action, sizeof(sigset_t));
 }
+
 int sigreturn()
 {
     return syscall0(SYS_SIGRETURN);

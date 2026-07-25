@@ -35,6 +35,7 @@ x86_ISR%1:
 %endmacro
 
 %include "arch/x86/kernel/asm/exceptions/isrs_gen.inc"
+%include "kernel/config.inc"
 
 %if __x86_64__
 isr_common:
@@ -64,7 +65,7 @@ isr_common:
     mov ax, 0x10
     mov ds, ax
     mov es, ax
-%if ENABLE_MULTI_CORE==0
+%if CONFIG_ENABLE_MULTI_CORE==0
     mov fs, ax
     mov gs, ax
 %endif
@@ -77,7 +78,7 @@ isr_restore:
     pop rax             ; restore old segment
     mov ds, ax
     mov es, ax
-%if ENABLE_MULTI_CORE==0
+%if CONFIG_ENABLE_MULTI_CORE==0
     mov fs, ax
     mov gs, ax
 %endif

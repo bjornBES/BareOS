@@ -19,18 +19,19 @@ all: always $(BUILD)/bash.elf
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c $< -o $@
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(USER_TARGET_ASMFLAGS) $< -o $@
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<
 
 $(BUILD)/bash.elf: $(OBJECTS_C) $(OBJECTS_ASM)
 	@$(TARGET_LD) $(USER_TARGET_LINKFLAGS) -Wl,-Map=$(BUILD)/bash.map -o $@ $^ $(BUILD)/libc.a $(USER_TARGET_LIBS)
+	@echo "$(LD_PREFIX) bash.elf"
 
 always:
 	@mkdir -p $(BUILD)
 
 clean:
-	rm -f $(BUILD)/bash.elf
+	@rm -f $(BUILD)/bash.elf

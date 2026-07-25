@@ -32,22 +32,21 @@ OBJECTS_ASM = 	$(patsubst %.asm, $(BUILD_DIR)/libcore/asm/%.obj, $(SOURCES_ASM))
 libcore: $(BUILD_DIR)/libcore.a
 
 $(BUILD_DIR)/libcore.a: $(OBJECTS_ASM) $(OBJECTS_C) $(OBJECTS_CXX)
-	$(TARGET_AR) rcs $@ $^
-	@echo "--> Created:  libcore.a"
+	@$(TARGET_AR) rcs $@ $^
+	@echo "$(AR_PREFIX) libcore.a"
 
 $(BUILD_DIR)/libcore/cpp/%.obj: %.cpp $(HEADERS_CXX)
 	@mkdir -p $(@D)
 	@$(TARGET_CXX) $(KERNEL_TARGET_CXXFLAGS) -c -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(CXX_PREFIX)" $<
 
 $(BUILD_DIR)/libcore/c/%.obj: %.c $(HEADERS_C)
-	@echo path = ${SOURCE_ARCH}
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -o $@ $<
 #	@$(TARGET_CC) $(KERNEL_TARGET_CFLAGS) -c -save-temps -o $@.c $<
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIR)/libcore/asm/%.obj: %.asm $(HEADERS_ASM)
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(KERNEL_TARGET_ASMFLAGS) -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<

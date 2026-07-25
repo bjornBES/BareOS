@@ -35,7 +35,7 @@ SECTOR_SIZE = 512
 
 def GetStage2Sector(stage2_path: str, image: str, partition_offset: int = 0):
     offset_bytes = partition_offset * SECTOR_SIZE
-    print(f"opening file {image} with offset {offset_bytes} ({partition_offset} sectors)")
+    # print(f"opening file {image} with offset {offset_bytes} ({partition_offset} sectors)")
     pf = PyFat(offset=offset_bytes)
     pf.open(image, read_only=True)
 
@@ -45,7 +45,7 @@ def GetStage2Sector(stage2_path: str, image: str, partition_offset: int = 0):
         mcopy(image, stage2_path, "::/stage2.bin", partition_offset)
 
         image_arg = f"{image}@@{offset_bytes}" if offset_bytes else image
-        print(f"image_arg = {image_arg}")
+        # print(f"image_arg = {image_arg}")
         out = subprocess.run(
             ["mdir", "-w", "-i", image_arg, "::/stage2.bin"],
             stdout=subprocess.PIPE,
@@ -59,23 +59,23 @@ def GetStage2Sector(stage2_path: str, image: str, partition_offset: int = 0):
     sectors_per_cluster = bpb["BPB_SecPerClus"]
     parts = out.strip().split()
     index = parts.index("stage2.bin") + 3
-    print(parts[index])
+    # print(parts[index])
     first_cluster = max(int(parts[index]) // SECTOR_SIZE, sectors_per_cluster)
-    print(f"first_cluster = {first_cluster}")
+    # print(f"first_cluster = {first_cluster}")
 
     reserved = bpb.get("BPB_RsvdSecCnt")
     fats = bpb["BPB_NumFATs"]
     fat_size = bpb.get("BPB_FATSz32") if pf.fat_type == 32 else bpb.get("BPB_FATSz16")
 
-    print(f"sectors_per_cluster = {sectors_per_cluster}")
-    print(f"reserved = {reserved}")
-    print(f"fats = {fats}")
-    print(f"fat_size = {fat_size}")
+    # print(f"sectors_per_cluster = {sectors_per_cluster}")
+    # print(f"reserved = {reserved}")
+    # print(f"fats = {fats}")
+    # print(f"fat_size = {fat_size}")
 
     first_data_sector = reserved + fats * fat_size
     first_sector = first_data_sector + (first_cluster - 2) * sectors_per_cluster
-    print(f"first_data_sector = {first_data_sector}")
-    print(f"first_sector = {first_sector}")
+    # print(f"first_data_sector = {first_data_sector}")
+    # print(f"first_sector = {first_sector}")
 
     pf.close()
     return first_sector
@@ -91,14 +91,14 @@ def find_symbol_in_map_file(map_file: Path, symbol: str):
     return None
 
 def create_filesystem(target: str, filesystem, reserved_sectors=0, offset=0):
-    print(f"target={target} filesystem={filesystem} reserved_sectors={reserved_sectors} offset={offset}")
+    # print(f"target={target} filesystem={filesystem} reserved_sectors={reserved_sectors} offset={offset}")
     if filesystem in ['fat12', 'fat16', 'fat32']:
         reserved_sectors += 1
         if filesystem == 'fat32':
             reserved_sectors = 32
         
         fat_type = filesystem[3:]  # Extract '12', '16', or '32' from 'fat12', 'fat16', 'fat32'
-        print(f"mkfs.fat -F {fat_type} -n BESOS -R {reserved_sectors} -s 2 {target} --offset {offset}")
+        # print(f"mkfs.fat -F {fat_type} -n BESOS -R {reserved_sectors} -s 2 {target} --offset {offset}")
         result = subprocess.run([
             "mkfs.fat",
             "-F", fat_type,
@@ -116,7 +116,7 @@ def create_filesystem(target: str, filesystem, reserved_sectors=0, offset=0):
         if filesystem == 'fat32':
             reserved_sectors = 32
         
-        print(f"mkfs.{filesystem} -E offset={offset} -L BESOS")
+        # print(f"mkfs.{filesystem} -E offset={offset} -L BESOS")
         result = subprocess.run([
             f"mkfs.{filesystem}",
             "-E", f"offset={offset}",
@@ -136,7 +136,7 @@ def install_mbr(target: str, mbr: str):
         target: Image file path
         mbr: MBR binary path
     """
-    print(f"installing MBR {mbr}")
+    # print(f"installing MBR {mbr}")
     map_file = Path(mbr).with_suffix('.map')
     if not map_file.exists():
         raise ValueError("Can't find map file for " + mbr)
@@ -153,12 +153,12 @@ def install_mbr(target: str, mbr: str):
     
     with open(mbr, 'rb') as fmbr:
         with open(target, 'r+b') as ftarget:
-            print(f"entry_offset_in_binary = {entry_offset_in_binary}/{hex(entry_offset_in_binary)}")
-            print(f"code_end_in_binary = {code_end_in_binary}/{hex(code_end_in_binary)}")
+            # print(f"entry_offset_in_binary = {entry_offset_in_binary}/{hex(entry_offset_in_binary)}")
+            # print(f"code_end_in_binary = {code_end_in_binary}/{hex(code_end_in_binary)}")
             
             # Write boot code
             code_size = code_end_in_binary - entry_offset_in_binary + 3
-            print(f"code_size = {code_size}/{hex(code_size)}")
+            # print(f"code_size = {code_size}/{hex(code_size)}")
             fmbr.seek(0, SEEK_SET)
             ftarget.seek(0, SEEK_SET)
             code = fmbr.read(code_size)
@@ -167,7 +167,7 @@ def install_mbr(target: str, mbr: str):
             ftarget.seek(0x1FE, SEEK_SET)
             ftarget.write(b'\x55\xaa')
             
-            print(f"> MBR installed at sector 0")
+            # print(f"> MBR installed at sector 0")
 
 def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_offset=0):
     """Install VBR bootloader at partition start sector.
@@ -181,10 +181,10 @@ def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_off
         stage2_size: Size of stage2 in bytes
         partition_offset: Sector offset of partition start
     """
-    print(f"installing VBR {vbr}")
-    print(f"> stage2 offset {stage2_offset}")
-    print(f"> stage2 size {stage2_size}")
-    print(f"> partition_offset {partition_offset}")
+    # print(f"installing VBR {vbr}")
+    # print(f"> stage2 offset {stage2_offset}")
+    # print(f"> stage2 size {stage2_size}")
+    # print(f"> partition_offset {partition_offset}")
     
     map_file = Path(vbr).with_suffix('.map')
     if not map_file.exists():
@@ -211,15 +211,15 @@ def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_off
     
     with open(vbr, 'rb') as fvbr:
         with open(target, 'r+b') as ftarget:
-            print(f"entry_offset_in_binary = {entry_offset_in_binary}/{hex(entry_offset_in_binary)}")
-            print(f"stage2_location_offset_in_binary = {stage2_location_offset_in_binary}/{hex(stage2_location_offset_in_binary)}")
-            print(f"code_end_in_binary = {code_end_in_binary}/{hex(code_end_in_binary)}")
+            # print(f"entry_offset_in_binary = {entry_offset_in_binary}/{hex(entry_offset_in_binary)}")
+            # print(f"stage2_location_offset_in_binary = {stage2_location_offset_in_binary}/{hex(stage2_location_offset_in_binary)}")
+            # print(f"code_end_in_binary = {code_end_in_binary}/{hex(code_end_in_binary)}")
             
             # Write first 3 bytes jump instruction at partition start
             # This overwrites the mkfs.fat jump
             ftarget.seek(byte_offset, SEEK_SET)
             jump_bytes = fvbr.read(3)
-            print(f"Writing jump bytes: {jump_bytes.hex()} to offset {byte_offset} ({hex(byte_offset)})")
+            # print(f"Writing jump bytes: {jump_bytes.hex()} to offset {byte_offset} ({hex(byte_offset)})")
             ftarget.write(jump_bytes)
             
             # Skip mkfs.fat's BPB (bytes 0x0B-0x3F, 53 bytes)
@@ -230,13 +230,13 @@ def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_off
                 raise ValueError(f"Entry point at 0x{entry_offset_in_binary:x} is before 0x40 (in BPB area)")
             
             code_size = code_end_in_binary - entry_offset_in_binary + 3
-            print(f"code_size = {code_size}/{hex(code_size)}")
-            print(f"Reading from vbr at offset {entry_offset_in_binary - 3}")
-            print(f"Writing to image at offset {entry_offset_in_image - 3} ({hex(entry_offset_in_image - 3)})")
+            # print(f"code_size = {code_size}/{hex(code_size)}")
+            # print(f"Reading from vbr at offset {entry_offset_in_binary - 3}")
+            # print(f"Writing to image at offset {entry_offset_in_image - 3} ({hex(entry_offset_in_image - 3)})")
             fvbr.seek(entry_offset_in_binary - 3, SEEK_SET)
             ftarget.seek(entry_offset_in_image - 3, SEEK_SET)
             code = fvbr.read(code_size)
-            print(f"Read {len(code)} bytes of code, first 16 bytes: {code[:16].hex()}")
+            # print(f"Read {len(code)} bytes of code, first 16 bytes: {code[:16].hex()}")
             ftarget.write(code)
             
             # Read SectorsPerCluster from BPB (at byte_offset + 13)
@@ -246,8 +246,8 @@ def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_off
             # Write stage2_location: [4 bytes LBA][1 byte sector count]
             realStage2_offset = stage2_offset + (SectorsPerCluster - 1)
             stage2_sectors = (stage2_size + SECTOR_SIZE - 1) // SECTOR_SIZE
-            print(f"realStage2_offset = {realStage2_offset}")
-            print(f"stage2_sectors = {stage2_sectors}")
+            # print(f"realStage2_offset = {realStage2_offset}")
+            # print(f"stage2_sectors = {stage2_sectors}")
             ftarget.seek(stage2_location_offset_in_image, SEEK_SET)
             ftarget.write(realStage2_offset.to_bytes(4, byteorder='little'))
             ftarget.write(stage2_sectors.to_bytes(1, byteorder='little'))
@@ -256,12 +256,12 @@ def install_vbr(target: str, vbr: str, stage2_offset, stage2_size, partition_off
             ftarget.flush()
             os.fsync(ftarget.fileno())
             
-            print(f"> VBR installed at sector {partition_offset}")
+            # print(f"> VBR installed at sector {partition_offset}")
 
 def mmd(image, file_dst, offset_sectors = 0):
     offset_bytes = offset_sectors * SECTOR_SIZE
     image_arg = f"{image}@@{offset_bytes}" if offset_bytes else image
-    print(f"mdd(image={image}, file_dst={file_dst}, offset_sectors={offset_sectors})")
+    # print(f"mdd(image={image}, file_dst={file_dst}, offset_sectors={offset_sectors})")
     subprocess.run(["mmd", 
                     "-i", image_arg,
                     file_dst], check=True)
@@ -269,7 +269,7 @@ def mmd(image, file_dst, offset_sectors = 0):
 def mcopy(image, file_src, file_dst, offset_sectors = 0):
     offset_bytes = offset_sectors * SECTOR_SIZE
     image_arg = f"{image}@@{offset_bytes}" if offset_bytes else image
-    print(f"mcopy(image={image}, file_src={file_src}, file_dst={file_dst}, offset_sectors={offset_sectors})")
+    # print(f"mcopy(image={image}, file_src={file_src}, file_dst={file_dst}, offset_sectors={offset_sectors})")
     subprocess.run(["mcopy", 
                     "-i", image_arg,
                     file_src,
@@ -304,7 +304,7 @@ def loadFiles(image, files, baseDir, imageDir = "::/", partition_offset = 0):
 MAX_WORKERS = 8
 
 def generate_image_file(target, size):
-    print(f"got target as {target}, size as {size}")
+    # print(f"got target as {target}, size as {size}")
     with open(target, 'wb') as fout:
         fout.write(bytes(size * SECTOR_SIZE))
         fout.close()
@@ -331,9 +331,9 @@ def calculate_files_partition_size(files):
     return sectors_needed + 128  # +128 sectors for FAT overhead
 
 def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
-    print(f"======================================")
-    print(f"doing disk {disk.name} with {disk.__str__()}")
-    print(f"======================================")
+    # print(f"======================================")
+    # print(f"doing disk {disk.name} with {disk.__str__()}")
+    # print(f"======================================")
     mbr = os.path.join(buildDir, disk.MBRBootFile) if disk.MBRBootFile != "" else ""
     image = os.path.join(buildDir, disk.image_path)
     if (os.path.exists(image)):
@@ -349,11 +349,11 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
 
     
     for partition in disk.partitions:
-        print(f"======================================")
-        print(f"doing partition {partition.name} with {partition.__str__()}")
-        print(f"======================================")
-        print(f"got target as {partition.root_dir} size as {partition.size_sectors}")
-        print(f"buildDir={buildDir}, filesDir={filesDir}")
+        # print(f"======================================")
+        # print(f"doing partition {partition.name} with {partition.__str__()}")
+        # print(f"======================================")
+        # print(f"got target as {partition.root_dir} size as {partition.size_sectors}")
+        # print(f"buildDir={buildDir}, filesDir={filesDir}")
         
         rootDir = os.path.join(filesDir, partition.root_dir)
         files = GlobRecursive('*', rootDir)
@@ -379,10 +379,10 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         index += 1
     
     # Install MBR to sector 0 AFTER all partitions are built
-    print(f"s2_offset={s2_offset} stage2_size={stage2_size}")
+    # print(f"s2_offset={s2_offset} stage2_size={stage2_size}")
     if s2_offset != 0 and stage2_size > 0 and mbr != "":
         stage2_sectors = (stage2_size + SECTOR_SIZE - 1) // SECTOR_SIZE
-        print(f"> installing MBR...")
+        # print(f"> installing MBR...")
         install_mbr(image, mbr)
         
     if disk.use_mbr:
@@ -392,13 +392,13 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         # first marshal with crc=0
         header_bytes = bytearray(header.marshal())
         
-        print(f"_disk.sector_size = {_disk.sector_size}")
-        print(f"num entries in table: {len(_disk.table.partitions.entries)}")
+        # print(f"_disk.sector_size = {_disk.sector_size}")
+        # print(f"num entries in table: {len(_disk.table.partitions.entries)}")
         part_array = b"".join(p.partition_data for p in disk.partitions)
         
         # compute partition array CRC first
         part_array = part_array.ljust(128 * len(disk.partitions), b"\x00")
-        print(part_array)
+        # print(part_array)
     
         with open(_disk.image_path, "r+b") as f:
             f.seek(2 * _disk.sector_size)
@@ -412,11 +412,11 @@ def build_disk_from_disk(disk : DiskSpec, buildDir : str, filesDir : str):
         header_crc = zlib.crc32(bytes(header_bytes[:92])) & 0xFFFFFFFF
         struct.pack_into("<I", header_bytes, 16, header_crc)
         
-        print(f"{header_bytes}")
+        # print(f"{header_bytes}")
         with open(_disk.image_path, "r+b") as f:
             f.seek(1 * _disk.sector_size)  # LBA1
             f.write(header_bytes)
-    print(f"> Done")
+    # print(f"> Done")
 
 def build_disk(_disk : Disk, disk : DiskSpec, mbr : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0):
     if (size_sectors == 0):
@@ -428,27 +428,27 @@ def build_disk(_disk : Disk, disk : DiskSpec, mbr : str = "", imageFileSystem : 
     
     # Do not create filesystem at root when using partitions - each partition will create its own
     # Only create root filesystem if no partitions are defined
-    print(f"try to format the disk")
+    # print(f"try to format the disk")
     if not disk.partitions:
-        print(f"formatting the disk with {_disk.image_path}, {imageFileSystem}")
+        # print(f"formatting the disk with {_disk.image_path}, {imageFileSystem}")
         create_filesystem(_disk.image_path._str, imageFileSystem, offset=0)
     
     
 def build_partition(image, disk : Disk, files, bin_files : list[str], partition : DiskPartitionSpec, index : int, stage2 : str = "", kernel : str = "", basePath : str = "", imageFileSystem : str = imageFS, size_sectors : int = 0, sector_offset : int = 0, vbr : str = ""):
     if (size_sectors == 0):
         size_sectors = ((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE) - sector_offset
-        print(f"size_sectors = {size_sectors}")
-        print(f"base size_sectors = {((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE)} - {sector_offset}")
+        # print(f"size_sectors = {size_sectors}")
+        # print(f"base size_sectors = {((ParseSize(imageSize) + SECTOR_SIZE - 1) // SECTOR_SIZE)} - {sector_offset}")
     file_system = imageFileSystem
     partition_offset = sector_offset + partition.partition_offset
     partition.partition_offset = partition_offset
     
     # create partition table
-    print(f"> creating partition table...")
+    # print(f"> creating partition table...")
     make_partitions(disk, partition_offset, size_sectors, file_system, partition, index)
 
     # Create filesystem
-    print(f"> formatting file using {file_system}...")
+    # print(f"> formatting file using {file_system}...")
     create_filesystem(image, file_system, offset=partition_offset)
     
     partition.size_sectors = size_sectors
@@ -456,24 +456,24 @@ def build_partition(image, disk : Disk, files, bin_files : list[str], partition 
     
     # For bootable partitions: copy stage2, get offset, and install VBR if provided
     if partition.bootable and stage2 != "":
-        print(f"stage2 = {stage2}")
+        # print(f"stage2 = {stage2}")
         
         # Now copy stage2 and get its sector offset
-        print(f"> copying stage2...")
+        # print(f"> copying stage2...")
         first_data_sector = GetStage2Sector(stage2, image, partition_offset)
         stage2_size = Path(stage2).stat().st_size
         stage2_sectors = (stage2_size + SECTOR_SIZE - 1) // SECTOR_SIZE
         stage2_offset = first_data_sector + 1 + partition_offset
-        print(f"> stage2 offset {stage2_offset}")
+        # print(f"> stage2 offset {stage2_offset}")
         
         # Install VBR if provided BEFORE loading files (so it doesn't get overwritten)
         if vbr != "" and os.path.exists(vbr):
-            print(f"> installing VBR...")
+            # print(f"> installing VBR...")
             install_vbr(image, vbr, stage2_offset, stage2_size, partition_offset)
     
     try:
         if kernel != "":
-            print(f"> copying kernel...")
+            # print(f"> copying kernel...")
             mmd(image, "boot", partition_offset)
             mcopy(image, kernel, "::/boot/kernel.elf", partition_offset)
             

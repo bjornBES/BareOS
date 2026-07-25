@@ -18,19 +18,19 @@ all: $(BUILD)/libc.a
 
 $(BUILD)/libc.a: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET_AR) rcs $@ $^
-	@echo "--> Created:  libc.a"
+	@echo "$(AR_PREFIX) libc.a"
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) $(USER_TARGET_CFLAGS) -c -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
 	@$(TARGET_ASM) $(USER_TARGET_ASMFLAGS) -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<
 
 always:
 
 clean:
-	rm -f $(BUILD)/libc.a
+	@rm -f $(BUILD)/libc.a

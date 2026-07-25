@@ -28,22 +28,22 @@ stage2: $(BUILD_DIRSTAGE2)/stage2.bin $(BUILD_DIRSTAGE2)/stage2.elf
 
 $(BUILD_DIRSTAGE2)/stage2.bin: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET32_LD) -T linker.ld $(TARGET32_LINKFLAGS) -Wl,-Map=$(BUILD_DIRSTAGE2)/stage2.map -o $@ $^ $(TARGET32_LIBS)
-	@echo "--> Created  stage2.bin"
+	@echo "$(LD_PREFIX) stage2.bin"
+
 $(BUILD_DIRSTAGE2)/stage2.elf: $(OBJECTS_ASM) $(OBJECTS_C)
 	@$(TARGET32_LD) -T linker_debug.ld $(TARGET32_LINKFLAGS) -o $@ $^ $(TARGET32_LIBS)
-	@echo "--> Created  stage2.bin"
+	@echo "$(LD_PREFIX) stage2.elf"
 
 $(BUILD_DIRC)/%.obj: %.c
-	@echo path = ${SOURCE_ARCH}
-	@echo "--> Compiling: " $<
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	@$(TARGET32_CC) $(TARGET32_CFLAGS) -c -o $@ $<
 #	@$(TARGET32_CC) $(TARGET32_CFLAGS) --save-temps -c -o $@ $<
+	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	@$(TARGET32_ASM) $(TARGET32_ASMFLAGS) -o $@ $<
-	@echo "--> Compiled: " $<
+	@echo "$(ASM_PREFIX)" $<
 
 always:
 	@mkdir -p $(BUILD_DIRASM)

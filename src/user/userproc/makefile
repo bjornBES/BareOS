@@ -19,14 +19,14 @@ $(LIBC):
 	@$(MAKE) -C libc BUILD=$(abspath $(BUILD))
 
 bin: $(LIBC)
-	$(MAKE) -C bin BUILD=$(abspath $(BUILD))
+	@$(MAKE) -C bin BUILD=$(abspath $(BUILD))
 
 $(INIT): $(LIBC)
 	@$(MAKE) -C init BUILD=$(abspath $(BUILD))
 
 
 always:
-	mkdir -p $(BUILD)
+	@mkdir -p $(BUILD)
 	@$(MAKE) -C libc always BUILD=$(abspath $(BUILD))
 	@$(MAKE) -C init always BUILD=$(abspath $(BUILD))
 	@$(MAKE) -C bin always BUILD=$(abspath $(BUILD))
@@ -35,4 +35,4 @@ clean:
 	@$(MAKE) -C libc clean BUILD=$(abspath $(BUILD))
 	@$(MAKE) -C init clean BUILD=$(abspath $(BUILD))
 	@$(MAKE) -C bin clean BUILD=$(abspath $(BUILD))
-	rm -rf $(BUILD)
+	@rm -rf $(BUILD)
