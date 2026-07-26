@@ -10,15 +10,37 @@
 
 #include "VFS/vfs.h"
 
-#define SECTOR_SIZE 512
-#define FAT_CACHE_SIZE 5
-#define FAT12_EOC 0xFF8
-#define FAT16_EOC 0xFFF8
-#define FAT32_EOC 0x0FFFFFF8
+#define SECTOR_SIZE       512
+#define FAT_CACHE_SIZE    5
+#define FAT12_EOC         0xFF8
+#define FAT16_EOC         0xFFF8
+#define FAT32_EOC         0x0FFFFFF8
 #define FAT_CACHE_INVALID 0xFFFFFFFF
 
 typedef uint32_64 lba;
 typedef uint32_t cluster;
+
+typedef union FAT_date
+{
+    uint16_t raw;
+    struct
+    {
+        uint16_t year : 7;
+        uint16_t month : 4;
+        uint16_t day : 5;
+    };
+} __attribute__((packed)) FAT_date_t;
+
+typedef union FAT_time
+{
+    uint16_t raw;
+    struct
+    {
+        uint16_t hour : 5;
+        uint16_t min : 6;
+        uint16_t sec : 5;
+    };
+} __attribute__((packed)) FAT_time_t;
 
 typedef struct
 {
@@ -163,6 +185,13 @@ typedef struct fat_inode
     cluster current_cluster;
     cluster *cluster_chain;
     size_t chain_length;
+
+    uint8_t created_time_tenths;
+    FAT_time_t created_time;
+    FAT_date_t created_date;
+    FAT_date_t accessed_date;
+    FAT_time_t modified_time;
+    FAT_date_t modified_date;
 } fat_inode_t;
 
 void fat_init();

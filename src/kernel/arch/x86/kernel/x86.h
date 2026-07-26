@@ -14,7 +14,9 @@
 #include <stdint.h>
 #include "stdio.h"
 #include "debug/debug.h"
-
+//      11
+//      1098 7654 3210
+// EFER=1101_0000_0001
 #define X86_EFLAGS_CF_BIT		0 /* Carry Flag */
 #define X86_EFLAGS_CF			1 << X86_EFLAGS_CF_BIT
 #define X86_EFLAGS_FIXED_BIT	1 /* Bit 1 - always on */

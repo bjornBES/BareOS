@@ -36,6 +36,7 @@ thread_t *thread_create(void (*entry)())
     thread_t *new_thread = malloc(sizeof(thread_t));
     vaddr_t stack = kstack_alloc();
 
+    new_thread->raw_kernel_stack = stack;
     new_thread->kernel_stack = ctx_arch_init(&new_thread->ctx, (vaddr_t)entry, stack, 0, 0);
 
     new_thread->tid = get_tid();
@@ -55,9 +56,31 @@ thread_t *thread_create_user(process_t *proc, uint64_t user_stack_top)
 
     // fake iretq frame — CPU pops these on iretq
     log_debug(MODULE, "user_stack_top = 0x%lx", user_stack_top);
+    t->raw_kernel_stack = kstack;
     t->kernel_stack = ctx_arch_init(&t->ctx, proc->entry, kstack, user_stack_top, 0);
     log_debug(MODULE, "t->kernel_stack = 0x%lx", t->kernel_stack);
     t->tid = get_tid();
+    t->priority = PRIORITY_NORMAL;
+    t->timeslice_reset = priority_to_timeslice(PRIORITY_NORMAL);
+    t->timeslice = t->timeslice_reset;
+    t->state = THREAD_READY;
+    t->proc = proc;
+
+    return t;
+}
+
+thread_t *thread_create_user_tid(process_t *proc, uint64_t user_stack_top, tid_t tid)
+{
+    thread_t *t = malloc(sizeof(thread_t));
+
+    vaddr_t kstack = kstack_alloc();
+
+    // fake iretq frame — CPU pops these on iretq
+    log_debug(MODULE, "user_stack_top = 0x%lx", user_stack_top);
+    t->raw_kernel_stack = kstack;
+    t->kernel_stack = ctx_arch_init(&t->ctx, proc->entry, kstack, user_stack_top, 0);
+    log_debug(MODULE, "t->kernel_stack = 0x%lx", t->kernel_stack);
+    t->tid = tid;
     t->priority = PRIORITY_NORMAL;
     t->timeslice_reset = priority_to_timeslice(PRIORITY_NORMAL);
     t->timeslice = t->timeslice_reset;
@@ -73,6 +96,7 @@ thread_t *thread_create_main()
     memset(t, 0, sizeof(thread_t));
     vaddr_t stack_top = kstack_alloc();
     t->kernel_stack = stack_top;
+    t->raw_kernel_stack = stack_top;
     t->tid = get_tid();
     t->timeslice_reset = 20;
     t->timeslice = 20;
@@ -106,6 +130,7 @@ thread_t *thread_create_from(thread_t *parent, intr_frame_t *current_frame, uint
     // fresh kernel stack — never share this
     log_debug(MODULE, "child @ %p", child);
     child->kernel_stack = kstack_alloc();
+    child->raw_kernel_stack = child->kernel_stack;
     log_debug(MODULE, "child->kernel_stack @ %p", child->kernel_stack);
 
     // clone the interrupt frame — arch owned
@@ -131,4 +156,3 @@ thread_t *thread_create_from(thread_t *parent, intr_frame_t *current_frame, uint
 
     return child;
 }
-

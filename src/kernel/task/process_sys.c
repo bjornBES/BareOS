@@ -9,6 +9,8 @@
  */
 
 #include "process.h"
+#include "task/threading/scheduling/scheduler.h"
+#include "signal/signal.h"
 #include <types.h>
 #include "syscall/syscall.h"
 #include "errno/errno.h"
@@ -22,6 +24,8 @@
 
 char *proc_get_cwd(char *buf, size_t size)
 {
+    thread_t *t = scheduler_get_current();
+    ctx_dump(&t->ctx);
     if (buf == NULL)
     {
         SET_ERROR(EINVAL);
@@ -68,3 +72,17 @@ char *proc_get_cwd(char *buf, size_t size)
 }
 
 SYSCALL_DEFINE2(proc_get_cwd, char *, size_t);
+
+void proc_exit_group(int status)
+{
+    thread_t *current_thread = scheduler_get_current();
+    process_t *proc = current_thread->proc;
+    proc->exit_code.raw = status;
+
+    process_unexec_process(proc);
+    
+    proc->parent->state = PROC_STATE_READY;
+    signal_send_group(proc->parent, SIGCHLD);
+    schedule(NULL);
+}
+SYSCALL_DEFINE1_NORETURN(proc_exit_group, int);

@@ -25,6 +25,7 @@ syscall_entry:
 	mov     [gs:CPU_USER_RSP], rsp
 	mov     rsp, [gs:CPU_KERNEL_RSP]
 
+	; int 	1
 
 	push    qword [gs:CPU_USER_RSP]
 
@@ -47,7 +48,7 @@ syscall_entry:
 	push    r13
 	push    r14
 	push    r15
-
+	
 	mov     rax, [gs:CURRENT]
 	mov     rbx, [rax + KERNEL_STACK]			; top of this thread's own kernel stack
 	sub     rbx, FRAME_QWORDS*8					; reserve space for the frame there
@@ -61,7 +62,9 @@ syscall_entry:
 	mov     rsp, rbx							; NOW switch rsp — frame is already here
 	mov     rdi, rsp							; arg to syscall_dispatch = new frame ptr
 	call    syscall_dispatch
-
+	
+	; int 	1
+	
 	pop     r15
 	pop     r14
 	pop     r13
@@ -77,10 +80,13 @@ syscall_entry:
 	pop     rdx
 	pop     rcx
 	pop     rax
-
+	; int 	1
+global .pop_rest
+.pop_rest:
 	pop     rcx
 	pop     r11
 	pop     rsp
+	; int 	1
 
 	swapgs
 	o64     sysret

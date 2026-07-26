@@ -22,10 +22,12 @@
 int arch_prctl(int code, uint64_t addr)
 {
     thread_t *current_thread = scheduler_get_current();
+    ctx_dump(&current_thread->ctx);
     switch (code)
     {
         case ARCH_SET_FS :
             current_thread->fs_base = addr;
+            ctx_dump(&current_thread->ctx);
             wrmsr(MSR_FS_BASE, addr);
             break;
         case ARCH_SET_GS :

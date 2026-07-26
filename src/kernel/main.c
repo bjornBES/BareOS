@@ -28,7 +28,7 @@
 #include "mm/ioremap/ioremap.h"
 #include "mm/pmm.h"
 #include "mm/memdefs.h"
-#include "PCI/pci.h"
+#include "pci/pci.h"
 #include "VFS/vfs.h"
 #include "VFS/vfs_flags.h"
 #include "device/device.h"
@@ -78,8 +78,8 @@ void test()
 
 void start_init()
 {
-    char *argv[2] = {"/user:/bin/INIT.ELF", NULL};
-    process_exec("/user:/bin/INIT.ELF", argv, NULL, NULL);
+    char *argv[2] = {"/user!/bin/INIT.ELF", NULL};
+    process_exec("/user!/bin/INIT.ELF", argv, NULL, NULL, NULL);
 }
 
 boot_params_t *main_boot_params;
@@ -94,6 +94,7 @@ __attribute__((noreturn)) void kernel_entry()
     setup_arch_post();
 
     
+    UART_init(COM1);
     tty_struct_t *stdin = NULL;
     tty_struct_t *stdout = NULL;
     {
@@ -101,10 +102,12 @@ __attribute__((noreturn)) void kernel_entry()
         device_t *vga_dev = device_get_by_id(DEVICE_VIDEO, 1);
         
         
-        stdin = tty_create(device_get_by_name("kbd0"), NULL);
+        stdin = tty_create(device_get_by_name("kbd0"), device_get_by_name("uart0"));
+        stdin->winsize.ws_col = 80;
+        stdin->winsize.ws_row = 25;
         termios_t stdin_term;
         stdin_term.c_lflag &= ~(ISIG | ECHO | ICRNL);
-        stdin_term.c_lflag |= ICANON;
+        stdin_term.c_lflag |= ICANON | ECHO;
         tty_termios_set(stdin, &stdin_term);
         
         stdout = tty_create(NULL, vga_dev);
@@ -116,9 +119,8 @@ __attribute__((noreturn)) void kernel_entry()
     }
 
     
-    UART_init(COM1);
     termios_t uart_term = {0};
-    tty_struct_t *stddebug = tty_create(NULL, device_get_by_name("debug0"));
+    tty_struct_t *stddebug = tty_create(NULL, device_get_by_name("uart0"));
     tty_baudrate_encode_baud_rate(&uart_term, 0, 38400);
     uart_term.c_cflag |= CS8;
     uart_term.c_oflag |= ONLCR;
@@ -129,21 +131,6 @@ __attribute__((noreturn)) void kernel_entry()
 
     log_info("MAIN", "main_boot_params @ %p", main_boot_params);
     log_debug("MAIN", "Hello world from Kernel");
-
-    // var test : void = 0  invalid syntax
-    // var test : void ptr = @cast(0, void ptr) // is 0
-    // (*(void*)0xFFFFFFFFFFFFFFFF) = 0
-    // ((*(void*)0xFFFFFFFFFFFFFFFF) - (*(void*)0xFFFFFFFFFFFFFFFF)) = 0
-    /* 
-    _ = f(a,b)
-    {
-    void sinkN = *(void*)f(a,b)
-    f(a,b)
-    <expr> = ; <=> <expr> = 0;
-    }
-    */
-    thread_t *t = thread_create(test);
-    scheduler_add(t);
 
     main_thread->timeslice = 10;
 
@@ -161,13 +148,13 @@ __attribute__((noreturn)) void kernel_entry()
         log_info("MAIN", "Getting drive 0x101");
         ahci = device_get_by_dev_id(MKDEV(DEVICE_BLOCK, 1, 2)); // device 1 partition 1
         log_info("MAIN", "Mounting drive %p", ahci);
-        vfs_mount("/user:/", ahci, 0);
+        vfs_mount("/user!/", ahci, 0);
         log_info("MAIN", "Getting drive 0x100");
         ahci = device_get_by_dev_id(MKDEV(DEVICE_BLOCK, 1, 1)); // device 1 partition 0
         log_info("MAIN", "Mounting drive 0x100");
-        vfs_mount("/boot:/boot", ahci, 0);
+        vfs_mount("/boot!/boot", ahci, 0);
 
-        fd_t file = vfs_open("/user:/home/test.txt", 0, 0);
+        fd_t file = vfs_open("/user!/home/test.txt", 0, 0);
         uint8_t data[512];
         vfs_read(file, data, 512);
         hexdump(data, 512);
@@ -179,7 +166,7 @@ __attribute__((noreturn)) void kernel_entry()
 
     process_init();
 
-    t = thread_create(start_init);
+    thread_t *t = thread_create(start_init);
     scheduler_add(t);
     scheduler_sleep_ms(100);
     log_debug("MAIN", "Got back");

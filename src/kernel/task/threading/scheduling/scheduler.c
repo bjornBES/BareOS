@@ -32,11 +32,11 @@
 #include "math.h"
 #include <stddef.h>
 
-#define MODULE "SCHEDULER"
+#define MODULE            "SCHEDULER"
 
 #define SCHEDULER_TICK_NS 1000000ull // 1ms
 
-#define current_thread (cpu_arch_get_current()->current)
+#define current_thread    (cpu_arch_get_current()->current)
 
 uint32_t total_threads = 0;
 
@@ -50,6 +50,8 @@ static thread_t *blocked_queue[MAX_THREADS] = {0};
 static uint32_t blocked_queue_size = 0;
 
 static uint32_t queue_head = 0;
+
+
 
 void scheduler_thread_info()
 {
@@ -113,6 +115,21 @@ void scheduler_thread_info()
     }
 }
 
+static void destroy_thread(thread_t *t, int i)
+{
+    log_debug(MODULE, "cleaning up thread @ queue[%u]", i);
+    log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", i, t, t->tid, t->state, t->kernel_stack, t->proc);
+    
+    total_threads--;
+    log_info(MODULE, "found %u", t->tid);
+    THREAD_EXIT(t);
+    queue[i] = NULL;
+    queue_size--;
+
+    log_debug(MODULE, "cleaned up and done with queue[%u]", i);
+    scheduler_thread_info();
+}
+
 void scheduler_add(thread_t *t)
 {
     log_debug(MODULE, "adding thread %u", t->tid);
@@ -172,10 +189,7 @@ void scheduler_remove(thread_t *t)
                 t->state = THREAD_REMAINS;
                 continue;
             }
-            total_threads--;
-            log_info(MODULE, "found %u", t->tid);
-            THREAD_EXIT(queue[i]);
-            queue[i] = NULL;
+            destroy_thread(t, i);
             return;
         }
     }
@@ -310,7 +324,7 @@ static thread_t *scheduler_next()
         {
             continue;
         }
-        // log_debug(MODULE, "candidate[%u] @ %p = {state = %u, tid = %u}", i, candidate, candidate->state, candidate->tid);
+        log_debug(MODULE, "candidate[%u] @ %p = {state = %u, tid = %u}", idx, candidate, candidate->state, candidate->tid);
 
         /*         if (candidate == current_thread && candidate->state == THREAD_REMAINS)
                 {
@@ -326,15 +340,16 @@ static thread_t *scheduler_next()
 
         if (candidate->state == THREAD_REMAINS && candidate != current_thread)
         {
-            log_debug(MODULE, "cleaning up thread @ candidate[%u]", idx);
-            log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", idx, candidate, candidate->tid, candidate->state, candidate->kernel_stack, candidate->proc);
-            queue[idx] = NULL;
-            total_threads++;
-            THREAD_EXIT(candidate);
-            queue_size--;
-            log_debug(MODULE, "cleaned up and done with candidate[%u]", idx);
-            scheduler_thread_info();
+            destroy_thread(candidate, idx);
             continue;
+        }
+
+        if (candidate->proc)
+        {
+            if (candidate->proc->state == PROC_STATE_SUSPENDED)
+            {
+                continue;
+            }
         }
 
         if (candidate->state == THREAD_READY)
@@ -357,6 +372,8 @@ thread_t *scheduler_get_current()
 
 int scheduler_yield()
 {
+    log_info(MODULE, "scheduler_yield");
+    scheduler_thread_info();
     return scheduler_arch_yield();
 }
 
@@ -364,6 +381,7 @@ SYSCALL_DEFINE0(scheduler_yield);
 
 void scheduler_tick()
 {
+    log_info(MODULE, "scheduler_tick");
     scheduler_wakeup_check();
 
     // rearm — next tick or next wakeup whichever sooner
@@ -408,9 +426,10 @@ __attribute__((noreturn)) void schedule_switch(thread_t *next)
     {
         ctx_dump(&current_thread->ctx);
     }
-    
+
     log_debug(MODULE, "here6 switching to 0x%lx", current_thread->kernel_stack);
     ivt_dump_frame(current_thread->ctx.frame.regs);
+    cpu_arch_set_kernel_stack((vaddr_t)current_thread->kernel_stack);
     irq_arch_eoi(0);
     ctx_arch_switch(current_thread->kernel_stack);
 
@@ -423,13 +442,19 @@ __attribute__((noreturn)) void schedule_switch(thread_t *next)
 
 int schedule(intr_frame_t *regs)
 {
+    if (regs != NULL)
+    {
+        ivt_dump_frame(regs);
+    }
     // spinlock_acquire(&schedule_lock);
     cpu_t *cpu = cpu_arch_get_current();
+    log_debug(MODULE, "cpu = %p", cpu);
     if (cpu == NULL)
     {
         irq_arch_eoi(0);
         return RETURN_FAILED;
     }
+    log_debug(MODULE, "cpu->current = %p", cpu->current);
     if (cpu->current == NULL)
     {
         irq_arch_eoi(0);
@@ -439,6 +464,15 @@ int schedule(intr_frame_t *regs)
     thread_t *next = scheduler_next();
     if (next == current_thread)
     {
+        log_err(MODULE, "same");
+        current_thread->timeslice = current_thread->timeslice_reset; // reload
+        irq_arch_eoi(0);
+        return RETURN_GOOD;
+    }
+
+    if (next->proc && next->proc->state == PROC_STATE_SUSPENDED)
+    {
+        log_err(MODULE, "proc is suspended");
         current_thread->timeslice = current_thread->timeslice_reset; // reload
         irq_arch_eoi(0);
         return RETURN_GOOD;
@@ -462,6 +496,7 @@ int schedule(intr_frame_t *regs)
         else
         {
             // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
+            mmu_arch_map_kernel(next->proc->page_dir);
             mmu_arch_load_table(next->proc->page_dir);
         }
         log_debug(MODULE, "here3");

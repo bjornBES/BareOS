@@ -39,7 +39,7 @@ typedef struct volume
 
 typedef struct inode
 {
-    uint32_t ino; // inode number, unique per volume
+    ino_t ino; // inode number, unique per volume
     uint32_t type; // DT_REG, DT_DIR, DT_LNK
     uint32_t flags;
     size_t size;
@@ -95,8 +95,13 @@ typedef struct vfs_stat
     uint32_t flags;
     uint32_t uid;
     uint32_t gid;
-    uint64_t created; // unix timestamp or tick count
-    uint64_t modified;
+
+    blksize_t st_blksize;
+    blkcnt_t st_blocks;
+
+    timespec_t created; // unix timestamp or tick count
+    timespec_t accessed;
+    timespec_t modified;
 } vfs_stat_t;
 
 typedef struct filesystem
@@ -121,3 +126,7 @@ typedef struct filesystem
     inode_t *(*alloc_inode)(volume_t *vol); // fs allocates its own type
     void (*free_inode)(inode_t *ino);       // fs frees its own type
 } filesystem_t;
+
+int vfs_do_stat(const char *path, vfs_stat_t *out, vfs_node_t *node);
+int vfs_get_vnode(const char *path, vfs_node_t *out);
+

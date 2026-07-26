@@ -21,6 +21,3 @@ void outd(uint16_t port, uint32_t value);
 uint32_t ind(uint16_t port);
 
 void callNMI();
-
-#define enable_interrupts() __asm__ volatile("sti")
-#define disableInterrupts() __asm__ volatile("cli")

@@ -38,11 +38,17 @@ void do_exit(uint32_t code, process_t *proc)
         thread_t *parent_thread = scheduler_find_waiting(proc->parent);
         if (parent_thread && proc->parent->wait_for == proc->pid)
         {
+            proc->parent->state = PROC_STATE_READY;
             scheduler_unblock(parent_thread);
+        }
+        if (proc->parent->state == PROC_STATE_SUSPENDED)
+        {
+            proc->parent->state = PROC_STATE_READY;
         }
     }
 
     process_unexec_process(proc);
 
+    log_debug(NO_MODULE, "here1");
     schedule(NULL);
 }

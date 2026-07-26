@@ -21,6 +21,7 @@
 #include "threading/thread.h"
 #include "threading/scheduling/scheduler.h"
 
+#include "kernel/process.h"
 #include "kernel/cpu.h"
 #include "kernel/string.h"
 #include "kernel/memory.h"
@@ -53,17 +54,27 @@ int page_fault_try_count = 0;
 
 int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
 {
-    log_info(MODULE, "here");
+    log_info(MODULE, "[Page Fault] entry flags 0x%x", info->entry_flags);
+    log_info(MODULE, "[Page Fault] present %s", info->present BOOL_TO_STRING);
+    log_info(MODULE, "[Page Fault] write %s", info->write BOOL_TO_STRING);
+    log_info(MODULE, "[Page Fault] user %s", info->user BOOL_TO_STRING);
+    log_info(MODULE, "[Page Fault] exec %s", info->exec BOOL_TO_STRING);
+    log_info(MODULE, "[Page Fault] is cow page %s", info->is_cow BOOL_TO_STRING);
     vaddr_t faulting_va = PAGE_ALIGN_DOWN(info->fault_addr);
+    thread_t *current_thread = scheduler_get_current();
     if (faulting_va == 0)
     {
+        log_err(MODULE, "NULL EXCEPTION");
+        signal_send_group(current_thread->proc, SIGSEGV);
+        signal_try_deliver(current_thread, NULL, regs);
+        process_kill(current_thread->proc->pid, SIGKILL);
+
         KernelPanic(MODULE, "NULL exception TODO:");
     }
 
-    log_info(MODULE, "getting current_thread");
-    thread_t *current_thread = scheduler_get_current();
     if (current_thread)
     {
+        ctx_dump(&current_thread->ctx);
         log_info(MODULE, "comes from thread %u", current_thread->tid);
     }
 
@@ -76,8 +87,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
         if (vma == NULL)
         {
             log_info(MODULE, "%p has no vma entry", info->fault_addr);
-            process_kill(current_process->pid, SIGSEGV);
-            return RETURN_GOOD;
+            return process_kill(current_process->pid, SIGSEGV);
         }
         if (!info->present)
         {
@@ -86,7 +96,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
             if (FLAGS_TO_RAW(vma->flags) == 0)
             {
                 log_info(MODULE, "%p has no vma entry", info->fault_addr);
-                process_kill(current_process->pid, SIGSEGV);
+                return process_kill(current_process->pid, SIGSEGV);
             }
             int state = mmu_arch_map(current_process->page_dir, faulting_va, frame, vma->flags);
             memset((void *)faulting_va, 0, PAGE_SIZE); // demand-zero
@@ -99,14 +109,18 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
     log_info(MODULE, "current cpuid is %u", cpu_arch_get_current()->cpu_id);
     log_info(MODULE, "current apic_id is %u", cpu_arch_get_current()->apic_id);
 
+    paddr_t addr = mmu_arch_virt_to_phys(current_process->page_dir, faulting_va);
+    log_info(MODULE, "[Page Fault] Current page dir %p, User process page dir %p", info->page_directory.page_dir_phys, current_process->page_dir->page_dir_phys);
+    log_info(MODULE, "[Page Fault] Current page dir %p, User process page dir %p", info->page_directory.page_dir, current_process->page_dir->page_dir);
+    log_info(MODULE, "[Page Fault] User process from virt address %p and phys address %p", faulting_va, addr);
+
     if (current_process != NULL)
     {
         vma_t *vma = vma_find(current_process->vma, info->fault_addr);
-        paddr_t addr = mmu_arch_virt_to_phys(current_process->page_dir, faulting_va);
         if (vma == NULL)
         {
             log_info(MODULE, "%p has no vma entry", info->fault_addr);
-            process_kill(current_process->pid, SIGSEGV);
+            return process_kill(current_process->pid, SIGSEGV);
             return RETURN_GOOD;
         }
         else
@@ -118,7 +132,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
                 if (FLAGS_TO_RAW(vma->flags) == 0)
                 {
                     log_info(MODULE, "%p has no vma entry", info->fault_addr);
-                    process_kill(current_process->pid, SIGSEGV);
+                    return process_kill(current_process->pid, SIGSEGV);
                 }
                 // vma->flags.user = info->user;
                 vma->flags.user = 1;
@@ -167,14 +181,6 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
         }
         page_fault_try_count = 0;
 
-        fprintf(VFS_FD_DEBUG, "[Page Fault] User process from virt address %p and phys address %p\n", info->fault_addr, addr);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] entry flags 0x%x\n", info->entry_flags);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] write %s\n", info->write BOOL_TO_STRING);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] user %s\n", info->user BOOL_TO_STRING);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] present %s\n", info->present BOOL_TO_STRING);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] exec %s\n", info->exec BOOL_TO_STRING);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] is cow page %s\n", info->is_cow BOOL_TO_STRING);
-
         thread_t *current_thread = scheduler_get_current();
         log_info(MODULE, "comes from thread %u", current_thread->tid);
 
@@ -211,7 +217,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
         }
     }
     KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
-    // process_kill(current_process->pid, SIGSEGV);
+    // return process_kill(current_process->pid, SIGSEGV);
     return RETURN_GOOD;
 }
 
@@ -236,10 +242,10 @@ process_t *process_create()
     pid_table[next_pid] = proc;
     next_pid = next_pid + 1;
 
-    vfs_user_do_open("/DEVFS:/dev/tty0", VFS_O_RDONLY, 0, proc);
-    vfs_user_do_open("/DEVFS:/dev/tty1", VFS_O_RDONLY, 0, proc);
-    vfs_user_do_open("/DEVFS:/dev/tty2", VFS_O_RDONLY, 0, proc);
-    vfs_user_do_open("/DEVFS:/dev/tty3", VFS_O_RDONLY, 0, proc);
+    vfs_user_do_open("/DEVFS!/dev/tty0", O_RDONLY, 0, proc);
+    vfs_user_do_open("/DEVFS!/dev/tty1", O_WRONLY, 0, proc);
+    vfs_user_do_open("/DEVFS!/dev/tty2", O_WRONLY, 0, proc);
+    vfs_user_do_open("/DEVFS!/dev/tty3", O_WRONLY, 0, proc);
 
     return proc;
 }
@@ -293,7 +299,7 @@ process_t *process_clone(process_t *parent)
     memset(child->threads, 0, sizeof(thread_t *) * MAX_THREADS_PER_PROCESS);
 
     child->exit_code.raw = 0;
-    child->state = PROC_STATE_RUNNING;
+    child->state = PROC_STATE_READY;
 
     child->pledge_mask = parent->pledge_mask;
 
@@ -321,6 +327,107 @@ process_t *process_clone(process_t *parent)
 
     return child;
 }
+
+pid_t process_vfork(syscall_info *info)
+{
+    thread_t *parent_thread = scheduler_get_current();
+    log_debug(NO_MODULE, "======= PARENT =======");
+    ctx_arch_re_init_segments(&parent_thread->ctx);
+    ctx_dump(&parent_thread->ctx);
+    log_debug(NO_MODULE, "======= FRAME =======");
+    ivt_dump_frame(info->regs);
+    scheduler_thread_info();
+    // 1.
+    process_t *parent = parent_thread->proc;
+
+    process_t *child = kmalloc(sizeof(process_t));
+    if (!child)
+    {
+        return -ENOMEM;
+    }
+    memcpy(child, parent, sizeof(process_t));
+
+    child->page_dir = mmu_arch_create_table();
+    mmu_arch_copy_from(child->page_dir, parent->page_dir);
+
+    child->pid = next_pid;
+    pid_table[next_pid] = child;
+    next_pid = next_pid + 1;
+    child->parent = parent;
+
+    for (int i = 0; i < FD_SIZE; i++)
+    {
+        child->fd_table.entries[i] = parent->fd_table.entries[i];
+        if (child->fd_table.entries[i])
+        {
+            child->fd_table.entries[i]->refcount++;
+        }
+    }
+    child->thread_count = 0;
+    memset(child->threads, 0, sizeof(thread_t *) * MAX_THREADS_PER_PROCESS);
+
+    memset(&child->ladder, 0, sizeof(task_ladder_t));
+    child->parent = parent;
+    child->child = NULL;
+
+    thread_t *child_thread = thread_create_from(parent_thread, info->regs, child->vma->start_stack);
+    log_info(MODULE, "walk process tree");
+    if (!child_thread)
+    {
+        process_destroy(child);
+        return -ENOMEM;
+    }
+    child_thread->proc = child;
+
+    log_info(MODULE, "walk process tree");
+    if (!parent->child)
+    {
+        // first child
+        parent->child = child;
+    }
+    else
+    {
+        // walk sibling chain to tail
+        task_ladder_t *current = (task_ladder_t *)parent->child;
+        while (current->next)
+        {
+            current->next->priv = current; // fix: set priv on next before moving
+            current = current->next;
+        }
+        // append and set back-pointer
+        current->next = (task_ladder_t *)child;
+        ((task_ladder_t *)child)->priv = current;
+        child->parent = parent;
+    }
+    log_info(MODULE, "DONE walk process tree");
+
+    parent->wait_for = child->pid;
+    parent->state = PROC_STATE_SUSPENDED;
+
+    child->threads[0] = child_thread;
+    child->thread_count++;
+
+    scheduler_add(child_thread);
+
+    mmu_arch_map_kernel(child->page_dir);
+
+    log_debug(MODULE, "forked %u from %u", child->pid, parent->pid);
+    frame_arch_set_retval(info->regs, child->pid);
+
+    log_debug(NO_MODULE, "======= CHILD =======");
+    ctx_dump(&child_thread->ctx);
+    log_debug(NO_MODULE, "======= PARENT =======");
+    ctx_dump(&parent_thread->ctx);
+    log_debug(NO_MODULE, "======= FRAME =======");
+    ivt_dump_frame(info->regs);
+
+    scheduler_yield();
+
+    log_err(MODULE, "yield failed");
+    return child->pid;
+}
+
+SYSCALL_DEFINE0_REG(process_vfork);
 
 pid_t process_fork(syscall_info *info)
 {
@@ -377,6 +484,7 @@ pid_t process_fork(syscall_info *info)
     mmu_arch_map_kernel(child->page_dir);
 
     log_debug(MODULE, "forked %u from %u", child->pid, parent->pid);
+
     return child->pid;
 }
 
@@ -390,6 +498,7 @@ void process_run(process_t *proc)
     mmu_arch_map_kernel(proc->page_dir);
 
     scheduler_add(proc->threads[proc->thread_count - 1]);
+
     return;
 }
 
@@ -448,10 +557,16 @@ void process_reap(process_t *proc)
 
 int process_unexec_process(process_t *proc)
 {
+    ENTER_FUNC(MODULE, "%p", proc);
     proc->state = PROC_STATE_ZOMBIE;
 
     for (size_t i = 0; i < MAX_THREADS_PER_PROCESS; i++)
     {
+        log_debug(MODULE, "%u: %p", i, proc->threads[i]);
+        if (proc->threads[i] == NULL)
+        {
+            continue;
+        }
         if (proc->threads[i] != NULL)
         {
             proc->threads[i]->state = THREAD_REMAINS;
@@ -556,42 +671,10 @@ int process_wait(process_t *proc)
     return code.raw;
 }
 
-int process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc)
+void kernel_init_process(process_t *proc, char *path, process_args_t *info)
 {
-    ENTER_FUNC(MODULE, "%p, %p, %p, %p", proc_path, argv, envp, proc);
     page_table_t current_page;
     mmu_arch_current_table(&current_page);
-
-    process_args_t *info = NULL;
-    bool kernel_start = false;
-    if (proc == NULL)
-    {
-        kernel_start = true;
-        proc = process_create(); // load program into memory
-        log_info(MODULE, "saving args");
-        info = process_args_save(proc, argv, envp);
-    }
-    else
-    {
-        log_info(MODULE, "saving args");
-        info = process_args_save(proc, argv, envp);
-
-        vma_free(proc);
-
-        vma_init(proc);
-    }
-
-    char *path = proc_path;
-    log_debug(MODULE, "path = %s", path);
-    if (path_has_volume(proc_path) != RETURN_GOOD)
-    {
-        log_debug(MODULE, "proc->volume = %s", proc->volume);
-        path = malloc(MAX_PATH_SIZE);
-        int count = sprintf(path, "/%s:%s", proc->volume, proc_path);
-        path[count] = '\0';
-        log_debug(MODULE, "path = %s", path);
-    }
-    strcpy(proc->path, path);
 
     log_info(MODULE, "loading program %s", path);
     process_load(path, proc);
@@ -609,59 +692,134 @@ int process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc)
 
     process_run(proc);                  // add the thread_t to the scheduler
 
-    if (kernel_start == true)
-    {
-        waitpid_loop();
-        return RETURN_GOOD;
-    }
-
-    return process_wait(proc);
+    waitpid_loop();
 }
 
-// void kernel_init_process(const char *path, char *argv[], char *envp[])
-// {
-//     page_table_t current_page;
-//     mmu_arch_current_table(&current_page);
+thread_t *process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc, syscall_info *info_sys)
+{
+    ENTER_FUNC(MODULE, "%p, %p, %p, %p", proc_path, argv, envp, proc);
+    page_table_t current_page;
+    mmu_arch_current_table(&current_page);
 
-//     process_t *proc = process_create(); // load program into memory
-//     process_load((char *)path, proc);
+    process_args_t *info = NULL;
+    bool kernel_start = false;
 
-//     process_parse_args(proc, argv, envp);                                        // shit with args
+    char *path = malloc(MAX_PATH_SIZE);
+    strcpy(path, proc_path);
+    log_debug(MODULE, "path = %s", path);
 
-//     thread_t *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack); // thread_t
-//     proc->threads[proc->thread_count] = user;
-//     proc->thread_count++;
+    if (proc == NULL)
+    {
+        kernel_start = true;
+        proc = process_create(); // load program into memory
+        log_info(MODULE, "saving args");
+        info = process_args_save(proc, argv, envp);
+    }
+    else
+    {
+        log_info(MODULE, "saving args");
+        info = process_args_save(proc, argv, envp);
+        if (proc->parent->state == PROC_STATE_SUSPENDED)
+        {
+            proc_path = path;
+            mmu_arch_map_kernel(proc->page_dir);
+            page_table_t *new_table = mmu_arch_create_table();
+            mmu_arch_map_kernel(new_table);
+            mmu_arch_load_table(new_table);
+            mmu_arch_destroy_table(proc->page_dir);
+            proc->page_dir = new_table;
+            memcpy(&current_page, new_table, sizeof(page_table_t));
+        }
+        else
+        {
+            vma_free(proc);
+        }
+        vma_init(proc);
+    }
 
-//     mmu_arch_flush_all();
-//     mmu_arch_load_table(&current_page); // load table
-//     mmu_arch_flush_all();
+    if (path_has_volume(proc_path) != RETURN_GOOD)
+    {
+        log_debug(MODULE, "proc->volume = %s", proc->volume);
+        int count = sprintf(path, "/%s!%s", proc->volume, proc_path);
+        path[count] = '\0';
+        log_debug(MODULE, "path = %s", path);
+    }
+    strcpy(proc->path, path);
 
-//     process_run(proc); // add the thread_t to the scheduler
+    if (kernel_start)
+    {
+        kernel_init_process(proc, path, info);
+    }
 
-//     log_debug(MODULE, "here4");
+    log_info(MODULE, "loading program %s", path);
+    process_load(path, proc);
 
-//     waitpid_loop();
-// }
+    log_info(MODULE, "loading args");
+    process_args_parse(info, proc); // shit with args
+
+    log_info(MODULE, "new thread");
+    proc->thread_count = 0;
+    thread_t *current_thread = scheduler_get_current();
+    ivt_dump_frame(info_sys->regs);
+    process_arch_build_return_frame(info_sys->regs, proc);
+    frame_arch_re_init_segments(info_sys->regs);
+    ivt_dump_frame(info_sys->regs);
+    process_arch_build_return_frame(current_thread->ctx.frame.regs, proc);
+    // frame_arch_re_init_segments(current_thread->ctx.frame.regs);
+    current_thread->proc = proc;
+    current_thread->state = THREAD_READY;
+
+    // current_thread->state = THREAD_REMAINS;
+    // thread_t *user = thread_create_user_tid(proc, (uint64_t)proc->vma->start_stack, current_thread->tid); // thread_t
+    // current_thread->tid = -1;
+
+    proc->threads[proc->thread_count] = current_thread;
+    proc->thread_count++;
+
+    ctx_arch_set_sp(&current_thread->ctx, proc->vma->start_stack);
+
+    ctx_dump(&current_thread->ctx);
+
+    mmu_arch_flush_all();
+    mmu_arch_load_table(&current_page); // load cr3
+
+    mmu_arch_map_kernel(proc->page_dir);
+    log_debug(MODULE, "last dump from execve");
+    ctx_dump(&current_thread->ctx);
+    return current_thread;
+    // scheduler_yield();
+
+    // process_run(proc);                  // add the thread_t to the scheduler
+
+    // return process_wait(proc);
+}
 
 int process_execve(const char *path, char *argv[], char *envp[], syscall_info *info)
 {
     fprintf(VFS_FD_DEBUG, "path = %s argv = %p envp = %p\n", path, argv[0], envp[0]);
     process_t *proc = process_get_current();
 
-    return process_exec((char *)path, argv, envp, proc);
+    /* thread_t *current_thread = */ process_exec((char *)path, argv, envp, proc, info);
+    return 0;
 }
 
 SYSCALL_DEFINE3_REG(process_execve, const char *, char **, char **);
 
 int process_kill(pid_t pid, int sig)
 {
-    log_debug(MODULE, "killing procress %u using %u", pid, sig);
+    log_debug(MODULE, "killing process %u using %u", pid, sig);
     process_t *proc = pid_table[pid];
     if (sig == SIGKILL)
     {
         do_exit(137, proc);
         return RETURN_GOOD;
     }
+
+    if (BIT_GET(proc->signal_queue.signal, sig) == 1)
+    {
+        return RETURN_FAILED;
+    }
+
     signal_send_group(proc, sig);
     return RETURN_GOOD;
 }

@@ -50,7 +50,7 @@ ssize_t devfs_read(vfs_node_t *node, void *buffer, off_t offset, size_t size, de
 
 ssize_t devfs_write(vfs_node_t *node, const void *buffer, off_t offset, size_t size, device_t *dev, mountpoint_t *mnt)
 {
-    ENTER_FUNC(NO_MODULE, "%p, %p, %u, %u, %p, %p", node, buffer, offset, size, dev, mnt);
+    // ENTER_FUNC(NO_MODULE, "%p, %p, %u, %u, %p, %p", node, buffer, offset, size, dev, mnt);
     devfs_inode_t *dev_ino = (devfs_inode_t *)node->inode;
     return device_write(dev_ino->dev, (void *)buffer, offset, size);
 }
@@ -64,39 +64,38 @@ int devfs_ioctl(vfs_node_t *node, int op, void *arg, device_t *dev, mountpoint_t
 
 int devfs_lookup(inode_t *parent, const char *name, inode_t *out, device_t *dev, mountpoint_t *mnt)
 {
-    log_debug(MODULE, "fat_lookup(%p, %s(%p), %p, %p, %p)", parent, name, name, out, dev, mnt);
+    log_debug(MODULE, "devfs_lookup(%p, %s(%p), %p, %p, %p)", parent, name, name, out, dev, mnt);
 
+    devfs_inode_t *root = (devfs_inode_t *)out;
     // VFS asking for root
     if (parent == NULL && strcmp(name, "/") == 0)
     {
-        devfs_inode_t *root = (devfs_inode_t *)devfs_alloc_inode(mnt->volume);
         root->base.type = DT_DIR;
         root->base.flags = 1;
         root->dev = NULL; // root dir has no backing device
-        memcpy(out, root, sizeof(inode_t));
+        // memcpy(out, root, sizeof(inode_t));
         return RETURN_GOOD;
     }
     
     if (parent && strcmp(name, "dev") == 0)
     {
-        devfs_inode_t *root = (devfs_inode_t *)devfs_alloc_inode(mnt->volume);
         root->base.type = DT_DIR;
         root->base.flags = 1;
         root->dev = NULL; // root dir has no backing device
-        memcpy(out, root, sizeof(inode_t));
+        // memcpy(out, root, sizeof(inode_t));
         return RETURN_GOOD;
     }
     // ignore dev — devfs doesn't use it
     device_t *found = device_get_by_name(name);
     if (!found)
     {
+        log_crit(MODULE, "No device with the name \"%s\"", name);
+        ERRNO_RETURN(ENOENT, "", "");
         return -ENOENT;
     }
 
-    devfs_inode_t *dev_ino = (devfs_inode_t *)devfs_alloc_inode(mnt->volume);
-    dev_ino->dev = found;
-    dev_ino->base.type = DT_CHR;
-    memcpy(out, dev_ino, sizeof(inode_t));
+    root->dev = found;
+    root->base.type = DT_CHR;
     return RETURN_GOOD;
 }
 
@@ -172,7 +171,7 @@ int devfs_probe(device_t *dev)
 void devfs_create_entry(device_t *dev, int flags)
 {
     char path[MAX_PATH_SIZE];
-    int count = snprintf(path, sizeof(path), "/DEVFS:/dev/%s", dev->name);
+    int count = snprintf(path, sizeof(path), "/DEVFS!/dev/%s", dev->name);
     path[count] = '\0';
 
     /* vfs_node_t *node = */ vfs_create_device_node(path, dev, flags);

@@ -35,6 +35,7 @@ typedef enum process_state
 {
     PROC_STATE_RUNNING,
     PROC_STATE_READY,
+    PROC_STATE_SUSPENDED,
     PROC_STATE_SLEEP,
     PROC_STATE_ZOMBIE,
 } process_state_t;

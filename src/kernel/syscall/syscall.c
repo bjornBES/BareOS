@@ -67,9 +67,6 @@ uintptr_t syscall_handler_func(syscall_info *info, syscall_function_info *func_i
     if (nr < SYSCALL_COUNT && syscall_info.handler)
     {
         ret = syscall_info.handler(info, &syscall_info);
-        if (syscall_info.call_dose_return)
-        {
-        }
     }
     else
     {
@@ -77,6 +74,7 @@ uintptr_t syscall_handler_func(syscall_info *info, syscall_function_info *func_i
     }
     // ivt_dump_frame(regs);
     signal_try_deliver(current_t, info, regs);
+    // scheduler_thread_info();
     return ret;
 }
 

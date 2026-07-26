@@ -14,11 +14,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+typedef unsigned long uint32_64;
+typedef long int32_64;
 #ifdef __x86_64__
-typedef uint64_t uint32_64;
 typedef uint64_t reg_t;
 #else
-typedef uint32_t uint32_64;
 typedef uint32_t reg_t;
 #endif
 
@@ -27,27 +27,34 @@ typedef void *virt_addr;
 
 typedef int64_t off_t;
 
-typedef int64_t time_t;
-typedef int64_t suseconds_t;
+typedef int32_64 time_t;
+typedef int32_64 suseconds_t;
 
-typedef int64_t tid_t;
+typedef int32_64 tid_t;
 
-typedef int64_t ino_t;
-typedef int64_t dev_t;
+typedef int32_64 ino_t;
+typedef int32_64 dev_t;
 
-typedef int64_t ssize_t;
-typedef int64_t clock_t;
+typedef int32_64 ssize_t;
+typedef int32_64 clock_t;
+
+typedef int32_64 blksize_t;
+typedef int32_64 blkcnt_t;
 
 typedef int32_t pid_t;
+
+typedef uint32_t mode_t;
 typedef uint32_t uid_t;
 typedef uint32_t gid_t;
 typedef uint32_t id_t;
 typedef uint32_t useconds_t;
 
-typedef uint64_t cpu_id;
+typedef int32_64 nlink_t;
+typedef int32_64 cpu_id;
+typedef int32_64 sigset_t;
+
 typedef uint32_64 paddr_t;
 typedef uint32_64 vaddr_t;
-typedef uint64_t sigset_t;
 
 typedef struct timeval
 {

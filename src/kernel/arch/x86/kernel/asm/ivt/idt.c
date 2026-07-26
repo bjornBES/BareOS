@@ -82,6 +82,7 @@ void ivt_arch_init()
 
 void ivt_dump_frame(intr_frame_t *frame)
 {
+    // ENTER_FUNC(MODULE, "%p", frame);
     fprintf(VFS_FD_DEBUG, "\t{ frame @ %p }\n", frame);
     fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }\n", frame->ax, frame->bx, frame->cx, frame->dx);
     fprintf(VFS_FD_DEBUG, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }\n", frame->di, frame->si, frame->r8, frame->r9);

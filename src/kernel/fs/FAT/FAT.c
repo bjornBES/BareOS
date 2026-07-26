@@ -11,6 +11,7 @@
 #include "FAT.h"
 #include "fat_name.h"
 
+#include "time/timer.h"
 #include "VFS/vfs_flags.h"
 #include "kernel.h"
 #include "ctype.h"
@@ -29,30 +30,36 @@
     fprintf(VFS_FD_DEBUG, __VA_ARGS__);             \
     fprintf(VFS_FD_DEBUG, ")\n");
 
-#define COMBINE_CLUSTERS(entry) (entry.first_cluster_high << 16) | entry.first_cluster_low
+#define COMBINE_CLUSTERS(entry) ((entry).first_cluster_high << 16) | (entry).first_cluster_low
 extern void hexdump(void *ptr, int len);
+
 static inline lba bytes_to_lba(size_t bytes, fat_priv_data *sb)
 {
     return bytes / sb->bytes_per_sector;
 }
+
 static inline size_t lba_to_bytes(lba lba, fat_priv_data *sb)
 {
     return lba * sb->bytes_per_sector;
 }
+
 static inline cluster bytes_to_cluster(size_t bytes, fat_priv_data *sb)
 {
     lba lba = bytes / sb->bytes_per_sector;
     return ((lba - sb->data_start_lba) / sb->sectors_per_cluster) + 2;
 }
+
 static inline size_t cluster_to_bytes(cluster clusters, fat_priv_data *sb)
 {
     lba l = sb->data_start_lba + (clusters - 2) * sb->sectors_per_cluster;
     return l * sb->bytes_per_sector;
 }
+
 static inline lba cluster_to_lba(cluster cluster, fat_priv_data *sb)
 {
     return sb->data_start_lba + (cluster - 2) * sb->sectors_per_cluster;
 }
+
 static inline cluster lba_to_cluster(lba lba, fat_priv_data *sb)
 {
     return ((lba - sb->data_start_lba) / sb->sectors_per_cluster) + 2;
@@ -63,6 +70,7 @@ ssize_t fat_read_sectors(void *buffer, lba sector, lba sector_count, device_t *d
     // log_debug(MODULE, "fat_read_sectors(%p, %u, %u, %p, %p)", buffer, sector, sector_count, dev, sb);
     return dev->read(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
 }
+
 ssize_t fat_read_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
 {
     ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, cluster_start, clusters_count, dev, sb);
@@ -75,6 +83,7 @@ uint32_t fat_write_sectors(void *buffer, lba sector, lba sector_count, device_t 
 {
     return dev->write(buffer, sector, sector_count, dev) * sb->bytes_per_sector;
 }
+
 void fat_write_clusters(void *buffer, cluster cluster_start, cluster clusters_count, device_t *dev, fat_priv_data *sb)
 {
     lba lba = cluster_to_lba(cluster_start, sb);
@@ -85,12 +94,12 @@ bool fat_is_eoc(fat_priv_data *sb, uint32_t cluster)
 {
     switch (sb->type)
     {
-    case FAT12:
-        return cluster >= FAT12_EOC;
-    case FAT16:
-        return cluster >= FAT16_EOC;
-    case FAT32:
-        return cluster >= FAT32_EOC;
+        case FAT12 :
+            return cluster >= FAT12_EOC;
+        case FAT16 :
+            return cluster >= FAT16_EOC;
+        case FAT32 :
+            return cluster >= FAT32_EOC;
     }
     return true;
 }
@@ -156,12 +165,12 @@ ssize_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size,
     ENTER_FUNC(MODULE, "%p, %p, %u, %u, %p, %p", node, buffer, offset, size, dev, mnt);
     volume_t *vol = mnt->volume;
     fat_priv_data *sb = (fat_priv_data *)vol->sb;
-    
+
     if (!buffer && offset != 0 && size != 0)
     {
         return 0;
     }
-    fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
+    fat_inode_t *fat_ino = (fat_inode_t *)node->inode;
     cluster cluster_start = fat_ino->first_cluster;
     cluster offset_cluster = offset / sb->bytes_per_cluster;
     if (offset_cluster != 0)
@@ -212,6 +221,11 @@ int fat_entries_match(FAT_entry *entry, FAT_directory *directory, int entry_inde
         // TODO
     }
 
+    uint32_t entry_name_size = strlen(entry->entry.name);
+    if (entry_name_size == 0)
+    {
+        return RETURN_FAILED;
+    }
     char entry_name[13] = {0};
     if (fat_83_to_name(entry->entry.name, entry_name) != RETURN_GOOD)
     {
@@ -251,6 +265,7 @@ int fat_read_directory(fat_inode_t *directory, FAT_directory *out, int entry_cou
 
 int fat_find_entry(fat_inode_t *parent, const char *entry_name, inode_t *entry_out, device_t *dev, mountpoint_t *mnt, fat_priv_data *sb)
 {
+    ENTER_FUNC(MODULE, "%p, %s, %p, %p, %p, %p", parent, entry_name, entry_out, dev, mnt, sb);
     if (parent->base.type != DT_DIR)
     {
         log_warn(MODULE, "parent is not a directory");
@@ -274,12 +289,18 @@ int fat_find_entry(fat_inode_t *parent, const char *entry_name, inode_t *entry_o
     for (size_t i = 0; i < entries_read; i++)
     {
         FAT_directory_entry *entry = &(entries[i].entry);
-        log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS((*entry)), entry->size);
+        log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
         if (fat_entries_match(&entries[i], &directory, i, entry_name) == RETURN_GOOD)
         {
-            log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS((*entry)), entry->size);
-            fat_ino->first_cluster = COMBINE_CLUSTERS((*entry));
+            log_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
+            fat_ino->first_cluster = COMBINE_CLUSTERS(*entry);
             fat_ino->base.size = entry->size;
+            fat_ino->created_time_tenths = entry->created_time_tenths;
+            fat_ino->created_time.raw = entry->created_time;
+            fat_ino->created_date.raw = entry->created_date;
+            fat_ino->accessed_date.raw = entry->accessed_date;
+            fat_ino->modified_time.raw = entry->modified_time;
+            fat_ino->modified_date.raw = entry->modified_date;
             if (entry->attributes & FAT_ATTRIBUTE_DIRECTORY)
             {
                 fat_ino->base.type = DT_DIR;
@@ -312,7 +333,8 @@ int fat_lookup(inode_t *parent, const char *name, inode_t *out, device_t *dev, m
     fat_inode_t *fat_parent = (fat_inode_t *)parent;
     if (fat_find_entry(fat_parent, name, out, dev, mnt, sb) != RETURN_GOOD)
     {
-        log_err(MODULE, "something is fucked");
+        return RETURN_FAILED;
+        // log_err(MODULE, "something is fucked");
     }
     return RETURN_GOOD;
 }
@@ -323,13 +345,14 @@ int fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
     {
         return RETURN_FAILED;
     }
-    
+
     // fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
 
     // get the cluster number and size
     fat_read_file(node, NULL, 0, 0, dev, mnt);
     return RETURN_GOOD;
 }
+
 int fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
 {
     if (!node)
@@ -341,6 +364,52 @@ int fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
     node->offset = 0;
     node->inode = 0;
     node->size = 0;
+    return RETURN_GOOD;
+}
+
+timespec_t fat_to_timespec(FAT_date_t fat_date, FAT_time_t fat_time, uint8_t tenths_opt)
+{
+    uint32_t year = fat_date.year + 1980;
+    uint32_t month = fat_date.month;
+    uint32_t day = fat_date.day;
+
+    uint32_t hour = fat_time.hour;
+    uint32_t min = fat_time.min;
+    uint32_t sec = fat_time.sec;
+
+    int64_t days = days_from_civil(year, month, day);
+    int64_t secs = days * 86400 + hour * 3600 + min * 60 + sec;
+
+    timespec_t ts;
+    if (fat_date.raw == 0)
+    {
+        ts.tv_sec = 0;
+    }
+    else
+    {
+        ts.tv_sec = secs;
+    }
+    ts.tv_nsec = tenths_opt ? (tenths_opt % 100) * 10000000 : 0;
+    return ts;
+}
+
+int fat_stat(vfs_node_t *node, vfs_stat_t *out, device_t *dev, mountpoint_t *mnt)
+{
+    ENTER_FUNC(MODULE, "%p, %p, %p, %p", node, out, dev, mnt);
+
+    fat_priv_data *sb = (fat_priv_data *)mnt->volume->sb;
+
+    fat_inode_t *fat_ino = (fat_inode_t *)node;
+
+    FAT_time_t zero = {0};
+
+    out->size = node->size;
+    out->created = fat_to_timespec(fat_ino->created_date, fat_ino->created_time, fat_ino->created_time_tenths);
+    out->accessed = fat_to_timespec(fat_ino->accessed_date, zero, 0);
+    out->modified = fat_to_timespec(fat_ino->modified_date, fat_ino->modified_time, 0);
+    out->st_blocks = (fat_ino->chain_length * sb->bytes_per_cluster) / 512;
+    out->st_blksize = sb->bytes_per_cluster;
+
     return RETURN_GOOD;
 }
 
@@ -356,6 +425,8 @@ inode_t *fat_alloc_inode(volume_t *vol)
 void fat_free_inode(inode_t *ino)
 {
     fat_inode_t *fat_ino = (fat_inode_t *)ino;
+    log_debug(MODULE, "fat_ino = %p", fat_ino);
+    log_debug(MODULE, "fat_ino->cluster_chain = %p", fat_ino->cluster_chain);
     free(fat_ino->cluster_chain);
     free(fat_ino);
 }
@@ -478,6 +549,7 @@ void fat_init()
     fat_driver.lookup = fat_lookup;
     fat_driver.open = fat_open;
     fat_driver.close = fat_close;
+    fat_driver.stat = fat_stat;
     fat_driver.read = fat_read_file;
     vfs_register_fs(&fat_driver);
 }

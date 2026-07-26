@@ -124,12 +124,14 @@ dentry_t *dcache_lookup(dentry_t *parent, const char *name)
         if (d->parent == parent && strcmp(d->name, name) == 0)
         {
             dentry_get(d);
+            // log_debug(MODULE, "dcache_lookup is done -> %p", d);
             spinlock_release(&dcache_lock);
             return d;
         }
         d = d->hash_next; // walk hash chain, not sibling chain
     }
     spinlock_release(&dcache_lock);
+    // log_debug(MODULE, "dcache_lookup is done -> NULL");
     return NULL;
 }
 

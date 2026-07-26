@@ -19,6 +19,7 @@ PLEDGE_EXEC
 // nr,  name,           syscall name,   syscall name upper, return,     pledge,         ABI,    arg_types
 X(0,    vfs_user_read,  read,           READ,               true,       PLEDGE_STDIO,   SYSV64, fd_t,   void*,  size_t)
 X(1,    vfs_user_write, write,          WRITE,              true,       PLEDGE_STDIO,   SYSV64, fd_t,   void*,  size_t)
+X(4,    vfs_user_stat,  stat,           STAT,               true,       PLEDGE_STDIO,   SYSV64, char *, stat_t *)
 X(7,    process_waitpid,waitpid,        WAITPID,            true,       0,              SYSV64, pid_t, int *, int)
 X(9,    memory_mmap,    mmap,           MMAP,               true,       PLEDGE_MALLOC,  SYSV64, void*, size_t, int, int, fd_t, off_t)
 X(10,   memory_mprotect,mprotect,       MPROTECT,           true,       PLEDGE_MALLOC,  SYSV64, void*, size_t, int)
@@ -33,7 +34,8 @@ X(20,   io_writev,      writev,         WRITEV,             false,      PLEDGE_S
 X(24,   scheduler_yield,yield,          YIELD,              true,       PLEDGE_PROC,    SYSV64)
 X(39,   process_get_pid,getpid,         GETPID,             true,       PLEDGE_STDIO,   SYSV64)
 X(57,   process_fork,   fork,           FORK,               true,       PLEDGE_PROC,    SYSV64)
-X(59,   process_execve, execve,         EXECVE,             true,       PLEDGE_EXEC,    SYSV64, const char*, char*[], char*[])
+X(58,   process_vfork,  vfork,          VFORK,              true,       PLEDGE_PROC,    SYSV64)
+X(59,   process_execve, execve,         EXECVE,             false,      PLEDGE_EXEC,    SYSV64, const char*, char*[], char*[])
 X(60,   exit_exit,      exit,           EXIT,               false,      0,              SYSV64, uint32_t)
 X(62,   signal_kill,    kill,           KILL,               true,       PLEDGE_PROC,    SYSV64, pid_t, int)
 X(79,   proc_get_cwd,   getcwd,         GETCWD,             true,       PLEDGE_PROC,    SYSV64, char *, size_t)
@@ -42,4 +44,5 @@ X(107,  get_eff_user_id,geteuid,        GETEUID,            true,       PLEDGE_S
 X(110,  proc_get_ppid,  getppid,        GETPPID,            true,       PLEDGE_STDIO,   SYSV64)
 X(158,  arch_prctl,     arch_prctl,     ARCH_PRCTL,         true,       PLEDGE_STDIO,   SYSV64, int, uint64_t)
 X(218,  set_tid_address,set_tid_address,SET_TID_ADDRESS,    true,       PLEDGE_STDIO,   SYSV64, int *)
+X(231,  proc_exit_group,exit_group,     EXIT_GROUP,         true,       PLEDGE_PROC,    SYSV64, int)
 X(512,  pledge_pledge,  pledge,         PLEDGE,             true,       0,              SYSV64, pledge_flags_t)

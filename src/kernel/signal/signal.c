@@ -105,6 +105,7 @@ void signal_dequeue(process_t *proc, int signal_number, siginfo_t *info)
 
 int signal_get(thread_t *t, siginfo_t *info, sigaction_t **action)
 {
+    // ENTER_FUNC(MODULE, "%p, %p, %p", t, action, info);
     process_t *proc = t->proc;
 
     // find first pending signal
@@ -133,6 +134,7 @@ int signal_get(thread_t *t, siginfo_t *info, sigaction_t **action)
 
 int signal_get_action(thread_t *t, int signum, sigaction_t *out)
 {
+    // ENTER_FUNC(MODULE, "%p, %u, %p", t, signum, out);
     if (!signal_is_pending(t, signum))
     {
         return RETURN_FAILED;
@@ -159,6 +161,7 @@ extern void hexdump(void *ptr, int len);
 
 void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, sigaction_t *action, siginfo_t *info)
 {
+    ENTER_FUNC(MODULE, "%p, %p, %p, %p, %p", t, arch_info, regs, action, info);
     intr_frame_t sig_frame;
     memcpy(&sig_frame, regs, sizeof(intr_frame_t));
     log_debug(MODULE, "doing setup");
@@ -170,6 +173,7 @@ void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, si
 
 void signal_try_deliver(thread_t *t, syscall_info *arch_info, intr_frame_t *regs)
 {
+    // ENTER_FUNC(MODULE, "%p, %p, %p", t, arch_info, regs);
     {
         sigaction_t kill;
         if (signal_get_action(t, SIGKILL, &kill) == RETURN_GOOD)
@@ -186,7 +190,7 @@ void signal_try_deliver(thread_t *t, syscall_info *arch_info, intr_frame_t *regs
     sigaction_t *h = NULL;
     int state = signal_get(t, &info, &h);
 
-    if (state == RETURN_FAILED)
+    if (state == RETURN_ERROR || state == RETURN_FAILED)
     {
         return;
     }

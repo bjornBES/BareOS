@@ -53,20 +53,27 @@ int syscall_arch_handler(intr_frame_t *regs)
     }
 
     fprintf(VFS_FD_DEBUG, "System call %d from pid %u\n", info.sys_number, proc->pid);
-    
+
     // ivt_dump_frame(regs);
 
     info.regs = regs;
     uintptr_t ret = syscall_handler_func(&info, &func_info, regs);
-    regs->ax = ret;
-    if (ret == -ENOSYS)
+    if (func_info.call_dose_return)
     {
-        log_crit(MODULE, "Unhandled System call %d", info.sys_number);
-        log_crit(MODULE, "  arg1=%x  arg2=%x  arg3=%x  arg4=%x  arg5=%x  arg6=%x", info.arg1, info.arg2, info.arg3, info.arg4, info.arg5, info.arg6);
-        return RETURN_FAILED;
+        regs->ax = ret;
+        if (ret == -ENOSYS)
+        {
+            log_crit(MODULE, "Unhandled System call %d", info.sys_number);
+            log_crit(MODULE, "  arg1=%x  arg2=%x  arg3=%x  arg4=%x  arg5=%x  arg6=%x", info.arg1, info.arg2, info.arg3, info.arg4, info.arg5, info.arg6);
+            return RETURN_FAILED;
+        }
+        else
+        {
+        }
     }
     else
     {
+        // log_debug(MODULE, "done with %u", func_info.number);
     }
     return RETURN_GOOD;
 }
@@ -74,6 +81,7 @@ int syscall_arch_handler(intr_frame_t *regs)
 void syscall_dispatch(syscall_frame_t *regs)
 {
     intr_frame_t frame;
+    memset(&frame, 0, sizeof(intr_frame_t));
     frame.r15 = regs->r15;
     frame.r14 = regs->r14;
     frame.r13 = regs->r13;
@@ -92,17 +100,33 @@ void syscall_dispatch(syscall_frame_t *regs)
     frame.sp = regs->sp;
     frame.pc = regs->pc;
     frame.flags = regs->flags;
-    // fprintf(VFS_FD_DEBUG, "\t{ frame @ %p }\n", regs);
-    // fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }\n", regs->ax, regs->bx, regs->cx, regs->dx);
-    // fprintf(VFS_FD_DEBUG, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }\n", regs->di, regs->si, regs->r8, regs->r9);
-    // fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }\n", regs->r10, regs->r11, regs->r12, regs->r13);
-    // fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }\n", regs->r14, regs->r15, regs->bp, regs->flags);
-    // fprintf(VFS_FD_DEBUG, "\t{ pc = %p, sp = %p }\n", regs->pc, regs->sp);
+    ivt_dump_frame(&frame);
     syscall_arch_handler(&frame);
-    memcpy(&regs->r15, &frame.r15, 15 * sizeof(reg_t));
+    regs->r15 = frame.r15;
+    regs->r14 = frame.r14;
+    regs->r13 = frame.r13;
+    regs->r12 = frame.r12;
+    regs->r11 = frame.r11;
+    regs->r10 = frame.r10;
+    regs->r9 = frame.r9;
+    regs->r8 = frame.r8;
+    regs->di = frame.di;
+    regs->si = frame.si;
+    regs->bp = frame.bp;
+    regs->bx = frame.bx;
+    regs->dx = frame.dx;
+    regs->cx = frame.cx;
+    regs->ax = frame.ax;
     regs->sp = frame.sp;
     regs->pc = frame.pc;
     regs->flags = frame.flags;
+    log_debug(MODULE, "\t{ frame @ %p }", regs);
+    log_debug(MODULE, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }", regs->ax, regs->bx, regs->cx, regs->dx);
+    log_debug(MODULE, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }", regs->di, regs->si, regs->r8, regs->r9);
+    log_debug(MODULE, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }", regs->r10, regs->r11, regs->r12, regs->r13);
+    log_debug(MODULE, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }", regs->r14, regs->r15, regs->bp, regs->flags);
+    log_debug(MODULE, "\t{ pc = %p, sp = %p }", regs->pc, regs->sp);
+    ivt_dump_frame(&frame);
 }
 
 void arch_syscall_init()

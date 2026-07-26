@@ -39,10 +39,6 @@ int main(int argc, char *argv[])
     pid_t curr_proc = getpid();
     fprintf(stddebug, "process is %u\n", curr_proc);
     
-    // sigaction(SIGABRT, signal_abort);
-    // kill(curr_proc, SIGABRT);                        // or however you send signals to self
-    // fprintf(stddebug, "back from signal handler\n"); // if this prints, it worked
-    
     pid_t child = fork();
     if (child == 0)
     {
@@ -53,8 +49,8 @@ int main(int argc, char *argv[])
     {
         pid_t child_proc = getpid();
         fprintf(stddebug, "running bash on %u/%u\n", child_proc, child);
-        const char *argv[] = {"bin/ash", NULL};
-        const char *envp[] = {"PATH=/bin:/usr/bin", "HOME=/", "TERM=linux", NULL};
+        const char *argv[] = {"/user!/bin/ash", NULL};
+        const char *envp[] = {"PATH=/user!/bin:/user!/usr/bin", "HOME=/", "TERM=linux", NULL};
         execve("bin/ash", argv, envp);
         kill(child_proc, SIGABRT);
         _exit(1);

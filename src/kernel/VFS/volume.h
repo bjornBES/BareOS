@@ -22,7 +22,7 @@ void volume_unregister(const char *volume_id);
 // lookup by id string
 volume_t *volume_find(const char *volume_id);
 
-// parse "vol_id:/" prefix, return volume
+// parse "vol_id!/" prefix, return volume
 volume_t *volume_from_prefix(const char *path);
 
 // return all registered volumes

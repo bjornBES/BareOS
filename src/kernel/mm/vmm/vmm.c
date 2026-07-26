@@ -205,15 +205,19 @@ void vma_destroy(process_t *proc)
 static void vma_assert_no_overlap(vma_memory_t *mm, vma_t *new)
 {
     log_debug(MODULE, "vma_assert_no_overlap");
-    fprintf(VFS_FD_DEBUG, "%p, next:%p\n", mm, mm->mmap);
+    log_debug(MODULE, "%p, next:%p", mm, mm->mmap);
 
     vma_t *cur = mm->mmap;
     while (cur)
     {
         if (cur != new)
         {
-            fprintf(VFS_FD_DEBUG, "%p, next:%p\n", cur, cur->next);
-            fprintf(VFS_FD_DEBUG, "%p, next:%p\n", new, new->next);
+            log_debug(MODULE, "cur: %p, next:%p", cur, cur->next);
+            log_debug(MODULE, "new: %p, next:%p", new, new->next);
+            log_debug(MODULE, "new->end = %p", new->end);
+            log_debug(MODULE, "new->start = %p", new->start);
+            log_debug(MODULE, "cur->end = %p", cur->end);
+            log_debug(MODULE, "cur->start = %p", cur->start);
             ASSERT((new->end <= cur->start) || (new->start >= cur->end),
                    "VMA overlap: [%p-%p) vs [%p-%p)",
                    new->start, new->end,
@@ -306,6 +310,7 @@ void vma_insert(vma_memory_t *mm, vma_t *new)
     }
 
     mm->map_count++;
+    log_debug(MODULE, "vma_insert DONE");
 }
 
 vma_memory_t *vma_clone(process_t *parent, process_t *proc)

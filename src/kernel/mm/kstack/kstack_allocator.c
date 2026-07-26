@@ -15,10 +15,12 @@
 #define MODULE "kstack"
 
 vaddr_t stack_bump;
+vaddr_t cpu_stack_bump;
 
 void kstack_init()
 {
     stack_bump = MEMORY_STACKS_VIRT_BASE;
+    cpu_stack_bump = MEMORY_CPU_STACKS_VIRT_BASE;
 }
 
 vaddr_t kstack_alloc()
@@ -47,8 +49,8 @@ vaddr_t kstack_alloc()
 
 vaddr_t kstack_per_cpu_alloc()
 {
-    // guard page sits at stack_bump, leave it unmapped
-    vaddr_t guard = stack_bump;
+    // guard page sits at cpu_stack_bump, leave it unmapped
+    vaddr_t guard = cpu_stack_bump;
     log_debug(MODULE, "guard = %p", guard);
     vaddr_t stack_bottom = guard + PAGE_SIZE;
     log_debug(MODULE, "stack_bottom = %p", stack_bottom);

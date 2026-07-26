@@ -30,7 +30,7 @@ typedef struct boot_params
     uint8_t boot_device;     // DL at boot
     uint16_t current_mode;
     uint32_t page_directory; // bootload paging32 page directory phys address
-    time_t boot_time;
+    uint64_t boot_time;
 
     bp_stage_t stage;
     bp_memory_t memory;

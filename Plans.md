@@ -122,3 +122,10 @@ This is what the kernel loader should do in order right after the bootloader is 
     - [X] cpu_t — current process, kernel stack, GDT/TSS per core
   - [X] APIC timer per core drives per-core scheduler
   - [X] Spinlocks / basic SMP synchronisation
+
+#### Phase 6 Userland and syscalls
+
+- [X] Get ash working end to end
+  - [X] run ash
+  - [X] write a command into ash (like "echo hi")
+  - [X] be able to exit cleanly without any errors

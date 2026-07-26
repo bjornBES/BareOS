@@ -11,6 +11,7 @@
 #include "vfs.h"
 #include "vfs_internal.h"
 #include "vfs_flags.h"
+#include "vfs_sys.h"
 
 #include "task/process_types.h"
 #include "task/process.h"
@@ -24,6 +25,8 @@
 #include "kernel/string.h"
 #include "kernel/memory.h"
 #include "kernel/io.h"
+
+#include "errno/errno.h"
 
 // VFS subsystems
 #include "dentry.h"
@@ -269,21 +272,9 @@ int vfs_readdir(fd_t dir, vfs_dirent_t *out)
     return RETURN_FAILED;
 }
 
-int vfs_stat(const char *path, vfs_stat_t *out)
+int vfs_get_vnode(const char *path, vfs_node_t *out)
 {
-    vfs_node_t *node = NULL;
-    if (path_lookup(path, &node) != RETURN_GOOD)
-    {
-        fd_t fd = vfs_open(path, VFS_O_RDWR, 0);
-        int state = vfs_fstat(fd, out);
-        vfs_close(fd);
-        return state;
-    }
-    if (node->fs->stat(node, out, node->mountpoint->volume->device, node->mountpoint) != RETURN_GOOD)
-    {
-        return RETURN_FAILED;
-    }
-    return RETURN_GOOD;
+    return path_lookup(path, &out);
 }
 
 int vfs_fstat(fd_t file, vfs_stat_t *out)
@@ -294,6 +285,41 @@ int vfs_fstat(fd_t file, vfs_stat_t *out)
         return RETURN_FAILED;
     }
     return RETURN_GOOD;
+}
+
+int vfs_stat(const char *path, vfs_stat_t *out)
+{
+    ENTER_FUNC(MODULE, "%s, %p", path, out);
+    return vfs_do_stat(path, out, NULL);
+}
+
+int vfs_do_stat(const char *path, vfs_stat_t *out, vfs_node_t *node_out)
+{
+    ENTER_FUNC(MODULE, "%s, %p, %p", path, out, node_out);
+
+    vfs_node_t *usable_node;
+    int state = 0;
+    state = path_lookup(path, &usable_node);
+    if (state != RETURN_GOOD)
+    {
+        if (state == RETURN_FAILED || state == RETURN_ERROR)
+        {
+            ERRNO_RETURN(EBADF, "fd is not a valid open file descriptor.", 0);
+        }
+        return state;
+    }
+
+    memcpy(node_out, usable_node, sizeof(vfs_node_t));
+    
+    uint32_t len = strlen(path);
+    log_debug(MODULE, "usable_node @ %p", usable_node);
+    if (!FLAG_IS_SET(usable_node->flags, AT_EMPTY_PATH) && len == 0)
+    {
+        ERRNO_RETURN(ENOENT, "pathname is an empty string and AT_EMPTY_PATH was not specified in flags.", 0);
+    }
+    log_debug(MODULE, "usable_node->fs @ %p", usable_node->fs);
+    log_debug(MODULE, "usable_node->fs->stat @ %p", usable_node->fs->stat);
+    return usable_node->fs->stat(usable_node, out, usable_node->mountpoint->volume->device, usable_node->mountpoint);
 }
 
 int vfs_mkdir(const char *path, int mode)
@@ -395,7 +421,7 @@ void vfs_init()
     device_t *devfs_stub = device_create(DEVICE_VIRTUAL, DEVICE_FLAG_STUB);
     devfs_stub->class_name = "devfs";
     device_register(devfs_stub);
-    vfs_create_device_node("/DEVFS:/dev", devfs_stub, DT_DIR);
+    vfs_create_device_node("/DEVFS!/dev", devfs_stub, DT_DIR);
 
     return;
 }

@@ -21,6 +21,7 @@
 
 void panic(char *module, char *file, int line, char *message, ...)
 {
+    ENTER_FUNC(NO_MODULE, "%s, %s, %u, %s, ...", module, file, line, message);
     irq_arch_disable();
     va_list args;
     va_start(args, message);

@@ -726,10 +726,11 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     {                                                                                                                                                   \
         uint64_t addr = entry->addr;                                                                                                                    \
         uint64_t raw = (resolved_flags & PAGE_FLAGS_MASK);                                                                                              \
-        /* log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */ \
+        log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
         log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", addr << 12, raw);                                                                             \
         entry->raw = raw;                                                                                                                               \
         entry->addr = addr;                                                                                                                             \
+        /* log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */                                       \
     }
 
 #define PRINT_HP(table, entry)                                                                  \

@@ -165,12 +165,13 @@ bool i8042_process_byte(uint8_t byte, key_event *out)
 
 void I8042_first_channel_handler(device_t *dev)
 {
+    // fputs("I8042_first_channel_handler\n", VFS_FD_DEBUG);
     // ENTER_FUNC(MODULE, "%p", dev);
     spinlock_acquire(&i8042_handler);
     // read data
     uint8_t raw = I8042_read(I8042_DATA_PORT);
     
-    log_debug(MODULE, "I8042_first_channel_handler: data = 0x%X", raw);
+    // log_debug(MODULE, "I8042_first_channel_handler: data = 0x%X", raw);
     
     // process data
     if (I8042_first_channel_device == I8042_CHANNEL_KEYBOARD_INITALIZED)
@@ -179,7 +180,7 @@ void I8042_first_channel_handler(device_t *dev)
         if (i8042_process_byte(raw, &ev))
         {
             keyboard_priv_t *priv = (keyboard_priv_t *)dev->priv;
-            log_debug(MODULE, "I8042_first_channel_handler: priv = %p", priv);
+            // log_debug(MODULE, "I8042_first_channel_handler: priv = %p", priv);
             gki_event_t event;
             update_mods(&ev, priv);
             if (ev.action == KEY_PRESSED)

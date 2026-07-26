@@ -80,7 +80,7 @@ void video_text_load_font_from_data(void *font)
 
 void video_text_set_cell(device_t *video_driver, int x, int y, char c, uint32_t fg_color, uint32_t bg_color)
 {
-    ENTER_FUNC(MODULE, "%p, %u, %u, '%c'(%u), %x, %x", video_driver, x, y, c, c, fg_color, bg_color);
+    // ENTER_FUNC(MODULE, "%p, %u, %u, '%c'(%u), %x, %x", video_driver, x, y, c, c, fg_color, bg_color);
     video_priv_t *video_priv = (video_priv_t *)video_driver->priv;
     uint8_t bytes_per_row = (font_data->glyph_width + 7) / 8;
     uint16_t bytes_per_glyph = bytes_per_row * font_data->glyph_height;

@@ -11,7 +11,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "PCI/pci.h"
+#include "pci/pci.h"
 
 
 typedef enum

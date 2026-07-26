@@ -10,6 +10,7 @@
 
 #pragma once
 #include "vfs_internal.h"
+#include "vfs_types.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -57,3 +58,4 @@ void vfs_register_fs(filesystem_t *fs);
 
 ssize_t vfs_user_write(fd_t file, void *data, size_t size);
 ssize_t vfs_user_read(fd_t file, void *data, size_t size);
+

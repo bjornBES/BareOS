@@ -54,6 +54,15 @@ typedef struct __syscall_function_info_t
         return (uintptr_t)func(arg1);                                         \
     }
 
+#define SYSCALL_DEFINE1_NORETURN(func, t1)                                    \
+    uintptr_t sys_##func(syscall_info *info, syscall_function_info *sys_info) \
+    {                                                                         \
+        t1 arg1 = (t1)(uintptr_t)(info->arg1);                                \
+        ENTER_FUNC(NO_MODULE, "0x%lx", arg1);                                 \
+        func(arg1);                                                           \
+        return (uintptr_t)0;                                                  \
+    }
+
 #define SYSCALL_DEFINE2(func, t1, t2)                                         \
     uintptr_t sys_##func(syscall_info *info, syscall_function_info *sys_info) \
     {                                                                         \

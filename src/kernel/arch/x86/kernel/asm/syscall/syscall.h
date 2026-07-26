@@ -14,26 +14,26 @@
 typedef struct syscall_frame
 {
 #ifdef __x86_64__
-    reg_t r15;
-    reg_t r14;
-    reg_t r13;
-    reg_t r12;
-    reg_t r11;
-    reg_t r10;
-    reg_t r9;
-    reg_t r8;
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t r9;
+    uint64_t r8;
 #endif
-    reg_t di;
-    reg_t si;
-    reg_t bp;
-    reg_t bx;
-    reg_t dx;
-    reg_t cx;
-    reg_t ax;
+    uint64_t di;
+    uint64_t si;
+    uint64_t bp;
+    uint64_t bx;
+    uint64_t dx;
+    uint64_t cx;
+    uint64_t ax;
 
-    vaddr_t pc;
-    reg_t flags;
-    vaddr_t sp;
+    uint64_t pc;
+    uint64_t flags;
+    uint64_t sp;
 } __attribute__((packed)) syscall_frame_t;
 
 void syscall_per_cpu_init();

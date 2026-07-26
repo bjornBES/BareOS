@@ -89,7 +89,7 @@ paddr_t pmm_init(boot_params_t *params)
     {
         entry = &memory->entries[i];
 
-        log_debug(MODULE, "region entry start=%p size=%p", entry->addr, entry->size);
+        log_debug(MODULE, "region entry start=%p size=%p type=%u", entry->addr, entry->size, entry->type);
 
         if (entry->type != MEMORY_AVAILABLE)
         {

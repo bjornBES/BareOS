@@ -14,11 +14,14 @@
 #include "tty_flags.h"
 
 #include "kernel/memory.h"
+#include "kernel/irq.h"
 #include "kernel/string.h"
 #include "device/device.h"
 
 #include "drivers/IO/keyboard/Keyboard.h"
 #include "drivers/IO/keyboard/GKI.h"
+
+#include "task/threading/scheduling/scheduler.h"
 
 #include "errno/errno.h"
 #include <signals.h>
@@ -246,11 +249,14 @@ void tty_drain(tty_struct_t *tty)
 // blocks until a complete line is available (in canonical mode)
 ssize_t tty_read(tty_struct_t *tty, uint8_t *buf, size_t n)
 {
+    irq_arch_enable();
     ENTER_FUNC(MODULE, "%p, %p, %u", tty, buf, n);
-    log_debug(MODULE, "c_lflag = %x", tty->termios.c_lflag);
+    thread_t *current_thread = scheduler_get_current();
+    ctx_dump(&current_thread->ctx);
+    // log_debug(MODULE, "c_lflag = %x", tty->termios.c_lflag);
     if (FLAG_IS_SET(tty->termios.c_lflag, ICANON))
     {
-        log_debug(MODULE, "has_line = %s", tty->line_buf.has_line BOOL_TO_STRING);
+        // log_debug(MODULE, "has_line = %s", tty->line_buf.has_line BOOL_TO_STRING);
         while (!tty->line_buf.has_line)
         {
             tty_drain(tty);
@@ -265,7 +271,7 @@ ssize_t tty_read(tty_struct_t *tty, uint8_t *buf, size_t n)
 // writes buf to the output side, handling \n -> \r\n if ONLCR set
 ssize_t tty_write(tty_struct_t *tty, const uint8_t *buf, size_t n)
 {
-    ENTER_FUNC(MODULE, "%p, %p, %u", tty, buf, n);
+    // ENTER_FUNC(MODULE, "%p, %p, %u", tty, buf, n);
     for (size_t i = 0; i < n; i++)
     {
         uint8_t c = buf[i];

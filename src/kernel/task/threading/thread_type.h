@@ -30,6 +30,7 @@ typedef struct thread
 
     // kernel stack
     vaddr_t kernel_stack;
+    vaddr_t raw_kernel_stack;
     size_t stack_size;  // stack_top = kernel_stack + stack_size
 
     uint64_t fs_base;

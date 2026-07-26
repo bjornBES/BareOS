@@ -68,6 +68,8 @@ void mmu_arch_current_table(page_table_t *table);
 // map kernel pages into a userspace table (for higher half kernel)
 void mmu_arch_map_kernel(page_table_t *table);
 
+void mmu_arch_copy_from(page_table_t *dst, page_table_t *src);
+
 // --- Mapping ---
 // map a single physical page to a virtual address with given flags
 // creates intermediate tables as needed

@@ -200,6 +200,10 @@ void* malloc(size_t size)
 }
 void free(void* ptr)
 {
+	if (ptr == NULL)
+	{
+		return;
+	}
     kfree(ptr);
 }
 void* calloc(size_t num, size_t size)

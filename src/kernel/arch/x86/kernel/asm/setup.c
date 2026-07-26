@@ -53,10 +53,9 @@ int breakpoint(intr_frame_t *regs)
 
 int write_registers(intr_frame_t *regs)
 {
-    char buf[2048];
-    log_debug("debug", "debug");
-    log_debug("debug", "%s", buf);
-    // do something here
+    log_debug("DEBUG", "======== DEBUG ========");
+    ivt_dump_frame(regs);
+    log_debug("DEBUG", "======== DEBUG ========");
     return RETURN_GOOD;
 }
 

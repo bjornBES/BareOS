@@ -26,8 +26,9 @@
 #define SECTION_FLAG_WRITE      (1 << 2)
 #define SECTION_FLAG_USER       (1 << 3)
 
-int process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc);
+thread_t *process_exec(char *proc_path, char *argv[], char *envp[], process_t *proc, syscall_info *info);
 int process_unexec_process(process_t *proc);
 int process_kill(pid_t pid, int sig);
+void proc_exit_group(int status);
 process_t* process_get_current();
 void process_init();

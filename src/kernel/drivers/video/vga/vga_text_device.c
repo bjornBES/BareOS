@@ -170,7 +170,7 @@ void vga_set_mode(framebuffer_t *mode)
 
 void vga_write_char(device_t *dev, char c)
 {
-    ENTER_FUNC(MODULE, "%p, %c", dev, c);
+    // ENTER_FUNC(MODULE, "%p, %c", dev, c);
     vga_put_char(c);
 }
 

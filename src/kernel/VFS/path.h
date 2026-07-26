@@ -19,7 +19,7 @@ int path_is_rooted(char *path);
 // full resolver: prefix parse + segment walk
 int path_lookup(const char *path, vfs_node_t **node_out);
 
-// parse "vol:/rest" into parts
+// parse "vol!/rest" into parts
 int path_split_prefix(const char *path, char *volume_id_out, const char **rel_out);
 
 // consume one path component

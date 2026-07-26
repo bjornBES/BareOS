@@ -32,7 +32,6 @@ ssize_t io_writev(fd_t fd, iovec_t *iov, int iovcnt)
     for (int i = 0; i < iovcnt; i++)
     {
         ret += vfs_user_write(fd, iov[i].iov_base, iov[i].iov_len);
-        log_debug(NO_MODULE, "ret = %u", ret);
     }
     // log_debug(NO_MODULE, "ret = %u", ret);
     return ret;

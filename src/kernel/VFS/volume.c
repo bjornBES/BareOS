@@ -178,7 +178,7 @@ volume_t *volume_find(const char *volume_id)
     return vol;
 }
 
-// parse "vol_id:/" prefix, return volume
+// parse "vol_id!/" prefix, return volume
 volume_t *volume_from_prefix(const char *path)
 {
     char volume_name[MAX_VOLUME_NAME];

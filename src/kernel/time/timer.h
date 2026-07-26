@@ -15,12 +15,12 @@
 
 #include <boot/bootparams.h>
 
-#define MAX_TIMERS 8
+#define MAX_TIMERS     8
 
-#define MS_TO_NS(ms) (ms * 1000000)
+#define MS_TO_NS(ms)   (ms * 1000000)
 #define SEC_TO_NS(sec) (sec * 1000000000ull)
-#define NS_TO_MS(ns) (ns / 1000000)
-#define NS_TO_SEC(ns) (ns / 1000000000ull)
+#define NS_TO_MS(ns)   (ns / 1000000)
+#define NS_TO_SEC(ns)  (ns / 1000000000ull)
 
 typedef enum
 {
@@ -70,3 +70,22 @@ void timer_cancel();
 // current active devices
 device_t *timer_get_source();
 device_t *timer_get_event();
+
+// Returns days since 1970-01-01 (the Unix epoch) for a given
+// proleptic Gregorian calendar date. y/m/d are ordinary numbers
+// (e.g. 2026, 7, 25) — no zero-indexing tricks needed by the caller.
+static inline int64_t days_from_civil(int64_t y, uint32_t m, uint32_t d)
+{
+    // shift year back if Jan/Feb, so "year" starts in March
+    y -= m <= 2;
+    
+    int64_t era = (y >= 0 ? y : y - 399) / 400;
+    // [0, 399]
+    uint32_t yoe = (uint32_t)(y - era * 400);                      
+    // [0, 365]
+    uint32_t doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1; 
+    // [0, 146096]
+    uint32_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;          
+    // 719468 = days from 0000-03-01 to 1970-01-01
+    return era * 146097 + (int64_t)doe - 719468;                   
+}

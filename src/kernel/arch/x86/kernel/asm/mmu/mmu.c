@@ -53,6 +53,7 @@ void mmu_arch_current_table(page_table_t *table)
 void mmu_arch_load_table(page_table_t *table)
 {
     paddr_t cr3 = (paddr_t)table->page_dir_phys;
+    log_debug(MODULE, "new cr3 = %p", cr3);
     __asm__ volatile("mov cr3, %0" : : "r"(cr3));
 }
 
@@ -63,20 +64,21 @@ int mmu_arch_page_fault(intr_frame_t *regs)
     vaddr_t cr2;
     __asm__("mov %0, cr2" : "=rm"(cr2));
 
-    fprintf(VFS_FD_DEBUG, "========== PAGE FAULT ==========\n");
-    fprintf(VFS_FD_DEBUG, "\t{ regs @ %p, cr2 = %p }\n", regs, cr2);
-    ivt_dump_frame(regs);
-    fprintf(VFS_FD_DEBUG, "\t{ error = 0x%x }\n", regs->error);
-    fprintf(VFS_FD_DEBUG, "========== PAGE FAULT ==========\n");
-
-    info.fault_addr = cr2;
-
     uint64_t cr3;
     uint64_t kernel_paging = (uint64_t)kernel_page.page_dir_phys;
     __asm__ volatile("mov %0, cr3" : "=r"(cr3));
     bool cr3_is_kernel = cr3 == kernel_paging;
     info.page_directory.page_dir = phys_to_virt_auto(cr3);
     info.page_directory.page_dir_phys = (paddr_t)cr3;
+
+    fprintf(VFS_FD_DEBUG, "========== PAGE FAULT ==========\n");
+    fprintf(VFS_FD_DEBUG, "\t{ regs @ %p, cr2 = %p, cr3 = %p }\n", regs, cr2, cr3);
+    ivt_dump_frame(regs);
+    fprintf(VFS_FD_DEBUG, "\t{ error = 0x%x }\n", regs->error);
+    fprintf(VFS_FD_DEBUG, "========== PAGE FAULT ==========\n");
+
+    info.fault_addr = cr2;
+
     mmu_flags_t entry_flags;
 #ifdef PAGING_64
     page_table_entry64 *entry = paging64_get_entry(&info.page_directory, cr2, PAGING_LEVEL_PT, 0, 0);
@@ -96,7 +98,7 @@ int mmu_arch_page_fault(intr_frame_t *regs)
     info.present = BIT_GET(regs->error, 0);
     info.write = BIT_GET(regs->error, 1);
     info.user = BIT_GET(regs->error, 2);
-    info.exec = !BIT_GET(regs->error, 4);
+    info.exec = BIT_GET(regs->error, 4);
     info.entry_flags = entry_flags;
     info.is_cow = entry_flags.cow;
     fprintf(VFS_FD_DEBUG, "[Page Fault] reserved bit violation %s\n", BIT_GET(regs->error, 3) BOOL_TO_STRING);
@@ -107,7 +109,6 @@ int mmu_arch_page_fault(intr_frame_t *regs)
     info.pc = regs->pc;
     info.sp = regs->sp;
     int result = mmu_page_fault_handler(regs, &info);
-    ivt_dump_frame(regs);
     return result;
 }
 
@@ -132,6 +133,8 @@ void mmu_arch_init(boot_params_t *bp)
     allocator_init();
 
     ivt_arch_set_handler(EXC_PF, mmu_arch_page_fault);
+
+    irq_arch_enable();
 }
 
 page_table_t *mmu_arch_create_table()
@@ -172,6 +175,7 @@ page_table_t *mmu_arch_create_table()
 
 void mmu_arch_destroy_table(page_table_t *table)
 {
+    ENTER_FUNC(MODULE, "%p", table);
     pmm_free_frame(table->page_dir_phys);
     free(table);
 #ifdef PAGING_64
@@ -181,6 +185,30 @@ void mmu_arch_destroy_table(page_table_t *table)
 // paging 32
 #endif
 #endif
+}
+
+void mmu_arch_copy_from(page_table_t *dst, page_table_t *src)
+{
+#ifdef PAGING_64
+    // paging 64
+    page_map_level_4 *dst_table_virt = (page_map_level_4 *)dst->page_dir;
+    page_map_level_4 *src_table_virt = (page_map_level_4 *)src->page_dir;
+    int starting_index = 0;
+#else
+#ifdef PAGING_32
+    // paging 32
+    page_map_level_4 *user_table_virt = (page_map_level_4 *)table->page_dir;
+    page_map_level_4 *kernel_table_virt = (page_map_level_4 *)kernel_page.page_dir;
+    int starting_index = 0;
+#endif
+#endif
+    log_debug(MODULE, "dst_table_virt = %p", dst_table_virt);
+    log_debug(MODULE, "src_table_virt = %p", src_table_virt);
+
+    for (int i = starting_index; i < PAGE_TABLE_ENTRIES; i++)
+    {
+        dst_table_virt->e[i].raw = src_table_virt->e[i].raw;
+    }
 }
 
 void mmu_arch_map_kernel(page_table_t *table)

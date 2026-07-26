@@ -13,12 +13,14 @@
 #include "kernel/ctx.h"
 #include "kernel/segments.h"
 #include "kernel/memory.h"
+#include "kernel/ivt.h"
 #include <types.h>
 
 #define MODULE "X86-CTX"
 
 vaddr_t ctx_arch_init(cpu_ctx_t *ctx, vaddr_t entry, vaddr_t kstack, vaddr_t ustack, vaddr_t arg)
 {
+    ENTER_FUNC(MODULE, "%p, %p, %p, %p, %p", ctx, entry, kstack, ustack, arg);
     // carve a fake frame at top of kernel stack
     kstack -= sizeof(intr_frame_t);
     intr_frame_t *frame = (intr_frame_t *)kstack;
@@ -48,15 +50,31 @@ vaddr_t ctx_arch_init(cpu_ctx_t *ctx, vaddr_t entry, vaddr_t kstack, vaddr_t ust
     return kstack;
 }
 
+void ctx_arch_re_init_segments(cpu_ctx_t *ctx)
+{
+    ctx->frame.regs->cs = USER_CODE_SELECTOR | 3;
+    ctx->frame.regs->ss = USER_DATA_SELECTOR | 3;
+    ctx->frame.regs->ds = USER_DATA_SELECTOR | 3;
+}
+
+void frame_arch_re_init_segments(intr_frame_t *ctx)
+{
+    ctx->cs = USER_CODE_SELECTOR | 3;
+    ctx->ss = USER_DATA_SELECTOR | 3;
+    ctx->ds = USER_DATA_SELECTOR | 3;
+}
+
 void ctx_dump(cpu_ctx_t *ctx)
 {
+    // ENTER_FUNC(MODULE, "%p", ctx);
     intr_frame_t *frame = ctx->frame.regs;
-    fprintf(VFS_FD_DEBUG, "\t{ frame @ %p }\n", frame);
-    fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }\n", frame->ax, frame->bx, frame->cx, frame->dx);
-    fprintf(VFS_FD_DEBUG, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }\n", frame->di, frame->si, frame->r8, frame->r9);
-    fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }\n", frame->r10, frame->r11, frame->r12, frame->r13);
-    fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }\n", frame->r14, frame->r15, frame->bp, frame->flags);
-    fprintf(VFS_FD_DEBUG, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }\n", frame->cs, frame->pc, frame->ss, frame->sp);
+    ivt_dump_frame(frame);
+    // fprintf(VFS_FD_DEBUG, "\t{ frame @ %p }\n", frame);
+    // fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }\n", frame->ax, frame->bx, frame->cx, frame->dx);
+    // fprintf(VFS_FD_DEBUG, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }\n", frame->di, frame->si, frame->r8, frame->r9);
+    // fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }\n", frame->r10, frame->r11, frame->r12, frame->r13);
+    // fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }\n", frame->r14, frame->r15, frame->bp, frame->flags);
+    // fprintf(VFS_FD_DEBUG, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }\n", frame->cs, frame->pc, frame->ss, frame->sp);
 }
 
 vaddr_t ctx_arch_get_ip(cpu_ctx_t *ctx)

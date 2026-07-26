@@ -21,6 +21,9 @@ typedef struct cpu_ctx cpu_ctx_t;
 // initialize a fresh context for a new thread
 vaddr_t ctx_arch_init(cpu_ctx_t *ctx, vaddr_t entry, vaddr_t kstack, vaddr_t ustack, vaddr_t arg);
 
+void ctx_arch_re_init_segments(cpu_ctx_t *ctx);
+void frame_arch_re_init_segments(intr_frame_t *ctx);
+
 void ctx_dump(cpu_ctx_t *ctx);
 
 // switch from one thread context to another

@@ -28,8 +28,9 @@ int sig_procmask(int how, sigset_t *set, sigset_t *oldset, size_t sigsetsize)
         SET_ERROR(EINVAL);
         return -EINVAL;
     }
-
+    
     thread_t *current_thread = scheduler_get_current();
+    ctx_dump(&current_thread->ctx);
     vma_memory_t *mm = current_thread->proc->vma;
 
     if (oldset != NULL)
@@ -89,6 +90,7 @@ int rt_sig_action(int signum, const sigaction_t *action, sigaction_t *old_action
     }
 
     thread_t *t = scheduler_get_current();
+    ctx_dump(&t->ctx);
     process_t *proc = process_get_current();
 
     if (old_action != NULL)

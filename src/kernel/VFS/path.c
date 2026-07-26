@@ -13,6 +13,8 @@
 #include "kernel/memory.h"
 #include "debug/debug.h"
 
+#include "errno/errno.h"
+
 #include "vfs_flags.h"
 #include "volume.h"
 #include "mount.h"
@@ -23,11 +25,11 @@
 
 int path_has_volume(char *path)
 {
-    const char *colon = strchr(path, ':');
-    // /VOLUME:/../../..
+    const char *colon = strchr(path, '!');
+    // /VOLUME!/../../..
     if (colon != NULL)
     {
-        if (*colon == ':' && *(colon + 1) == '/')
+        if (*colon == '!' && *(colon + 1) == '/')
         {
             return RETURN_GOOD;
         }
@@ -49,16 +51,20 @@ int path_lookup(const char *path, vfs_node_t **node_out)
 {
     log_debug(MODULE, "path_lookup(%s(%p), %p)", path, path, node_out);
     if (path == NULL || node_out == NULL)
+    {
+        log_err(MODULE, "path(%p) or node_out(%p) are NULL", path, node_out);
         return RETURN_FAILED;
+    }
 
     // 1. split prefix → vol_id + relative path
     char vol_id[64];
     const char *rel = NULL;
 
-    if (path_split_prefix(path, vol_id, &rel) != RETURN_GOOD)
+    int state = path_split_prefix(path, vol_id, &rel);
+    if (state != RETURN_GOOD)
     {
         log_err(MODULE, "failed to split prefix from '%s'", path);
-        return RETURN_FAILED;
+        return state;
     }
 
     // 2. find volume
@@ -81,8 +87,7 @@ int path_lookup(const char *path, vfs_node_t **node_out)
     dentry_t *parent = mnt->root_dentry;
     if (parent == NULL)
     {
-        log_err(MODULE, "mountpoint has no root dentry");
-        return RETURN_FAILED;
+        ERRNO_RETURN(EBADF, "fd (%s) is not a valid open file descriptor.", path);
     }
 
     // 5. walk each segment
@@ -100,7 +105,9 @@ int path_lookup(const char *path, vfs_node_t **node_out)
 
         // skip empty segments (double slash etc.)
         if (seg[0] == '\0')
+        {
             continue;
+        }
 
         inode_t *next_ino = NULL;
         if (path_resolve_segment(parent, seg, &next_ino) != RETURN_GOOD)
@@ -118,27 +125,31 @@ int path_lookup(const char *path, vfs_node_t **node_out)
     vfs_node_t *node = malloc(sizeof(vfs_node_t));
     if (node == NULL)
     {
+        log_err(MODULE, "OOM");
         return RETURN_FAILED;
     }
-
+    
     memset(node, 0, sizeof(vfs_node_t));
     node->inode = ino;
     node->mountpoint = mnt;
     node->offset = 0;
     node->opened = false;
-
+    node->fs = vol->fs;
+    
+    log_debug(MODULE, "*node_out = %p, node = %p", *node_out, node);
     *node_out = node;
+    log_debug(MODULE, "*node_out = %p, node = %p", *node_out, node);
     return RETURN_GOOD;
 }
 
-// parse "vol:/rest" into parts
+// parse "vol!/rest" into parts
 int path_split_prefix(const char *path, char *volume_id_out, const char **rel_out)
 {
     // path structure is
-    // /VOLUME:/
+    // /VOLUME!/
 
     const char *cpath = path;
-    const char *colon = strchr(cpath, ':'); // strchr uses cpath to find it
+    const char *colon = strchr(cpath, '!'); // strchr uses cpath to find it
     cpath = path;                           // and so restore cpath from strchr
     if (colon == NULL)
     {
@@ -162,6 +173,10 @@ int path_split_prefix(const char *path, char *volume_id_out, const char **rel_ou
     if (volume_id_out != NULL)
     {
         size_t volume_length = (size_t)(colon - cpath);
+        if (volume_length > MAX_VOLUME_NAME)
+        {
+            ERRNO_RETURN(ENAMETOOLONG, "Path volume (%s) is too long.", path);
+        }
         volume_id_out = memcpy(volume_id_out, cpath, volume_length);
         volume_id_out[volume_length] = '\0';
     }
@@ -172,32 +187,32 @@ int path_split_prefix(const char *path, char *volume_id_out, const char **rel_ou
 int path_next_segment(const char *path, char *seg_out, const char **rest_out)
 {
     // path structure is
-    // /VOLUME:/../../..
+    // /VOLUME!/../../..
 
     // for path_next_segment
     // stage 1
-    // strchr(':') returns !NULL
-    // /VOLUME:/../../..
+    // strchr('!') returns !NULL
+    // /VOLUME!/../../..
     // ^------^
     // SKIP VOLUME IF IT IS THERE
-    // cpath = strchr(cpath, ':') + 1;
+    // cpath = strchr(cpath, '!') + 1;
     // CAN BE DONE WITH path_split_prefix
 
     const char *cpath = path;
-    const char *colon = strchr(cpath, ':');
+    const char *colon = strchr(cpath, '!');
     if (colon == NULL)
     {
-        // there was not a ':' in the path
+        // there was not a '!' in the path
         cpath = path;
     }
     else
     {
-        // skip the ':'
+        // skip the '!'
         cpath = colon + 1;
     }
 
     // stage 2
-    // /VOLUME:/../../..
+    // /VOLUME!/../../..
     //         ^--------....
     // if *cpath == '/'
     //  then cpath++
@@ -215,10 +230,14 @@ int path_next_segment(const char *path, char *seg_out, const char **rest_out)
     const char *next_seg = strchr(cpath, '/');
     if (next_seg == NULL)
     {
+        size_t len = strlen(curr_seg);
+        if (len > MAX_FILE_NAME)
+        {
+            ERRNO_RETURN(ENAMETOOLONG, "Path segment name (%s) is too long.", curr_seg);
+        }
         // last segment — no more '/' ahead
         if (seg_out != NULL)
         {
-            size_t len = strlen(curr_seg);
             memcpy(seg_out, curr_seg, len);
             seg_out[len] = '\0';
         }
@@ -226,7 +245,7 @@ int path_next_segment(const char *path, char *seg_out, const char **rest_out)
         {
             *rest_out = NULL; // signal: nothing left
         }
-        return RETURN_GOOD; // not a failure
+        return RETURN_GOOD;   // not a failure
     }
 
     // stage 4
@@ -252,7 +271,9 @@ int path_resolve_segment(dentry_t *parent, const char *name, inode_t **inode_out
 {
     log_debug(MODULE, "path_resolve_segment(%p, %s(%p), %p)", parent, name, name, inode_out);
     if (parent == NULL || name == NULL || inode_out == NULL)
+    {
         return RETURN_FAILED;
+    }
 
     // 1. try dcache first
     dentry_t *dentry = dcache_lookup(parent, name);
@@ -273,7 +294,9 @@ int path_resolve_segment(dentry_t *parent, const char *name, inode_t **inode_out
     volume_t *vol = parent->inode->volume;
     inode_t *ino = inode_alloc(vol);
     if (ino == NULL)
+    {
         return RETURN_FAILED;
+    }
 
     if (vol->fs->lookup(parent->inode, name, ino, vol->device, parent->inode->volume->mountpoint) != RETURN_GOOD)
     {
@@ -285,16 +308,17 @@ int path_resolve_segment(dentry_t *parent, const char *name, inode_t **inode_out
             dcache_insert(neg);
         }
         inode_free(ino);
+        ERRNO_RETURN(ENOENT, "A component of pathname (%s) does not exist.", name);
         return RETURN_FAILED;
     }
-
+    
     // 3. found — cache it
     dentry_t *new_dentry = dentry_alloc(name, ino, parent);
     if (new_dentry == NULL)
     {
         log_err(MODULE, "dentry_alloc(%s, %p, %p) returned NULL", name, ino, parent);
         inode_free(ino);
-        return RETURN_FAILED;
+        ERRNO_RETURN(ENOENT, "A component of pathname (%s) does not exist.", name);
     }
 
     icache_insert(ino);
@@ -316,7 +340,7 @@ int path_insert_volume(char *path, char *volume)
         path = strcat(path, "/");
     }
 
-    sprintf(path, "/%s:%s", volume, path);
+    sprintf(path, "/%s!%s", volume, path);
     return RETURN_GOOD;
 }
 
@@ -326,7 +350,7 @@ int path_combind(char *path, char *path2)
     {
         return RETURN_ERROR;
     }
-    
+
     if (path_is_rooted(path2))
     {
         return RETURN_ERROR;
