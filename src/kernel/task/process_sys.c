@@ -24,7 +24,7 @@
 
 char *proc_get_cwd(char *buf, size_t size)
 {
-    thread_t *t = scheduler_get_current();
+    thread_t *t = sched_get_current();
     ctx_dump(&t->ctx);
     if (buf == NULL)
     {
@@ -75,7 +75,7 @@ SYSCALL_DEFINE2(proc_get_cwd, char *, size_t);
 
 void proc_exit_group(int status)
 {
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     process_t *proc = current_thread->proc;
     proc->exit_code.raw = status;
 

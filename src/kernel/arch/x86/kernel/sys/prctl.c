@@ -21,7 +21,7 @@
 
 int arch_prctl(int code, uint64_t addr)
 {
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     ctx_dump(&current_thread->ctx);
     switch (code)
     {

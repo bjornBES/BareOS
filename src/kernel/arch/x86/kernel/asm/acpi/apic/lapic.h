@@ -25,7 +25,7 @@
 
 #define LAPIC_SPURIOUS_ENABLE (1 << 8)
 #define LAPIC_TIMER_PERIODIC (1 << 17)
-#define LAPIC_TIMER_VECTOR 0x22 // same vector as your PIT/HPET timer IRQ
+#define LAPIC_TIMER_MASKED (1 << 16)
 
 typedef uint16_t lapic_id;
 
@@ -42,6 +42,9 @@ static inline uint32_t lapic_read(uint32_t reg)
 }
 
 void lapic_enable();
+uint64_t calibrate_lapic_timer();
 void lapic_wait_idle();
 lapic_id lapic_get_id();
-void lapic_timer_init();
+int lapic_timer_isr(intr_frame_t *frame);
+int ipi_reschedule_handler(intr_frame_t *frame);
+void lapic_timer_init(uint64_t calibrated);

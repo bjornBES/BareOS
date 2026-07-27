@@ -33,11 +33,14 @@ typedef enum
 } DebugLevel;
 #endif
 
+extern spinlock_t debug_logs;
+
 void logfl(const char *module, DebugLevel level, const char *fmt, ...);
 void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void logf(const char *module, DebugLevel level, const char *fmt, ...);
 void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void strlogf(DebugLevel level, const char *str);
+void debug_enter_func(const char *module, const char *function, const char *args, ...);
 
 #if DEBUG
 #define log_debug(module, ...) logfl(module, LVL_DEBUG, __VA_ARGS__)
@@ -57,9 +60,7 @@ void strlogf(DebugLevel level, const char *str);
 
 #define ENTER_FUNC(module, args, ...)                       \
     {                                                       \
-        logf(module, LVL_DEBUG, "Enter %s(", __FUNCTION__); \
-        logf("\0", LVL_DEBUG, args, __VA_ARGS__);           \
-        logfl("\0", LVL_DEBUG, ")");                        \
+        debug_enter_func(module, __FUNCTION__, args, __VA_ARGS__); \
     }
 #define FUNC_NOT_IMPLEMENTED(module) log_err(module, "%s: Not implemented", __FUNCTION__)
 

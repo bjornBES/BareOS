@@ -52,7 +52,7 @@ cpu_t *cpu_arch_get_current()
     return (cpu_t *)(((uint64_t)hi << 32) | lo); */
 }
 
-cpu_t *cpu_get(cpu_id id)
+cpu_t *cpu_arch_get(cpu_id id)
 {
     if (id < MAX_CPUS)
     {
@@ -61,7 +61,7 @@ cpu_t *cpu_get(cpu_id id)
     return NULL;
 }
 
-void cpu_init_bsp()
+void cpu_init_bsp(uint64_t calibrated)
 {
     cpu_t *cpu = &cpus[0];
     cpu->self = cpu;
@@ -71,13 +71,16 @@ void cpu_init_bsp()
     cpu->current = NULL; // scheduler fills this
     cpu->kernel_stack = kstack_per_cpu_alloc();
     bsp_cpu = cpu;
-
+    
     ctl_cr0_add(X86_CR0_MP);
     ctl_cr0_remove(X86_CR0_EM);
-
+    
     ctl_cr4_add(X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT);
-
+    
     cpu_set_gs(cpu);
+    
+    lapic_timer_init(calibrated);
+    log_info(MODULE, "local APIC enabled");
 
     log_info("CPU", "BSP cpu_t init, APIC ID %u", cpu->apic_id);
 }

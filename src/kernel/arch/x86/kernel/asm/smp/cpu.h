@@ -22,5 +22,5 @@ extern cpu_t cpus[MAX_CPUS];
 extern cpu_t *bsp_cpu;
 
 cpu_t *cpu_get(cpu_id id);
-void cpu_init_bsp();
+void cpu_init_bsp(uint64_t calibrated);
 void cpu_init_ap(lapic_id apic_id);

@@ -73,7 +73,7 @@ void test()
         t++;
     }
     log_debug("test", "exiting function test");
-    scheduler_thread_exit();
+    sched_thread_exit();
 }
 
 void start_init()
@@ -167,8 +167,9 @@ __attribute__((noreturn)) void kernel_entry()
     process_init();
 
     thread_t *t = thread_create(start_init);
-    scheduler_add(t);
-    scheduler_sleep_ms(100);
+    t->cpu_affinity = cpu_arch_get(1);
+    sched_add(t);
+    sched_sleep_ms(100);
     log_debug("MAIN", "Got back");
 
     {
@@ -188,16 +189,16 @@ __attribute__((noreturn)) void kernel_entry()
 
 void kernel_main(boot_params_t *bootParams)
 {
-    hexdump(bootParams, sizeof(boot_params_t));
+    // hexdump(bootParams, sizeof(boot_params_t));
 
-    log_debug(NO_MODULE, "from bootparams @ %p", bootParams);
-    log_debug(NO_MODULE, "kernel_address: %p", bootParams->kernel_address);
-    log_debug(NO_MODULE, "BootDevice: %x", bootParams->boot_device);
-    log_debug(NO_MODULE, "currentMode: %x", bootParams->current_mode);
-    log_debug(NO_MODULE, "e820Count: %x", bootParams->memory.count);
-    log_debug(NO_MODULE, "boot_flags: %x", bootParams->bootloader.boot_flags);
-    log_debug(NO_MODULE, "vesaModeCount: %x", bootParams->video.count);
-    log_debug(NO_MODULE, "rsdp_address: %p", bootParams->acpi.rsdp_address);
+    // log_debug(NO_MODULE, "from bootparams @ %p", bootParams);
+    // log_debug(NO_MODULE, "kernel_address: %p", bootParams->kernel_address);
+    // log_debug(NO_MODULE, "BootDevice: %x", bootParams->boot_device);
+    // log_debug(NO_MODULE, "currentMode: %x", bootParams->current_mode);
+    // log_debug(NO_MODULE, "e820Count: %x", bootParams->memory.count);
+    // log_debug(NO_MODULE, "boot_flags: %x", bootParams->bootloader.boot_flags);
+    // log_debug(NO_MODULE, "vesaModeCount: %x", bootParams->video.count);
+    // log_debug(NO_MODULE, "rsdp_address: %p", bootParams->acpi.rsdp_address);
 
     ioremap_init();
     kstack_init();
@@ -212,13 +213,27 @@ void kernel_main(boot_params_t *bootParams)
 
     log_debug("MAIN", "init main thread");
     allocator_print_blocks();
-    main_thread = thread_create_main();
+    main_thread = thread_create(kernel_entry);
+    main_thread->priority = PRIORITY_HIGH;
+    main_thread->timeslice = priority_to_timeslice(PRIORITY_HIGH);
+    main_thread->timeslice_reset = priority_to_timeslice(PRIORITY_HIGH);
+
+/*     for (;;)
+    {
+        ;
+    } */
 
     log_debug("MAIN", "new rsp = %p", main_thread->kernel_stack);
     __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->kernel_stack));
 
-    scheduler_init(main_thread);
+    sched_init(main_thread);
     log_debug("MAIN", "main thread stack @ %p", main_thread->kernel_stack);
+    schedule(NULL);
+    while (true)
+    {
+        ;
+    }
+    
     __asm__("jmp kernel_entry");
     __builtin_unreachable();
 }

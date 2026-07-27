@@ -43,8 +43,7 @@ void device_init()
 device_t *device_create(device_type_t type, uint32_t flags)
 {
     device_t *device = malloc(sizeof(device_t));
-    device->type = type;
-    device->flags = flags;
+    memset(device, 0, sizeof(device_t));
     return device;
 }
 

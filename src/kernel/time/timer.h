@@ -45,6 +45,8 @@ typedef struct timer_priv
     int (*set_oneshot)(device_t *dev, uint64_t ns, void (*cb)(device_t *));
     int (*set_periodic)(device_t *dev, uint64_t ns, void (*cb)(device_t *));
     void (*cancel)(device_t *dev);
+
+    void *priv;
 } timer_priv_t;
 
 // kernel picks best source/event device automatically

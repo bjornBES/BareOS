@@ -9,30 +9,12 @@ fi
 
 clear
 
-IMAGE=$3
+IFS=" "
+echo "arg = $*"
 
-if [ "$1" == "floppy" ]; then
-    QEMU_ARGS="${QEMU_ARGS} -fda $IMAGE"
-    QEMU_ARGS="${QEMU_ARGS} -drive format=raw,id=disk,if=none"
-elif [ "$1" == "disk" ]; then
-    QEMU_ARGS="${QEMU_ARGS} -drive file=$IMAGE,format=raw,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk"
+shift 1
+IFS=" "
+QEMU_ARGS="$*"
+echo "QEMU_ARGS = ${QEMU_ARGS}"
 
-else
-    echo "Unknown image type: $1"
-    exit 2
-fi
-
-QEMU_ARGS="${QEMU_ARGS} -device intel-hda"
-QEMU_ARGS="${QEMU_ARGS} -device sb16"
-
-# SMP
-QEMU_ARGS="${QEMU_ARGS} -smp cores=4,threads=1,sockets=1"
-
-QEMU_COMMAND=qemu-system
-if [ "$2" == "i686" ]; then
-    QEMU_COMMAND=${QEMU_COMMAND}-i386
-else
-    QEMU_COMMAND=${QEMU_COMMAND}-$2
-fi
-
-${QEMU_COMMAND} ${QEMU_ARGS}
+${QEMU_ARGS}

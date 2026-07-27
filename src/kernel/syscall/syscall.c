@@ -52,12 +52,12 @@ uintptr_t syscall_handler_func(syscall_info *info, syscall_function_info *func_i
     reg_t nr = info->sys_number;
     syscall_function_info syscall_info = syscall_table[nr];
 
-    thread_t *current_t = scheduler_get_current();
+    thread_t *current_t = sched_get_current();
 
     if (syscall_info.pledge != 0 && pledge_check(syscall_info.pledge) != RETURN_GOOD)
     {
         process_t *current = process_get_current();
-        fprintf(VFS_FD_DEBUG, "[%u]: pledge \"%s\", syscall %u,\n", current->pid, pledge_get_missing(syscall_info.pledge), nr);
+        log_err(MODULE, "[%u]: pledge \"%s\", syscall %u,\n", current->pid, pledge_get_missing(syscall_info.pledge), nr);
         signal_send_group(current, SIGSYS);
         signal_try_deliver(current_t, info, regs);
         return -ENOSYS;
@@ -74,7 +74,8 @@ uintptr_t syscall_handler_func(syscall_info *info, syscall_function_info *func_i
     }
     // ivt_dump_frame(regs);
     signal_try_deliver(current_t, info, regs);
-    // scheduler_thread_info();
+    // log_debug(MODULE, "DONE");
+    // sched_thread_info();
     return ret;
 }
 

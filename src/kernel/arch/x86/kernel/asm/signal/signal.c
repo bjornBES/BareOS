@@ -75,7 +75,7 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     sf->uc.uc_flags = frame_uc_flags(frame);
     sf->uc.uc_stack.ss_sp = (void *)frame->sp;
     sf->uc.uc_stack.ss_size = proc->vma->start_stack - proc->vma->stack_vma->top;
-
+    
     sigcontext_t *context = &sf->uc.uc_mcontext;
     context->di = frame->di;
     context->si = frame->si;
@@ -85,7 +85,7 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     context->dx = frame->dx;
     context->ax = frame->ax;
     context->cx = frame->cx;
-#ifdef __x86_64__
+    #ifdef __x86_64__
     context->r8 = frame->r8;
     context->r9 = frame->r9;
     context->r10 = frame->r10;
@@ -94,8 +94,8 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     context->r13 = frame->r13;
     context->r14 = frame->r14;
     context->r15 = frame->r15;
-#else
-#endif
+    #else
+    #endif
     context->trapno = frame->interrupt;
     context->err = frame->error;
     context->pc = frame->pc;
@@ -104,15 +104,15 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     context->gs = 0;
     context->fs = 0;
     context->ss = frame->ss;
-
+    
     context->fpstate = NULL;
-
+    
     context->oldmask = sa->sa_mask;
     vaddr_t cr2;
     __asm__("mov %0, cr2" : "=rm"(cr2));
     context->cr2 = cr2;
-
-
+    
+    
     t->blocked_signals |= sa->sa_mask;
     if (FLAG_IS_SET(sa->sa_flags, SA_NODEFER) == 0)
     {
@@ -120,6 +120,8 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     }
 
     log_debug(MODULE, "frame @ %p", frame);
+    log_debug(MODULE, "sf @ %p", sf);
+    log_debug(MODULE, "context @ %p", context);
 
     frame->pc = (vaddr_t)sa->handler.sa_handler;
     frame->sp = user_stack;
@@ -131,8 +133,11 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
 
 void signal_arch_restore_frame(intr_frame_t *frame)
 {
-    signal_arch_frame_t *sig_frame = (signal_arch_frame_t *)frame->sp;
-    sigcontext_t *context = &sig_frame->uc.uc_mcontext;
+    signal_arch_frame_t *sf = (signal_arch_frame_t *)(frame->sp & ~0xFull);
+    sigcontext_t *context = &sf->uc.uc_mcontext;
+
+    log_debug(MODULE, "sf @ %p", sf);
+    log_debug(MODULE, "context @ %p", context);
 
     frame->di = context->di;
     frame->si = context->si;
@@ -155,12 +160,9 @@ void signal_arch_restore_frame(intr_frame_t *frame)
 #endif
     frame->pc = context->pc;
     frame->flags = context->flags;
-    frame->cs = context->cs;
-    frame->ss = context->ss;
-
-    FUNC_NOT_IMPLEMENTED(MODULE);
-    // memcpy(frame, &sig_frame->proc_reg, sizeof(intr_frame_t));
-    // ctx_arch_switch((vaddr_t)frame);
+    frame->cs = USER_CODE_SELECTOR | 3;
+    frame->ss = USER_DATA_SELECTOR | 3;
+    frame->ds = USER_DATA_SELECTOR | 3;
 }
 
 void signal_arch_dispatch(intr_frame_t *frame)

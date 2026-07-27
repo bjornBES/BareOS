@@ -14,7 +14,7 @@
 
 tid_t set_tid_address(int *tidptr)
 {
-    thread_t *current = scheduler_get_current();
+    thread_t *current = sched_get_current();
     ctx_dump(&current->ctx);
     current->clear_child_tid = tidptr;
     ctx_dump(&current->ctx);

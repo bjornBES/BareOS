@@ -108,7 +108,6 @@ void apic_Initialize(uint8_t offset_pic_1, uint8_t _2, bool _3)
 {
     // enable local APIC, set spurious vector to 0xFF
     lapic_enable();
-    log_info(MODULE, "local APIC enabled");
 
     for (uint8_t irq = 0; irq < 24; irq++)
     {

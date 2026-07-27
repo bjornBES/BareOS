@@ -19,14 +19,14 @@ tss_t tss_entry;
 
 void tss_load(uint16_t segment_sel)
 {
-    log_debug(MODULE, "loading TSS entry");
+    // log_debug(MODULE, "loading TSS entry");
     __asm__ volatile("ltr ax" : : "a"(segment_sel));
-    log_debug(MODULE, "loaded TSS entry");
+    // log_debug(MODULE, "loaded TSS entry");
 }
 
-void cpu_arch_set_kernel_stack(vaddr_t stack_top)
+void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top)
 {
-    tss_entry.sp0 = stack_top;
+    cpu->tss.sp0 = stack_top;
 }
 
 void tss_initialize(tss_t *tss, gdt_entry_t *descriptor)
@@ -60,7 +60,7 @@ void tss_initialize(tss_t *tss, gdt_entry_t *descriptor)
     td->Reserved     = 0;
 
 #endif
-    log_debug(MODULE, "set TSS entry");
+    // log_debug(MODULE, "set TSS entry");
 }
 
 // limit = 103 + 0 + 0

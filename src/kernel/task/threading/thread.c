@@ -30,10 +30,21 @@ static inline tid_t get_tid()
     return next_tid++;
 }
 
+static inline thread_t *thread_allocate()
+{
+    thread_t *new_thread = malloc(sizeof(thread_t));
+    if (!new_thread)
+    {
+        KernelPanic(MODULE, "OOM");
+    }
+    memset(new_thread, 0, sizeof(thread_t));
+    return new_thread;
+}
+
 thread_t *thread_create(void (*entry)())
 {
     log_debug(MODULE, "thread_create(%p)", entry);
-    thread_t *new_thread = malloc(sizeof(thread_t));
+    thread_t *new_thread = thread_allocate();
     vaddr_t stack = kstack_alloc();
 
     new_thread->raw_kernel_stack = stack;
@@ -50,7 +61,7 @@ thread_t *thread_create(void (*entry)())
 
 thread_t *thread_create_user(process_t *proc, uint64_t user_stack_top)
 {
-    thread_t *t = malloc(sizeof(thread_t));
+    thread_t *t = thread_allocate();
 
     vaddr_t kstack = kstack_alloc();
 
@@ -71,7 +82,7 @@ thread_t *thread_create_user(process_t *proc, uint64_t user_stack_top)
 
 thread_t *thread_create_user_tid(process_t *proc, uint64_t user_stack_top, tid_t tid)
 {
-    thread_t *t = malloc(sizeof(thread_t));
+    thread_t *t = thread_allocate();
 
     vaddr_t kstack = kstack_alloc();
 
@@ -92,12 +103,14 @@ thread_t *thread_create_user_tid(process_t *proc, uint64_t user_stack_top, tid_t
 
 thread_t *thread_create_main()
 {
-    thread_t *t = malloc(sizeof(thread_t));
-    memset(t, 0, sizeof(thread_t));
+    thread_t *t = thread_allocate();
+
     vaddr_t stack_top = kstack_alloc();
     t->kernel_stack = stack_top;
     t->raw_kernel_stack = stack_top;
+    
     t->tid = get_tid();
+    t->priority = PRIORITY_HIGH;
     t->timeslice_reset = 20;
     t->timeslice = 20;
     t->state = THREAD_READY;
@@ -109,7 +122,7 @@ thread_t *thread_create_main()
 
 thread_t *thread_create_from(thread_t *parent, intr_frame_t *current_frame, uint64_t user_stack_top)
 {
-    thread_t *child = kmalloc(sizeof(thread_t));
+    thread_t *child = thread_allocate();
     if (!child)
     {
         return NULL;

@@ -10,6 +10,8 @@
 
 #include "kernel/asm/drivers/I8042/I8042.h"
 #include "kernel/asm/segment/gdt.h"
+#include "kernel/asm/ivt/idt.h"
+#include "kernel/asm/irq/i8259.h"
 #include "kernel/asm/acpi/hpet/hpet.h"
 #include "kernel/asm/timer/pit.h"
 #include "kernel/asm/MSR/MSR.h"
@@ -61,18 +63,18 @@ int write_registers(intr_frame_t *regs)
 
 int double_fault(intr_frame_t *regs)
 {
-    char buf[2048];
+    ivt_dump_frame(regs);
     log_err("double", "double fault");
-    log_debug("double", "%s", buf);
-    panic("double fault", __FILE__, __LINE__, "double fault");
-    return RETURN_FAILED;
+    // panic("double fault", __FILE__, __LINE__, "double fault");
+    return RETURN_GOOD;
 }
 
 int general_protection_fault(intr_frame_t *regs)
 {
-    log_err("GPF", "General Protection Fault %x", regs->error);
+    log_err("GPF", "General Protection Fault 0x%x", regs->error);
     ivt_dump_frame(regs);
     x86_GDT_dump_selector(regs->error);
+    x86_idt_dump_selector(regs->error);
     panic("GPF", __FILE__, __LINE__, "KERNEL GOT a GPF from %u ss", regs->error);
     // R9 = 0x464c452e54494e = "FLE.TIN"
     // R10 = 0x492f6e69622f3a72 = "I/nib/:r"
@@ -117,27 +119,33 @@ void setup_arch_post()
 boot_params_t *setup_arch(boot_params_t *bootParams)
 {
     x86_GDT_initialize();
-    log_debug(MODULE, "GDT is done");
+    // log_debug(MODULE, "GDT is done");
+
+    // i8259_get_driver()->initialize(0x20, 0x28, false);
+    i8259_get_driver()->disable();
 
     x86_GDT_load(&gdt_descriptor, gdt_table);
-    log_debug(MODULE, "GDT is loaded");
+    // log_debug(MODULE, "GDT is loaded");
 
     tss_load(TSS_SELECTOR);
 
     exception_init();
-
+    
     ivt_arch_set_handler(EXC_DB, write_registers);
     ivt_arch_set_handler(EXC_BP, breakpoint);
     ivt_arch_set_handler(EXC_DF, double_fault);
     ivt_arch_set_handler(EXC_GP, general_protection_fault);
     ivt_arch_set_handler(EXC_PF, page_fault);
-
+    
+    x86_isr_initialize();
     ivt_arch_init();
+    inline_asm("sti" : : : "memory");
     log_debug(MODULE, "IDT is done");
-
+    
     arch_syscall_init();
 
     mmu_arch_init(bootParams);
+    allocator_init();
 
     irq_arch_enable();
 
@@ -157,16 +165,21 @@ boot_params_t *setup_arch(boot_params_t *bootParams)
 
     acpi_arch_init(bp);
 
+    hpet_pre_init();
     irq_arch_initialize();
     log_debug(MODULE, "IRQ init");
-
+    
+    hpet_init();
     fadt_init();
 
-    hpet_init();
     pit_init();
 
     log_debug(MODULE, "here");
 
     irq_arch_enable();
+
+    __asm__(
+        "xor rax, rax\n\t"
+        "mov cr2, rax" : : : "eax");
     return bp;
 }

@@ -22,7 +22,7 @@ int vfs_user_stat(char *path, stat_t *statbuf)
 {
     ENTER_FUNC(NO_MODULE, "%s, %p", path, statbuf);
     
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     ctx_dump(&current_thread->ctx);
 
     vfs_stat_t vstat;

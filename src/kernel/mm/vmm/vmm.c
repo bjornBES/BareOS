@@ -364,13 +364,15 @@ vma_memory_t *vma_clone(process_t *parent, process_t *proc)
 
             if (current->type == VMA_ANONYMOUS)
             {
-                if (current->top == USER_STACK_TOP)
+                if (current->end == USER_STACK_TOP && new_memory->stack_vma == NULL)
                 {
                     new_memory->stack_vma = new_vma;
+                    log_debug(MODULE, "===== STACK HERE");
                 }
-                if (current->top == USER_HEAP_BASE)
+                if (current->top == USER_HEAP_BASE && new_memory->heap_vma == NULL)
                 {
                     new_memory->heap_vma = new_vma;
+                    log_debug(MODULE, "===== HEAP HERE");
                 }
             }
             mmu_arch_map(proc->page_dir, va, src_phys, new_flags);

@@ -57,4 +57,5 @@ void madt_arch_parse(madt *madt)
         }
         entry += en->length; // advance by entry length, not sizeof
     }
+    irq_arch_register_override(0, 2, 0);
 }

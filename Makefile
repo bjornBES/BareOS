@@ -62,9 +62,11 @@ user: $(TARGET_CORE_LIBS)
 
 runnow:
 #	python tools/run_vm.py
-	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
+	python tools/run_vm.py
+# 	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
 run: $(BUILD_DIR)/image.iso
-	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
+	python tools/run_vm.py
+# 	bash scripts/run.sh disk $(arch) $(BUILD_DIR)/image.iso
 #	python tools/run_vm.py
 debug_flags:
 	@echo "add -g"

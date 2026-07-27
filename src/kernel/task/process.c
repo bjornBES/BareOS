@@ -61,7 +61,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
     log_info(MODULE, "[Page Fault] exec %s", info->exec BOOL_TO_STRING);
     log_info(MODULE, "[Page Fault] is cow page %s", info->is_cow BOOL_TO_STRING);
     vaddr_t faulting_va = PAGE_ALIGN_DOWN(info->fault_addr);
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     if (faulting_va == 0)
     {
         log_err(MODULE, "NULL EXCEPTION");
@@ -181,7 +181,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
         }
         page_fault_try_count = 0;
 
-        thread_t *current_thread = scheduler_get_current();
+        thread_t *current_thread = sched_get_current();
         log_info(MODULE, "comes from thread %u", current_thread->tid);
 
         if (info->pc >= (uint64_t)KERNEL_VIRT_BASE)
@@ -202,7 +202,7 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
 
         if (current_thread->tid != 0 && current_thread->state != THREAD_DEAD)
         {
-            scheduler_thread_exit();
+            sched_thread_exit();
             return RETURN_GOOD;
         }
 
@@ -330,13 +330,13 @@ process_t *process_clone(process_t *parent)
 
 pid_t process_vfork(syscall_info *info)
 {
-    thread_t *parent_thread = scheduler_get_current();
+    thread_t *parent_thread = sched_get_current();
     log_debug(NO_MODULE, "======= PARENT =======");
     ctx_arch_re_init_segments(&parent_thread->ctx);
     ctx_dump(&parent_thread->ctx);
     log_debug(NO_MODULE, "======= FRAME =======");
     ivt_dump_frame(info->regs);
-    scheduler_thread_info();
+    sched_thread_info();
     // 1.
     process_t *parent = parent_thread->proc;
 
@@ -407,7 +407,7 @@ pid_t process_vfork(syscall_info *info)
     child->threads[0] = child_thread;
     child->thread_count++;
 
-    scheduler_add(child_thread);
+    sched_add(child_thread);
 
     mmu_arch_map_kernel(child->page_dir);
 
@@ -421,7 +421,7 @@ pid_t process_vfork(syscall_info *info)
     log_debug(NO_MODULE, "======= FRAME =======");
     ivt_dump_frame(info->regs);
 
-    scheduler_yield();
+    sched_yield();
 
     log_err(MODULE, "yield failed");
     return child->pid;
@@ -432,7 +432,7 @@ SYSCALL_DEFINE0_REG(process_vfork);
 pid_t process_fork(syscall_info *info)
 {
     // 1.
-    thread_t *parent_thread = scheduler_get_current();
+    thread_t *parent_thread = sched_get_current();
     process_t *parent = parent_thread->proc;
 
     process_t *child = process_clone(parent);
@@ -479,7 +479,7 @@ pid_t process_fork(syscall_info *info)
     child->threads[0] = child_thread;
     child->thread_count++;
 
-    scheduler_add(child_thread);
+    sched_add(child_thread);
 
     mmu_arch_map_kernel(child->page_dir);
 
@@ -497,7 +497,7 @@ void process_run(process_t *proc)
 
     mmu_arch_map_kernel(proc->page_dir);
 
-    scheduler_add(proc->threads[proc->thread_count - 1]);
+    sched_add(proc->threads[proc->thread_count - 1]);
 
     return;
 }
@@ -523,7 +523,7 @@ void process_reap(process_t *proc)
             {
                 need_reschedule = true;
             }
-            scheduler_remove(proc->threads[i]);
+            sched_remove(proc->threads[i]);
             proc->threads[i] = NULL;
         }
     }
@@ -595,7 +595,7 @@ void waitpid_loop()
                 child = next;
             }
         }
-        scheduler_sleep_ms(100);
+        sched_sleep_ms(100);
     }
 }
 
@@ -638,10 +638,10 @@ pid_t process_waitpid(pid_t child_pid, int *wstatus, int options)
 
     if (child->state != PROC_STATE_ZOMBIE)
     {
-        thread_t *parent_thread = scheduler_get_current();
-        scheduler_block(parent_thread);
+        thread_t *parent_thread = sched_get_current();
+        sched_block(parent_thread);
         parent->wait_for = child_pid;
-        scheduler_yield();
+        sched_yield();
     }
 
     if (wstatus)
@@ -664,7 +664,7 @@ int process_wait(process_t *proc)
 {
     while (proc->state != PROC_STATE_ZOMBIE)
     {
-        scheduler_yield(); // yield until child is done
+        sched_yield(); // yield until child is done
     }
     process_exit_code_t code = proc->exit_code;
     process_reap(proc);
@@ -759,7 +759,7 @@ thread_t *process_exec(char *proc_path, char *argv[], char *envp[], process_t *p
 
     log_info(MODULE, "new thread");
     proc->thread_count = 0;
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     ivt_dump_frame(info_sys->regs);
     process_arch_build_return_frame(info_sys->regs, proc);
     frame_arch_re_init_segments(info_sys->regs);
@@ -827,7 +827,7 @@ int process_kill(pid_t pid, int sig)
 process_t *process_get_current()
 {
     // ENTER_FUNC(MODULE, "", "");
-    thread_t *t = scheduler_get_current();
+    thread_t *t = sched_get_current();
     // log_debug(MODULE, "t @ %p", t);
     // log_debug(MODULE, "t->proc @ %p", t->proc);
     return t->proc;
@@ -835,7 +835,7 @@ process_t *process_get_current()
 
 pid_t process_get_pid()
 {
-    thread_t *t = scheduler_get_current();
+    thread_t *t = sched_get_current();
     // log_debug(MODULE, "get pid from %u", t->proc->pid);
     return t->proc->pid;
 }
@@ -844,7 +844,7 @@ SYSCALL_DEFINE0(process_get_pid);
 
 pid_t proc_get_ppid()
 {
-    thread_t *t = scheduler_get_current();
+    thread_t *t = sched_get_current();
     // log_debug(MODULE, "get pid from %u", t->proc->pid);
     return t->proc->parent->pid;
 }

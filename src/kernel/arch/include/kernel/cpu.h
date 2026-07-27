@@ -15,4 +15,5 @@
 typedef struct arch_cpu_info cpu_t;
 
 cpu_t *cpu_arch_get_current();
-void cpu_arch_set_kernel_stack(vaddr_t stack_top);
+cpu_t *cpu_arch_get(cpu_id id);
+void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top);

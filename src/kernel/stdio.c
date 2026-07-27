@@ -12,6 +12,7 @@
 #include "VFS/vfs.h"
 #include "kernel/string.h"
 #include "kernel/debug.h"
+#include "kernel/irq.h"
 
 #include <stdint.h>
 #include <stdarg.h>
@@ -47,7 +48,6 @@ int puts(const char *str)
 {
     return fputs(str, stdout);
 }
-
 
 fd_t fopen(char *filename, const char *mode)
 {
@@ -85,7 +85,6 @@ int fflush(fd_t file)
     return 0;
 }
 
-
 int fseek(fd_t file, int64_t offset, int whence)
 {
     return vfs_seek(file, (off_t)offset, whence);
@@ -95,7 +94,6 @@ int fseeko(fd_t file, off_t offset, int whence)
 {
     return 0;
 }
-
 
 int64_t ftell(fd_t stream)
 {
@@ -107,24 +105,27 @@ off_t ftello(fd_t stream)
     return 0;
 }
 
-
 size_t fread(void *buffer, size_t size, size_t count, fd_t stream)
 {
     size_t r_size = size * count;
-    return vfs_read(stream, (uint8_t*)buffer, r_size);
+    return vfs_read(stream, (uint8_t *)buffer, r_size);
 }
 
 size_t fwrite(const void *buffer, size_t size, size_t count, fd_t stream)
 {
     size_t r_size = size * count;
-    return vfs_write(stream, (uint8_t*)buffer, r_size);
+    return vfs_write(stream, (uint8_t *)buffer, r_size);
 }
-
+spinlock_t printf_lock = {0};
 int printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    irq_arch_disable();
+    spinlock_acquire(&printf_lock);
     int ret = vprintf_int(stdout, fmt, args);
+    spinlock_release(&printf_lock);
+    irq_arch_enable();
     va_end(args);
     return ret;
 }
@@ -133,7 +134,19 @@ int fprintf(fd_t file, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    irq_arch_disable();
+    spinlock_acquire(&printf_lock);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_acquire(&debug_logs);
+    }
     int ret = vprintf_int(file, fmt, args);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_release(&debug_logs);
+    }
+    spinlock_release(&printf_lock);
+    irq_arch_enable();
     va_end(args);
     return ret;
 }
@@ -142,7 +155,9 @@ int sprintf(char *s, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    // irq_arch_disable();
     const int ret = vsprintf_int(s, fmt, args);
+    // irq_arch_enable();
     va_end(args);
     return ret;
 }
@@ -151,28 +166,62 @@ int snprintf(char *s, size_t n, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    // irq_arch_disable();
     const int ret = vsnprintf_int(s, n, fmt, args);
+    // irq_arch_enable();
     va_end(args);
     return ret;
 }
 
 int vprintf(fd_t file, const char *fmt, va_list args)
 {
-    return vprintf_int(file, fmt, args);
+    irq_arch_disable();
+    spinlock_acquire(&printf_lock);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_acquire(&debug_logs);
+    }
+    int state = vprintf_int(file, fmt, args);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_release(&debug_logs);
+    }
+    spinlock_release(&printf_lock);
+    irq_arch_enable();
+    return state;
 }
 
 int vfprintf(fd_t file, const char *fmt, va_list args)
 {
-    return vprintf_int(file, fmt, args);
+    irq_arch_disable();
+    spinlock_acquire(&printf_lock);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_acquire(&debug_logs);
+    }
+    int state = vprintf_int(file, fmt, args);
+    if (file == VFS_FD_DEBUG)
+    {
+        spinlock_release(&debug_logs);
+    }
+    spinlock_release(&printf_lock);
+    irq_arch_enable();
+    return state;
 }
 
 int vsprintf(char *s, const char *fmt, va_list args)
 {
-    return vsprintf_int(s, fmt, args);
+    // irq_arch_disable();
+    int state = vsprintf_int(s, fmt, args);
+    // irq_arch_enable();
+    return state;
 }
 
 int vsnprintf(char *s, size_t n, const char *fmt, va_list args)
 {
-    return vsnprintf_int(s, n, fmt, args);
+    // irq_arch_disable();
+    int state = vsnprintf_int(s, n, fmt, args);
+    // irq_arch_enable();
+    return state;
 }
 

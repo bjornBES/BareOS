@@ -121,11 +121,12 @@ int signal_get(thread_t *t, siginfo_t *info, sigaction_t **action)
         }
 
         signal_dequeue(proc, i, info);
-        (*action) = &proc->signal_table.actions[i];
-        if ((*action) == NULL)
+        sigaction_t handler = proc->signal_table.actions[i];
+        if (handler.handler.sa_handler == SIG_DFL)
         {
             return RETURN_ERROR;
         }
+        (*action) = &proc->signal_table.actions[i];
         return RETURN_GOOD;
     }
 

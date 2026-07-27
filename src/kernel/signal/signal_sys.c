@@ -29,7 +29,7 @@ int sig_procmask(int how, sigset_t *set, sigset_t *oldset, size_t sigsetsize)
         return -EINVAL;
     }
     
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     ctx_dump(&current_thread->ctx);
     vma_memory_t *mm = current_thread->proc->vma;
 
@@ -89,7 +89,7 @@ int rt_sig_action(int signum, const sigaction_t *action, sigaction_t *old_action
         ERRNO_RETURN(EINVAL, "An invalid signal was specified. This will also be generated if an attempt is made to change the action for SIGKILL or SIGSTOP, which cannot be caught or ignored.", "");
     }
 
-    thread_t *t = scheduler_get_current();
+    thread_t *t = sched_get_current();
     ctx_dump(&t->ctx);
     process_t *proc = process_get_current();
 

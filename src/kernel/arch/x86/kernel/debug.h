@@ -14,12 +14,12 @@
 #include "kernel/memory.h"
 #include "device/device.h"
 
-static spinlock_t debug_lock = {0};
+// static spinlock_t debug_lock = {0};
 static inline void e9_putc(char c)
 {
-    spinlock_acquire(&debug_lock);
+    // spinlock_acquire(&debug_lock);
     outb(0xE9, c);
-    spinlock_release(&debug_lock);
+    // spinlock_release(&debug_lock);
 }
 
 void debug_write_char(char c);

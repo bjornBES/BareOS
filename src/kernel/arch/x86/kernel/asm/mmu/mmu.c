@@ -130,11 +130,7 @@ void mmu_arch_init(boot_params_t *bp)
     log_debug(MODULE, "paging done");
     pmm_map();
 
-    allocator_init();
-
     ivt_arch_set_handler(EXC_PF, mmu_arch_page_fault);
-
-    irq_arch_enable();
 }
 
 page_table_t *mmu_arch_create_table()

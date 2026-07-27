@@ -21,6 +21,9 @@
 #define SA_RESETHAND  0x80000000
 #define SA_RESTORER   0x04000000
 
+#define SIG_DFL  ((void (*)(int)) 0)
+#define SIG_IGN  ((void (*)(int)) 1)
+
 #define SIGHUP    1
 #define SIGINT    2
 #define SIGQUIT   3

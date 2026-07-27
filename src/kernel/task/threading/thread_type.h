@@ -11,7 +11,9 @@
 #pragma once
 #include "thread_config.h"
 #include "kernel/ctx.h"
+// #include "kernel/cpu.h"
 #include "signal/signal_type.h"
+#include <lists/list.h>
 
 typedef enum
 {
@@ -20,8 +22,8 @@ typedef enum
     THREAD_SLEEP,
     THREAD_DEAD,
     THREAD_BLOCKED,
-    THREAD_JUST_WOKE = 0xFFFE,
-    THREAD_REMAINS = 0xFFFF,
+    THREAD_JUST_WOKE,
+    THREAD_REMAINS,
 } thread_state;
 
 typedef struct thread
@@ -31,7 +33,7 @@ typedef struct thread
     // kernel stack
     vaddr_t kernel_stack;
     vaddr_t raw_kernel_stack;
-    size_t stack_size;  // stack_top = kernel_stack + stack_size
+    size_t stack_size; // stack_top = kernel_stack + stack_size
 
     uint64_t fs_base;
     uint64_t gs_base;
@@ -40,10 +42,10 @@ typedef struct thread
     char name[32];
 
     cpu_ctx_t ctx;
-    
+
     thread_state state;
-    uint8_t priority;       // 0 = lowest
-    uint32_t timeslice;     // ticks remaining this quantum
+    uint8_t priority;         // 0 = lowest
+    uint32_t timeslice;       // ticks remaining this quantum
     uint32_t timeslice_reset; // what to reload when quantum expires
     uint64_t wake_time;
 
@@ -53,6 +55,10 @@ typedef struct thread
     // signals
     sigset_t blocked_signals;
     signal_pending signal_queue;
+
+    struct arch_cpu_info *last_cpu;       // cache-warmth hint, NULL if never run
+    struct arch_cpu_info *cpu_affinity;   // explicit hint, NULL if none (free to roam)
+    list_node_t node; // intrusive — used by whichever queue currently
 
     struct thread *next_runnable;
 } thread_t;

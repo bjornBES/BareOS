@@ -14,6 +14,8 @@
 #include "kernel.h"
 #include "isr.h"
 #include "kernel/ivt.h"
+#include "kernel/cpu.h"
+#include "task/threading/scheduling/scheduler.h"
 
 #define MODULE "exception"
 
@@ -29,7 +31,7 @@ int exception_handler(intr_frame_t *regs)
     {
         return RETURN_FAILED;
     }
-    
+
     if (interrupt < 0x20)
     {
         if (last_vector == interrupt)
@@ -64,6 +66,13 @@ int exception_handler(intr_frame_t *regs)
             KernelPanic(MODULE, "Unhandled exception %d", regs->interrupt);
         }
     }
+
+    if (cpu_arch_get_current()->need_resched)
+    {
+        cpu_arch_get_current()->need_resched = false;
+        schedule(regs);
+    }
+
     return RETURN_GOOD;
 }
 

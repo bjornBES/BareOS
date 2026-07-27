@@ -108,8 +108,8 @@ int irq_arch_register(uint32_t irq, irq_handler_t handler, void *ctx)
     irq_handlers[real_irq] = handler;
     irq_ctx[real_irq] = ctx;
 
-    uint8_t vector = PIC_REMAP_OFFSET + real_irq;
-    ioapic_set_entry(real_irq, vector, 0);
+    // uint8_t vector = PIC_REMAP_OFFSET + real_irq;
+    // ioapic_set_entry(real_irq, vector, 0);
 
     // unmask interrupt
     irq_arch_unmask(real_irq);

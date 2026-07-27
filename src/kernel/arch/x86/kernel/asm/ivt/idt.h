@@ -77,14 +77,14 @@ extern idtr_t kernel_idtr;
 
 void x86_idt_load();
 
-void x86_idt_disable_gate(idt_entry table[256], uint32_t interrupt);
-void x86_idt_enable_gate(idt_entry table[256], uint32_t interrupt);
+void x86_idt_disable_gate(uint32_t interrupt);
+void x86_idt_enable_gate(uint32_t interrupt);
 #ifdef __i686__
 void x86_idt_set_gate(uint32_t interrupt, void *base, uint32_t segment_descriptor, uint8_t flags, uint8_t res);
-void idt_set_gate(idt_entry table[256], uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t res);
+void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t res);
 #else
 void x86_idt_set_gate(uint32_t interrupt, void *base, uint32_t segment_descriptor, uint8_t flags, uint8_t ist);
-void idt_set_gate(idt_entry table[256], uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist);
+void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist);
 #endif
 
 void x86_idt_initialize();

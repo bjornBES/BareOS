@@ -10,9 +10,12 @@
 
 #include "isr.h"
 #include "kernel/asm/ivt/idt.h"
+#include "kernel/debug.h"
 #include "kernel/asm/segment/gdt.h"
+#include "kernel/cpu.h"
 #include "kernel/x86.h"
 #include "kernel/ivt.h"
+#include "kernel/irq.h"
 
 #include "debug/debug.h"
 #include "kernel/io.h"
@@ -64,10 +67,10 @@ void x86_isr_initialize()
     x86_isr_initialize_gates();
     for (int i = 0; i < 256; i++)
     {
-        x86_idt_enable_gate(kernel_idt_table, i);
+        x86_idt_enable_gate(i);
     }
 
-    x86_idt_disable_gate(kernel_idt_table, 0x80);
+    x86_idt_disable_gate(0x80);
 }
 
 typedef struct
@@ -80,6 +83,23 @@ extern int exception_handler(intr_frame_t *regs);
 
 void x86_isr_handler(intr_frame_t *regs)
 {
+    // e9_putc('I');
+    if (regs->interrupt < 0x20)
+    {
+        irq_arch_disable();
+    }
+    cpu_t *cpu =cpu_arch_get_current();
+    if (cpu != NULL)
+    {
+        if (cpu->current != NULL)
+        {
+            fprintf(VFS_FD_DEBUG, "[got interrupt %u from %u.%u]", regs->interrupt, cpu->cpu_id, cpu->current->tid);
+        }
+        else
+        {
+            fprintf(VFS_FD_DEBUG, "[got interrupt %u from %u]", regs->interrupt, cpu->cpu_id);
+        }
+    }
     // log_debug(MODULE, "interrupt is %u flags = %064b", _int, regs->flags);
     // UART_write_fstr(COM1, "interrupt is %u\r\n", regs->interrupt);
     if (exception_handler(regs) != RETURN_GOOD)
@@ -94,10 +114,15 @@ void x86_isr_handler(intr_frame_t *regs)
         // printf("%s", buf);
         KernelPanic("ISR", "Unhandled exception %d", regs->interrupt);
     }
+
+    if (regs->interrupt < 0x20)
+    {
+        irq_arch_enable();
+    }
 }
 
 void x86_isr_register_handler(int interrupt)
 {
-    x86_idt_enable_gate(kernel_idt_table, interrupt);
+    x86_idt_enable_gate(interrupt);
 }
 

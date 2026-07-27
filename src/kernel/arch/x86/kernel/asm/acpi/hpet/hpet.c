@@ -32,7 +32,6 @@
 #define HPET_REG_CAPS 0x00                            // capabilities and ID
 #define HPET_REG_STATUS 0x20                          // general configuration
 #define HPET_REG_CONFIG 0x10                          // Interrupt Status Register
-#define HPET_REG_COUNTER 0xF0                         // main counter value
 
 #define HPET_TIMER_CONFIG_INTENABLE (1 << 2)          // enable interrupt
 #define HPET_TIMER_CONFIG_PERIODIC (1 << 3)           // periodic mode
@@ -73,13 +72,13 @@ typedef struct
 static hpet_comparator_t *comparators;
 static uint8_t comparator_count = 0;
 static volatile uint64_t hpet_base = 0;
-static uint64_t hpet_freq = 0;
+uint64_t hpet_freq = 0;
 
 static uint32_t period_fs;
 static volatile uint64_t s_ticks = 0;
 HPET_table *table;
 
-static uint64_t hpet_read(uint32_t reg)
+uint64_t hpet_read(uint32_t reg)
 {
     return *(volatile uint64_t *)(hpet_base + reg);
 }
@@ -175,7 +174,7 @@ void hpet_irq_handler(intr_frame_t *regs, void *ctx)
     irq_arch_eoi(comp->irq);
 }
 
-int hpet_init()
+int hpet_pre_init()
 {
     table = (HPET_table *)table_get_table(0x48504554);
     if (!table)
@@ -200,7 +199,11 @@ int hpet_init()
     // clock period is in femtoseconds, stored in bits [63:32]
     period_fs = caps >> 32;
     hpet_freq = 1000000000000000ull / period_fs;
+    return RETURN_GOOD;
+}
 
+int hpet_init()
+{
     log_info(MODULE, "period=%u fs freq=%u hz", period_fs, hpet_freq);
 
     // enable the main counter

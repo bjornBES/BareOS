@@ -251,7 +251,7 @@ ssize_t tty_read(tty_struct_t *tty, uint8_t *buf, size_t n)
 {
     irq_arch_enable();
     ENTER_FUNC(MODULE, "%p, %p, %u", tty, buf, n);
-    thread_t *current_thread = scheduler_get_current();
+    thread_t *current_thread = sched_get_current();
     ctx_dump(&current_thread->ctx);
     // log_debug(MODULE, "c_lflag = %x", tty->termios.c_lflag);
     if (FLAG_IS_SET(tty->termios.c_lflag, ICANON))

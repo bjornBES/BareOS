@@ -97,7 +97,7 @@ void timer_init(boot_params_t *bp)
     }
 
     boot_ns = timer_now_ns();
-    log_info(MODULE, "boot time is %u", NS_TO_MS(boot_ns));
+    log_info(MODULE, "boot time is %u ns", NS_TO_MS(boot_ns));
 
     log_info("TIMER", "source: %s event: %s",
              ((timer_priv_t *)active_source->priv)->name,

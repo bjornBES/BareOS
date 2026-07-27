@@ -25,6 +25,10 @@
 // mark dead and yield — scheduler will skip dead threads
 // implemented after scheduler exists
 
+#define GET_THREAD(list)                        \
+    list_node_t *node = list_pop_head(&(list)); \
+    thread_t *thread = container_of(node, thread_t, node);
+
 thread_t *thread_create_from_current();
 thread_t *thread_create_main();
 thread_t *thread_create_from(thread_t *parent, intr_frame_t *current_frame, uint64_t user_stack_top);

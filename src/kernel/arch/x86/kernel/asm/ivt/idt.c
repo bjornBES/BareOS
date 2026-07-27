@@ -10,6 +10,7 @@
 
 #include "idt.h"
 #include <util/binary.h>
+#include <defs.h>
 #include "debug/debug.h"
 
 #define MODULE "x86-IVT"
@@ -29,35 +30,35 @@ void x86_idt_set_gate(uint32_t interrupt, void *base, uint32_t segment_descripto
 void x86_idt_set_gate(uint32_t interrupt, void *base, uint32_t segment_descriptor, uint8_t flags, uint8_t ist)
 #endif
 {
-    idt_set_gate(kernel_idt_table, interrupt, base, segment_descriptor, flags, ist);
+    idt_set_gate(interrupt, base, segment_descriptor, flags, ist);
 }
 
 #ifdef __i686__
-void idt_set_gate(idt_entry table[256], uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t res)
+void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t res)
 #else
-void idt_set_gate(idt_entry table[256], uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist)
+void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist)
 #endif
 {
     uint32_64 base = (uint32_64)callback;
-    table[interrupt].base_1 = ((uint32_t)base) & 0xFFFF;
-    table[interrupt].segment_selector = segment_descriptor;
-    table[interrupt].reserved1 = 0;
-    table[interrupt].flags = flags;
-    table[interrupt].base_2 = ((uint32_t)base >> 16) & 0xFFFF;
+    kernel_idt_table[interrupt].base_1 = ((uint32_t)base) & 0xFFFF;
+    kernel_idt_table[interrupt].segment_selector = segment_descriptor;
+    kernel_idt_table[interrupt].reserved1 = 0;
+    kernel_idt_table[interrupt].flags = flags;
+    kernel_idt_table[interrupt].base_2 = ((uint32_t)base >> 16) & 0xFFFF;
 #ifdef __x86_64__
-    table[interrupt].ist = ist;
-    table[interrupt].base_3 = (base >> 32);
+    kernel_idt_table[interrupt].ist = ist;
+    kernel_idt_table[interrupt].base_3 = (base >> 32);
 #endif
 }
 
-void x86_idt_disable_gate(idt_entry table[256], uint32_t interrupt)
+void x86_idt_disable_gate(uint32_t interrupt)
 {
-    FLAG_UNSET(table[interrupt].flags, IDT_FLAG_PRESENT);
+    FLAG_UNSET(kernel_idt_table[interrupt].flags, IDT_FLAG_PRESENT);
 }
 
-void x86_idt_enable_gate(idt_entry table[256], uint32_t interrupt)
+void x86_idt_enable_gate(uint32_t interrupt)
 {
-    FLAG_SET(table[interrupt].flags, IDT_FLAG_PRESENT);
+    FLAG_SET(kernel_idt_table[interrupt].flags, IDT_FLAG_PRESENT);
 }
 
 void x86_idt_load()
@@ -65,9 +66,13 @@ void x86_idt_load()
     kernel_idtr.size = sizeof(kernel_idt_table) - 1;
     kernel_idtr.ptr = kernel_idt_table;
 
-    log_debug(MODULE, "loading IDT");
+    // log_debug(MODULE, "loading IDT");
 #ifdef __x86_64__
-    idt_load_64(&kernel_idtr);
+    inline_asm(
+        "cli\n\t"
+        "lidt %0"
+        : : "m"(kernel_idtr) : "memory");
+    // idt_load_64(&kernel_idtr);
 #else
     IDT_Load_32(&kernel_idtr);
 #endif

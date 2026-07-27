@@ -233,6 +233,7 @@
         "RCTRL",
         "rdmsr",
         "resb",
+        "resched",
         "resd",
         "resvd",
         "ringbuf",

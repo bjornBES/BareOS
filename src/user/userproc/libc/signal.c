@@ -11,14 +11,9 @@
 #include "signal.h"
 #include "syscall.h"
 
-int sigaction(int signum, sigaction_t *action, sigaction_t *old_action)
+int rt_sig_action(int signum, sigaction_t *action, sigaction_t *old_action)
 {
     return syscall4(SYS_SIGACTION, (uintptr_t)signum, (uintptr_t)action, (uintptr_t)old_action, sizeof(sigset_t));
-}
-
-int sigreturn()
-{
-    return syscall0(SYS_SIGRETURN);
 }
 
 int kill(pid_t pid, int sig)
