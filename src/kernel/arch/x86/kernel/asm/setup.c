@@ -121,8 +121,9 @@ boot_params_t *setup_arch(boot_params_t *bootParams)
     x86_GDT_initialize();
     // log_debug(MODULE, "GDT is done");
 
-    // i8259_get_driver()->initialize(0x20, 0x28, false);
     i8259_get_driver()->disable();
+    // you piece of shit...
+    // - BjornBEs 28.07.2026 01:56
 
     x86_GDT_load(&gdt_descriptor, gdt_table);
     // log_debug(MODULE, "GDT is loaded");

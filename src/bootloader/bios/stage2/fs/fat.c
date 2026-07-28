@@ -17,6 +17,9 @@
 #include <stddef.h>
 #include "minmax.h"
 #include "stdlib.h"
+#include "config.h"
+
+#define MAX_PATH_SIZE CONFIG_MAX_PATH_LENGTH
 
 #define SECTOR_SIZE 512
 #define MAX_FILE_HANDLES 10

@@ -626,40 +626,6 @@ process_t *process_find_child(process_t *parent, pid_t child_pid)
     return NULL;
 }
 
-pid_t process_waitpid(pid_t child_pid, int *wstatus, int options)
-{
-    process_t *parent = process_get_current();
-
-    process_t *child = process_find_child(parent, child_pid);
-    if (child == NULL)
-    {
-        return RETURN_FAILED;
-    }
-
-    if (child->state != PROC_STATE_ZOMBIE)
-    {
-        thread_t *parent_thread = sched_get_current();
-        sched_block(parent_thread);
-        parent->wait_for = child_pid;
-        sched_yield();
-    }
-
-    if (wstatus)
-    {
-        *wstatus = child->exit_code.raw;
-
-        // [31-24] RES
-        // [23-16] exitcode
-        // [15-8] exitcode
-        // [7-0] signal
-    }
-
-    process_reap(child);
-    return child_pid;
-}
-
-SYSCALL_DEFINE3(process_waitpid, pid_t, int *, int);
-
 int process_wait(process_t *proc)
 {
     while (proc->state != PROC_STATE_ZOMBIE)

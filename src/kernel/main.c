@@ -224,7 +224,7 @@ void kernel_main(boot_params_t *bootParams)
     } */
 
     log_debug("MAIN", "new rsp = %p", main_thread->kernel_stack);
-    __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->kernel_stack));
+    // __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->kernel_stack));
 
     sched_init(main_thread);
     log_debug("MAIN", "main thread stack @ %p", main_thread->kernel_stack);

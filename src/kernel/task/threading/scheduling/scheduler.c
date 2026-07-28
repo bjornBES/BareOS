@@ -27,6 +27,8 @@
 
 #include "time/timer.h"
 
+#include "algorithms/mlfq.h"
+
 #include "task/process.h"
 #include "debug/debug.h"
 
@@ -40,20 +42,31 @@
 
 #define current_thread    (cpu_arch_get_current()->current)
 
+const sched_class_t *sched_algorithms[1];
+const sched_class_t *active_sched_class;
+
 typedef struct
 {
     spinlock_t lock;
-    list_t threads; // intrusive list_node_t, same pattern as your other lists
-    int count;      // cheap "is it worth checking" hint before taking the lock
+    sched_class_t *sched_class;
+    void *threads; // intrusive list_node_t, same pattern as your other lists
+    // int count;     // cheap "is it worth checking" hint before taking the lock
 } global_runq_t;
 
-global_runq_t sched_runq; // one instance, kernel-wide
-global_runq_t sleep_queue; // one instance, kernel-wide
+typedef struct
+{
+    spinlock_t lock;
+    list_t threads;
+    int count; // cheap "is it worth checking" hint before taking the lock
+} global_sleepq_t;
+
+global_runq_t sched_runq;    // one instance, kernel-wide
+global_sleepq_t sleep_queue; // one instance, kernel-wide
 
 uint32_t total_threads = 0;
 
 static thread_t *queue[MAX_THREADS] = {0};
-static uint32_t queue_size = 0;
+// static uint32_t queue_size = 0;
 
 static thread_t *blocked_queue[MAX_THREADS] = {0};
 static uint32_t blocked_queue_size = 0;
@@ -102,7 +115,6 @@ void sched_thread_info()
     }
     fprintf(VFS_FD_DEBUG, "===== Active queue =====\n");
 
-
     if (blocked_queue_size != 0)
     {
         fprintf(VFS_FD_DEBUG, "\n===== block queue =====\n");
@@ -125,26 +137,24 @@ void sched_thread_info()
     }
 }
 
-static void sched_destroy_thread(thread_t *t, int i)
+static void sched_thread_reap(thread_t *t)
 {
-    log_debug(MODULE, "cleaning up thread @ queue[%u]", i);
-    log_debug(MODULE, "thread[%u] = %p { tid: %u, state: %u, kernel_stack: %p, proc: %p}", i, t, t->tid, t->state, t->kernel_stack, t->proc);
+    ENTER_FUNC(MODULE, "%p", t);
+    sched_print_thread_info(t);
+    t->state = THREAD_DEAD;
 
-    total_threads--;
-    log_info(MODULE, "found %u", t->tid);
     THREAD_EXIT(t);
-    queue[i] = NULL;
-    queue_size--;
+}
 
-    log_debug(MODULE, "cleaned up and done with queue[%u]", i);
-    sched_thread_info();
+static inline void sched_algorithm_enqueue(sched_class_t *class, void *runq_data, thread_t *t)
+{
+    class->ops.enqueue(runq_data, t);
 }
 
 void sched_enqueue(thread_t *t)
 {
     log_debug(MODULE, "enqueuing thread %u", t->tid);
     cpu_t *target = NULL;
-    t->state = THREAD_READY;
 
     if (t->cpu_affinity)
     {
@@ -159,13 +169,13 @@ void sched_enqueue(thread_t *t)
     {
         log_debug(MODULE, "in cpu %u", target->apic_id);
         spinlock_acquire(&target->local_runq_lock);
-        list_push_tail(&target->local_runq, &t->node);
-        target->local_count++;
+        sched_algorithm_enqueue(target->sched_class, target->runq_data, t);
+        // list_push_tail(&target->local_runq, &t->node);
+        // target->local_count++;
         spinlock_release(&target->local_runq_lock);
-        
+
         if (target != cpu_arch_get_current())
         {
-            // todo: IPI, only needed cross-core
             smp_arch_send_ipi(target->apic_id, IPI_RESCHEDULE_VECTOR);
         }
     }
@@ -173,36 +183,11 @@ void sched_enqueue(thread_t *t)
     {
         log_debug(MODULE, "in global");
         spinlock_acquire(&sched_runq.lock);
-        list_push_tail(&sched_runq.threads, &t->node);
-        sched_runq.count++;
+        sched_algorithm_enqueue(sched_runq.sched_class, sched_runq.threads, t);
+        // list_push_tail(&sched_runq.threads, &t->node);
+        // sched_runq.count++;
         spinlock_release(&sched_runq.lock);
     }
-}
-
-void sched_remove_from_list(thread_t *t)
-{
-    cpu_t *cpu = cpu_arch_get_current();
-
-    spinlock_acquire(&cpu->local_runq_lock);
-    if (list_remove(&cpu->local_runq, &t->node) == RETURN_GOOD)
-    {
-        log_debug(MODULE, "removed...");
-        // sched_print_thread_info(t);
-        cpu->local_count--;
-        spinlock_release(&cpu->local_runq_lock);
-        return;
-    }
-    spinlock_release(&cpu->local_runq_lock);
-
-    spinlock_acquire(&sched_runq.lock);
-    if (list_remove(&sched_runq.threads, &t->node) == RETURN_GOOD)
-    {
-        log_debug(MODULE, "removed...");
-        sched_runq.count--;
-        spinlock_release(&sched_runq.lock);
-        return;
-    }
-    spinlock_release(&sched_runq.lock);
 }
 
 void sched_add(thread_t *t)
@@ -250,25 +235,7 @@ void sched_add(thread_t *t)
 void sched_remove(thread_t *t)
 {
     log_debug(MODULE, "removing thread %u", t->tid);
-
-    for (uint32_t i = 0; i < MAX_THREADS; i++)
-    {
-        thread_t *candidate = queue[i];
-        if (candidate != NULL)
-        {
-            log_debug(MODULE, "candidate[%u] @ %p = {state = %u, tid = %u}", i, candidate, candidate->state, candidate->tid);
-        }
-        if (queue[i] != NULL && queue[i]->tid == t->tid)
-        {
-            if (t->state == THREAD_RUNNING)
-            {
-                t->state = THREAD_REMAINS;
-                continue;
-            }
-            sched_destroy_thread(t, i);
-            return;
-        }
-    }
+    t->state = THREAD_REMAINS;
 }
 
 void sleep_queue_insert(list_t *list, list_node_t *node, uint64_t wake_time)
@@ -313,10 +280,10 @@ void sched_sleep(uint64_t ns)
     uint64_t wake_time = timer_now_ns() + ns;
     current_thread->state = THREAD_SLEEP;
     current_thread->wake_time = wake_time;
-    
+
     // sched_print_thread_info(current_thread);
     sleep_queue_insert(&sleep_queue.threads, &current_thread->node, wake_time);
-    sched_remove_from_list(current_thread);
+    sleep_queue.count++;
     sched_print_thread_info(current_thread);
 
     sched_yield();
@@ -348,43 +315,103 @@ void scheduler_wakeup_check()
         sched_print_thread_info(t);
 
         list_pop_head(&sleep_queue.threads); // actually remove it now
+        sleep_queue.count--;
         spinlock_release(&sleep_queue.lock);
 
         t->wake_time = 0;
         t->state = THREAD_READY;
-        sched_enqueue(t);                   // goes to last_cpu/affinity or global, as normal
+        sched_enqueue(t);                    // goes to last_cpu/affinity or global, as normal
 
         spinlock_acquire(&sleep_queue.lock); // re-lock to continue checking the new head
     }
     spinlock_release(&sleep_queue.lock);
 }
 
-void sched_block(thread_t *t)
+void sched_block(block_queue_t *queue)
 {
-    // remove from run queue
-    for (uint32_t i = 0; i < MAX_THREADS; i++)
-    {
-        if (queue[i] == t)
-        {
-            queue[i] = NULL;
-            queue_size--;
-            break;
-        }
-    }
-    // add to blocked queue
-    for (uint32_t i = 0; i < MAX_THREADS; i++)
-    {
-        if (blocked_queue[i] == NULL)
-        {
-            blocked_queue[i] = t;
-            blocked_queue_size++;
-            break;
-        }
-    }
-    t->state = THREAD_BLOCKED;
+    thread_t *self = current_thread;
+    self->state = THREAD_BLOCKED;
 
-    sched_thread_info();
+    lock(&queue->lock);
+    list_push_tail(&queue->queue, &self->node);
+    unlock(&queue->lock);
+
+    sched_yield();
 }
+
+void sched_wake_one(block_queue_t *queue)
+{
+    lock(&queue->lock);
+    list_node_t *n = list_pop_head(&queue->queue);
+    unlock(&queue->lock);
+
+    if (!n)
+    {
+        return;
+    }
+
+    thread_t *t = container_of(n, thread_t, node);
+    if (t->state == THREAD_REMAINS)
+    {
+        sched_thread_reap(t);
+        return;
+    }
+    t->state = THREAD_READY;
+    sched_enqueue(t); // back through the algorithm's enqueue(), on whatever CPU fits
+}
+
+void sched_wake_all(block_queue_t *queue)
+{
+    lock(&queue->lock);
+    list_node_t *n;
+    list_t drained;
+    list_init(&drained);
+    while ((n = list_pop_head(&queue->queue)) != NULL)
+    {
+        list_push_tail(&drained, n); // drain fully under the lock first
+    }
+    unlock(&queue->lock);
+
+    list_node_t *n2;
+    while ((n2 = list_pop_head(&drained)) != NULL)
+    {
+        thread_t *t = container_of(n2, thread_t, node);
+        if (t->state == THREAD_REMAINS)
+        {
+            sched_thread_reap(t);
+            continue;
+        }
+        t->state = THREAD_READY;
+        sched_enqueue(t); // unlocked now, safe to call sched_enqueue's own locking
+    }
+}
+
+// void sched_block(thread_t *t)
+// {
+//     // remove from run queue
+//     for (uint32_t i = 0; i < MAX_THREADS; i++)
+//     {
+//         if (queue[i] == t)
+//         {
+//             queue[i] = NULL;
+//             queue_size--;
+//             break;
+//         }
+//     }
+//     // add to blocked queue
+//     for (uint32_t i = 0; i < MAX_THREADS; i++)
+//     {
+//         if (blocked_queue[i] == NULL)
+//         {
+//             blocked_queue[i] = t;
+//             blocked_queue_size++;
+//             break;
+//         }
+//     }
+//     t->state = THREAD_BLOCKED;
+
+//     sched_thread_info();
+// }
 
 void sched_unblock(thread_t *t)
 {
@@ -419,17 +446,38 @@ thread_t *sched_find_waiting(process_t *proc)
     return NULL;
 }
 
+cpu_t *pick_steal_victim(cpu_t *me)
+{
+    cpu_t *busiest = NULL;
+    int max_count = 0;
+
+    for (size_t i = 0; i < smp_arch_cpu_count(); i++)
+    {
+        cpu_t *other = cpu_arch_get(i);
+        if (other == me)
+        {
+            continue;
+        }
+        int other_count = other->sched_class->ops.thread_count(other->runq_data);
+        if (other_count > max_count)
+        {
+            max_count = other_count;
+            busiest = other;
+        }
+    }
+    return (max_count > 1) ? busiest : NULL; // don't steal down to 0, leave victim something
+}
+
 static thread_t *sched_next()
 {
     cpu_t *me = cpu_arch_get_current();
 
     // 1. own local queue
     spinlock_acquire(&me->local_runq_lock);
-    if (me->local_count > 0)
+    thread_t *thread = me->sched_class->ops.pick_next(me->runq_data);
+    if (thread != NULL)
     {
         // log_debug(MODULE, "thread from cpu %u", me->cpu_id);
-        GET_THREAD(me->local_runq);
-        me->local_count--;
         sched_print_thread_info(thread);
         spinlock_release(&me->local_runq_lock);
         return thread;
@@ -438,67 +486,38 @@ static thread_t *sched_next()
     // log_debug(MODULE, "next");
 
     // 2. global queue
-    if (sched_runq.count > 0)
+    spinlock_acquire(&sched_runq.lock);
+    thread = sched_runq.sched_class->ops.pick_next(sched_runq.threads);
+    if (thread != NULL)
     {
-        // cheap check before locking
-        spinlock_acquire(&sched_runq.lock);
-        if (sched_runq.count > 0)
-        {
-            // re-check after acquiring lock
-            GET_THREAD(sched_runq.threads);
-            sched_runq.count--;
-            sched_print_thread_info(thread);
-            spinlock_release(&sched_runq.lock);
-            return thread;
-        }
+        sched_print_thread_info(thread);
         spinlock_release(&sched_runq.lock);
+        return thread;
     }
+    spinlock_release(&sched_runq.lock);
     // log_debug(MODULE, "next");
 
-    // TODO steal
+    cpu_t *other = pick_steal_victim(me);
+    if (other != NULL)
+    {
+        cpu_t *first = (me->cpu_id < other->cpu_id) ? me : other;
+        cpu_t *second = (me->cpu_id < other->cpu_id) ? other : me;
+        spinlock_acquire(&first->local_runq_lock);
+        spinlock_acquire(&second->local_runq_lock);
+
+        thread = other->sched_class->ops.steal_one(other->runq_data);
+
+        spinlock_release(&second->local_runq_lock);
+        spinlock_release(&first->local_runq_lock);
+
+        if (thread != NULL)
+        {
+            return thread;
+        }
+    }
 
     // log_debug(MODULE, "NULL");
     return NULL; // caller goes idle (hlt)
-
-    /*     for (uint32_t i = 0; i < MAX_THREADS; i++)
-        {
-            uint32_t idx = (queue_head + i) % MAX_THREADS;
-            thread_t *candidate = queue[idx];
-
-            if (candidate == NULL)
-            {
-                continue;
-            }
-            log_debug(MODULE, "candidate[%u] @ %p = {state = %u, tid = %u}", idx, candidate, candidate->state, candidate->tid);
-
-
-            if (candidate->state == THREAD_JUST_WOKE)
-            {
-                candidate->state = THREAD_READY;
-                continue;
-            }
-
-            if (candidate->state == THREAD_REMAINS && candidate != current_thread)
-            {
-                sched_destroy_thread(candidate, idx);
-                continue;
-            }
-
-            if (candidate->proc)
-            {
-                if (candidate->proc->state == PROC_STATE_SUSPENDED)
-                {
-                    continue;
-                }
-            }
-
-            if (candidate->state == THREAD_READY)
-            {
-                queue_head = idx;
-                return candidate;
-            }
-        }
-        return queue[0]; // no other thread_t ready, run the main thread_t */
 }
 
 thread_t *sched_get_current()
@@ -514,6 +533,8 @@ int sched_yield()
 {
     // log_info(MODULE, "scheduler_yield");
     // sched_thread_info();
+    cpu_t *cpu = cpu_arch_get_current();
+    cpu->sched_class->ops.yield(cpu->runq_data, cpu->current);
     return scheduler_arch_yield();
 }
 
@@ -524,18 +545,21 @@ void scheduler_tick(device_t *dev)
     fprintf(VFS_FD_DEBUG, "scheduler_tick\n");
     scheduler_wakeup_check();
 
+    if (current_thread == NULL)
+    {
+        return;
+    }
+    uint32_t level_before = current_thread->priority;
+    cpu_t *cpu = cpu_arch_get_current();
+    cpu->sched_class->ops.tick(cpu->runq_data, cpu->current);
+
     // rearm — next tick or next wakeup whichever sooner
     // uint64_t next = SCHEDULER_TICK_NS;
     // timer_set_oneshot(next, scheduler_tick);
 
     if (current_thread->state == THREAD_RUNNING)
     {
-        if (current_thread->timeslice > 0)
-        {
-            current_thread->timeslice--;
-        }
-
-        if (current_thread->timeslice == 0)
+        if (current_thread->timeslice == 0 || current_thread->priority != level_before)
         {
             sched_yield();
             return;
@@ -545,19 +569,11 @@ void scheduler_tick(device_t *dev)
 
 __attribute__((noreturn)) void schedule_switch(thread_t *next)
 {
-    thread_t *old = current_thread;
+    // thread_t *old = current_thread;
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
 
-    if (old)
-    {
-        if (old->state == THREAD_RUNNING)
-        {
-            sched_enqueue(old);
-            old->state = THREAD_READY;
-        }
-    }
     log_debug(MODULE, "here4");
     // spinlock_release(&schedule_lock);
     // vaddr_t stack_pointer = ctx_arch_get_sp(&current_thread->ctx);
@@ -585,8 +601,22 @@ __attribute__((noreturn)) void schedule_switch(thread_t *next)
 
 int schedule(intr_frame_t *regs)
 {
-    // spinlock_acquire(&schedule_lock);
     cpu_t *cpu = cpu_arch_get_current();
+    if (current_thread)
+    {
+        current_thread->last_cpu = cpu;
+        if (current_thread->state == THREAD_REMAINS)
+        {
+            log_debug(MODULE, "thread (%u) is gonna die soon", current_thread->tid);
+            sched_enqueue(current_thread);
+        }
+        else if (current_thread->state == THREAD_RUNNING)
+        {
+            sched_enqueue(current_thread);
+            current_thread->state = THREAD_READY;
+        }
+    }
+    // spinlock_acquire(&schedule_lock);
     // log_debug(MODULE, "cpu = %p\n", cpu);
     if (cpu == NULL)
     {
@@ -598,15 +628,18 @@ int schedule(intr_frame_t *regs)
     //     irq_arch_eoi(0);
     //     return RETURN_FAILED;
     // }
-
+try_again:
     thread_t *next = sched_next();
     // log_debug(MODULE, "next = %p\n", next);
     if (next == NULL)
     {
-        sched_print_thread_info(current_thread);
-        current_thread->timeslice = current_thread->timeslice_reset;
         irq_arch_eoi(0);
         return RETURN_GOOD;
+    }
+    if (next->state == THREAD_REMAINS && next != current_thread)
+    {
+        sched_thread_reap(next);
+        goto try_again;
     }
     if (next == current_thread)
     {
@@ -672,23 +705,25 @@ void sched_thread_exit()
 
 void sched_init(thread_t *main_thread)
 {
+    active_sched_class = mlfq_get_class();
+    sched_runq.sched_class = (sched_class_t *)active_sched_class;
+    sched_runq.threads = sched_runq.sched_class->ops.init(sched_runq.threads);
+
     memcpy(main_thread->name, "MAIN\0", 4);
     log_info(MODULE, "setting T%u (%s) as the main thread", main_thread->tid, main_thread->name);
     main_thread->state = THREAD_READY;
     cpu_t *cpu = cpu_arch_get_current();
-    // cpu->current = main_thread;
     main_thread->cpu_affinity = cpu;
-    sched_add(main_thread);
-    // queue[0] = main_thread;
-    // queue_size = 1;
-    // queue_head = 0;
-    // total_threads++;
+
     ivt_arch_set_handler(0x7F, schedule);
     for (size_t i = 0; i < smp_arch_cpu_count(); i++)
     {
         cpu = cpu_arch_get(i);
         timer_priv_t *p = (timer_priv_t *)cpu->lapic_timer_dev->priv;
         p->set_periodic(cpu->lapic_timer_dev, SCHEDULER_TICK_NS, scheduler_tick);
+
+        cpu->sched_class = (sched_class_t *)active_sched_class;
+        cpu->runq_data = cpu->sched_class->ops.init(cpu->runq_data);
     }
-    // timer_set_oneshot(SCHEDULER_TICK_NS, scheduler_tick);
+    sched_add(main_thread);
 }

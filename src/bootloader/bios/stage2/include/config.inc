@@ -1,7 +1,6 @@
 ; AUTO-GENERATED FILE - DO NOT EDIT BY HAND
 ; Generated from config/config.env by gen_config.sh
 
-%define CONFIG_CONFIG
 %define CONFIG_TARGET 64
 %define CONFIG_ARCH
 %define CONFIG_IMAGETYPE
@@ -16,3 +15,5 @@
 %define CONFIG_USE_EAGER_FORK 0
 %define CONFIG_MODULE_BSW 1
 %define CONFIG_MODULE_LA57 0
+%define CONFIG_INCLUDE_MLFQ 1
+%define CONFIG_SCHED_ALGORITHM

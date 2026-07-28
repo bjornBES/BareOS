@@ -56,9 +56,9 @@ typedef struct thread
     sigset_t blocked_signals;
     signal_pending signal_queue;
 
-    struct arch_cpu_info *last_cpu;       // cache-warmth hint, NULL if never run
-    struct arch_cpu_info *cpu_affinity;   // explicit hint, NULL if none (free to roam)
-    list_node_t node; // intrusive — used by whichever queue currently
+    struct arch_cpu_info *last_cpu;     // cache-warmth hint, NULL if never run
+    struct arch_cpu_info *cpu_affinity; // explicit hint, NULL if none (free to roam)
+    list_node_t node;                   // intrusive — used by whichever queue currently
 
     struct thread *next_runnable;
 } thread_t;

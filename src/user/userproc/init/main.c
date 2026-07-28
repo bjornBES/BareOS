@@ -67,15 +67,8 @@ int main(int argc, char *argv[])
         // const char *envp[] = {"PATH=/user!/bin:/user!/usr/bin", "HOME=/", "TERM=linux", NULL};
         // execve("bin/ash", argv, envp);
         kill(child_proc, SIGABRT);
-        if (kill(curr_proc, SIGCHLD) != 0)
-        {
-            fprintf(stddebug, "Kill failed\n");
-        }
-        while (true)
-        {
-            /* code */
-        }
-        // _exit(1);
+        fprintf(stddebug, "killing me %u now\n", child_proc);
+        _exit(1 << 8 | (uint8_t)child_proc);
     }
     
     sigaction_t action_chld;
@@ -84,8 +77,10 @@ int main(int argc, char *argv[])
     action_chld.sa_mask = 0;
     rt_sig_action(SIGCHLD, &action_chld, NULL);
 
-    // fprintf(stddebug, "waiting for pid%u to exit\n", child);
-    sched_yield();
+    fprintf(stddebug, "waiting for pid%u to exit\n", child);
+    int state;
+    waitpid(child, &state, 0);
+    fprintf(stddebug, "got %x from waitpid\n", state);
     fprintf(stddebug, "enter loop\n");
 
     while (true)

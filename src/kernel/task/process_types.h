@@ -17,8 +17,9 @@
 #include "mm/paging/paging_type.h"
 #include "mm/vmm/vmm_types.h"
 #include "VFS/vfs_types.h"
+#include "task/threading/scheduling/sched_types.h"
 
-#include <types.h>
+#include "kernel.h"
 #include <pledge_types.h>
 
 struct process;
@@ -76,24 +77,25 @@ typedef union process_exit_code
         uint8_t exit_code1;
         uint8_t signal;
     };
+
     uint32_t raw;
 } process_exit_code_t;
-
 
 typedef struct process
 {
     // children and siblings
     // siblings am i right?
     task_ladder_t ladder;
-    
+
     // the last one in the chain
     struct process *parent;
-    
+
     // child, just the child of this process
     struct process *child;
-    
+
     // process info
     pid_t pid;
+    pid_t group_id;
     char path[MAX_PATH_SIZE];
     char volume[MAX_VOLUME_NAME];
     uint16_t abi;
@@ -102,6 +104,7 @@ typedef struct process
     vaddr_t entry;
 
     pid_t wait_for;
+    block_queue_t children_wait;
 
     // memory
     vma_memory_t *vma;

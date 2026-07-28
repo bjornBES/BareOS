@@ -38,8 +38,7 @@ TMP=$(mktemp)
     echo "/* AUTO-GENERATED FILE - DO NOT EDIT BY HAND"
     echo " * Generated from $IN by gen_config.sh"
     echo " */"
-    echo "#ifndef BAREOS_CONFIG_H"
-    echo "#define BAREOS_CONFIG_H"
+    echo "#pragma once"
     echo
 } > "$TMP"
 
@@ -73,6 +72,11 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
     key=$(printf '%s' "$line" | cut -d'=' -f1)
     val=$(printf '%s' "$line" | cut -d'=' -f2-)
 
+    if [ $key = "config" ]; then
+        continue ;
+    fi
+    echo key = "$key"
+
     # Strip inline comment from value (anything after #)
     val=$(printf '%s' "$val" | sed 's/#.*//')
 
@@ -104,11 +108,6 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
             ;;
     esac
 done < "$IN"
-
-{
-    echo
-    echo "#endif /* BAREOS_CONFIG_H */"
-} >> "$TMP"
 
 mv "$TMP" "$OUT"
 echo "gen_config.sh: wrote $OUT"

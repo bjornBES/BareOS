@@ -29,4 +29,13 @@ static inline void spinlock_release(spinlock_t *s)
 {
     __sync_lock_release(&s->lock);
 }
+static inline void lock(spinlock_t *s)
+{
+    spinlock_acquire(s);
+}
+
+static inline void unlock(spinlock_t *s)
+{
+    spinlock_release(s);
+}
 

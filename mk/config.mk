@@ -49,8 +49,6 @@ export SOURCE_ARCH = arch/$(SRCARCH)
 export CFLAGS = -Wall -Werror                   \
     -trigraphs -Wno-error=trigraphs             \
     -masm=intel                                 \
-    -DMAX_PATH_SIZE=$(max_path_length)          \
-    -DPAGING=$(enable_paging)                   \
     -nostdlib -ffreestanding -MMD -MP
 # DO NOT SWITCH IT FROM INTEL
 # I WILL FUCKING FIND YOU, AND KILL YOU.

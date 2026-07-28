@@ -342,7 +342,7 @@ vma_memory_t *vma_clone(process_t *parent, process_t *proc)
                 continue;
             }
 
-#if USE_EAGER_FORK == 1
+#if CONFIG_USE_EAGER_FORK == 1
             if (current->type == VMA_DEVICE || current->type == VMA_SHARED)
             {
                 mmu_arch_map(proc->page_dir, va, src_phys, current->flags);

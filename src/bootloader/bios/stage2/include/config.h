@@ -1,10 +1,8 @@
 /* AUTO-GENERATED FILE - DO NOT EDIT BY HAND
  * Generated from config/config.env by gen_config.sh
  */
-#ifndef BAREOS_CONFIG_H
-#define BAREOS_CONFIG_H
+#pragma once
 
-#define CONFIG_CONFIG "debug"
 #define CONFIG_TARGET 64
 #define CONFIG_ARCH "x86_64"
 #define CONFIG_IMAGETYPE "disk"
@@ -19,5 +17,5 @@
 #define CONFIG_USE_EAGER_FORK 0
 #define CONFIG_MODULE_BSW 1
 #define CONFIG_MODULE_LA57 0
-
-#endif /* BAREOS_CONFIG_H */
+#define CONFIG_INCLUDE_MLFQ 1
+#define CONFIG_SCHED_ALGORITHM "MLFQ"

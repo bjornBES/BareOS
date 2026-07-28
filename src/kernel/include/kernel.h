@@ -11,6 +11,7 @@
 #pragma once
 
 #include "debug/debug.h"
+#include "kernel/config.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <types.h>
@@ -18,6 +19,9 @@
 #define RETURN_ERROR -1
 #define RETURN_FAILED 1
 #define RETURN_GOOD 0
+
+#define MAX_PATH_SIZE CONFIG_MAX_PATH_LENGTH
+#define VOLUME_SEPARATOR "!"
 
 extern char __KERNEL_VIRT;
 extern char __KERNEL_PHYS;

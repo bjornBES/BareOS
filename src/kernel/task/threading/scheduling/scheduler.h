@@ -10,6 +10,8 @@
 
 #pragma once
 #include "task/threading/thread.h"
+#include "sched_types.h"
+
 
 thread_t *sched_get_current();
 
@@ -23,7 +25,9 @@ void sched_sleep_sec(time_t sec);
 
 void sched_remove(thread_t *thread);
 void sched_add(thread_t *thread);
-void sched_block(thread_t *thread);
+void sched_block(block_queue_t *queue);
+void sched_wake_one(block_queue_t *queue);
+void sched_wake_all(block_queue_t *queue);
 void sched_unblock(thread_t *thread);
 
 thread_t *sched_find_waiting(process_t *proc);

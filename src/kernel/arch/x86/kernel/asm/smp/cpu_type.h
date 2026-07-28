@@ -12,6 +12,7 @@
 
 #include "cpu_config.h"
 #include "task/threading/thread_type.h"
+#include "task/threading/scheduling/sched_algorithm.h"
 #include "kernel/asm/task/tss.h"
 #include "kernel/asm/segment/gdt.h"
 #include "kernel/asm/acpi/apic/lapic.h"
@@ -20,6 +21,7 @@
 
 #define LAPIC_TIMER_VECTOR    0x40
 #define IPI_RESCHEDULE_VECTOR 0x41
+
 
 // typedef struct thread thread_t;
 
@@ -41,8 +43,9 @@ typedef struct arch_cpu_info
     bool need_resched;
 
     spinlock_t local_runq_lock;
-    list_t local_runq;
-    int local_count;
+    sched_class_t *sched_class; // which algorithm this core (or system) uses
+    void *runq_data;                  // opaque — algo-specific struct, cast internally
+    // int local_count;
     device_t *lapic_timer_dev;
 
     // per-core TSS (needed so rsp0 is independent per core)

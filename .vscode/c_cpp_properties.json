@@ -14,7 +14,7 @@
                 "${workspaceFolder}/src/optional/BSW/ntdll/include",
                 "${workspaceFolder}/toolchain/gcc-build-11.2.0/gcc/include/"
             ],
-            "defines": [ "__x86_64__", "x86_64", "DEBUG", "MAX_PATH_SIZE", "USE_EAGER_FORK=0"],
+            "defines": [ "__x86_64__", "x86_64", "DEBUG", "USE_EAGER_FORK=0"],
             "compilerPath": "${workspaceFolder}/toolchain/x86_64-elf/bin/x86_64-elf-gcc",
             "cStandard": "c99",
             "cppStandard": "c++14",

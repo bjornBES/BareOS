@@ -1,5 +1,5 @@
 TARGET32_ASMFLAGS += -f elf -D__$(arch)__=1
-TARGET32_CFLAGS += -ffreestanding -nostdlib -I. -I $(SOURCE_DIR)/src/libs -I $(SOURCE_DIR)/src/libs/${SOURCE_ARCH} -I $(INCLUDE_DIR)
+TARGET32_CFLAGS += -ffreestanding -nostdlib -I. -I./include -I $(SOURCE_DIR)/src/libs -I $(SOURCE_DIR)/src/libs/${SOURCE_ARCH} -I $(INCLUDE_DIR)
 TARGET32_LIBS +=
 TARGET32_LINKFLAGS += -nostdlib
 

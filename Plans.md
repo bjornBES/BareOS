@@ -95,7 +95,7 @@ This is what the kernel loader should do in order right after the bootloader is 
   - [X] Process queue
     - [X] Ready queue
     - [X] Sleep queue
-  - [X] Round-robin scheduler
+  - [X] ~~Round-robin~~ MLFQ scheduler
   - [X] Timer IRQ drives preemption
     - [X] PIT or APIC timer
       - [X] PIT
@@ -122,6 +122,10 @@ This is what the kernel loader should do in order right after the bootloader is 
     - [X] cpu_t — current process, kernel stack, GDT/TSS per core
   - [X] APIC timer per core drives per-core scheduler
   - [X] Spinlocks / basic SMP synchronisation
+
+- [X] Syscalls
+  - [X] fork
+  - [X] exit + _exit
 
 #### Phase 6 Userland and syscalls
 

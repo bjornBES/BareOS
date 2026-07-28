@@ -10,16 +10,16 @@
 
 #pragma once
 
-#ifdef __i686__
+#include "kernel.h"
+#if CONFIG_TARGET == 32
 #include "paging_32.h"
-#else
+#elif CONFIG_TARGET == 64
 #include "paging_64.h"
 #endif
 
 #include "debug/debug.h"
 #include "kernel/mmu_types.h"
 #include "kernel/memory.h"
-#include "kernel.h"
 
 #include <stdint.h>
 #include <stddef.h>

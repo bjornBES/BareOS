@@ -32,18 +32,19 @@ void do_exit(uint32_t code, process_t *proc)
 
     proc->exit_code.exit_code1 = code;
     proc->state = PROC_STATE_ZOMBIE;
+    sched_remove(sched_get_current());
 
     if (proc->parent)
     {
-        thread_t *parent_thread = sched_find_waiting(proc->parent);
-        if (parent_thread && proc->parent->wait_for == proc->pid)
+        process_t *parent = proc->parent;
+        if (parent->wait_for == proc->pid)
         {
-            proc->parent->state = PROC_STATE_READY;
-            sched_unblock(parent_thread);
-        }
-        if (proc->parent->state == PROC_STATE_SUSPENDED)
-        {
-            proc->parent->state = PROC_STATE_READY;
+            sched_wake_one(&parent->children_wait);
+            if (parent->state == PROC_STATE_SUSPENDED)
+            {
+                parent->state = PROC_STATE_READY;
+            }
+            signal_send_group(parent, SIGCHLD);
         }
     }
 
