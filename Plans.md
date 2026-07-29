@@ -84,7 +84,7 @@ This is what the kernel loader should do in order right after the bootloader is 
 - [X] Virtual memory management
 - [X] malloc/free in userspace
 
-#### Phase 5 SMP, Threads and Scheduler
+### Phase 5 SMP, Threads and Scheduler
 
 - [X] Process Control Block
   - [X] Full PCB struct (registers, state, priority, timeslice)
@@ -127,7 +127,7 @@ This is what the kernel loader should do in order right after the bootloader is 
   - [X] fork
   - [X] exit + _exit
 
-#### Phase 6 Userland and syscalls
+### Phase 6 Userland and syscalls
 
 - [X] Get ash working end to end
   - [X] run ash

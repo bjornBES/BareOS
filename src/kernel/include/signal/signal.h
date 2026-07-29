@@ -34,6 +34,6 @@ bool signal_is_pending(thread_t *t, int signum);
 int signal_set_action(thread_t *t, int signum, sigaction_t *action);
 int signal_get_action(thread_t *t, int signum, sigaction_t *out);
 
-void signal_default_action(thread_t *t, int signum);
+sigaction_t *signal_default_action(thread_t *t, int signum);
 
 void signal_init();

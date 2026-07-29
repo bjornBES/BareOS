@@ -25,7 +25,7 @@
 typedef struct signal_arch_frame signal_arch_frame_t;
 
 // full setup — does everything needed to redirect execution to handler:
-void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, sigaction_t *sa);
+void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, sigaction_t *sa, bool default_action);
 
 // restores frame saved by signal_arch_setup_frame
 // called by signal_return() after sys_sigreturn comes in

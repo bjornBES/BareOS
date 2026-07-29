@@ -28,7 +28,7 @@ typedef struct
 } signal_pending;
 
 typedef void (*signal_restore)();
-typedef void (*signal_kernel_handler)(thread_t *t, int signal_number);
+typedef void (*signal_kernel_handler)(thread_t *t, int signal_number, siginfo_t *info, void *ucontext);
 typedef void (*signal_handler)(int signal_number);
 
 typedef struct sigaction
@@ -37,6 +37,7 @@ typedef struct sigaction
     {
         signal_handler sa_handler;
         void (*sa_sigaction)(int, siginfo_t *, void *);
+        signal_kernel_handler default_handler;
     } handler;
 
     sigset_t sa_mask;

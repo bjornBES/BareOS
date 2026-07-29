@@ -12,8 +12,10 @@
 #include "signal/signal_type.h"
 #include "kernel/signal/signal.h"
 #include "kernel/memory.h"
+#include "kernel/string.h"
 #include "kernel/ivt.h"
 #include "task/process.h"
+#include "task/signals/exit.h"
 #include "syscall/syscall.h"
 #include "mm/memdefs.h"
 #include "errno/errno.h"
@@ -29,26 +31,52 @@ extern char __signal_trampoline;
 
 extern void build_signal_frame(signal_arch_frame_t *frame);
 
-void signal_kernel_signal_handler(thread_t *t, int signum)
+void signal_kernel_signal_handler_core(thread_t *t, int signum, siginfo_t *info, void *ucontext)
 {
-    log_crit(MODULE, "kernel handler of signal %u", signum);
-    signal_send(t, SIGKILL);
+    ENTER_FUNC(MODULE, "%p, %u, %p, %p", t, signum, info, ucontext);
+    log_warn(MODULE, "TODO core dumped");
+    do_exit(128 | signum, t->proc);
+    __builtin_unreachable();
 }
 
-void signal_kernel_signal_handler_core(thread_t *t, int signum)
+void signal_kernel_signal_handler_term(thread_t *t, int signum, siginfo_t *info, void *ucontext)
 {
+    ENTER_FUNC(MODULE, "%p, %u, %p, %p", t, signum, info, ucontext);
+    // log_crit(MODULE, "kernel handler of signal %u", signum);
+    // log_warn(MODULE, "TODO core dumped");
+    do_exit(128 | signum, t->proc);
+    __builtin_unreachable();
+}
+
+void signal_kernel_signal_handler_ignore(thread_t *t, int signum, siginfo_t *info, void *ucontext)
+{
+    ENTER_FUNC(MODULE, "%p, %u, %p, %p", t, signum, info, ucontext);
+    // log_crit(MODULE, "kernel handler of signal %u", signum);
+    return;
+}
+
+void signal_kernel_signal_handler_continue(thread_t *t, int signum, siginfo_t *info, void *ucontext)
+{
+    ENTER_FUNC(MODULE, "%p, %u, %p, %p", t, signum, info, ucontext);
     log_crit(MODULE, "kernel handler of signal %u", signum);
     log_warn(MODULE, "TODO core dumped");
-    signal_send(t, SIGKILL);
+    signal_send_group(t->proc, SIGKILL);
 }
 
-kernel_signal_action kernel_default[32] = {0};
-#define KERNEL_HANDLER(n)                                          \
-    kernel_default[n].handler = signal_kernel_signal_handler;      \
-    memset(&kernel_default[n].action, 0, sizeof(sigaction_t));
-#define KERNEL_HANDLER_CORE(n)                                     \
-    kernel_default[n].handler = signal_kernel_signal_handler_core; \
-    memset(&kernel_default[n].action, 0, sizeof(sigaction_t));
+void signal_kernel_signal_handler_stop(thread_t *t, int signum, siginfo_t *info, void *ucontext)
+{
+    ENTER_FUNC(MODULE, "%p, %u, %p, %p", t, signum, info, ucontext);
+    log_crit(MODULE, "kernel handler of signal %u", signum);
+    log_warn(MODULE, "TODO core dumped");
+    signal_send_group(t->proc, SIGKILL);
+}
+
+sigaction_t kernel_default[32] = {0};
+#define KERNEL_HANDLER_FUNC(n, ident)                                                 \
+    memset(&kernel_default[n], 0, sizeof(sigaction_t));                               \
+    kernel_default[n].handler.default_handler = signal_kernel_signal_handler_##ident; \
+    kernel_default[n].sa_mask = 0;                                                    \
+    kernel_default[n].sa_flags = SA_SIGINFO;
 
 int signal_send(thread_t *t, int signum)
 {
@@ -124,13 +152,13 @@ int signal_get(thread_t *t, siginfo_t *info, sigaction_t **action)
         sigaction_t handler = proc->signal_table.actions[i];
         if (handler.handler.sa_handler == SIG_DFL)
         {
-            return RETURN_ERROR;
+            return RETURN_FAILED;
         }
         (*action) = &proc->signal_table.actions[i];
         return RETURN_GOOD;
     }
 
-    return RETURN_FAILED;
+    return RETURN_ERROR;
 }
 
 int signal_get_action(thread_t *t, int signum, sigaction_t *out)
@@ -160,13 +188,13 @@ int signal_set_action(thread_t *t, int signum, sigaction_t *action)
 
 extern void hexdump(void *ptr, int len);
 
-void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, sigaction_t *action, siginfo_t *info)
+void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, sigaction_t *action, siginfo_t *info, bool default_action)
 {
-    ENTER_FUNC(MODULE, "%p, %p, %p, %p, %p", t, arch_info, regs, action, info);
+    ENTER_FUNC(MODULE, "%p, %p, %p, %p, %p, %s", t, arch_info, regs, action, info, default_action BOOL_TO_STRING);
     intr_frame_t sig_frame;
     memcpy(&sig_frame, regs, sizeof(intr_frame_t));
     log_debug(MODULE, "doing setup");
-    signal_arch_setup_frame(t, &sig_frame, info, action);
+    signal_arch_setup_frame(t, &sig_frame, info, action, default_action);
     ivt_dump_frame(&sig_frame);
     log_debug(MODULE, "running dispatch");
     signal_arch_dispatch(&sig_frame);
@@ -175,35 +203,44 @@ void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, si
 void signal_try_deliver(thread_t *t, syscall_info *arch_info, intr_frame_t *regs)
 {
     // ENTER_FUNC(MODULE, "%p, %p, %p", t, arch_info, regs);
+    sigaction_t *h = NULL;
+    sigaction_t kill;
     {
-        sigaction_t kill;
         if (signal_get_action(t, SIGKILL, &kill) == RETURN_GOOD)
         {
             log_debug(MODULE, "got kill to %u", t->proc->pid);
             if (kill.handler.sa_sigaction == NULL)
             {
-                signal_default_action(t, SIGKILL);
+                h = signal_default_action(t, SIGKILL);
                 return;
+            }
+            else
+            {
+                h = &kill;
             }
         }
     }
     siginfo_t info;
-    sigaction_t *h = NULL;
-    int state = signal_get(t, &info, &h);
-
-    if (state == RETURN_ERROR || state == RETURN_FAILED)
-    {
-        return;
-    }
-
+    bool default_action = false;
+    int state = 0;
     if (h == NULL)
     {
-        log_debug(MODULE, "use kernel handler");
-        signal_default_action(t, info.si_signo);
-        return;
+        state = signal_get(t, &info, &h);
+
+        if (state == RETURN_ERROR)
+        {
+            return;
+        }
+
+        if (h == NULL)
+        {
+            log_debug(MODULE, "use kernel handler");
+            default_action = true;
+            h = signal_default_action(t, info.si_signo);
+        }
     }
 
-    deliver_signal(t, arch_info, regs, h, &info);
+    deliver_signal(t, arch_info, regs, h, &info, default_action);
 }
 
 int signal_kill(pid_t proc_id, int sig)
@@ -221,44 +258,43 @@ int signal_return(syscall_info *info)
 
 SYSCALL_DEFINE0_REG(signal_return);
 
-void signal_default_action(thread_t *t, int signum)
+sigaction_t *signal_default_action(thread_t *t, int signum)
 {
-    kernel_signal_action kernel_action = kernel_default[signum];
-    kernel_action.handler(t, signum);
+    return &kernel_default[signum];
 }
 
 void signal_init()
 {
-    KERNEL_HANDLER(SIGHUP);
-    KERNEL_HANDLER(SIGINT);
-    KERNEL_HANDLER_CORE(SIGQUIT);
-    KERNEL_HANDLER_CORE(SIGILL);
-    KERNEL_HANDLER_CORE(SIGTRAP);
-    KERNEL_HANDLER_CORE(SIGABRT);
-    KERNEL_HANDLER_CORE(SIGIOT);
-    KERNEL_HANDLER_CORE(SIGBUS);
-    KERNEL_HANDLER_CORE(SIGFPE);
-    KERNEL_HANDLER(SIGKILL);
-    KERNEL_HANDLER(SIGUSR1);
-    KERNEL_HANDLER_CORE(SIGSEGV);
-    KERNEL_HANDLER(SIGUSR2);
-    KERNEL_HANDLER(SIGPIPE);
-    KERNEL_HANDLER(SIGALRM);
-    KERNEL_HANDLER(SIGTERM);
-    KERNEL_HANDLER(SIGSTKFLT);
-    KERNEL_HANDLER(SIGCHLD);
-    KERNEL_HANDLER(SIGCONT);
-    KERNEL_HANDLER(SIGSTOP);
-    KERNEL_HANDLER(SIGTSTP);
-    KERNEL_HANDLER(SIGTTIN);
-    KERNEL_HANDLER(SIGTTOU);
-    KERNEL_HANDLER(SIGURG);
-    KERNEL_HANDLER_CORE(SIGXCPU);
-    KERNEL_HANDLER_CORE(SIGXFSZ);
-    KERNEL_HANDLER(SIGVTALRM);
-    KERNEL_HANDLER(SIGPROF);
-    KERNEL_HANDLER(SIGWINCH);
-    KERNEL_HANDLER(SIGIO);
-    KERNEL_HANDLER(SIGPWR);
-    KERNEL_HANDLER_CORE(SIGSYS);
+    KERNEL_HANDLER_FUNC(SIGABRT, core);     // Abort signal from abort(3)
+    KERNEL_HANDLER_FUNC(SIGALRM, term);     // Timer signal from alarm(2)
+    KERNEL_HANDLER_FUNC(SIGBUS, core);      // Bus error (bad memory access)
+    KERNEL_HANDLER_FUNC(SIGCHLD, ignore);   // Child stopped, terminated, or continued
+    KERNEL_HANDLER_FUNC(SIGCONT, continue); // Continue if stopped
+    KERNEL_HANDLER_FUNC(SIGFPE, core);      // Erroneous arithmetic operation
+    KERNEL_HANDLER_FUNC(SIGHUP, term);      // Hangup detected on controlling terminal or death of controlling process
+    KERNEL_HANDLER_FUNC(SIGILL, core);      // Illegal Instruction
+    KERNEL_HANDLER_FUNC(SIGINT, term);      // Interrupt from keyboard
+    KERNEL_HANDLER_FUNC(SIGIO, term);       // I/O now possible
+    KERNEL_HANDLER_FUNC(SIGIOT, core);      // IOT trap. A synonym for SIGABRT
+    KERNEL_HANDLER_FUNC(SIGKILL, term);     // Kill signal
+    KERNEL_HANDLER_FUNC(SIGPIPE, term);     // Broken pipe: write to pipe with no readers; see pipe(7)
+    KERNEL_HANDLER_FUNC(SIGPROF, term);     // Profiling timer expired
+    KERNEL_HANDLER_FUNC(SIGPWR, term);      // Power failure (System V)
+    KERNEL_HANDLER_FUNC(SIGQUIT, core);     // Quit from keyboard
+    KERNEL_HANDLER_FUNC(SIGSEGV, core);     // Invalid memory reference
+    KERNEL_HANDLER_FUNC(SIGSTKFLT, term);   // Stack fault on coprocessor (unused)
+    KERNEL_HANDLER_FUNC(SIGSTOP, stop);     // Stop process
+    KERNEL_HANDLER_FUNC(SIGTSTP, stop);     // Stop typed at terminal
+    KERNEL_HANDLER_FUNC(SIGSYS, core);      // Bad system call
+    KERNEL_HANDLER_FUNC(SIGTERM, term);     // Termination signal
+    KERNEL_HANDLER_FUNC(SIGTRAP, core);     // Trace/breakpoint trap
+    KERNEL_HANDLER_FUNC(SIGTTIN, stop);     // Terminal input for background process
+    KERNEL_HANDLER_FUNC(SIGTTOU, stop);     // Terminal output for background process
+    KERNEL_HANDLER_FUNC(SIGURG, ignore);    // Urgent condition on socket
+    KERNEL_HANDLER_FUNC(SIGUSR1, term);     // User-defined signal 1
+    KERNEL_HANDLER_FUNC(SIGUSR2, term);     // User-defined signal 2
+    KERNEL_HANDLER_FUNC(SIGVTALRM, term);   // Virtual alarm clock
+    KERNEL_HANDLER_FUNC(SIGXCPU, core);     // CPU time limit exceeded
+    KERNEL_HANDLER_FUNC(SIGXFSZ, core);     // File size limit exceeded
+    KERNEL_HANDLER_FUNC(SIGWINCH, ignore);  // Window resize signal
 }

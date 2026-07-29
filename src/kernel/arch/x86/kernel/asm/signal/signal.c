@@ -55,7 +55,7 @@ uint64_t frame_uc_flags(intr_frame_t *frame)
     return flags;
 }
 
-void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, sigaction_t *sa)
+void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, sigaction_t *sa, bool default_action)
 {
     process_t *proc = t->proc;
     vaddr_t user_stack = frame->sp;
@@ -64,10 +64,18 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
         // TODO add SA_ONSTACK in year 2030
     }
 
-    user_stack -= sizeof(signal_arch_frame_t);
-    user_stack &= ~0xFull;
-
-    signal_arch_frame_t *sf = (signal_arch_frame_t *)user_stack;
+    signal_arch_frame_t default_sf;
+    signal_arch_frame_t *sf = NULL;
+    if (default_action)
+    {
+        sf = &default_sf;
+    }
+    else
+    {
+        user_stack -= sizeof(signal_arch_frame_t);
+        user_stack &= ~0xFull;
+        sf = (signal_arch_frame_t *)user_stack;
+    }
 
     sigset_t saved_mask = t->blocked_signals;
     sf->uc.uc_sigmask = saved_mask;
@@ -122,6 +130,12 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
     log_debug(MODULE, "frame @ %p", frame);
     log_debug(MODULE, "sf @ %p", sf);
     log_debug(MODULE, "context @ %p", context);
+
+    if (default_action)
+    {
+        sa->handler.default_handler(t, info->si_signo, info, &sf->uc);
+        return;
+    }
 
     frame->pc = (vaddr_t)sa->handler.sa_handler;
     frame->sp = user_stack;

@@ -30,7 +30,7 @@ void do_exit(uint32_t code, process_t *proc)
         kernel_panic("Attempted to kill init! exitcode=0x%08x", code);
     }
 
-    proc->exit_code.exit_code1 = code;
+    proc->exit_code.raw = code;
     proc->state = PROC_STATE_ZOMBIE;
     sched_remove(sched_get_current());
 

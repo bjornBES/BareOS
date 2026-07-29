@@ -67,6 +67,12 @@ int main(int argc, char *argv[])
         // const char *envp[] = {"PATH=/user!/bin:/user!/usr/bin", "HOME=/", "TERM=linux", NULL};
         // execve("bin/ash", argv, envp);
         kill(child_proc, SIGABRT);
+        kill(child_proc, SIGTERM);
+        fprintf(stddebug, "terminate %u\n", child_proc);
+        while (test == 0)
+        {
+            ;
+        }
         fprintf(stddebug, "killing me %u now\n", child_proc);
         _exit(1 << 8 | (uint8_t)child_proc);
     }
