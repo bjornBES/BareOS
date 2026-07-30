@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "kernel/io.h"
 
 #define PCI_COMMAND 0x04
 #define PCI_STATUS 0x06
@@ -70,7 +71,7 @@ typedef struct
 	uint16_t subsystem_vendor_id;
 	uint32_t rom_base_address;
 	uint8_t reserved[3];
-	uint8_t capabilities_pointer;
+	uint8_t capabilities_ptr;
 	uint8_t reserved2[4];
 	uint8_t max_latency;
 	uint8_t min_grant;
@@ -113,6 +114,8 @@ typedef union
 	uint8_t bytes[48];
 } pci_header;
 
+
+
 typedef struct
 {
 	uint8_t bus;
@@ -122,7 +125,28 @@ typedef struct
 	uint16_t device_id;
 	uint16_t vendor_id;
 
-	uint16_t status;
+	union 
+	{
+		uint16_t raw;
+		struct
+		{
+			uint16_t res1 : 2;
+			uint16_t interrupt_status : 1;
+			uint16_t has_caps_ptr : 1;
+			uint16_t _66_mhz_caps : 1;
+			uint16_t res2 : 1;
+			uint16_t fast_back_caps : 1;
+			uint16_t master_data_error : 1;
+			uint16_t devsel_timing : 1;
+			uint16_t signaled_target : 1;
+			uint16_t received_target : 1;
+			uint16_t received_master : 1;
+			uint16_t signaled_system_error : 1;
+			uint16_t parity_error : 1;
+		};
+		
+	} status;
+	
 	uint16_t command;
 
 	uint8_t class_code;
@@ -136,6 +160,8 @@ typedef struct
 	uint8_t cache_line_size;
 
 	pci_header header;
+
+	uint8_t device_specific[108];
 } __attribute__((packed)) pci_device_id;
 
 typedef struct
@@ -143,6 +169,116 @@ typedef struct
 	pci_device_id *id;
 	char *name;
 } pci_driver;
+
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			uint8_t id;
+			uint8_t next;
+		};
+		uint16_t raw;
+	};
+	uint8_t this;
+} pci_caps_entry_header;
+
+
+
+#define CONFIG_ADDRESS                        0xCF8
+#define CONFIG_DATA                           0xCFC
+
+#define getAddress(bus, device, func, offset) (uint32_t)(((uint32_t)(bus) << 16) | ((uint32_t)(device) << 11) | ((uint32_t)(func) << 8) | ((uint32_t)(offset) & 0xFC) | ((uint32_t)0x80000000))
+
+static inline uint32_t pci_config_read_dword(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset)
+{
+    uint32_t address = getAddress(bus, device, func, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    uint32_t data = ind(CONFIG_DATA);
+    return data;
+}
+static inline uint32_t pci_config_read_device_dword(pci_device_id *pdev, uint8_t offset)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->device_id, pdev->function, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    uint32_t data = ind(CONFIG_DATA);
+    return data;
+}
+
+static inline uint16_t pci_config_read_word(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset)
+{
+    uint32_t address = getAddress(bus, device, func, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    uint16_t data = (uint16_t)((ind(CONFIG_DATA) >> ((offset & 2) * 8)) & 0xFFFF);
+    return data;
+}
+static inline uint16_t pci_config_read_device_word(pci_device_id *pdev, uint8_t offset)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->device_id, pdev->function, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    uint16_t data = (uint16_t)((ind(CONFIG_DATA) >> ((offset & 2) * 8)) & 0xFFFF);
+    return data;
+}
+
+static inline void pci_config_write_word(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset, uint16_t data)
+{
+    uint32_t address = getAddress(bus, device, func, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    outd(CONFIG_DATA, data);
+}
+static inline void pci_config_write_device_word(pci_device_id *pdev, uint8_t offset, uint16_t data)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->device_id, pdev->function, offset);
+
+    outd(CONFIG_ADDRESS, address);
+    outw(CONFIG_DATA, data);
+}
+
+static inline uint32_t pci_caps_read_dword(pci_device_id *pdev, pci_caps_entry_header header, uint8_t reg)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->slot, pdev->function, header.this + reg);
+
+    outd(CONFIG_ADDRESS, address);
+    uint32_t data = ind(CONFIG_DATA);
+    return data;
+}
+static inline uint16_t pci_caps_read_word(pci_device_id *pdev, pci_caps_entry_header header, uint8_t reg)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->slot, pdev->function, header.this + reg);
+
+    outd(CONFIG_ADDRESS, address);
+    uint16_t data = (uint16_t)((ind(CONFIG_DATA) >> ((reg & 2) * 8)) & 0xFFFF);
+    return data;
+}
+
+static inline void pci_caps_write_word(pci_device_id *pdev, pci_caps_entry_header header, uint8_t reg, uint16_t data)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->slot, pdev->function, header.this + reg);
+
+    outd(CONFIG_ADDRESS, address);
+    outw(CONFIG_DATA, data);
+}
+static inline void pci_caps_write_dword(pci_device_id *pdev, pci_caps_entry_header header, uint8_t reg, uint32_t data)
+{
+    uint32_t address = getAddress(pdev->bus, pdev->slot, pdev->function, header.this + reg);
+
+    outd(CONFIG_ADDRESS, address);
+    outd(CONFIG_DATA, data);
+}
+
+static inline pci_caps_entry_header pci_read_caps_entry_header(pci_device_id *pdev, uint8_t offset)
+{
+	pci_caps_entry_header header = {0};
+	header.raw = pci_config_read_dword(pdev->bus, pdev->slot, pdev->function, offset) & 0xFFFF;
+	header.this = offset;
+	return header;
+}
 
 void pci_init_devices();
 void pci_init();

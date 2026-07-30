@@ -19,9 +19,6 @@
 #include <lists/list.h>
 #include <types.h>
 
-#define LAPIC_TIMER_VECTOR    0x40
-#define IPI_RESCHEDULE_VECTOR 0x41
-
 
 // typedef struct thread thread_t;
 

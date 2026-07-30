@@ -12,6 +12,9 @@
 
 #include "kernel/cpu.h"
 #include "task/threading/scheduling/scheduler.h"
+#include "errno/errno.h"
+
+#define MODULE "MUTEX"
 
 void mutex_init(mutex_t *m)
 {
@@ -46,9 +49,14 @@ void mutex_unlock(mutex_t *m)
     lock(&m->lock);
     m->locked = false;
     m->owner = NULL;
-
+    
     list_node_t *n = list_pop_head(&m->waiters);
     unlock(&m->lock);
+    
+    if (n == (void *)-EPERM)
+    {
+        return;
+    }
 
     if (n)
     {

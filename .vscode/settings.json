@@ -155,6 +155,7 @@
     },
     "cSpell.words": [
         "ACPI",
+        "addru",
         "AHCI",
         "apic",
         "ASMCALL",
@@ -223,6 +224,7 @@
         "PGDN",
         "PGUP",
         "physaddr",
+        "pmcs",
         "pmport",
         "prdbc",
         "PRDT",

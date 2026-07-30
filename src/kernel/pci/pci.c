@@ -19,12 +19,7 @@
 #include "kernel/memory.h"
 #include <util/binary.h>
 
-#define MODULE "PCI"
-
-#define CONFIG_ADDRESS 0xCF8
-#define CONFIG_DATA 0xCFC
-
-#define getAddress(bus, device, func, offset) (uint32_t)(((uint32_t)(bus) << 16) | ((uint32_t)(device) << 11) | ((uint32_t)(func) << 8) | ((uint32_t)(offset) & 0xFC) | ((uint32_t)0x80000000))
+#define MODULE                                "PCI"
 
 uint32_t devs_count;
 pci_device_id **devs;
@@ -33,39 +28,6 @@ void pci_add_device(pci_device_id *dev)
 {
     devs[devs_count] = dev;
     devs_count++;
-}
-
-uint32_t pci_config_read_dword(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset)
-{
-    uint32_t address = getAddress(bus, device, func, offset);
-
-    outd(CONFIG_ADDRESS, address);
-    uint32_t data = ind(CONFIG_DATA);
-    return data;
-}
-uint32_t pci_config_read_device_dword(pci_device_id *pdev, uint8_t offset)
-{
-    uint32_t address = getAddress(pdev->bus, pdev->device_id, pdev->function, offset);
-
-    outd(CONFIG_ADDRESS, address);
-    uint32_t data = ind(CONFIG_DATA);
-    return data;
-}
-uint16_t pci_config_read_word(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset)
-{
-    uint32_t address = getAddress(bus, device, func, offset);
-
-    outd(CONFIG_ADDRESS, address);
-    uint16_t data = (uint16_t)((ind(CONFIG_DATA) >> ((offset & 2) * 8)) & 0xFFFF);
-    return data;
-}
-
-void pci_config_write_word(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset, uint16_t data)
-{
-    uint32_t address = getAddress(bus, device, func, offset);
-
-    outd(CONFIG_ADDRESS, address);
-    outd(CONFIG_DATA, data);
 }
 
 uint16_t pci_get_vendor_ID(uint16_t bus, uint16_t device, uint16_t function)
@@ -89,7 +51,7 @@ uint16_t pci_get_class_ID(uint16_t bus, uint16_t device, uint16_t function)
 uint16_t pci_get_sub_class_ID(uint16_t bus, uint16_t device, uint16_t function)
 {
     uint32_t r0 = pci_config_read_word(bus, device, function, 0xA);
-    return (r0 & ~0xFF00);
+    return r0 & ~0xFF00;
 }
 
 void pci_enable_mmio_bus_mastering(uint16_t bus, uint16_t slot, uint16_t function)
@@ -107,17 +69,13 @@ void pci_enable_interrupts(uint16_t bus, uint16_t slot, uint16_t function)
     BIT_UNSET(command, 10);
     pci_config_write_word(bus, slot, function, PCI_COMMAND, command);
 }
+
 void pci_disable_interrupts(uint16_t bus, uint16_t slot, uint16_t function)
 {
     uint16_t command = pci_config_read_word(bus, slot, function, PCI_COMMAND);
     BIT_SET(command, 10);
     pci_config_write_word(bus, slot, function, PCI_COMMAND, command);
 }
-
-/* void pci_get_bar(pci_device_id *pdev)
-{
-    uint32_t bar = pci_config_read_device_dword(pdev, PCI_HEADER_BAR0);
-} */
 
 void pci_init_device(pci_device_id *pdev)
 {
@@ -156,7 +114,7 @@ void pci_init_devices()
 bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_id **device_out)
 {
     uint16_t vendor = pci_get_vendor_ID(bus, slot, func);
-    if (vendor == 0xffff)
+    if (vendor == 0xFFFF)
     {
         return false;
     }
@@ -172,7 +130,7 @@ bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_id **de
         pdev->device_id = pci_get_device_ID(bus, slot, func);
 
         pdev->command = pci_config_read_word(bus, slot, func, PCI_HEADER_COMMAND);
-        pdev->status = pci_config_read_word(bus, slot, func, PCI_HEADER_STATUS);
+        pdev->status.raw = pci_config_read_word(bus, slot, func, PCI_HEADER_STATUS);
 
         uint32_t reg2Data = pci_config_read_dword(bus, slot, func, PCI_HEADER_REVISION_ID);
         pdev->class_code = (reg2Data >> 24) & 0xFF;
@@ -189,14 +147,25 @@ bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_id **de
     if (pdev->header_type != 2)
     {
         {
-            uint32_t buffer[12];
-            for (size_t i = 0; i < 12; i++)
-            {
-                buffer[i] = pci_config_read_dword(bus, slot, func, i * 4 + 0x10);
-            }
-            memcpy(pdev->header.bytes, buffer, sizeof(pci_header));
+            pdev->header.header0.bar0 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR0);
+            pdev->header.header0.bar1 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR1);
+            pdev->header.header0.bar2 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR2);
+            pdev->header.header0.bar3 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR3);
+            pdev->header.header0.bar4 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR4);
+            pdev->header.header0.bar5 = pci_config_read_dword(bus, slot, func, PCI_HEADER_BAR5);
+            pdev->header.header0.card_bus_cis = pci_config_read_dword(bus, slot, func, 0x28);
+            pdev->header.header0.subsystem_id = pci_config_read_word(bus, slot, func, 0x2C);
+            pdev->header.header0.subsystem_vendor_id = pci_config_read_word(bus, slot, func, 0x2E);
+            pdev->header.header0.rom_base_address = pci_config_read_dword(bus, slot, func, 0x30);
+            pdev->header.header0.capabilities_ptr = pci_config_read_dword(bus, slot, func, 0x34) & 0xFF;
+            uint32_t reg3Data = pci_config_read_dword(bus, slot, func, 0x3C);
+            pdev->header.header0.max_latency = (reg3Data >> 24) & 0xFF;
+            pdev->header.header0.min_grant = (reg3Data >> 16) & 0xFF;
+            pdev->header.header0.interrupt_pin = (reg3Data >> 8) & 0xFF;
+            pdev->header.header0.interrupt_line = (reg3Data) & 0xFF;
         }
     }
+
     return true;
 }
 

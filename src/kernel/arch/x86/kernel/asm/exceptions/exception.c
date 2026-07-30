@@ -78,6 +78,7 @@ int exception_handler(intr_frame_t *regs)
 
 void ivt_arch_set_handler(uint32_t interrupt, int (*handler)(intr_frame_t *))
 {
+    log_debug(MODULE, "Registering IVT handler (%p) for int %d", handler, interrupt);
     x86_isr_register_handler(interrupt);
     exception_handlers_arch[interrupt] = handler;
 }

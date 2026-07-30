@@ -39,6 +39,13 @@ else:
 qemu_args = [qemu_command]
 active_cmd = ""
 
+if arch == "i686":
+    """"""
+else:
+    qemu_args.extend(["-global", "hpet.timers=8"])
+    qemu_args.extend(["-cpu", "core2duo-v1"])
+    
+
 if debug:
     active_cmd = debug_bash_script
     qemu_args.append("-S")

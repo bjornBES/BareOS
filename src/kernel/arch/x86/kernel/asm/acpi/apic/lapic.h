@@ -41,6 +41,11 @@ static inline uint32_t lapic_read(uint32_t reg)
     return *(volatile uint32_t *)(priv->local_apic_base + reg);
 }
 
+static inline void lapic_eoi()
+{
+    *(volatile uint32_t *)(priv->local_apic_base + LAPIC_REG_EOI) = 0;
+}
+
 void lapic_enable();
 uint64_t calibrate_lapic_timer();
 void lapic_wait_idle();

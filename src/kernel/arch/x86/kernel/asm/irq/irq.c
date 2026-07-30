@@ -102,7 +102,7 @@ int irq_arch_register(uint32_t irq, irq_handler_t handler, void *ctx)
     {
         return -EBUSY;
     }
-    log_debug(MODULE, "Registering IRQ handler (%p) for IRQ %d", handler, real_irq);
+    log_debug(MODULE, "Registering IRQ handler (%p) for GSI %d IRQ %d", handler, real_irq, irq);
 
     irq_used[real_irq] = true;
     irq_handlers[real_irq] = handler;
@@ -152,7 +152,8 @@ inline void irq_arch_disable()
 
 uint32_t irq_pick_free_irq(uint32_t allowed_mask)
 {
-    // iterate allowed IRQs from the HPET capability register
+    ENTER_FUNC(MODULE, "0b%b", allowed_mask);
+
     for (uint32_t irq = 0; irq < 24; irq++)
     {
         // skip if not in allowed set
@@ -167,12 +168,13 @@ uint32_t irq_pick_free_irq(uint32_t allowed_mask)
             continue;
         }
 
-        // skip IRQ 0 (PIT) and IRQ 1 (keyboard) — reserved
-        if (irq == 0 || irq == 1)
+        // skip IRQ 1 (keyboard) — reserved
+        if (irq == 1)
         {
             continue;
         }
 
+        log_debug(MODULE, "irq%u is free to take", irq);
         return irq;
     }
 

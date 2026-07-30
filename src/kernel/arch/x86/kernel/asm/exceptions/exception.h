@@ -11,14 +11,8 @@
 #pragma once
 
 #include "isr.h"
+#include "vectors.h"
 
-#define EXC_DB      1  // Debug
-#define EXC_BP      3  // Breakpoint
-#define EXC_UD      6  // Invalid Opcode
-#define EXC_DF      8  // Double Fault
-#define EXC_GP      13 // General Protection Fault
-#define EXC_PF      14 // Page Fault
-#define EXC_SYSCALL 0x80
 
 typedef int (*arch_handler)(intr_frame_t *regs);
 

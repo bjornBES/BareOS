@@ -12,6 +12,7 @@
 
 #include <types.h>
 #include "ctx.h"
+#include "kernel/asm/exceptions/vectors.h"
 
 void ivt_arch_init();
 

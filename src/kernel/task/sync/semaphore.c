@@ -13,6 +13,9 @@
 #include "kernel/cpu.h"
 #include "task/threading/thread_type.h"
 #include "task/threading/scheduling/scheduler.h"
+#include "errno/errno.h"
+
+#define MODULE "SEM"
 
 void sem_init(semaphore_t *s, int initial)
 {
@@ -43,6 +46,11 @@ void sem_post(semaphore_t *s)
     s->count++;
     list_node_t *n = list_pop_head(&s->waiters);
     unlock(&s->lock);
+
+    if (n == (void *)-EPERM)
+    {
+        return;
+    }
 
     if (n)
     {

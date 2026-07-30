@@ -83,7 +83,6 @@ extern int exception_handler(intr_frame_t *regs);
 
 void x86_isr_handler(intr_frame_t *regs)
 {
-    // e9_putc('I');
     if (regs->interrupt < 0x20)
     {
         irq_arch_disable();

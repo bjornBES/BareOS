@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "spinlock_types.h"
+#include "task/threading/spinlock/spinlock_types.h"
 #include "task/threading/thread_type.h"
 #include "lists/list.h"
 #include <types.h>

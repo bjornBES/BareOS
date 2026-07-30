@@ -163,7 +163,7 @@ void hpet_cancel(device_t *dev)
 
 void hpet_irq_handler(intr_frame_t *regs, void *ctx)
 {
-    // log_debug("HPET", "comparator IRQ fired");    // ← add this
+    log_debug("HPET", "comparator IRQ fired");
     hpet_comparator_t *comp = (hpet_comparator_t *)ctx;
     hpet_write(HPET_REG_CONFIG, 1 << comp->index);
     if (comp->callback)
@@ -227,6 +227,7 @@ int hpet_init()
     {
         uint32_t irq_mask = hpet_read(HPET_TIMER_CONFIG(i)) >> 32;
         uint32_t irq = irq_pick_free_irq(irq_mask);
+        log_debug(MODULE, "comparator %u got irq%u", i, irq);
 
         comparators[i].index = i;
         comparators[i].irq = irq;

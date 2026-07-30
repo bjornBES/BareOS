@@ -542,7 +542,7 @@ SYSCALL_DEFINE0(sched_yield);
 
 void scheduler_tick(device_t *dev)
 {
-    fprintf(VFS_FD_DEBUG, "scheduler_tick\n");
+    // fprintf(VFS_FD_DEBUG, "scheduler_tick\n");
     scheduler_wakeup_check();
 
     if (current_thread == NULL)
@@ -715,7 +715,7 @@ void sched_init(thread_t *main_thread)
     cpu_t *cpu = cpu_arch_get_current();
     main_thread->cpu_affinity = cpu;
 
-    ivt_arch_set_handler(0x7F, schedule);
+    ivt_arch_set_handler(SCHED_SCHEDULE, schedule);
     for (size_t i = 0; i < smp_arch_cpu_count(); i++)
     {
         cpu = cpu_arch_get(i);

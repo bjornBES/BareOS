@@ -299,7 +299,7 @@ void I8042_init()
     {
         log_info(MODULE, "first channel present with conf = %08b", conf);
         device_t *kb = I8042_keyboard_device();
-        irq_arch_register(1, I8042_keyboard_handler, kb);
+        irq_arch_register(IRQ_KB, I8042_keyboard_handler, kb);
         device_register(kb);
         // initialize_ps2_keyboard();
     }

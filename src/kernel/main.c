@@ -82,6 +82,13 @@ void start_init()
     process_exec("/user!/bin/INIT.ELF", argv, NULL, NULL, NULL);
 }
 
+void wait_loop()
+{
+    while (true)
+    {
+    }
+}
+
 boot_params_t *main_boot_params;
 thread_t *main_thread;
 
@@ -132,14 +139,17 @@ __attribute__((noreturn)) void kernel_entry()
     log_info("MAIN", "main_boot_params @ %p", main_boot_params);
     log_debug("MAIN", "Hello world from Kernel");
 
-    main_thread->timeslice = 10;
-
     allocator_print_status();
 
     pci_init();
     pci_init_devices();
-
+    
     device_debug();
+    for (;;)
+    {
+        ;
+    }
+
     {
         fat_init();
 
