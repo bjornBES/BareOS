@@ -11,6 +11,8 @@
 #pragma once
 #include "stdio.h"
 #include "task/threading/spinlock/spinlock.h"
+#include "trace.h"
+#include "time/timer.h"
 #include <stdbool.h>
 #if DEBUG
 #define MIN_LOG_LEVEL LVL_DEBUG
@@ -39,28 +41,60 @@ void logfl(const char *module, DebugLevel level, const char *fmt, ...);
 void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void logf(const char *module, DebugLevel level, const char *fmt, ...);
 void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args);
+void logfl_int(const char *module, DebugLevel level, const char *fmt, ...);
+void logfl_int_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void strlogf(DebugLevel level, const char *str);
-void debug_enter_func(const char *module, const char *function, const char *args, ...);
+void debug_enter_func(const char *module, const char *function, const char *fmt, ...);
 
 #if DEBUG
-#define log_debug(module, ...) logfl(module, LVL_DEBUG, __VA_ARGS__)
+#define log_debug(module, ...)     logfl(module, LVL_DEBUG, __VA_ARGS__)
+#define log_debug_int(module, ...) logfl_int(module, LVL_DEBUG, __VA_ARGS__)
+#define log(module, ...)                         \
+    {                                            \
+        if (vfs_init_is_done == false)           \
+        {                                        \
+            log_debug(module, __VA_ARGS__);      \
+        }                                        \
+        else                                     \
+        {                                        \
+            trace_with_id(4, LVL1, __VA_ARGS__); \
+        }                                        \
+    }
 #else
 #define log_debug(module, ...) __asm__("nop")
 #endif
-#define log_info(module, ...) logfl(module, LVL_INFO, __VA_ARGS__)
-#define log_warn(module, ...) logfl(module, LVL_WARN, __VA_ARGS__)
-#define log_err(module, ...) logfl(module, LVL_ERROR, __VA_ARGS__)
-#define log_crit(module, ...) logfl(module, LVL_CRITICAL, __VA_ARGS__)
+#define log_info(module, ...)     logfl(module, LVL_INFO, __VA_ARGS__)
+#define log_info_int(module, ...) logfl_int(module, LVL_INFO, __VA_ARGS__)
 
-#define _log_debug(str) strlogf(LVL_DEBUG, str)
-#define _log_info(str) strlogf(LVL_INFO, str)
-#define _log_warn(str) strlogf(LVL_WARN, str)
-#define _log_err(str) strlogf(LVL_ERROR, str)
-#define _log_crit(str) strlogf(LVL_CRITICAL, str)
+#define log_warn(module, ...)     logfl(module, LVL_WARN, __VA_ARGS__)
+#define log_warn_int(module, ...) logfl_int(module, LVL_WARN, __VA_ARGS__)
 
-#define ENTER_FUNC(module, args, ...)                       \
-    {                                                       \
-        debug_enter_func(module, __FUNCTION__, args, __VA_ARGS__); \
+#define log_err(module, ...)      logfl(module, LVL_ERROR, __VA_ARGS__)
+#define log_err_int(module, ...)  logfl_int(module, LVL_ERROR, __VA_ARGS__)
+
+#define log_crit(module, ...)     logfl(module, LVL_CRITICAL, __VA_ARGS__)
+#define log_crit_int(module, ...) logfl_int(module, LVL_CRITICAL, __VA_ARGS__)
+
+#define trace_1(module, ...)      logfl(module, LVL_DEBUG, __VA_ARGS__)
+
+#define _log_debug(str)           strlogf(LVL_DEBUG, str)
+#define _log_info(str)            strlogf(LVL_INFO, str)
+#define _log_warn(str)            strlogf(LVL_WARN, str)
+#define _log_err(str)             strlogf(LVL_ERROR, str)
+#define _log_crit(str)            strlogf(LVL_CRITICAL, str)
+
+#define ENTER_FUNC(module, args, ...)                                                 \
+    {                                                                                 \
+        irq_arch_disable();                                                           \
+        if (vfs_init_is_done == false)                                                \
+        {                                                                             \
+            debug_enter_func(module, __FUNCTION__, args, __VA_ARGS__);                \
+        }                                                                             \
+        else                                                                          \
+        {                                                                             \
+            trace_enter_func(4, module, FUNC_ENTER, __FUNCTION__, args, __VA_ARGS__); \
+        }                                                                             \
+        irq_arch_enable();                                                            \
     }
 #define FUNC_NOT_IMPLEMENTED(module) log_err(module, "%s: Not implemented", __FUNCTION__)
 

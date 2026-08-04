@@ -37,7 +37,7 @@ vaddr_t kstack_alloc()
     for (vaddr_t va = stack_bottom; va < stack_top; va += PAGE_SIZE)
     {
         paddr_t pa = pmm_alloc_frame();
-        mmu_arch_map(&kernel_page, va, pa, stack_flags);
+        mmu_arch_map_no_print(&kernel_page, va, pa, stack_flags);
     }
 
     // guard page stays unmapped — any overflow hits it and page faults cleanly
@@ -49,12 +49,13 @@ vaddr_t kstack_alloc()
 
 vaddr_t kstack_per_cpu_alloc()
 {
+    ENTER_FUNC(MODULE, "", "");
     // guard page sits at cpu_stack_bump, leave it unmapped
     vaddr_t guard = cpu_stack_bump;
     log_debug(MODULE, "guard = %p", guard);
     vaddr_t stack_bottom = guard + PAGE_SIZE;
     log_debug(MODULE, "stack_bottom = %p", stack_bottom);
-    vaddr_t stack_top = guard + (PAGE_SIZE * 2);
+    vaddr_t stack_top = guard + (PAGE_SIZE * 4);
     log_debug(MODULE, "stack_top = %p", stack_top);
 
     // alloc physical frames and map them
@@ -66,7 +67,7 @@ vaddr_t kstack_per_cpu_alloc()
 
     // guard page stays unmapped — any overflow hits it and page faults cleanly
 
-    stack_bump += KERNEL_STACK_SLOT;
+    cpu_stack_bump += KERNEL_STACK_SLOT;
 
     return stack_top; // return TOP since stack grows down
 }

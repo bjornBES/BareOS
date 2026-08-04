@@ -71,12 +71,12 @@ static inline ssize_t vfs_write_file(vfs_node_t *node, uint8_t *data, size_t siz
 
 int vfs_write(fd_t file, const void *vdata, size_t size)
 {
-    log_debug(MODULE, "%p", &vdata);
+    // log_debug(MODULE, "%p", &vdata);
     // ENTER_FUNC(MODULE, "%u, %p, %u", file, vdata, size);
     uint8_t *data = (uint8_t *)vdata;
     if (file == VFS_INVALID_FD)
     {
-        log_debug("KERNEL", "why? just why?");
+        // log_debug("KERNEL", "why? just why?");
         __unreachable();
         return RETURN_ERROR;
     }
@@ -116,21 +116,21 @@ int vfs_read(fd_t file, void *data, size_t size)
     switch (file)
     {
         case VFS_INVALID_FD :
-        log_debug("KERNEL", "why? just why?");
-        __unreachable();
-        return RETURN_ERROR;
-        
+            log_debug("KERNEL", "why? just why?");
+            __unreachable();
+            return RETURN_ERROR;
+
         case VFS_FD_STDOUT :
         case VFS_FD_STDERR :
         case VFS_FD_DEBUG :
-        return RETURN_FAILED;
-        
+            return RETURN_FAILED;
+
         case VFS_FD_STDIN :
         default :
-        {
-            vfs_node_t *node = fd_get(file);
-            return vfs_read_file(node, data, size);
-        }
+            {
+                vfs_node_t *node = fd_get(file);
+                return vfs_read_file(node, data, size);
+            }
     }
     return RETURN_ERROR;
 }
@@ -204,11 +204,39 @@ fd_t vfs_open(const char *path, int flags, int mode)
     {
         vol->fs->close(node, vol->device, mnt);
         free(node);
+        return RETURN_FAILED;
     }
 
     node->fs = vol->fs;
 
     return fd;
+}
+
+void vfs_open_std(const char *path, int flags, int mode, fd_t file)
+{
+    ENTER_FUNC(MODULE, "%s, 0x%x, 0x%x", path, flags, mode);
+
+    vfs_node_t *node = fd_get(file);
+    if (path_lookup(path, &node) != RETURN_GOOD)
+    {
+        return;
+    }
+
+    volume_t *vol = node->mountpoint->volume;
+    mountpoint_t *mnt = node->mountpoint;
+
+    if (vol->fs->open(node, vol->device, mnt) != RETURN_GOOD)
+    {
+        free(node);
+        return;
+    }
+
+    node->flags = flags;
+    node->opened = true;
+
+    fd_insert(node, file);
+
+    node->fs = vol->fs;
 }
 
 fd_t vfs_user_do_open(const char *path, int flags, int mode, process_t *proc)
@@ -310,7 +338,7 @@ int vfs_do_stat(const char *path, vfs_stat_t *out, vfs_node_t *node_out)
     }
 
     memcpy(node_out, usable_node, sizeof(vfs_node_t));
-    
+
     uint32_t len = strlen(path);
     log_debug(MODULE, "usable_node @ %p", usable_node);
     if (!FLAG_IS_SET(usable_node->flags, AT_EMPTY_PATH) && len == 0)
@@ -417,6 +445,7 @@ void vfs_init()
     volume_init();
     // dcache_init();
     // icache_init();
+    fd_table_init();
     log_debug(MODULE, "done init");
     device_t *devfs_stub = device_create(DEVICE_VIRTUAL, DEVICE_FLAG_STUB);
     devfs_stub->class_name = "devfs";
@@ -429,6 +458,11 @@ void vfs_init()
 void vfs_init_done()
 {
     ENTER_FUNC(MODULE, "", "");
+    vfs_open_std("/DEVFS!/dev/tty0", O_RDONLY, 0, 0);
+    vfs_open_std("/DEVFS!/dev/tty1", O_WRONLY, 0, 1);
+    vfs_open_std("/DEVFS!/dev/tty2", O_WRONLY, 0, 2);
+    vfs_open_std("/DEVFS!/dev/tty3", O_WRONLY, 0, 3);
+    vfs_open_std("/DEVFS!/dev/tty4", O_WRONLY, 0, 4);
     vfs_init_is_done = true;
     return;
 }

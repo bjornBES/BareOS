@@ -67,11 +67,22 @@ void timer_sleep_sec(time_t sec);
 
 // clock event API — what scheduler uses
 void timer_set_oneshot(uint64_t ns, void (*cb)(void));
+void timer_set_device_oneshot(device_t *dev, uint64_t ns, void (*cb)(void));
+
 void timer_cancel();
+
 
 // current active devices
 device_t *timer_get_source();
 device_t *timer_get_event();
+
+typedef struct periodic_function_args
+{
+    device_t *dev;
+    uint64_t ns;
+    void (*cb)(void);
+} periodic_function_args_t;
+void timer_set_device_periodic_wrapper(void *args);
 
 // Returns days since 1970-01-01 (the Unix epoch) for a given
 // proleptic Gregorian calendar date. y/m/d are ordinary numbers

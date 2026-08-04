@@ -23,13 +23,14 @@ extern int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info);
 
 int mmu_page_fault_handler(intr_frame_t *regs, mmu_fault_info *info)
 {
-    fprintf(VFS_FD_DEBUG, "Page Fault\n");
     int result = process_user_page_fault(regs, info);
     if (result != RETURN_GOOD)
     {
-        log_info(MODULE, "now a kernel problem");
+        log_debug_int(MODULE, "now a kernel problem");
 
-        log_debug(MODULE, "fault_addr at %p", info->fault_addr);
+        log_debug_int(MODULE, "fault_addr at %p", info->fault_addr);
+
+        KERNEL_PANIC(MODULE, "FIXME");
 
         return result;
         
@@ -46,8 +47,8 @@ void mmu_copy_contents(paddr_t src, paddr_t dst)
     spinlock_acquire(&page_copy_lock);
 
     // map src and dst into scratch windows
-    mmu_arch_map(&kernel_page, MEMORY_PHYS_COPY_SRC, src, kernel_data_flags);
-    mmu_arch_map(&kernel_page, MEMORY_PHYS_COPY_DST, dst, kernel_data_flags);
+    mmu_arch_map_no_print(&kernel_page, MEMORY_PHYS_COPY_SRC, src, kernel_data_flags);
+    mmu_arch_map_no_print(&kernel_page, MEMORY_PHYS_COPY_DST, dst, kernel_data_flags);
 
     // flush TLB for both
     mmu_arch_flush_page(MEMORY_PHYS_COPY_SRC);
@@ -108,7 +109,7 @@ paddr_t mmu_map_region(page_table_t *table, vaddr_t virt, paddr_t phys, size_t s
              _phys, _phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
     for (size_t i = 0; i < pages; i++)
     {
-        mmu_arch_map(table, _virt, _phys, flags);
+        mmu_arch_map_no_print(table, _virt, _phys, flags);
         mmu_arch_flush_page(_virt);
         _virt += PAGE_SIZE;
         _phys += PAGE_SIZE;

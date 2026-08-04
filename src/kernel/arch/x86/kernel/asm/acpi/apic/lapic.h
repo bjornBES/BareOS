@@ -1,5 +1,5 @@
 /*
- * File: lapci.h
+ * File: lapic.h
  * File Created: 09 May 2026
  * Author: BjornBEs
  * -----
@@ -53,3 +53,5 @@ lapic_id lapic_get_id();
 int lapic_timer_isr(intr_frame_t *frame);
 int ipi_reschedule_handler(intr_frame_t *frame);
 void lapic_timer_init(uint64_t calibrated);
+
+

@@ -14,7 +14,7 @@
 #include "ctx.h"
 #include "kernel/asm/exceptions/vectors.h"
 
-typedef void (*irq_handler_t)(intr_frame_t* frame, void *ctx);
+typedef int (*irq_handler_t)(intr_frame_t* frame, void *ctx);
 
 void irq_arch_initialize();
 

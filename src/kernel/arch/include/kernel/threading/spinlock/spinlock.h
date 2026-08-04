@@ -10,4 +10,13 @@
 
 #pragma once
 
+#include <types.h>
+
+typedef struct spinlock
+{
+    volatile uint32_t lock;
+} spinlock_t;
+
+extern void spinlock_arch_lock(volatile uint32_t *lock);
+extern void spinlock_arch_unlock(volatile uint32_t *lock);
 void cpu_relax();

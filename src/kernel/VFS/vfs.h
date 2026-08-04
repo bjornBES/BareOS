@@ -23,7 +23,7 @@
 #define VFS_FD_STDOUT (fd_t)1
 #define VFS_FD_STDERR (fd_t)2
 #define VFS_FD_DEBUG (fd_t)3
-#define VFS_FS_NEXT (fd_t)4
+#define VFS_FS_NEXT (fd_t)5
 #define VFS_INVALID_FD (fd_t) -1
 
 #define SEEK_SET 0
@@ -31,6 +31,8 @@
 #define SEEK_END 2
 
 typedef struct process process_t;
+
+extern bool vfs_init_is_done;
 
 // kernel functions
 void vfs_init();

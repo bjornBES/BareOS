@@ -16,8 +16,9 @@ uint32_t pm1a_cnt;
 uint32_t pm1b_cnt;
 generic_address_structure reset_register;
 
-void acpi_sci_handler(intr_frame_t *frame, void *ctx)
+int acpi_sci_handler(intr_frame_t *frame, void *ctx)
 {
+    return RETURN_GOOD;
 }
 
 void fadt_arch_init(fadt_t *fadt)

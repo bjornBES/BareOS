@@ -40,8 +40,8 @@ pid_t process_waitpid(pid_t child_pid, int *wstatus, int options)
     }
     if (child == NULL)
     {
+        process_list(parent);
         ERRNO_RETURN(ECHILD, "The process specified by pid (%u) does not exist or is not a child of the calling process.", child_pid);
-        return RETURN_FAILED;
     }
 
     while (true)

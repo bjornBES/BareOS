@@ -38,6 +38,7 @@ typedef struct arch_cpu_info
     cpu_id cpu_id;          // sequential index 0..n
     bool online;            // has this AP finished init
     bool need_resched;
+    bool has_stopped;
 
     spinlock_t local_runq_lock;
     sched_class_t *sched_class; // which algorithm this core (or system) uses
@@ -45,11 +46,15 @@ typedef struct arch_cpu_info
     // int local_count;
     device_t *lapic_timer_dev;
 
+    // calling functions using IPI
+    void (*func_pending)(void*);
+    void *func_arg_pending;
+
     // per-core TSS (needed so rsp0 is independent per core)
     tss_t tss;
 
     // per-core GDT (needed to hold the TSS descriptor)
-    gdt_entry_t gdt[GDT_ENTRIES];
+    gdt_entry_t gdt_table[GDT_ENTRIES];
     gdtr_t gdtr;
 
 } cpu_t;

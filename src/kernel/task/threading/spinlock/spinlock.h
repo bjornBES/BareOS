@@ -10,32 +10,43 @@
 
 #pragma once
 
-#include "spinlock_types.h"
-#include <types.h>
 #include "kernel/threading/spinlock/spinlock.h"
+#include <types.h>
+#include "kernel/irq.h"
+
+#define lock_debug(module, s)                  \
+    log_debug(module, "lock spinlock %s", #s); \
+    spinlock_acquire(&s);
+
+#define unlock_debug(module, s)                  \
+    log_debug(module, "unlock spinlock %s", #s); \
+    spinlock_release(&s);
+
+#define lock(module, s)   \
+    spinlock_acquire(&s);
+
+#define unlock(module, s) \
+    spinlock_release(&s);
 
 static inline void spinlock_acquire(spinlock_t *s)
 {
-    while (__sync_lock_test_and_set(&s->lock, 1))
-    {
-        while (s->lock)
-        {
-            cpu_relax();
-        }
-    }
+    spinlock_arch_lock(&s->lock);
 }
 
 static inline void spinlock_release(spinlock_t *s)
 {
-    __sync_lock_release(&s->lock);
-}
-static inline void lock(spinlock_t *s)
-{
-    spinlock_acquire(s);
+    spinlock_arch_unlock(&s->lock);
 }
 
-static inline void unlock(spinlock_t *s)
+static inline void spinlock_acquire_irq(spinlock_t *s)
 {
-    spinlock_release(s);
+    irq_arch_disable();
+    spinlock_arch_lock(&s->lock);
+}
+
+static inline void spinlock_release_irq(spinlock_t *s)
+{
+    spinlock_arch_unlock(&s->lock);
+    irq_arch_enable();
 }
 

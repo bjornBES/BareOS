@@ -164,6 +164,7 @@ typedef enum
     MOD_RSHIFT = (1 << 1),
     MOD_LCTRL = (1 << 2),
     MOD_RCTRL = (1 << 3),
+    
     MOD_LALT = (1 << 4),
     MOD_RALT = (1 << 5),
     MOD_CAPS = (1 << 6),

@@ -88,12 +88,12 @@ void ivt_arch_init()
 void ivt_dump_frame(intr_frame_t *frame)
 {
     // ENTER_FUNC(MODULE, "%p", frame);
-    fprintf(VFS_FD_DEBUG, "\t{ frame @ %p }\n", frame);
-    fprintf(VFS_FD_DEBUG, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }\n", frame->ax, frame->bx, frame->cx, frame->dx);
-    fprintf(VFS_FD_DEBUG, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }\n", frame->di, frame->si, frame->r8, frame->r9);
-    fprintf(VFS_FD_DEBUG, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }\n", frame->r10, frame->r11, frame->r12, frame->r13);
-    fprintf(VFS_FD_DEBUG, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }\n", frame->r14, frame->r15, frame->bp, frame->flags);
-    fprintf(VFS_FD_DEBUG, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }\n", frame->cs, frame->pc, frame->ss, frame->sp);
+    log_debug(NO_MODULE, "\t{ frame @ %p }", frame);
+    log_debug(NO_MODULE, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }", frame->ax, frame->bx, frame->cx, frame->dx);
+    log_debug(NO_MODULE, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }", frame->di, frame->si, frame->r8, frame->r9);
+    log_debug(NO_MODULE, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }", frame->r10, frame->r11, frame->r12, frame->r13);
+    log_debug(NO_MODULE, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }", frame->r14, frame->r15, frame->bp, frame->flags);
+    log_debug(NO_MODULE, "\t{ pc = 0x%x:%p, sp = 0x%x:%p }", frame->cs, frame->pc, frame->ss, frame->sp);
 }
 
 // debug function
@@ -104,14 +104,30 @@ void x86_idt_dump_selector(uint16_t sel)
     idtr_t idtr;
     __asm__("sidt %0" : "=m"(idtr));
     idt_entry *idt = (idt_entry *)(idtr.ptr);
-    idt_entry e = idt[sel];
+    uint16_t index = sel >> 3;
+    idt_entry e = idt[index];
 #ifdef __i686__
     uint32_t offset = ((uint32_t)e.base_1 << 16) | e.base_2;
 #else
     uint64_t offset = ((uint64_t)e.base_1 << 48) | ((uint64_t)e.base_2 << 32) | e.base_3;
 #endif
     fprintf(stddebug, "IDT[%02x]: offset=0x%08X selector=0x%04X type_attr=0x%02X",
-            sel, offset, e.segment_selector, e.flags);
+            index, offset, e.segment_selector, e.flags);
+}
+
+void x86_idt_dump_selector_index(uint16_t index)
+{
+    idtr_t idtr;
+    __asm__("sidt %0" : "=m"(idtr));
+    idt_entry *idt = (idt_entry *)(idtr.ptr);
+    idt_entry e = idt[index];
+#ifdef __i686__
+    uint32_t offset = ((uint32_t)e.base_1 << 16) | e.base_2;
+#else
+    uint64_t offset = ((uint64_t)e.base_1 << 48) | ((uint64_t)e.base_2 << 32) | e.base_3;
+#endif
+    fprintf(stddebug, "IDT[%02x]: offset=0x%08X selector=0x%04X type_attr=0x%02X",
+            index, offset, e.segment_selector, e.flags);
 }
 
 #endif

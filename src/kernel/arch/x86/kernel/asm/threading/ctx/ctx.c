@@ -127,9 +127,9 @@ void frame_arch_set_retval(intr_frame_t *ctx, uint64_t val)
     ctx->ax = val;
 }
 
-void ctx_arch_clone_frame(intr_frame_t *child_frame, intr_frame_t *parent_frame)
+void ctx_arch_clone_frame(intr_frame_t *dest, intr_frame_t *src)
 {
-    memcpy(child_frame, parent_frame, sizeof(intr_frame_t));
+    memcpy(dest, src, sizeof(intr_frame_t));
 }
 
 vaddr_t ctx_arch_init_fork(cpu_ctx_t *child_ctx, vaddr_t kernel_stack_top, intr_frame_t *child_frame)

@@ -11,6 +11,7 @@
 #pragma once
 #include <stdint.h>
 #include "kernel/memory.h"
+#include "kernel/asm/task/tss_type.h"
 #include "segments.h"
 #include <defs.h>
 
@@ -82,12 +83,13 @@ void gdt_load_64(gdtr_t *descriptor);
 #endif
 
 void x86_GDT_load(gdtr_t *gdt, gdt_entry_t* table);
-void x86_GDT_set_entry(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
-void x86_GDT_initialize();
+void x86_GDT_set_entry(gdt_entry_t *table, uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
+void x86_GDT_initialize(gdt_entry_t *table, tss_t *tss);
 
 // debug function
 #ifdef DEBUG
 
-void x86_GDT_dump_selector(uint16_t sel);
+void x86_gdt_dump_selector(uint16_t sel);
+void x86_gdt_dump_selector_index(uint16_t index);
 
 #endif

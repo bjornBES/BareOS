@@ -114,7 +114,7 @@ void apic_Initialize(uint8_t offset_pic_1, uint8_t _2, bool _3)
         uint32_t gsi = get_gsi(irq);
         uint16_t flags = get_iso_flags(irq);
         uint8_t vector = PIC_REMAP_OFFSET + irq;
-        ioapic_set_entry(gsi, vector, flags);
+        ioapic_set_entry(gsi, vector, flags, 0);
         log_info(MODULE, "IRQ %u -> GSI %u vector 0x%x", irq, gsi, vector);
     }
 }

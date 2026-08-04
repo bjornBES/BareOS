@@ -24,6 +24,7 @@
 #define MODULE           "X86_PAGING_64"
 
 bool paging_print_out = true;
+bool paging_disable_print = false;
 
 extern uint64_t mm_flags_to_pte(mmu_flags_t flags);
 extern mmu_flags_t pte_to_mm_flags(uint64_t pte);
@@ -133,9 +134,14 @@ void map(page_map_level_4 *pml4_virt, vaddr_t virtAddr, paddr_t physAddr, size_t
     {
         if (!pd->e[pd_idx + i].present)
         {
-            if (pd_count < 500)
+            if (pt_count < PT64_ENTRIES && pd_count < 10)
             {
                 paddr_t phys = pmm_alloc_frame();
+                if (phys == 0)
+                {
+                    log_err(MODULE, "OMM with %u entries left", pd_count);
+                    continue;
+                }
                 vaddr_t v = phys_to_virt_auto(phys);
                 log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + i, phys, v);
                 uint64_t *new_entry = (uint64_t *)v;
@@ -162,6 +168,11 @@ void map(page_map_level_4 *pml4_virt, vaddr_t virtAddr, paddr_t physAddr, size_t
             else
             {
                 paddr_t huge_phys = (paddr_t)((uint64_t)physAddr + i * 0x200000);
+                if (huge_phys == 0)
+                {
+                    log_err(MODULE, "OMM with %u entries left", pd_count);
+                    continue;
+                }
                 log_debug(MODULE, "2MiB path: pd[%u] phys=%p virt=%p", pd_idx + i, huge_phys, virt + i * 0x200000);
                 pd_huge_entry64 *huge_pd = (pd_huge_entry64 *)(void *)(&pd->e[pd_idx + i]);
                 huge_pd->raw = 0;
@@ -682,6 +693,7 @@ vaddr_t paging_get_virtual(page_table_t *page_table, paddr_t physAddr)
 // Map a single virtual page → physical frame in the current page directory.
 int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr, mmu_flags_t flags)
 {
+    ENTER_FUNC(MODULE, "%p, %p, %p, 0x%x", page_table, virtAddr, physAddr, flags);
     vaddr_t virt = (vaddr_t)ALIGN_2_UP((uint64_t)virtAddr, PAGE_SIZE);
 
     int pml4_idx = GET_PML4_IDX(virt);
@@ -692,12 +704,15 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     uint64_t leaf_resolved_flags = mm_flags_to_pte(flags);
     uint64_t resolved_flags = leaf_resolved_flags & 0x0FF;
 
-    if (paging_print_out)
+    if (paging_print_out || !paging_disable_print)
     {
         log_debug(MODULE, "resolved flags=%llx", resolved_flags);
     }
 
-    log_info(MODULE, "map_page virt=%p phys=%p flags=%lx leaf_flags=%lx pml4[%u]->pdpt[%u]->pd[%u]->pt[%u] to %p", virt, physAddr, resolved_flags, leaf_resolved_flags, pml4_idx, pdpt_idx, pd_idx, pt_idx, page_table->page_dir);
+    if (!paging_disable_print)
+    {
+        log_info(MODULE, "map_page virt=%p phys=%p flags=%lx leaf_flags=%lx pml4[%u]->pdpt[%u]->pd[%u]->pt[%u] to %p", virt, physAddr, resolved_flags, leaf_resolved_flags, pml4_idx, pdpt_idx, pd_idx, pt_idx, page_table->page_dir);
+    }
 
     bool user_flag = ((resolved_flags & PAGE_USER) == PAGE_USER);
     page_map_level_4 *pml4 = paging64_get_pml4(page_table, virtAddr, 1, user_flag);
@@ -710,27 +725,30 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     page_table_entry64 *pde = &pd->e[pd_idx];
     page_table_entry64 *pte = &pt->e[pt_idx];
 
-#define PRINT(table, entry)                                                                                                                         \
-    if (!table || !entry)                                                                                                                           \
-    {                                                                                                                                               \
-        log_err(MODULE, "%s[%u] %p is null", #table, table##_idx, entry);                                                                           \
-        return RETURN_ERROR;                                                                                                                        \
-    }                                                                                                                                               \
-    log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
-    if (paging_print_out)                                                                                                                           \
-    {                                                                                                                                               \
+#define PRINT(table, entry)                                                                                                                             \
+    if (!table || !entry)                                                                                                                               \
+    {                                                                                                                                                   \
+        log_err(MODULE, "%s[%u] %p is null", #table, table##_idx, entry);                                                                               \
+        return RETURN_ERROR;                                                                                                                            \
+    }                                                                                                                                                   \
+    if (!paging_disable_print)                                                                                                                          \
+    {                                                                                                                                                   \
+        log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
+    }                                                                                                                                                   \
+    if (paging_print_out)                                                                                                                               \
+    {                                                                                                                                                   \
     }
 
-#define PRINT_INT(table, entry)                                                                                                                         \
-    PRINT(table, entry)                                                                                                                                 \
-    {                                                                                                                                                   \
-        uint64_t addr = entry->addr;                                                                                                                    \
-        uint64_t raw = (resolved_flags & PAGE_FLAGS_MASK);                                                                                              \
-        log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
-        log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", addr << 12, raw);                                                                             \
-        entry->raw = raw;                                                                                                                               \
-        entry->addr = addr;                                                                                                                             \
-        /* log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */                                       \
+#define PRINT_INT(table, entry)                                                                                                                             \
+    PRINT(table, entry)                                                                                                                                     \
+    {                                                                                                                                                       \
+        uint64_t raw = entry->raw & 0x0FF;                                                                                                                  \
+        if (!paging_disable_print)                                                                                                                          \
+        {                                                                                                                                                   \
+            log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
+            log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, raw);                                                                      \
+        } /* entry->raw = raw */;                                                                                                                           \
+        /* log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */                                           \
     }
 
 #define PRINT_HP(table, entry)                                                                  \
@@ -757,11 +775,13 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     {
         log_err(MODULE, "Failed to allocate page table for virt 0x%llx", virtAddr);
         log_err(MODULE, "Remapping already-mapped page at virt 0x%llx", virtAddr);
+        log_debug(MODULE, "pt @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr << 12, pte->raw & PAGE_FLAGS_MASK);
+        log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", pte->addr << 12, pte->raw);
         log_err(MODULE, "pt[%u] is already present @ %p", pt_idx, pte);
         return RETURN_ERROR;
     }
 
-    if (paging_print_out)
+    if (paging_print_out || !paging_disable_print)
     {
         log_debug(MODULE, "got entry at v%p from table %p", pte, pt);
     }
@@ -770,7 +790,7 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
     pte->addr = (uint64_t)physAddr >> 12;
     PRINT(pt, pte);
 
-    if (paging_print_out)
+    if (paging_print_out || !paging_disable_print)
     {
         log_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
         log_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
@@ -779,11 +799,14 @@ int paging_map_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t physAddr
         log_debug(MODULE, "PT[%u] readback = 0x%llx", pt_idx, pte->raw);
     }
 
-    if (paging_print_out)
+    if (paging_print_out || !paging_disable_print)
     {
         log_debug(MODULE, "pte = 0x%llx/0b%064b", pte->raw, pte->raw);
     }
-    log_info(MODULE, "mapped virt=%p -> phys=%p (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%llx)", virtAddr, physAddr, pml4_idx, pdpt_idx, pd_idx, pt_idx, resolved_flags);
+    if (!paging_disable_print)
+    {
+        log_info(MODULE, "mapped virt=%p -> phys=%p (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%llx)", virtAddr, physAddr, pml4_idx, pdpt_idx, pd_idx, pt_idx, resolved_flags);
+    }
 
     // Invalidate the TLB entry for this address
     mmu_arch_flush_page(virtAddr);
@@ -858,6 +881,7 @@ void paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
 // Unmap a single virtual page.
 paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 {
+    ENTER_FUNC(MODULE, "%p, %p", page_table, virtAddr);
     vaddr_t virt = virtAddr;
     uint64_t pml4_index = GET_PML4_IDX(virt);
     uint64_t pdpt_index = GET_PDPT_IDX(virt);
@@ -924,7 +948,7 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     uint64_t PDPT = GET_PDPT_IDX(cr2);
     uint64_t PD = GET_PD_IDX(cr2);
     uint64_t PT = GET_PT_IDX(cr2);
-    log_debug(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]\n", PML4, PDPT, PD, PT);
+    log_debug_int(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]", PML4, PDPT, PD, PT);
 
     page_map_level_4 *pml4 = paging64_get_pml4(page_dir, cr2, 0, 0);
     page_dpt *pdpt = paging64_get_pdpt(page_dir, cr2, 0, 0);
@@ -934,44 +958,44 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     page_table_entry64 *pdpt_entry = &pdpt->e[PDPT];
     page_table_entry64 *pd_entry = &pd->e[PD];
     page_table_entry64 *pt_entry = &pt->e[PT];
-    log_debug(MODULE, "%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx\n", pml4, PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
+    log_debug_int(MODULE, "%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pml4, PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
     if (!pml4_entry || pml4_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        log_debug_int(MODULE, "The mapping is fucked\n");
         return 0;
     }
-    log_debug(MODULE, "%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx\n", pdpt, PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
+    log_debug_int(MODULE, "%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pdpt, PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
     if (!pdpt_entry || pdpt_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        log_debug_int(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 1 GiB huge page
     if (pdpt_entry->ps_or_pat)
     {
-        log_debug(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
+        log_debug_int(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
         return (paddr_t)((pdpt_entry->addr << 30) | (cr2 & 0x3FFFFFFF));
     }
 
-    log_debug(MODULE, "%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx\n", pd, PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
+    log_debug_int(MODULE, "%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pd, PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
     if (!pd_entry || pd_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        log_debug_int(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 2 MiB huge page
     if (pd_entry->ps_or_pat)
     {
-        log_debug(MODULE, "%p PD[%u] is huge\n", pd, PD);
+        log_debug_int(MODULE, "%p PD[%u] is huge\n", pd, PD);
         return (paddr_t)((pd_entry->addr << 21) | (cr2 & 0x1FFFFF));
     }
 
-    log_debug(MODULE, "%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx\n", pt, PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
+    log_debug_int(MODULE, "%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pt, PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
     if (!pt_entry || pt_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        log_debug_int(MODULE, "The mapping is fucked\n");
         return 0;
     }
 

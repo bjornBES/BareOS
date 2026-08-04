@@ -270,7 +270,7 @@ void paging_map_page(page_table_t page_table_t, virt_addr virtAddr, phys_addr ph
         if (page_table_phys == NULL)
         {
             log_crit(MODULE, "out of memory");
-            KernelPanic(MODULE, "out of memory");
+            KERNEL_PANIC(MODULE, "out of memory");
         }
         if (paging_print_out)
         {
@@ -286,7 +286,7 @@ void paging_map_page(page_table_t page_table_t, virt_addr virtAddr, phys_addr ph
         if (page_table_virt == NULL)
         {
             log_crit(MODULE, "paging_get_virtual returned NULL for new page table phys=%p", page_table_phys);
-            KernelPanic(MODULE, "could not get virtual address for new page table");
+            KERNEL_PANIC(MODULE, "could not get virtual address for new page table");
         }
 
         memset(page_table_virt, 0, PAGE_SIZE);
@@ -321,7 +321,7 @@ void paging_map_page(page_table_t page_table_t, virt_addr virtAddr, phys_addr ph
     if (pt == NULL)
     {
         log_crit(MODULE, "paging_get_virtual returned NULL for page table frame=%x", page_directory_entry->frame);
-        KernelPanic(MODULE, "could not get virtual address for page table");
+        KERNEL_PANIC(MODULE, "could not get virtual address for page table");
     }
     pt->entries[page_table_index].frame = (uint32_t)physAddr >> 12;
     pt->entries[page_table_index].raw |= _flags;

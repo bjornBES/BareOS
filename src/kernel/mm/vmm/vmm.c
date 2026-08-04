@@ -401,7 +401,6 @@ vaddr_t vma_find_free(vma_memory_t *mm, vaddr_t hint, size_t len, vaddr_t search
     {
         hint = search_start;
     }
-    
 
     vaddr_t candidate = hint ? PAGE_ALIGN_DOWN(hint) : search_start;
     if (candidate < search_start)
@@ -524,7 +523,8 @@ vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t typ
             // virt_addr virt_frame = phys_to_virt_auto(frame);
             // log_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
             log_debug(MODULE, "mapping virt %p .. phys %p", va, frame);
-            log_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, &mm->page_directory);
+            log_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, mm->page_directory);
+            log_debug(MODULE, "mm->page_directory->page_dir_phys = %p", mm->page_directory->page_dir_phys);
             mmu_arch_map(mm->page_directory, va, frame, flags);
             memset((void *)va, 0, PAGE_SIZE);
         }
@@ -537,7 +537,8 @@ vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t typ
             // virt_addr virt_frame = phys_to_virt_auto(frame);
             // log_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
             log_debug(MODULE, "mapping virt %p .. phys %p", va, frame);
-            log_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, &mm->page_directory);
+            log_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, mm->page_directory);
+            log_debug(MODULE, "mm->page_directory->page_dir_phys = %p", mm->page_directory->page_dir_phys);
             mmu_arch_map(mm->page_directory, va, frame, flags);
             memset((void *)va, 0, PAGE_SIZE);
         }

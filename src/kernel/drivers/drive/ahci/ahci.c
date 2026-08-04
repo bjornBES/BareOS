@@ -127,7 +127,6 @@ typedef struct ahci_port
     semaphore_t slots_free; // count of available slots, init = num_slots
     uint32_t slot_bitmap;   // bit set = slot in use
     uint32_t outstanding_mask;
-    uint32_t command_issue;
     ahci_cmd_ctx_t cmds[32];
     void *ctba[32];
     void *unused[28]; // Even out the data size to 256 bytes
@@ -183,6 +182,7 @@ void ahci_stop_cmd(HBA_PORT *port)
 
 void ahci_program_command_slot(ahci_port_t *aport, uint32_t slot, ahci_request_t *req)
 {
+    ENTER_FUNC(MODULE, "%p, %u, %p", aport, slot, req);
     HBA_PORT *port = aport->port;
     port->is = (uint32_t)-1; // Clear pending interrupt bits
 
@@ -219,6 +219,13 @@ void ahci_program_command_slot(ahci_port_t *aport, uint32_t slot, ahci_request_t
 
     cmd_fis->countl = (req->sector_count & 0xFF);
     cmd_fis->counth = (req->sector_count >> 8);
+
+    // ENTER_FUNC(MODULE, "%p, %u", aport, slot);
+    // PxCI (Command Issue) register — set the bit for this slot
+    aport->outstanding_mask |= BIT(slot);
+    aport->port->ci |= BIT(slot);
+
+    sem_wait(&aport->cmds[slot].done); // blocks here until the ISR posts it
 }
 
 int ahci_check_type(HBA_PORT *port)
@@ -308,13 +315,6 @@ void ahci_initialize_port(ahci_port_t *aport)
 
 void ahci_ring_doorbell(ahci_port_t *aport, int slot)
 {
-    ENTER_FUNC(MODULE, "%p, %u", aport, slot);
-    // PxCI (Command Issue) register — set the bit for this slot
-    log_debug(MODULE, "now in port->ci = 0x%x", aport->port->ci);
-    aport->command_issue |= BIT(slot);
-    aport->outstanding_mask |= BIT(slot);
-    aport->port->ci |= BIT(slot);
-    log_debug(MODULE, "now in port->ci = 0x%x", aport->port->ci);
 }
 
 uint32_t ahci_read_completed_mask(ahci_port_t *aport)
@@ -340,6 +340,7 @@ int ahci_read_slot_status(ahci_port_t *aport, int slot)
 
 int ahci_submit(ahci_port_t *aport, ahci_request_t *req)
 {
+    ENTER_FUNC(MODULE, "%p, %p", aport, req);
     sem_wait(&aport->slots_free); // blocks if all slots are busy — this is the backpressure
 
     mutex_lock(&aport->slot_lock);
@@ -362,10 +363,6 @@ int ahci_submit(ahci_port_t *aport, ahci_request_t *req)
     mutex_unlock(&aport->slot_lock);
 
     ahci_program_command_slot(aport, slot, req); // your existing register-poking code
-    ahci_ring_doorbell(aport, slot);
-
-    sem_wait(&aport->cmds[slot].done); // blocks here until the ISR posts it
-
     int status = aport->cmds[slot].status;
 
     mutex_lock(&aport->slot_lock);
@@ -379,8 +376,8 @@ int ahci_submit(ahci_port_t *aport, ahci_request_t *req)
 
 int ahci_identify_device(ahci_port_t *aport, void *buf, void *buf_virt)
 {
-    log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
-    log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
+    // log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
+    // log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
 
     ahci_request_t req = {
         .command = SATA_IDENTIFY_DEVICE, // IDENTIFY DEVICE
@@ -475,7 +472,6 @@ void ahci_handle_port_error(ahci_port_t *port)
 void ahci_isr_port_handler(ahci_port_t *aport)
 {
     uint32_t completed = ahci_read_completed_mask(aport); // which slots finished, from port regs
-    log_debug(MODULE, "completed = %u", completed);
     for (int slot = 0; slot < 32; slot++)
     {
         if ((completed & (BIT(slot))) == 0)
@@ -483,7 +479,8 @@ void ahci_isr_port_handler(ahci_port_t *aport)
             continue;
         }
 
-        log_debug(MODULE, "found slot %u", slot);
+        log_debug(MODULE, "slot = %u", slot);
+
         aport->cmds[slot].status = ahci_read_slot_status(aport, slot);
         sem_post(&aport->cmds[slot].done); // wakes whichever thread called ahci_submit for this slot
     }
@@ -492,7 +489,6 @@ void ahci_isr_port_handler(ahci_port_t *aport)
 int ahci_isr_handler(intr_frame_t *frame)
 {
     ENTER_FUNC(MODULE, "%p", frame);
-    irq_arch_disable();
     uint32_t is = ahci_abar->is;
     log_debug(MODULE, "is = 0b%b", is);
     uint8_t num_ports = (ahci_abar->cap & 0x1F) + 1;
@@ -505,7 +501,6 @@ int ahci_isr_handler(intr_frame_t *frame)
         int aport_index = ahci_indexes[i];
 
         ahci_port_t *port = &ports[aport_index];
-        // todo
         if (port->port == NULL)
         {
             log_err(MODULE, "port %u isn't ready", i);
@@ -521,12 +516,12 @@ int ahci_isr_handler(intr_frame_t *frame)
         ahci_isr_port_handler(port);
     }
     lapic_eoi();
-    irq_arch_enable();
     return RETURN_GOOD;
 }
 
 void ahci_initialize_abar(HBA_MEM *abar, pci_device_id *pdev, ahci_caps caps)
 {
+    trace_with_id(4, LVL2, "initializing abar");
     ahci_abar = abar;
     if (caps.msi.msi_id.id == 0x5)
     {
@@ -536,9 +531,9 @@ void ahci_initialize_abar(HBA_MEM *abar, pci_device_id *pdev, ahci_caps caps)
         pci_caps_write_dword(pdev, caps.msi.msi_id, 0, con | 0x00010000);
     }
     uint32_t pi = abar->pi;
-    log_debug(MODULE, "pi = 0b%b", pi);
+    // log_debug(MODULE, "pi = 0b%b", pi);
     uint8_t num_ports = (abar->cap & 0x1F) + 1;
-    log_debug(MODULE, "np = %d", num_ports);
+    // log_debug(MODULE, "np = %d", num_ports);
     abar->ghc |= BIT(1);
 
     for (size_t i = 0; i < num_ports; i++)
@@ -548,32 +543,34 @@ void ahci_initialize_abar(HBA_MEM *abar, pci_device_id *pdev, ahci_caps caps)
             int dt = ahci_check_type(&abar->ports[i]);
             if (dt == AHCI_DEV_SATA)
             {
-                log_debug(MODULE, "after");
                 sata_identify_packet *info_virt = NULL;
-                log_debug(MODULE, "here");
                 sata_identify_packet *info = kmalloc_phys(sizeof(sata_identify_packet), (void **)&info_virt);
-                log_debug(MODULE, "here1");
-                log_debug(MODULE, "info_virt = %p, info = %p", info_virt, info);
 
                 allocator_print_status();
                 allocator_print_blocks();
 
                 HBA_PORT *port = &abar->ports[i];
-                log_debug(MODULE, "found sata");
                 ports[ahci_devices_count].abar = abar;
                 ports[ahci_devices_count].port = port;
                 ahci_indexes[i] = ahci_devices_count;
                 ahci_port_t *aport = &ports[ahci_devices_count];
                 ahci_initialize_port(aport);
-                log_debug(MODULE, "Port %u initialized", ahci_devices_count);
                 ahci_identify_device(aport, info, info_virt);
-                log_debug(MODULE, "Port %u identified", ahci_devices_count);
 
                 device_t *dev = (device_t *)malloc(sizeof(device_t));
                 sata_private_data *priv = (sata_private_data *)malloc(sizeof(sata_private_data));
                 priv->drive = ahci_devices_count;
 
+                char *name = (char *)malloc(41);
+                memset(name, 0, 41);
+                for (int i = 0; i < 40; i += 2)
+                {
+                    name[i] = info_virt->model[i + 1];
+                    name[i + 1] = info_virt->model[i];
+                }
+
                 dev->priv = priv;
+                dev->device_name = name;
                 dev->type = DEVICE_BLOCK;
                 dev->read = ahci_read;
                 dev->write = ahci_write;
@@ -590,7 +587,7 @@ void ahci_initialize_abar(HBA_MEM *abar, pci_device_id *pdev, ahci_caps caps)
                 }
 
                 // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
-                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", info_virt->model, total_sectors / 2048);
+                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
                 ahci_devices_count++;
 
                 free(info_virt);
@@ -602,16 +599,16 @@ void ahci_initialize_abar(HBA_MEM *abar, pci_device_id *pdev, ahci_caps caps)
 void ahci_initialize(pci_device_id *pdev)
 {
     ENTER_FUNC(MODULE, "%p", pdev);
-    log_debug(MODULE, "bus: 0x%x, slot: 0x%x, function: 0x%x", pdev->bus, pdev->slot, pdev->function);
-    log_debug(MODULE, "device_id: 0x%x, vendor: 0x%x", pdev->device_id, pdev->vendor_id);
-    log_debug(MODULE, "status: 0x%x, command: 0x%x", pdev->status, pdev->command);
-    log_debug(MODULE, "class_code: 0x%x, sub_class: 0x%x, prog_if: 0x%x, revision_id: 0x%x", pdev->class_code, pdev->sub_class, pdev->prog_if, pdev->revision_id);
-    log_debug(MODULE, "bist: 0x%x, header_type: 0x%x, latency_timer: 0x%x, cache_line_size: 0x%x", pdev->bist, pdev->header_type, pdev->latency_timer, pdev->cache_line_size);
+    // log_debug(MODULE, "bus: 0x%x, slot: 0x%x, function: 0x%x", pdev->bus, pdev->slot, pdev->function);
+    // log_debug(MODULE, "device_id: 0x%x, vendor: 0x%x", pdev->device_id, pdev->vendor_id);
+    // log_debug(MODULE, "status: 0x%x, command: 0x%x", pdev->status, pdev->command);
+    // log_debug(MODULE, "class_code: 0x%x, sub_class: 0x%x, prog_if: 0x%x, revision_id: 0x%x", pdev->class_code, pdev->sub_class, pdev->prog_if, pdev->revision_id);
+    // log_debug(MODULE, "bist: 0x%x, header_type: 0x%x, latency_timer: 0x%x, cache_line_size: 0x%x", pdev->bist, pdev->header_type, pdev->latency_timer, pdev->cache_line_size);
     pci_header0 *header = &pdev->header.header0;
-    log_debug(MODULE, "bar0: 0x%x, bar1: 0x%x, bar2: 0x%x, bar3: 0x%x, bar4: 0x%x, bar5: 0x%x", header->bar0, header->bar1, header->bar2, header->bar3, header->bar4, header->bar5);
-    log_debug(MODULE, "card_bus_cis: 0x%x, subsystem ident: 0x%x_%x, rom: 0x%x", header->card_bus_cis, header->subsystem_id, header->subsystem_vendor_id, header->rom_base_address);
-    log_debug(MODULE, "capabilities ptr: 0x%x, interrupt information: 0x%x_%x", header->capabilities_ptr, header->interrupt_pin, header->interrupt_line);
-    log_debug(MODULE, "max_latency: 0x%x, min_grant: 0x%x", header->max_latency, header->min_grant);
+    // log_debug(MODULE, "bar0: 0x%x, bar1: 0x%x, bar2: 0x%x, bar3: 0x%x, bar4: 0x%x, bar5: 0x%x", header->bar0, header->bar1, header->bar2, header->bar3, header->bar4, header->bar5);
+    // log_debug(MODULE, "card_bus_cis: 0x%x, subsystem ident: 0x%x_%x, rom: 0x%x", header->card_bus_cis, header->subsystem_id, header->subsystem_vendor_id, header->rom_base_address);
+    // log_debug(MODULE, "capabilities ptr: 0x%x, interrupt information: 0x%x_%x", header->capabilities_ptr, header->interrupt_pin, header->interrupt_line);
+    // log_debug(MODULE, "max_latency: 0x%x, min_grant: 0x%x", header->max_latency, header->min_grant);
     ports = (ahci_port_t *)malloc(sizeof(ahci_port_t) * MAX_PORTS);
     ahci_caps caps;
     pci_caps_entry_header prev;
@@ -620,14 +617,14 @@ void ahci_initialize(pci_device_id *pdev)
     ivt_arch_set_handler(PIC_MSI_VEC1, ahci_isr_handler);
     while (true)
     {
-        log_debug(MODULE, "next offset at 0x%x", new_offset);
+        // log_debug(MODULE, "next offset at 0x%x", new_offset);
         pci_caps_entry_header entry = pci_read_caps_entry_header(pdev, new_offset);
         if (entry.id == 0)
         {
             break;
         }
         uint8_t old_offset = prev.next;
-        log_debug(MODULE, "got caps id 0x%x, next 0x%x", entry.id, entry.next);
+        // log_debug(MODULE, "got caps id 0x%x, next 0x%x", entry.id, entry.next);
         switch (entry.id)
         {
             case 0x1 :
@@ -665,7 +662,7 @@ void ahci_initialize(pci_device_id *pdev)
     vaddr_t vbar5 = ioremap(bar5, sizeof(HBA_MEM));
     // paging_alloc_frame_region(bar5, (size_t)bar5 + sizeof(HBA_MEM));
 
-    mmu_map_region(&kernel_page, vbar5, bar5, sizeof(HBA_MEM), mmio_flags);
+    // mmu_map_region(&kernel_page, vbar5, bar5, sizeof(HBA_MEM), mmio_flags);
 
     ahci_initialize_abar((HBA_MEM *)vbar5, pdev, caps);
     log_info(MODULE, "exit out");

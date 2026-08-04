@@ -24,7 +24,7 @@ static __attribute__((unused)) fd_t const stdout = (fd_t)VFS_FD_STDOUT;
 static __attribute__((unused)) fd_t const stderr = (fd_t)VFS_FD_STDERR;
 static __attribute__((unused)) fd_t const stddebug = (fd_t)VFS_FD_DEBUG;
 
-#define KernelPanic(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)
+#define KERNEL_PANIC(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)
 
 void vga_clear();
 
@@ -61,6 +61,8 @@ off_t ftello(fd_t stream);
 size_t fread(void *buffer, size_t size, size_t count, fd_t stream);
 
 size_t fwrite(const void *buffer, size_t size, size_t count, fd_t stream);
+
+int fprintf_internal(fd_t file, const char *fmt, ...);
 
 int printf(const char *fmt, ...);
 int fprintf(fd_t file, const char *fmt, ...);

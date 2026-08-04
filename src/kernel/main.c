@@ -64,22 +64,11 @@ void hexdump(void *ptr, int len)
     fprintf(VFS_FD_DEBUG, "\n");
 }
 
-void test()
-{
-    log_debug("test", "in function test");
-    int t = 0;
-    while (t < 10)
-    {
-        t++;
-    }
-    log_debug("test", "exiting function test");
-    sched_thread_exit();
-}
-
-void start_init()
+uintptr_t start_init(void *_)
 {
     char *argv[2] = {"/user!/bin/INIT.ELF", NULL};
     process_exec("/user!/bin/INIT.ELF", argv, NULL, NULL, NULL);
+    return 1;
 }
 
 void wait_loop()
@@ -94,48 +83,50 @@ thread_t *main_thread;
 
 __attribute__((noreturn)) void kernel_entry()
 {
+    irq_arch_disable();
     device_init();
     devfs_init();
     vfs_init();
 
     setup_arch_post();
 
-    
     UART_init(COM1);
     tty_struct_t *stdin = NULL;
     tty_struct_t *stdout = NULL;
     {
         video_init(main_boot_params);
         device_t *vga_dev = device_get_by_id(DEVICE_VIDEO, 1);
-        
-        
-        stdin = tty_create(device_get_by_name("kbd0"), device_get_by_name("uart0"));
+
+        stdin = tty_create(device_get_by_name("kbd0"), vga_dev);
         stdin->winsize.ws_col = 80;
         stdin->winsize.ws_row = 25;
         termios_t stdin_term;
-        stdin_term.c_lflag &= ~(ISIG | ECHO | ICRNL);
-        stdin_term.c_lflag |= ICANON | ECHO;
+        stdin_term.c_lflag &= ~(ISIG);
+        stdin_term.c_lflag |= ICANON | ECHO | ICRNL;
         tty_termios_set(stdin, &stdin_term);
-        
+
         stdout = tty_create(NULL, vga_dev);
         /* tty_struct_t *stderr = */ tty_create(NULL, vga_dev);
-        
+
         device_ioctl(vga_dev, VIDEO_IOCTL_CLEAR, NULL);
-        device_debug();
-        tty_write(stdout, (const uint8_t *)"VGA is done\n", 12);
     }
 
-    
     termios_t uart_term = {0};
     tty_struct_t *stddebug = tty_create(NULL, device_get_by_name("uart0"));
+    /* tty_struct_t *stddebug2 = */ tty_create(NULL, device_get_by_name("debug0"));
     tty_baudrate_encode_baud_rate(&uart_term, 0, 38400);
     uart_term.c_cflag |= CS8;
     uart_term.c_oflag |= ONLCR;
     tty_termios_set(stddebug, &uart_term);
     tty_write(stddebug, (const uint8_t *)"UART is done\n", 13);
+    tty_write(stddebug, (const uint8_t *)"UART is done\n", 13);
 
     vfs_init_done();
+    device_debug();
+    tty_write(stdout, (const uint8_t *)"VGA is done\n", 12);
+    irq_arch_enable();
 
+    trace(VFS_FD_STDOUT, LVL1, "Hello world from Kernel");
     log_info("MAIN", "main_boot_params @ %p", main_boot_params);
     log_debug("MAIN", "Hello world from Kernel");
 
@@ -143,12 +134,8 @@ __attribute__((noreturn)) void kernel_entry()
 
     pci_init();
     pci_init_devices();
-    
+
     device_debug();
-    for (;;)
-    {
-        ;
-    }
 
     {
         fat_init();
@@ -164,11 +151,6 @@ __attribute__((noreturn)) void kernel_entry()
         log_info("MAIN", "Mounting drive 0x100");
         vfs_mount("/boot!/boot", ahci, 0);
 
-        fd_t file = vfs_open("/user!/home/test.txt", 0, 0);
-        uint8_t data[512];
-        vfs_read(file, data, 512);
-        hexdump(data, 512);
-
         Loader_init();
         ELF_init();
         syscall_init();
@@ -176,22 +158,18 @@ __attribute__((noreturn)) void kernel_entry()
 
     process_init();
 
-    thread_t *t = thread_create(start_init);
+    thread_t *t = thread_create_kernel(start_init, NULL);
     t->cpu_affinity = cpu_arch_get(1);
     sched_add(t);
-    sched_sleep_ms(100);
-    log_debug("MAIN", "Got back");
 
     {
-        log_debug("MAIN",
-                  "loop until something happens main_thread->state = %u",
-                  main_thread->state);
-
         while (main_thread->state != THREAD_DEAD)
         {
+            // log_debug("M", "heartbeat");
+            // sched_yield();
         }
         log_crit("MAIN", "main thread died");
-        KernelPanic("MAIN", "main thread died");
+        KERNEL_PANIC("MAIN", "main thread died");
     }
     // loop
     for (;;);
@@ -223,27 +201,21 @@ void kernel_main(boot_params_t *bootParams)
 
     log_debug("MAIN", "init main thread");
     allocator_print_blocks();
-    main_thread = thread_create(kernel_entry);
-    main_thread->priority = PRIORITY_HIGH;
-    main_thread->timeslice = priority_to_timeslice(PRIORITY_HIGH);
-    main_thread->timeslice_reset = priority_to_timeslice(PRIORITY_HIGH);
-
-/*     for (;;)
-    {
-        ;
-    } */
+    main_thread = thread_create_main((vaddr_t)kernel_entry);
+    thread_set_priority(main_thread, PRIORITY_HIGHEST);
 
     log_debug("MAIN", "new rsp = %p", main_thread->kernel_stack);
     // __asm__("mov rsp, %0" : : "r"((uint32_64)main_thread->kernel_stack));
 
     sched_init(main_thread);
-    log_debug("MAIN", "main thread stack @ %p", main_thread->kernel_stack);
+    // log_debug("MAIN", "main thread stack @ %p", main_thread->kernel_stack);
+    irq_arch_disable();
     schedule(NULL);
     while (true)
     {
         ;
     }
-    
+
     __asm__("jmp kernel_entry");
     __builtin_unreachable();
 }

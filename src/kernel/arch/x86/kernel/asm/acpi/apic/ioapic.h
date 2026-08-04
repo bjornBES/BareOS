@@ -36,4 +36,4 @@ static inline uint32_t ioapic_read(uint32_t reg)
 void ioapic_unmask(uint32_t irq);
 void ioapic_mask(uint32_t irq);
 uint32_t ioapic_is_mask(uint32_t irq);
-void ioapic_set_entry(uint32_t gsi, uint8_t vector, uint16_t flags);
+void ioapic_set_entry(uint32_t gsi, uint8_t vector, uint16_t flags, uint8_t dest_apic_id);

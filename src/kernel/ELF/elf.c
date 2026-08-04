@@ -41,10 +41,11 @@ process_abi_t ELF_getABI(int ELF_abi, int endianness, int bitness)
     return Undefined;
 }
 
-size_t elf_read_file(fd_t fd, void *buffer, size_t buffer_size, size_t count, off_t offset)
+size_t elf_read_file(process_t *proc, fd_t fd, void *buffer, size_t buffer_size, size_t count, off_t offset)
 {
     ENTER_FUNC(MODULE, "%u, %p, %u, %u, %u", fd, buffer, buffer_size, count, offset);
     fseek(fd, offset, SEEK_SET);
+    mmu_arch_load_table(proc->page_dir);
     return fread(buffer, buffer_size, count, fd);
 }
 
@@ -73,7 +74,7 @@ int ELF_get_sections(fd_t fd, process_t *proc, void *header, uint8_t class)
     }
 
     uint8_t *buffer = malloc(section_entry_size * section_count);
-    int bytes_read = elf_read_file(fd, buffer, section_entry_size, section_count, section_header_table_position);
+    int bytes_read = elf_read_file(proc, fd, buffer, section_entry_size, section_count, section_header_table_position);
     log_debug(MODULE, "read %u bytes into %p", bytes_read, buffer);
 
     log_debug(MODULE, "str table at offset 0x%x", section_name_index * section_entry_size);
@@ -101,12 +102,12 @@ int ELF_get_sections(fd_t fd, process_t *proc, void *header, uint8_t class)
 
     char *str_table = malloc(str_entry.size);
     log_debug(MODULE, "str table @ %p with size %u or %u", str_table, str_entry.size, str_entry.entry_size);
-    elf_read_file(fd, str_table, str_entry.size, 1, str_entry.offset);
+    elf_read_file(proc, fd, str_table, str_entry.size, 1, str_entry.offset);
 
     for (uint16_t i = 0; i < section_count; i++)
     {
         uint8_t *buffer = malloc(section_entry_size);
-        elf_read_file(fd, buffer, section_entry_size, 1, section_header_table_position + (i * section_entry_size));
+        elf_read_file(proc, fd, buffer, section_entry_size, 1, section_header_table_position + (i * section_entry_size));
         elf3264_section_header_t entry;
         if (class == ELF_CLASS_64)
         {
@@ -206,7 +207,7 @@ int ELF_read_program(fd_t fd, process_t *proc, elf64_header_t *header, uint8_t c
 
     void *buffer = malloc(section_count * section_entry_size);
 
-    int bytes_read = elf_read_file(fd, buffer, section_entry_size, section_count, section_header_table_position);
+    int bytes_read = elf_read_file(proc, fd, buffer, section_entry_size, section_count, section_header_table_position);
     if (bytes_read < section_count * section_entry_size)
     {
         // something is wrong
@@ -282,7 +283,7 @@ int ELF_read_program(fd_t fd, process_t *proc, elf64_header_t *header, uint8_t c
         // only bss dose not have this
         if (elf_prog_header.file_size != 0)
         {
-            bytes_read = elf_read_file(fd, (void *)dest, elf_prog_header.file_size, 1, elf_prog_header.offset);
+            bytes_read = elf_read_file(proc, fd, (void *)dest, elf_prog_header.file_size, 1, elf_prog_header.offset);
             log_info(MODULE, "expected %u did %d", elf_prog_header.file_size, bytes_read);
             if (bytes_read != elf_prog_header.file_size)
             {
@@ -325,7 +326,7 @@ int ELF_read(fd_t fd, process_t *proc, loader *loader)
     elf32_header_t *header = (elf32_header_t *)buffer;
 
     fseek(fd, 0, SEEK_SET);
-    elf_read_file(fd, buffer, 1024, 1, 0);
+    elf_read_file(proc, fd, buffer, 1024, 1, 0);
 
     if (header->bitness == ELF_CLASS_32)
     {
@@ -634,10 +635,11 @@ int ELF_probe(uint8_t *buffer, loader *loader)
 
 void ELF_init()
 {
-    log_debug("ELF", "init ELF");
+    log_debug(MODULE, "init ELF");
     loader *load = malloc(sizeof(loader));
     load->name = "ELF";
     load->probe = ELF_probe;
     load->load = ELF_read;
     Loader_register_loader(load);
+    log_debug(MODULE, "Done init ELF");
 }

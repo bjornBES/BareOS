@@ -17,6 +17,7 @@
 typedef struct sched_algorithm_ops
 {
     void *(*init)(void *runq_data);                             // set up whatever internal structure this algo needs
+    thread_t *(*get_head)(void *runq_data, int level);
     int (*thread_count)(void *runq_data);
     void (*enqueue)(void *runq_data, thread_t *t);              // add a runnable thread
     thread_t *(*pick_next)(void *runq_data);                    // choose next thread to run, remove from queue
@@ -29,5 +30,6 @@ typedef struct sched_algorithm_ops
 typedef struct sched_class
 {
     char *name;
+    int max_level;
     sched_algorithm_ops_t ops;
 } sched_class_t;

@@ -26,22 +26,23 @@
 
 #define SUPPORT_SECOND_PORT 0
 
-void I8042_keyboard_handler(intr_frame_t *frame, void *ctx)
+int I8042_keyboard_handler(intr_frame_t *frame, void *ctx)
 {
     if (I8042_first_channel_device != I8042_CHANNEL_KEYBOARD_INITALIZED)
     {
-        return;
+        return RETURN_GOOD;
     }
     uint8_t status = inb(I8042_STATUS_PORT);
     // 00011101
     // check if there are data
     if (BIT_GET(status, I8042_STAT_OUTPUT_BUFF_STATE) == I8042_STAT_OUTPUT_FULL)
     {
-        return;
+        return RETURN_GOOD;
     }
 
     device_t *dev = ctx;
     I8042_first_channel_handler(dev);
+    return RETURN_GOOD;
 }
 
 void I8042_init()
@@ -75,7 +76,7 @@ void I8042_init()
     I8042_write_cmd(0xAA);
     if (I8042_read(I8042_DATA_PORT) != 0x55)
     {
-        log_err(MODULE, "self test failed");
+        log_err_int(MODULE, "self test failed");
         return;
     }
 
@@ -109,7 +110,7 @@ void I8042_init()
         I8042_write_cmd(0xAB);
         if (I8042_read(I8042_DATA_PORT) != 0)
         {
-            log_err(MODULE, "failed interface test for first channel");
+            log_err_int(MODULE, "failed interface test for first channel");
             I8042_first_channel_present = I8042_DEVICE_PRESENT_BUT_ERROR_STATE;
         }
     }
@@ -119,7 +120,7 @@ void I8042_init()
         I8042_write_cmd(0xA9);
         if (I8042_read(I8042_DATA_PORT) != 0)
         {
-            log_err(MODULE, "failed interface test for second channel");
+            log_err_int(MODULE, "failed interface test for second channel");
             I8042_second_channel_present = I8042_DEVICE_PRESENT_BUT_ERROR_STATE;
         }
     }
@@ -148,11 +149,11 @@ void I8042_init()
         I8042_write_first_channel(0xFF); // reset
         if (I8042_first_channel_wait_for_ack() == false)
         {
-            log_err(MODULE, "First channel no ACK after reset");
+            log_err_int(MODULE, "First channel no ACK after reset");
         }
         if (I8042_first_channel_wait_for_reset() == false)
         {
-            log_err(MODULE, "First channel no response after reset");
+            log_err_int(MODULE, "First channel no response after reset");
         }
     }
 #if SUPPORT_SECOND_PORT
@@ -162,11 +163,11 @@ void I8042_init()
         I8042_write_second_channel(0xFF); // reset
         if (I8042_second_channel_wait_for_ack() == false)
         {
-            log_err(MODULE, "Second channel no ACK after reset");
+            log_err_int(MODULE, "Second channel no ACK after reset");
         }
         if (I8042_second_channel_wait_for_response() == false)
         {
-            log_err(MODULE, "Second channel no response after reset");
+            log_err_int(MODULE, "Second channel no response after reset");
         }
     }
 #endif
@@ -175,7 +176,7 @@ void I8042_init()
 
     if (BIT_GET(inb(I8042_STATUS_PORT), I8042_STAT_OUTPUT_BUFF_STATE))
     {
-        log_err(MODULE, "Couldn't flush Output buffer");
+        log_err_int(MODULE, "Couldn't flush Output buffer");
         return;
     }
     // check what type of device is connected on first channel
@@ -185,7 +186,7 @@ void I8042_init()
         I8042_write_first_channel(0xF5);
         if (I8042_first_channel_wait_for_ack() == false)
         {
-            log_err(MODULE, "First channel no ACK after 0xF5");
+            log_err_int(MODULE, "First channel no ACK after 0xF5");
         }
 
         // read device ID
@@ -222,7 +223,7 @@ void I8042_init()
                 }
                 else
                 {
-                    log_err(MODULE, "First channel keyboard not ACKed");
+                    log_err_int(MODULE, "First channel keyboard not ACKed");
                 }
 
                 // enable interrupts
@@ -231,16 +232,16 @@ void I8042_init()
                     conf |= (1 << 0); // enable interrupts
                 }
 
-                log_debug(MODULE, "First channel device ID: %x %x", data, data2);
+                log_debug_int(MODULE, "First channel device ID: %x %x", data, data2);
             }
             else
             {
-                log_err(MODULE, "First channel device did not send ID data");
+                log_err_int(MODULE, "First channel device did not send ID data");
             }
         }
         else
         {
-            log_err(MODULE, "First channel device did not send ID ack");
+            log_err_int(MODULE, "First channel device did not send ID ack");
         }
     }
 
@@ -252,7 +253,7 @@ void I8042_init()
         I8042_write_second_channel(0xF5);
         if (I8042_second_channel_wait_for_ack() == false)
         {
-            log_err(MODULE, "ERROR: Second channel no ACK after 0xF5");
+            log_err_int(MODULE, "ERROR: Second channel no ACK after 0xF5");
         }
 
         // read device ID
@@ -282,12 +283,12 @@ void I8042_init()
             }
             else
             {
-                log_err(MODULE, "ERROR: Second channel device did not send ID data");
+                log_err_int(MODULE, "ERROR: Second channel device did not send ID data");
             }
         }
         else
         {
-            log_err(MODULE, "ERROR: Second channel device did not send ID ack");
+            log_err_int(MODULE, "ERROR: Second channel device did not send ID ack");
         }
     }
 #endif
@@ -297,7 +298,7 @@ void I8042_init()
 
     if (I8042_first_channel_present == I8042_DEVICE_PRESENT)
     {
-        log_info(MODULE, "first channel present with conf = %08b", conf);
+        log_info_int(MODULE, "first channel present with conf = %08b", conf);
         device_t *kb = I8042_keyboard_device();
         irq_arch_register(IRQ_KB, I8042_keyboard_handler, kb);
         device_register(kb);
@@ -305,7 +306,7 @@ void I8042_init()
     }
     if (I8042_second_channel_present == I8042_DEVICE_PRESENT)
     {
-        log_info(MODULE, "second channel present");
+        log_info_int(MODULE, "second channel present");
         // initialize_ps2_keyboard();
     }
 }

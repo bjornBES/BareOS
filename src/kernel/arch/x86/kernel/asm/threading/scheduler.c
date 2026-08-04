@@ -13,6 +13,6 @@
 
 int scheduler_arch_yield()
 {
-    __asm__("int 0x7F"); // todo
+    __asm__("int 0x7F");
     return RETURN_GOOD;
 }

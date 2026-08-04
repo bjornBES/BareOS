@@ -13,6 +13,7 @@
 
 #include "tty_config.h"
 #include "tty_internal_types.h"
+#include "task/threading/scheduling/sched_types.h"
 
 #include "device/device_types.h"
 
@@ -80,7 +81,7 @@ typedef struct tty_struct
     winsize_t winsize;
 
     // blocking read support
-    // wait_queue_t read_wait; // threads blocked in read() sleep here
+    block_queue_t read_wait; // threads blocked in read() sleep here
 
     // process group (for signal delivery)
     // pid_t fg_pgid; // foreground process group ID

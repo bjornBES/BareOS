@@ -37,6 +37,8 @@ ssize_t tty_write(tty_struct_t *tty, const uint8_t *buf, size_t n);
 // called from your ioctl() syscall handler
 int tty_ioctl(tty_struct_t *tty, uint32_t cmd, void *arg);
 
+void tty_signal(tty_struct_t *tty, int signo);
+
 // tty_baudrate.c
 
 speed_t tty_baudrate_baud_rate(const termios_t *termios);

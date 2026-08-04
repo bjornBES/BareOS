@@ -161,7 +161,7 @@ void hpet_cancel(device_t *dev)
     }
 }
 
-void hpet_irq_handler(intr_frame_t *regs, void *ctx)
+int hpet_irq_handler(intr_frame_t *regs, void *ctx)
 {
     log_debug("HPET", "comparator IRQ fired");
     hpet_comparator_t *comp = (hpet_comparator_t *)ctx;
@@ -172,6 +172,7 @@ void hpet_irq_handler(intr_frame_t *regs, void *ctx)
     }
     comp->in_use = false;
     irq_arch_eoi(comp->irq);
+    return RETURN_GOOD;
 }
 
 int hpet_pre_init()

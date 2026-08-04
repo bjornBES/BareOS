@@ -25,33 +25,34 @@ void mutex_init(mutex_t *m)
 
 void mutex_lock(mutex_t *m)
 {
+    ENTER_FUNC(MODULE, "%p", m);
     thread_t *self = cpu_arch_get_current()->current;
 
-    lock(&m->lock);
+    spinlock_acquire_irq(&m->lock);
     while (m->locked)
     {
         // block ourselves onto this mutex's wait list, atomically w.r.t. m->lock
         self->state = THREAD_BLOCKED;
         list_push_tail(&m->waiters, &self->node);
-        unlock(&m->lock);
+        spinlock_release_irq(&m->lock);
 
         sched_yield();  // won't be picked again until sched_wake_one hits our node
 
-        lock(&m->lock); // re-acquire to recheck the condition (avoid lost wakeups)
+        spinlock_acquire_irq(&m->lock); // re-acquire to recheck the condition (avoid lost wakeups)
     }
     m->locked = true;
     m->owner = self;
-    unlock(&m->lock);
+    spinlock_release_irq(&m->lock);
 }
 
 void mutex_unlock(mutex_t *m)
 {
-    lock(&m->lock);
+    spinlock_acquire_irq(&m->lock);
     m->locked = false;
     m->owner = NULL;
     
     list_node_t *n = list_pop_head(&m->waiters);
-    unlock(&m->lock);
+    spinlock_release_irq(&m->lock);
     
     if (n == (void *)-EPERM)
     {

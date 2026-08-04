@@ -10,7 +10,7 @@
 
 #include "ioapic.h"
 
-void ioapic_set_entry(uint32_t gsi, uint8_t vector, uint16_t flags)
+void ioapic_set_entry(uint32_t gsi, uint8_t vector, uint16_t flags, uint8_t dest_apic_id)
 {
     uint32_t low = vector;
 
@@ -29,8 +29,8 @@ void ioapic_set_entry(uint32_t gsi, uint8_t vector, uint16_t flags)
     // start masked
     low |= (1 << 16);
 
-    // destination = local APIC ID 0 (BSP)
-    uint32_t high = (0 << 24);
+    // destination = local APIC ID , uint8_t dest_apic_id
+    uint32_t high = (dest_apic_id << 24);
 
     ioapic_write(IOAPIC_REG_REDTBL + gsi * 2, low);
     ioapic_write(IOAPIC_REG_REDTBL + gsi * 2 + 1, high);

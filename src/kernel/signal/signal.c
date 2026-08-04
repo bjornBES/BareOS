@@ -191,10 +191,15 @@ extern void hexdump(void *ptr, int len);
 void deliver_signal(thread_t *t, syscall_info *arch_info, intr_frame_t *regs, sigaction_t *action, siginfo_t *info, bool default_action)
 {
     ENTER_FUNC(MODULE, "%p, %p, %p, %p, %p, %s", t, arch_info, regs, action, info, default_action BOOL_TO_STRING);
+    log_debug(MODULE, "delivering signal %u", info->si_signo);
     intr_frame_t sig_frame;
     memcpy(&sig_frame, regs, sizeof(intr_frame_t));
     log_debug(MODULE, "doing setup");
     signal_arch_setup_frame(t, &sig_frame, info, action, default_action);
+    if (default_action)
+    {
+        return;
+    }
     ivt_dump_frame(&sig_frame);
     log_debug(MODULE, "running dispatch");
     signal_arch_dispatch(&sig_frame);

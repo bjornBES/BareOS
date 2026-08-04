@@ -40,7 +40,7 @@ with only 16 bits the kernel needs to use the bios for most of it's functions, a
 - [X] Keyboard API
   - [X] Make a keyboard API
   - [X] PS/2 driver
-- [/] Simple kernel/debug shell
+- [X] Simple kernel/debug shell
 - [X] TSS + ring 3
 - [X] System calls (int 0x80)
 - [X] file loader (e.g. ELF)
@@ -127,7 +127,7 @@ This is what the kernel loader should do in order right after the bootloader is 
   - [X] fork
   - [X] exit + _exit
 
-### Phase 6 Userland and syscalls
+### Phase 6 Make shit better
 
 - [X] Get ash working end to end
   - [X] run ash

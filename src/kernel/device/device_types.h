@@ -34,6 +34,7 @@ typedef enum device_type
 typedef struct device
 {
     char name[DEVICE_NAME_MAX]; // built on register
+    char *device_name; // the devices name
     const char *class_name;     // set by driver
     device_type_t type;
     uint32_t id;

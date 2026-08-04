@@ -16,6 +16,8 @@
 #include "kernel/x86.h"
 #include "kernel/ivt.h"
 #include "kernel/irq.h"
+#include "kernel/mmu.h"
+#include "VFS/vfs.h"
 
 #include "debug/debug.h"
 #include "kernel/io.h"
@@ -75,48 +77,88 @@ void x86_isr_initialize()
 
 typedef struct
 {
-    void *bp;
-    void *ip;
+    vaddr_t bp;
+    vaddr_t ip;
 } stack_frame_t;
 
 extern int exception_handler(intr_frame_t *regs);
 
+void stack_trace(uint32_t max_frames, intr_frame_t *regs)
+{
+    // ENTER_FUNC(MODULE, "%u, %p", max_frames, regs);
+    stack_frame_t *frame = (stack_frame_t *)regs->bp;
+
+    page_table_t page_dir;
+    mmu_arch_current_table(&page_dir);
+    int state = mmu_arch_is_present(&page_dir, PAGE_ALIGN_UP(regs->bp));
+    if (state != RETURN_GOOD)
+    {
+        return;
+    }
+
+    log_debug(MODULE, "Stack trace:");
+    for (uint32_t i = 0; i < max_frames; i++)
+    {
+        // sanity check — bail if EBP looks invalid
+        if (!frame || frame->ip == 0)
+        {
+            break;
+        }
+
+        log_debug(MODULE, "  [%u] ip = %p, bp = %p", i, frame->ip, frame->bp);
+        if (mmu_arch_is_present(&page_dir, frame->bp) != RETURN_GOOD)
+        {
+            break;
+        }
+        frame = (stack_frame_t *)frame->bp;
+    }
+}
+
 void x86_isr_handler(intr_frame_t *regs)
 {
-    if (regs->interrupt < 0x20)
+    irq_arch_disable();
+    cpu_t *cpu = cpu_arch_get_current();
+    if (cpu != NULL && cpu->current != NULL)
     {
-        irq_arch_disable();
+        if (!cpu->current->is_idle_thread)
+        {
+            if (regs->interrupt != LAPIC_TIMER_VECTOR)
+            {
+                if (vfs_init_is_done)
+                {
+                    trace_with_id(4, LVL2, "got interrupt %u\n", regs->interrupt);
+                }
+                else
+                {
+                    log_debug(MODULE, "got interrupt %u from %u.%u", regs->interrupt, cpu->cpu_id, cpu->current->tid);
+                }
+            }
+            else if (regs->interrupt == LAPIC_TIMER_VECTOR)
+            {
+                if (vfs_init_is_done)
+                {
+                    // trace_with_id(4, LVL2, "T\n");
+                }
+                else
+                {
+                    // log_debug(NO_MODULE, "T%u", cpu->apic_id);
+                }
+            }
+        }
     }
-    cpu_t *cpu =cpu_arch_get_current();
-    if (cpu != NULL)
+
+    if (regs->interrupt < IRQ0)
     {
-        if (cpu->current != NULL)
-        {
-            fprintf(VFS_FD_DEBUG, "[got interrupt %u from %u.%u]", regs->interrupt, cpu->cpu_id, cpu->current->tid);
-        }
-        else
-        {
-            fprintf(VFS_FD_DEBUG, "[got interrupt %u from %u]", regs->interrupt, cpu->cpu_id);
-        }
+        stack_trace(4, regs);
     }
-    // log_debug(MODULE, "interrupt is %u flags = %064b", _int, regs->flags);
-    // UART_write_fstr(COM1, "interrupt is %u\r\n", regs->interrupt);
+    
     if (exception_handler(regs) != RETURN_GOOD)
     {
+        irq_arch_disable();
         ivt_dump_frame(regs);
-        // UART_write_fstr(COM1, "Unhandled exception %d\r\n", regs->interrupt /* , g_Exceptions[regs->interrupt] */);
-        // UART_write_fstr(COM1, "%s", buf);
-
+        
         log_crit(MODULE, "Unhandled exception %d %s 0x%x", regs->interrupt, g_Exceptions[regs->interrupt], regs->error);
-
-        // printf("Unhandled exception %d %s\n", regs->interrupt, g_Exceptions[regs->interrupt]);
-        // printf("%s", buf);
-        KernelPanic("ISR", "Unhandled exception %d", regs->interrupt);
-    }
-
-    if (regs->interrupt < 0x20)
-    {
-        irq_arch_enable();
+        KERNEL_PANIC("ISR", "Unhandled exception %d", regs->interrupt);
     }
 }
 

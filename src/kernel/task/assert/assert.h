@@ -17,5 +17,5 @@
     {                                                                                                               \
         fprintf(VFS_FD_DEBUG, "proc: %s:%u: %s: Assertion '%s' failed\n", __FILE__, __LINE__, __FUNCTION__, #expr); \
         fprintf(VFS_FD_DEBUG, __VA_ARGS__);                                                                         \
-        KernelPanic("ASSERT", "assert failed");                                                                     \
+        KERNEL_PANIC("ASSERT", "assert failed");                                                                     \
     }

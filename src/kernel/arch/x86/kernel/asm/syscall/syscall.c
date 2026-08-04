@@ -16,6 +16,7 @@
 #include "kernel/asm/cpuid/cpuid.h"
 #include "kernel/asm/MSR/MSR.h"
 #include "kernel/ivt.h"
+#include "kernel/cpu.h"
 #include "kernel/x86.h"
 #include "kernel/memory.h"
 #include "task/process.h"
@@ -34,7 +35,7 @@ int syscall_arch_handler(intr_frame_t *regs)
         ivt_dump_frame(regs);
         if (regs->ax < 255)
         {
-            KernelPanic(MODULE, "");
+            KERNEL_PANIC(MODULE, "");
         }
         regs->ax = -ENOSYS;
         return RETURN_FAILED;
@@ -54,8 +55,9 @@ int syscall_arch_handler(intr_frame_t *regs)
 
     if (regs->ax > 1)
     {
+        cpu_t *current = cpu_arch_get_current();
+        trace(4, LVL1, "System call %d from cpu=%u t=%u proc=%u\n", info.sys_number, current->apic_id, current->current->tid, proc->pid);
     }
-    log_info(MODULE, "System call %d from pid %u", info.sys_number, proc->pid);
 
     // ivt_dump_frame(regs);
 
@@ -142,7 +144,7 @@ void syscall_dispatch(syscall_frame_t *regs)
 
 void arch_syscall_init()
 {
-    ENTER_FUNC(MODULE, "", "");
+    // ENTER_FUNC(MODULE, "", "");
     ivt_arch_set_handler(EXC_SYSCALL, syscall_arch_handler);
     syscall_per_cpu_init();
 }

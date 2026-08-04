@@ -11,7 +11,7 @@
 #pragma once
 
 #include "lists/list.h"
-#include "task/threading/spinlock/spinlock_types.h"
+#include "task/threading/spinlock/spinlock.h"
 
 typedef struct block_queue
 {

@@ -121,11 +121,28 @@ int printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    irq_arch_disable();
     spinlock_acquire(&printf_lock);
     int ret = vprintf_int(stdout, fmt, args);
     spinlock_release(&printf_lock);
-    irq_arch_enable();
+    va_end(args);
+    return ret;
+}
+
+int fprintf_internal(fd_t file, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    if (file == VFS_FD_DEBUG)
+    {
+        // spinlock_acquire_irq(&debug_logs);
+    }
+    spinlock_acquire(&printf_lock);
+    int ret = vprintf_int(file, fmt, args);
+    spinlock_release(&printf_lock);
+    if (file == VFS_FD_DEBUG)
+    {
+        // spinlock_release_irq(&debug_logs);
+    }
     va_end(args);
     return ret;
 }
@@ -134,19 +151,9 @@ int fprintf(fd_t file, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    irq_arch_disable();
     spinlock_acquire(&printf_lock);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_acquire(&debug_logs);
-    }
     int ret = vprintf_int(file, fmt, args);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_release(&debug_logs);
-    }
     spinlock_release(&printf_lock);
-    irq_arch_enable();
     va_end(args);
     return ret;
 }
@@ -175,37 +182,17 @@ int snprintf(char *s, size_t n, const char *fmt, ...)
 
 int vprintf(fd_t file, const char *fmt, va_list args)
 {
-    irq_arch_disable();
     spinlock_acquire(&printf_lock);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_acquire(&debug_logs);
-    }
     int state = vprintf_int(file, fmt, args);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_release(&debug_logs);
-    }
     spinlock_release(&printf_lock);
-    irq_arch_enable();
     return state;
 }
 
 int vfprintf(fd_t file, const char *fmt, va_list args)
 {
-    irq_arch_disable();
     spinlock_acquire(&printf_lock);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_acquire(&debug_logs);
-    }
     int state = vprintf_int(file, fmt, args);
-    if (file == VFS_FD_DEBUG)
-    {
-        spinlock_release(&debug_logs);
-    }
     spinlock_release(&printf_lock);
-    irq_arch_enable();
     return state;
 }
 

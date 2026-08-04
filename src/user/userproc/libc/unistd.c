@@ -12,12 +12,12 @@
 
 #include "syscall.h"
 
-size_t read(fd_t fd, void *buf, size_t len)
+ssize_t read(fd_t fd, void *buf, size_t len)
 {
     return syscall3(SYS_READ, (uintptr_t)fd, (uintptr_t)buf, (uintptr_t)len);
 }
 
-size_t write(fd_t fd, const void *buf, size_t len)
+ssize_t write(fd_t fd, const void *buf, size_t len)
 {
     return syscall3(SYS_WRITE, (uintptr_t)fd, (uintptr_t)buf, (uintptr_t)len);
 }

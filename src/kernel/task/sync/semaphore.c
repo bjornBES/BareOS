@@ -20,32 +20,33 @@
 void sem_init(semaphore_t *s, int initial)
 {
     s->count = initial;
-    list_init(&s->waiters);
+    list_init(&s->queue_list);
+    list_init(&s->waiters.queue);
 }
 
 void sem_wait(semaphore_t *s)
 {
     thread_t *self = cpu_arch_get_current()->current;
 
-    lock(&s->lock);
+    spinlock_acquire_irq(&s->lock);
     while (s->count <= 0)
     {
         self->state = THREAD_BLOCKED;
-        list_push_tail(&s->waiters, &self->node);
-        unlock(&s->lock);
+        list_push_tail(&s->queue_list, &self->node);
+        spinlock_release_irq(&s->lock);
         sched_yield();
-        lock(&s->lock);
+        spinlock_acquire_irq(&s->lock);
     }
     s->count--;
-    unlock(&s->lock);
+    spinlock_release_irq(&s->lock);
 }
 
 void sem_post(semaphore_t *s)
 {
-    lock(&s->lock);
+    spinlock_acquire_irq(&s->lock);
     s->count++;
-    list_node_t *n = list_pop_head(&s->waiters);
-    unlock(&s->lock);
+    list_node_t *n = list_pop_head(&s->queue_list);
+    spinlock_release_irq(&s->lock);
 
     if (n == (void *)-EPERM)
     {

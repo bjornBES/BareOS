@@ -45,8 +45,7 @@ void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list a
         return;
     }
 
-    irq_arch_disable();
-    spinlock_acquire(&debug_logs);
+    spinlock_acquire_irq(&debug_logs);
     char log[255];
     int count;
     memset(log, 0, 255);
@@ -69,8 +68,50 @@ void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list a
 
     count = sprintf(log, "%s\n", g_ColorReset); // write text
     debug_write_line(log, count);
-    spinlock_release(&debug_logs);
-    irq_arch_enable();
+    spinlock_release_irq(&debug_logs);
+}
+
+void logfl_int(const char *module, DebugLevel level, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    logfl_int_args(module, level, fmt, args);
+
+    va_end(args);
+}
+
+void logfl_int_args(const char *module, DebugLevel level, const char *fmt, va_list args)
+{
+    if (level < MIN_LOG_LEVEL)
+    {
+        return;
+    }
+
+    spinlock_acquire_irq(&debug_logs);
+    char log[255];
+    int count;
+    memset(log, 0, 255);
+    if (*module != '\0')
+    {
+        count = sprintf(log, "%s[%s] ", g_LogSeverityColors[level], module);
+        // set color depending on level
+        // write module
+        debug_write_line(log, count);
+    }
+    else
+    {
+        count = sprintf(log, "%s", g_LogSeverityColors[level]);
+        // set color depending on level
+        debug_write_line(log, count);
+    }
+    memset(log, 0, 255);
+    count = vsprintf(log, fmt, args); // write text
+    debug_write_line(log, count);
+
+    count = sprintf(log, "%s\n", g_ColorReset); // write text
+    debug_write_line(log, count);
+    spinlock_release_irq(&debug_logs);
 }
 
 void logf(const char *module, DebugLevel level, const char *fmt, ...)
@@ -90,8 +131,7 @@ void logf_args(const char *module, DebugLevel level, const char *fmt, va_list ar
         return;
     }
 
-    irq_arch_disable();
-    spinlock_acquire(&debug_logs);
+    spinlock_acquire_irq(&debug_logs);
 
     char log[255];
     int count;
@@ -115,8 +155,7 @@ void logf_args(const char *module, DebugLevel level, const char *fmt, va_list ar
 
     count = sprintf(log, "%s", g_ColorReset); // write text
     debug_write_line(log, count);
-    spinlock_release(&debug_logs);
-    irq_arch_enable();
+    spinlock_release_irq(&debug_logs);
 }
 
 void debug_enter_func(const char *module, const char *function, const char *fmt, ...)
@@ -124,8 +163,7 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
     va_list args;
     va_start(args, fmt);
 
-    irq_arch_disable();
-    spinlock_acquire(&debug_logs);
+    spinlock_acquire_irq(&debug_logs);
 
     char log[255];
     int count;
@@ -146,9 +184,8 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 
     count = sprintf(log, ")%s\n", g_ColorReset); // write text
     debug_write_line(log, count);
-    spinlock_release(&debug_logs);
-    irq_arch_enable();
     va_end(args);
+    spinlock_release_irq(&debug_logs);
 }
 
 void strlogf(DebugLevel level, const char *str)

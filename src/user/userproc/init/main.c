@@ -13,6 +13,7 @@
 #include "signal.h"
 #include "sched.h"
 #include "sys/wait.h"
+#include "sys/mman.h"
 
 uint8_t test = 0;
 
@@ -41,18 +42,29 @@ int main(int argc, char *argv[])
         fprintf(stddebug, "\t[%i] = \"%s\" @ %p\n", i, argv[i], argv[i]);
     }
 
-    /*     void *addr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-    fprintf(stddebug, "hello %p\n", addr); */
+    pid_t mem_child = fork();
+    if (mem_child == 0)
+    {
+        pledge(0xFFFF);
+        void *addr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        fprintf(stddebug, "hello %p\n", addr);
+        fprintf(stdout, "press enter to continue:\n");
+        ssize_t size = read(0, addr, 4096);
+        fprintf(stdout, "got input with size of %u\n", size);
+        _exit(0);
+    }
+    waitpid(mem_child, NULL, 0);
+
 
     sigaction_t action;
     action.handler.sa_handler = signal_abort;
     action.sa_flags = 0;
     action.sa_mask = 0;
     rt_sig_action(SIGABRT, &action, NULL);
-    
+
     pid_t curr_proc = getpid();
     fprintf(stddebug, "process is %u\n", curr_proc);
-    
+
     pid_t child = fork();
     if (child == 0)
     {
@@ -76,7 +88,7 @@ int main(int argc, char *argv[])
         fprintf(stddebug, "killing me %u now\n", child_proc);
         _exit(1 << 8 | (uint8_t)child_proc);
     }
-    
+
     sigaction_t action_chld;
     action_chld.handler.sa_handler = signal_child;
     action_chld.sa_flags = 0;

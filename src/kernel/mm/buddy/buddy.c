@@ -82,7 +82,7 @@ void buddy_map()
             order--;
         }
 
-        log_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
+        // log_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
         buddy_free(addr, order);
         addr += BUDDY_BLOCK_SIZE(order);
     }
@@ -148,7 +148,7 @@ void buddy_free(paddr_t physaddr, uint32_t order)
     while (order < BUDDY_MAX_ORDER - 1)
     {
         paddr_t buddy_addr = (paddr_t)(addr ^ BUDDY_BLOCK_SIZE(order));
-        log_debug(MODULE, "buddy_addr = %p", buddy_addr);
+        // log_debug(MODULE, "buddy_addr = %p", buddy_addr);
         
         bool found = false;
         buddy_order *o = &global_buddy.orders[order];
@@ -156,7 +156,7 @@ void buddy_free(paddr_t physaddr, uint32_t order)
         {
             if (o->blocks[i] == buddy_addr)
             {
-                log_debug(MODULE, "found block %u of order %u", i, order);
+                // log_debug(MODULE, "found block %u of order %u", i, order);
                 // swap-remove
                 o->blocks[i] = o->blocks[--o->count];
                 addr = (addr < buddy_addr) ? addr : buddy_addr;
@@ -171,10 +171,10 @@ void buddy_free(paddr_t physaddr, uint32_t order)
         }
     }
     
-    log_debug(MODULE, "found order %u", order);
+    // log_debug(MODULE, "found order %u", order);
     buddy_order *o = &global_buddy.orders[order];
-    log_debug(MODULE, "o @ %p", o);
-    log_debug(MODULE, "block[%u] @ %p", o->count, &o->blocks[o->count]);
+    // log_debug(MODULE, "o @ %p", o);
+    // log_debug(MODULE, "block[%u] @ %p", o->count, &o->blocks[o->count]);
     o->blocks[o->count++] = addr;
 }
 

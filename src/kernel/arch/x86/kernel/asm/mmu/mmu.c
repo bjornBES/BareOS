@@ -25,6 +25,7 @@
 #define MODULE "x86-MMU"
 
 extern bool paging_print_out;
+extern bool paging_disable_print;
 
 page_table_t kernel_page;
 
@@ -52,8 +53,8 @@ void mmu_arch_current_table(page_table_t *table)
 
 void mmu_arch_load_table(page_table_t *table)
 {
+    ENTER_FUNC(MODULE, "%p", table);
     paddr_t cr3 = (paddr_t)table->page_dir_phys;
-    log_debug(MODULE, "new cr3 = %p", cr3);
     __asm__ volatile("mov cr3, %0" : : "r"(cr3));
 }
 
@@ -89,11 +90,12 @@ int mmu_arch_page_fault(intr_frame_t *regs)
     if (entry)
     {
         entry_flags = pte_to_mm_flags(entry->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
+        // log_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
         paging_print_info(&info.page_directory, cr2);
     }
 #else
 #endif
+
     info.as_kernel = cr3_is_kernel;
     info.present = BIT_GET(regs->error, 0);
     info.write = BIT_GET(regs->error, 1);
@@ -101,13 +103,20 @@ int mmu_arch_page_fault(intr_frame_t *regs)
     info.exec = BIT_GET(regs->error, 4);
     info.entry_flags = entry_flags;
     info.is_cow = entry_flags.cow;
-    fprintf(VFS_FD_DEBUG, "[Page Fault] reserved bit violation %s\n", BIT_GET(regs->error, 3) BOOL_TO_STRING);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] protection keys %s\n", BIT_GET(regs->error, 5) BOOL_TO_STRING);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] shadow-stack access %s\n", BIT_GET(regs->error, 6) BOOL_TO_STRING);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] HLAT paging %s\n", BIT_GET(regs->error, 7) BOOL_TO_STRING);
-    fprintf(VFS_FD_DEBUG, "[Page Fault] SGX-specific access-control %s\n", BIT_GET(regs->error, 15) BOOL_TO_STRING);
     info.pc = regs->pc;
     info.sp = regs->sp;
+
+    log_info_int(MODULE, "[Page Fault] present %s", info.present BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] write %s", info.write BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] user %s", info.user BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] exec %s", info.exec BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] is cow page %s", info.is_cow BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] reserved bit violation %s", BIT_GET(regs->error, 3) BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] protection keys %s", BIT_GET(regs->error, 5) BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] shadow-stack access %s", BIT_GET(regs->error, 6) BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] HLAT paging %s", BIT_GET(regs->error, 7) BOOL_TO_STRING);
+    log_info_int(MODULE, "[Page Fault] SGX-specific access-control %s", BIT_GET(regs->error, 15) BOOL_TO_STRING);
+
     int result = mmu_page_fault_handler(regs, &info);
     return result;
 }
@@ -222,8 +231,6 @@ void mmu_arch_map_kernel(page_table_t *table)
     int starting_index = 256;
 #endif
 #endif
-    log_debug(MODULE, "user user_table_virt = %p", user_table_virt);
-    log_debug(MODULE, "kernel user_table_virt = %p", kernel_table_virt);
 
     for (int i = starting_index; i < PAGE_TABLE_ENTRIES; i++)
     {
@@ -234,6 +241,14 @@ void mmu_arch_map_kernel(page_table_t *table)
 int mmu_arch_map(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags)
 {
     return paging_map_page(table, virt, phys, flags);
+}
+
+int mmu_arch_map_no_print(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags)
+{
+    paging_disable_print = true;
+    int state = paging_map_page(table, virt, phys, flags);
+    paging_disable_print = false;
+    return state;
 }
 
 int mmu_arch_map_debug(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags)
@@ -247,7 +262,9 @@ int mmu_arch_map_debug(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flag
 paddr_t mmu_arch_unmap(page_table_t *table, vaddr_t virt)
 {
     ENTER_FUNC(MODULE, "%p, %p", table, virt);
+    paging_print_out = true;
     paddr_t addr = paging_unmap_page(table, virt);
+    paging_print_out = false;
     if (addr == RETURN_FAILED)
     {
         return 0;
@@ -287,7 +304,7 @@ paddr_t mmu_arch_virt_to_phys(page_table_t *table, vaddr_t virt)
 
 int mmu_arch_is_present(page_table_t *table, vaddr_t virt)
 {
-    // ENTER_FUNC(MODULE, "%p, %p", table, virt);
+    ENTER_FUNC(MODULE, "%p, %p", table, virt);
 #ifdef PAGING_64
     // paging 64
     page_table_entry64 *entry = paging64_get_pt_entry(table, virt, 0, 0);

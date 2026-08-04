@@ -26,13 +26,15 @@ typedef enum
     THREAD_REMAINS,
 } thread_state;
 
+struct process;
+
 typedef struct thread
 {
     struct process *proc;
 
     // kernel stack
     vaddr_t kernel_stack;
-    vaddr_t raw_kernel_stack;
+    vaddr_t kernel_stack_top;
     size_t stack_size; // stack_top = kernel_stack + stack_size
 
     uint64_t fs_base;
@@ -48,6 +50,13 @@ typedef struct thread
     uint32_t timeslice;       // ticks remaining this quantum
     uint32_t timeslice_reset; // what to reload when quantum expires
     uint64_t wake_time;
+
+    bool is_wait_thread;
+    bool is_main_thread;
+    bool is_kernel_thread;
+    bool is_user_thread;
+    bool is_idle_thread;
+    bool in_queue;
 
     // sys
     int *clear_child_tid;

@@ -12,8 +12,10 @@
 #include "processor_ctl.h"
 #include "kernel.h"
 #include "debug/debug.h"
+#include "kernel/ivt.h"
 #include "kernel/asm/MSR/MSR.h"
 #include "kernel/asm/acpi/apic/lapic.h"
+#include "kernel/asm/irq/i8259.h"
 
 #include "mm/kstack/kstack_allocator.h"
 
@@ -21,7 +23,6 @@
 
 cpu_t cpus[MAX_CPUS] = {0};
 cpu_t *bsp_cpu = NULL;
-
 
 // called once per CPU during init
 void cpu_set_gs(cpu_t *cpu)
@@ -63,6 +64,7 @@ cpu_t *cpu_arch_get(cpu_id id)
 
 void cpu_init_bsp(uint64_t calibrated)
 {
+    ENTER_FUNC(MODULE, "%u", calibrated);
     cpu_t *cpu = &cpus[0];
     cpu->self = cpu;
     cpu->apic_id = lapic_get_id();
@@ -71,14 +73,14 @@ void cpu_init_bsp(uint64_t calibrated)
     cpu->current = NULL; // scheduler fills this
     cpu->kernel_stack = kstack_per_cpu_alloc();
     bsp_cpu = cpu;
-    
+
     ctl_cr0_add(X86_CR0_MP);
     ctl_cr0_remove(X86_CR0_EM);
-    
+
     ctl_cr4_add(X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT);
-    
+
     cpu_set_gs(cpu);
-    
+
     lapic_timer_init(calibrated);
     log_info(MODULE, "local APIC enabled");
 
@@ -108,21 +110,15 @@ void cpu_init_ap(lapic_id apic_id)
 
     cpu->kernel_stack = kstack_per_cpu_alloc();
 
-    // copy BSP GDT as base
-    memcpy(cpu->gdt, gdt_table, sizeof(gdt_table));
+    x86_GDT_initialize(cpu->gdt_table, &cpu->tss);
+    // log_debug(MODULE, "GDT is done");
 
-    // set up GDTR for this CPU's GDT copy
-    cpu->gdtr.Ptr = cpu->gdt;
-    cpu->gdtr.limit = sizeof(cpu->gdt) - 1;
+    i8259_get_driver()->disable();
 
-    // load the new GDT + TSS
-    x86_GDT_load(&cpu->gdtr, cpu->gdt);
+    x86_GDT_load(&cpu->gdtr, cpu->gdt_table);
+    // log_debug(MODULE, "GDT is loaded");
 
-    // init this CPU's TSS — zero it, patch descriptor to point to our tss
-    memset(&cpu->tss, 0, sizeof(tss_t));
-    tss_initialize(&cpu->tss, &cpu->gdt[TSS_INDEX]);
-
-    x86_GDT_dump_selector(TSS_SELECTOR);
+    x86_gdt_dump_selector(TSS_SELECTOR);
 
     tss_load(TSS_SELECTOR);
 

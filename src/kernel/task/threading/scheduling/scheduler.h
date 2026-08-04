@@ -11,13 +11,14 @@
 #pragma once
 #include "task/threading/thread.h"
 #include "sched_types.h"
+#include "kernel/cpu.h"
 
 
 thread_t *sched_get_current();
 
 void sched_init(thread_t *main_thread);
 void sched_thread_info();
-void sched_thread_exit();
+void sched_thread_exit(uintptr_t ret);
 
 void sched_sleep(uint64_t ns);
 void sched_sleep_ms(uint64_t ms);
@@ -32,6 +33,7 @@ void sched_unblock(thread_t *thread);
 
 thread_t *sched_find_waiting(process_t *proc);
 
+int sched_has_work(cpu_t *cpu);
 int sched_yield();
 
 int schedule(intr_frame_t *regs);

@@ -75,6 +75,7 @@ void mmu_arch_copy_from(page_table_t *dst, page_table_t *src);
 // creates intermediate tables as needed
 int mmu_arch_map(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags);
 int mmu_arch_map_debug(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags);
+int mmu_arch_map_no_print(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags);
 
 // unmap a single virtual page
 // does NOT free the physical page, that is the callers job

@@ -93,5 +93,6 @@ void x86_idt_initialize();
 #ifdef DEBUG
 
 void x86_idt_dump_selector(uint16_t sel);
+void x86_idt_dump_selector_index(uint16_t index);
 
 #endif

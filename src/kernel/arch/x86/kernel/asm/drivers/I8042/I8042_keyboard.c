@@ -167,7 +167,7 @@ void I8042_first_channel_handler(device_t *dev)
 {
     // fputs("I8042_first_channel_handler\n", VFS_FD_DEBUG);
     // ENTER_FUNC(MODULE, "%p", dev);
-    spinlock_acquire(&i8042_handler);
+    lock(MODULE, i8042_handler);
     // read data
     uint8_t raw = I8042_read(I8042_DATA_PORT);
     
@@ -177,11 +177,13 @@ void I8042_first_channel_handler(device_t *dev)
     if (I8042_first_channel_device == I8042_CHANNEL_KEYBOARD_INITALIZED)
     {
         key_event ev;
+        memset(&ev, 0, sizeof(key_event));
         if (i8042_process_byte(raw, &ev))
         {
             keyboard_priv_t *priv = (keyboard_priv_t *)dev->priv;
             // log_debug(MODULE, "I8042_first_channel_handler: priv = %p", priv);
             gki_event_t event;
+            memset(&event, 0, sizeof(gki_event_t));
             update_mods(&ev, priv);
             if (ev.action == KEY_PRESSED)
             {
@@ -191,7 +193,7 @@ void I8042_first_channel_handler(device_t *dev)
         }
     }
     I8042_first_channel_buffer_pointer = 0;
-    spinlock_release(&i8042_handler);
+    unlock(MODULE, i8042_handler);
 }
 
 void i8042_set_leds(device_t *dev, uint8_t leds)
@@ -221,6 +223,7 @@ device_t *I8042_keyboard_device()
     keyboard_priv_t *priv = keyboard_init(kb);
     priv->set_leds = i8042_set_leds;
     priv->channel = 1;
+    priv->mods = 0;
     kb->priv = priv;
 
 

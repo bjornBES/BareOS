@@ -20,6 +20,8 @@ fd_t fd_alloc_for_process(vfs_node_t *node, fd_table_t *table);
 
 fd_entry_t *fd_get_for_process(fd_t fd, fd_table_t *table);
 
+void fd_insert(vfs_node_t *node, fd_t file);
+
 // validate fd, return node ptr
 vfs_node_t *fd_get(fd_t fd);
 

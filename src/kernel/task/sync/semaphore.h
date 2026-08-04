@@ -10,7 +10,8 @@
 
 #pragma once
 
-#include "task/threading/spinlock/spinlock_types.h"
+#include "task/threading/spinlock/spinlock.h"
+#include "task/threading/scheduling/sched_types.h"
 #include "lists/list.h"
 #include <types.h>
 
@@ -18,7 +19,8 @@ typedef struct
 {
     spinlock_t lock;
     int count;
-    list_t waiters;
+    block_queue_t waiters;
+    list_t queue_list;
 } semaphore_t;
 
 void sem_init(semaphore_t *s, int initial);

@@ -10,16 +10,17 @@
 
 #pragma once
 
-#define BIT(x)               (1ull << x)
+#define BIT(x)                      (1ull << (x))
 
-#define FLAG_SET(x, flag)    (x) |= (flag)
-#define FLAG_UNSET(x, flag)  (x) &= ~(flag)
-#define FLAG_IS_SET(x, flag) (((x) & (flag)) == (flag))
-#define FLAG_GET(x, flag)    (x) & (flag)
+#define FLAG_SET(x, flag)           (x) |= (flag)
+#define FLAG_UNSET(x, flag)         (x) &= ~(flag)
+#define FLAG_IS_SET(x, flag)        (((x) & (flag)) == (flag))
+#define FLAG_GET(x, flag)           (x) & (flag)
 
-#define BIT_SET(x, bit)      (x) |= (1 << (bit))
-#define BIT_UNSET(x, bit)    (x) &= ~(1 << (bit))
-#define BIT_GET(x, bit)      (((x) >> (bit)) & 1)
+#define BIT_SET(x, bit)             (x) |= (1 << (bit))
+#define BIT_UNSET(x, bit)           (x) &= ~(1 << (bit))
+#define BIT_GET(x, bit)             (((x) >> (bit)) & 1)
+#define BIT_GET_RANGE(x, low, high) (((x) >> (low)) & (BIT((high) - (low) + 1) - 1))
 
 #define BIT_FIRST_ZERO(x, type, res)            \
     {                                           \

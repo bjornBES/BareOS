@@ -115,6 +115,10 @@ void timer_register(device_t *dev)
 
 uint64_t timer_now_ns()
 {
+    if (active_source == NULL)
+    {
+        return 0;
+    }
     timer_priv_t *p = (timer_priv_t *)active_source->priv;
     if (p->read_counter == NULL || p->counter_freq == NULL)
     {
@@ -168,8 +172,33 @@ uint64_t timer_get_boot_time()
     return boot_unix_ns + (timer_now_ns() - boot_ns);
 }
 
+void timer_set_device_oneshot(device_t *dev, uint64_t ns, void (*cb)(void))
+{
+    timer_priv_t *p = (timer_priv_t *)dev->priv;
+    p->set_oneshot(dev, ns, (void (*)(device_t *))cb);
+}
+
 void timer_set_oneshot(uint64_t ns, void (*cb)(void))
 {
-    timer_priv_t *p = (timer_priv_t *)active_event->priv;
-    p->set_oneshot(active_event, ns, (void (*)(device_t *))cb);
+    timer_set_device_oneshot(active_event, ns, cb);
 }
+
+void timer_set_device_periodic(device_t *dev, uint64_t ns, void (*cb)(void))
+{
+    timer_priv_t *p = (timer_priv_t *)dev->priv;
+    p->set_periodic(dev, ns, (void (*)(device_t *))cb);
+}
+
+void timer_set_device_periodic_wrapper(void *_args)
+{
+    ENTER_FUNC(MODULE, "%p", _args);
+    periodic_function_args_t *args = (periodic_function_args_t*)_args;
+    timer_set_device_periodic(args->dev, args->ns, args->cb);
+    // log_debug(MODULE, "DONE");
+}
+
+void timer_set_periodic(uint64_t ns, void (*cb)(void))
+{
+    timer_set_device_oneshot(active_event, ns, cb);
+}
+

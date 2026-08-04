@@ -152,7 +152,7 @@ void *kmalloc(size_t size)
 		{
 			alloc_new_page();
 		}
-		// KernelPanic(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
+		// KERNEL_PANIC(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
 	}
 	// pmm_print_info_verbose();
 

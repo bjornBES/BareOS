@@ -72,10 +72,10 @@ if debug:
     
 else:
     active_cmd = run_bash_script
-    qemu_args.extend(["-smp", "cores=2,threads=1,sockets=1"])
 
+qemu_args.extend(["-smp", "cores=2,threads=1,sockets=1"])
 qemu_args.extend([
-    "-k", "da", "-debugcon", "stdio", "-m", "1g", "-d", "guest_errors,int,cpu_reset", "-D", "debug.txt",
+    "-k", "da", "-debugcon", "stdio", "-m", "64m", "-d", "guest_errors,int,cpu_reset", "-D", "debug.txt",
     "-netdev", "user,id=mynet0", "-net", "nic,model=rtl8139,netdev=mynet0"])
 
 if imageType == "floppy":

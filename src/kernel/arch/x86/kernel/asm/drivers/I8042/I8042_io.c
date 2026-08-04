@@ -81,7 +81,7 @@ void I8042_flush_output_buffer(size_t timeout)
 
     if (BIT_GET(inb(I8042_STATUS_PORT), I8042_STAT_OUTPUT_BUFF_STATE) == I8042_STAT_OUTPUT_FULL)
     {
-        log_err(MODULE, "Couldn't flush Output buffer");
+        log_err_int(MODULE, "Couldn't flush Output buffer");
         return;
     }
 }
@@ -117,7 +117,7 @@ void I8042_write_first_channel(uint8_t data)
 
     if (BIT_GET(inb(I8042_STATUS_PORT), I8042_STAT_INPUT_BUFF_STATE) == I8042_STAT_INPUT_EMPTY)
     {
-        log_err(MODULE, "writing to first channel failed due to time-out");
+        log_err_int(MODULE, "writing to first channel failed due to time-out");
         return;
     }
 
@@ -140,7 +140,7 @@ bool I8042_first_channel_wait_for_ack()
             return true; // acknowledge sended
         }
     }
-    log_err(MODULE, "Timer ran out in polling first channel");
+    log_err_int(MODULE, "Timer ran out in polling first channel");
     return false;
 }
 
@@ -153,13 +153,13 @@ bool I8042_first_channel_wait_for_reset()
 {
     if (I8042_check_status(I8042_STAT_OUTPUT_BUFF_STATE, 1000, I8042_STAT_OUTPUT_FULL))
     {
-        log_err(MODULE, "First channel reset response failed");
+        log_err_int(MODULE, "First channel reset response failed");
         return false;
     }
     uint8_t result = inb(I8042_DATA_PORT);
     if (result != 0xAA)
     {
-        log_err(MODULE, "First channel reset self-test failed: 0x%X", result);
+        log_err_int(MODULE, "First channel reset self-test failed: 0x%X", result);
         return false;
     }
     return true;
@@ -193,7 +193,7 @@ bool I8042_second_channel_wait_for_ack()
         }
         ticks++;
     }
-    log_err(MODULE, "Timer ran out in polling second channel");
+    log_err_int(MODULE, "Timer ran out in polling second channel");
     return false;
 }
 

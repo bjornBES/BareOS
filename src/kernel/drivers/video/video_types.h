@@ -11,7 +11,7 @@
 #pragma once
 
 #include <types.h>
-#include "task/threading/spinlock/spinlock_types.h"
+#include "task/threading/spinlock/spinlock.h"
 
 #include <boot/video/framebuffer.h>
 

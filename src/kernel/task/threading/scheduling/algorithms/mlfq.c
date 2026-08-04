@@ -42,7 +42,9 @@ thread_t *mlfq_steal_one(void *runq_data)
         if (n)
         {
             q->count--;
-            return container_of(n, thread_t, node);
+            thread_t *t = container_of(n, thread_t, node);
+            t->in_queue = false;
+            return t;
         }
     }
     return NULL;
@@ -64,14 +66,18 @@ bool mlfq_should_preempt(void *runq_data, thread_t *current)
 
 void mlfq_yield(void *runq_data, thread_t *current)
 {
+    if (current == NULL)
+    {
+        return;
+    }
     (void)runq_data;
-    if (current->priority + MLFQ_PROMOTE_STEP <= PRIORITY_HIGH)
+    if (current->priority + MLFQ_PROMOTE_STEP <= PRIORITY_L8)
     {
         current->priority = current->priority + MLFQ_PROMOTE_STEP;
     }
     else
     {
-        current->priority = PRIORITY_HIGH;
+        current->priority = PRIORITY_L8;
     }
     current->timeslice_reset = priority_to_timeslice(current->priority);
 }
@@ -92,7 +98,7 @@ void mlfq_tick(void *runq_data, thread_t *current)
         }
         else
         {
-            current->priority = PRIORITY_LOW;
+            current->priority = PRIORITY_L0;
         }
         current->timeslice_reset = priority_to_timeslice(current->priority);
     }
@@ -101,14 +107,13 @@ void mlfq_tick(void *runq_data, thread_t *current)
 thread_t *mlfq_pick_next(void *runq_data)
 {
     mlfq_data_t *q = runq_data;
-    log_debug(MODULE, "q = %p", q);
     if (q->count == 0)
     {
         return NULL;
     }
     for (int b = MLFQ_NUM_BUCKETS - 1; b >= 0; b--)
     {
-        log_debug(MODULE, "&q->queues[%u] = %p", b, &q->queues[b]);
+        // log_debug(MODULE, "&q->queues[%u] = %p", b, &q->queues[b]);
         if (q->queues[b].count > 0)
         {
             list_node_t *n = list_pop_head(&q->queues[b]);
@@ -116,6 +121,7 @@ thread_t *mlfq_pick_next(void *runq_data)
             {
                 q->count--;
                 thread_t *t = container_of(n, thread_t, node);
+                t->in_queue = false;
                 t->timeslice = t->timeslice_reset; // reload cached value, no recompute
                 return t;
             }
@@ -126,10 +132,23 @@ thread_t *mlfq_pick_next(void *runq_data)
 
 void mlfq_enqueue(void *runq_data, thread_t *t)
 {
+    if (t->in_queue)
+    {
+        return;
+    }
+    
+    t->in_queue = true;
     mlfq_data_t *q = runq_data;
     int b = priority_to_bucket(t->priority);
     list_push_tail(&q->queues[b], &t->node);
     q->count++;
+}
+
+thread_t *mlfq_get_first(void *runq_data, int level)
+{
+    mlfq_data_t *q = runq_data;
+    thread_t *t = container_of(q->queues[level].head, thread_t, node);
+    return t;
 }
 
 int mlfq_thread_count(void *runq_data)
@@ -159,7 +178,9 @@ sched_class_t mlfq_class;
 const sched_class_t *mlfq_get_class()
 {
     mlfq_class.name = "MLFQ";
+    mlfq_class.max_level = MLFQ_NUM_BUCKETS - 1;
     mlfq_class.ops.init = mlfq_init;
+    mlfq_class.ops.get_head = mlfq_get_first;
     mlfq_class.ops.thread_count = mlfq_thread_count;
     mlfq_class.ops.enqueue = mlfq_enqueue;
     mlfq_class.ops.pick_next = mlfq_pick_next;

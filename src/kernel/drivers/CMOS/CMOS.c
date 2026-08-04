@@ -12,7 +12,7 @@
 
 #include "kernel/io.h"
 
-#include <stdbool.h>
+#include <types.h>
 
 #define CURRENT_YEAR 2026 // Change this each year!
 
@@ -65,9 +65,8 @@ static inline int is_leap_year(int year)
     return 0;
 }
 
-time_t CMOS_read_time()
+void cmos_get_currect_datetime(time_struct_t *out)
 {
-    time_t result;
     uint8_t second;
     uint8_t minute;
     uint8_t hour;
@@ -127,7 +126,26 @@ time_t CMOS_read_time()
         if (year < CURRENT_YEAR)
             year += 100;
     }
+    out->second = second;
+    out->minute = minute;
+    out->hour = hour;
+    out->day = day;
+    out->month = month;
+    out->year = year;
+}
 
+time_t cmos_read_time()
+{
+    time_t result;
+    time_struct_t datetime;
+    cmos_get_currect_datetime(&datetime);
+    uint8_t second = datetime.second;
+    uint8_t minute = datetime.minute;
+    uint8_t hour = datetime.hour;
+    uint8_t day = datetime.day;
+    uint8_t month = datetime.month;
+    uint32_t year = datetime.year;
+    
     uint8_t month_code_array[] = {31, 28 + is_leap_year(year), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
     // days from 1970 up to but not including current year

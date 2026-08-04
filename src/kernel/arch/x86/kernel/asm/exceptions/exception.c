@@ -13,6 +13,7 @@
 #include "stdio.h"
 #include "kernel.h"
 #include "isr.h"
+#include "kernel/asm/ivt/idt.h"
 #include "kernel/ivt.h"
 #include "kernel/cpu.h"
 #include "task/threading/scheduling/scheduler.h"
@@ -63,7 +64,7 @@ int exception_handler(intr_frame_t *regs)
         else
         {
             // log_crit(MODULE, "Unhandled exception %d %s 0x%x", regs->interrupt, g_Exceptions[regs->interrupt], regs->error);
-            KernelPanic(MODULE, "Unhandled exception %d", regs->interrupt);
+            KERNEL_PANIC(MODULE, "Unhandled exception %d", regs->interrupt);
         }
     }
 
@@ -78,9 +79,19 @@ int exception_handler(intr_frame_t *regs)
 
 void ivt_arch_set_handler(uint32_t interrupt, int (*handler)(intr_frame_t *))
 {
-    log_debug(MODULE, "Registering IVT handler (%p) for int %d", handler, interrupt);
+    log_debug_int(MODULE, "Registering IVT handler (%p) for int %d", handler, interrupt);
     x86_isr_register_handler(interrupt);
     exception_handlers_arch[interrupt] = handler;
+}
+
+void ivt_arch_enable(uint32_t vector)
+{
+    x86_idt_enable_gate(vector);
+}
+
+void ivt_arch_disable(uint32_t vector)
+{
+    x86_idt_disable_gate(vector);
 }
 
 void exception_init()

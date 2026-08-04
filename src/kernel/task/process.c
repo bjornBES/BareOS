@@ -54,34 +54,55 @@ int page_fault_try_count = 0;
 
 int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
 {
-    log_info(MODULE, "[Page Fault] entry flags 0x%x", info->entry_flags);
-    log_info(MODULE, "[Page Fault] present %s", info->present BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] write %s", info->write BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] user %s", info->user BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] exec %s", info->exec BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] is cow page %s", info->is_cow BOOL_TO_STRING);
+#define KILL_PROC(proc, signum, message, ...)    \
+    fprintf(VFS_FD_DEBUG, message, __VA_ARGS__); \
+    return process_kill(proc->pid, signum);
+
     vaddr_t faulting_va = PAGE_ALIGN_DOWN(info->fault_addr);
     thread_t *current_thread = sched_get_current();
     if (faulting_va == 0)
     {
-        log_err(MODULE, "NULL EXCEPTION");
+        log_err_int(MODULE, "NULL EXCEPTION");
+        if (current_thread == NULL)
+        {
+            // now a kernel problem bc there aren't any threads running
+            return RETURN_ERROR;
+        }
+        // first send sigsegv for invalid memory reference
         signal_send_group(current_thread->proc, SIGSEGV);
         signal_try_deliver(current_thread, NULL, regs);
-        process_kill(current_thread->proc->pid, SIGKILL);
 
-        KernelPanic(MODULE, "NULL exception TODO:");
+        // if that didn't work... KILL IT NOW
+        process_kill(current_thread->proc->pid, SIGKILL);
     }
 
-    if (current_thread)
+    if (info->as_kernel)
     {
-        ctx_dump(&current_thread->ctx);
-        log_info(MODULE, "comes from thread %u", current_thread->tid);
+        fprintf(VFS_FD_DEBUG, "active is kernels (%p)\n", kernel_page);
+    }
+
+    if (!current_thread)
+    {
+        // again now a kernel problem bc there aren't any threads running
+        return RETURN_ERROR;
+    }
+
+    if (current_thread->state == THREAD_DEAD || current_thread->state == THREAD_REMAINS)
+    {
+        log_info_int(MODULE, "current thread is dead or remains");
+        // TODO
+        KERNEL_PANIC(MODULE, "current thread");
     }
 
     process_t *current_process = current_thread->proc;
+    // check if there are any processes
+    // yes page faults can happen before a process is running
+    // like to write something into the stack or what ever
+    // but that should still be done using the kernel page dir
+    // right now we don't need it.
     if (current_process == NULL)
     {
-        log_info(MODULE, "comes from process %u", next_pid - 1);
+        /* log_info(MODULE, "comes from process %u", next_pid - 1);
         current_process = pid_table[next_pid - 1];
         vma_t *vma = vma_find(current_process->vma, info->fault_addr);
         if (vma == NULL)
@@ -101,124 +122,76 @@ int process_user_page_fault(intr_frame_t *regs, mmu_fault_info *info)
             int state = mmu_arch_map(current_process->page_dir, faulting_va, frame, vma->flags);
             memset((void *)faulting_va, 0, PAGE_SIZE); // demand-zero
             return state;                              // resume faulting instruction
-        }
-        log_warn(MODULE, "current process is null");
-        return RETURN_FAILED;
+        } */
+        // but if we do need it panic for now
+        KERNEL_PANIC(MODULE, "TODO: current process is null");
     }
 
-    log_info(MODULE, "current cpuid is %u", cpu_arch_get_current()->cpu_id);
-    log_info(MODULE, "current apic_id is %u", cpu_arch_get_current()->apic_id);
+    trace_with_id(4, LVL2, "Page fault\n");
+    // ok now we are here we know there is a process running and it was that process that did it
 
     paddr_t addr = mmu_arch_virt_to_phys(current_process->page_dir, faulting_va);
-    log_info(MODULE, "[Page Fault] Current page dir %p, User process page dir %p", info->page_directory.page_dir_phys, current_process->page_dir->page_dir_phys);
-    log_info(MODULE, "[Page Fault] Current page dir %p, User process page dir %p", info->page_directory.page_dir, current_process->page_dir->page_dir);
-    log_info(MODULE, "[Page Fault] User process from virt address %p and phys address %p", faulting_va, addr);
 
-    if (current_process != NULL)
+    // if (current_process != NULL)
+    // what? yes this was from before the rewrite...
+    // what did you think Bjorn?
+
+    // is it within the processes memory range?
+    vma_t *vma = vma_find(current_process->vma, info->fault_addr);
+    if (vma == NULL)
     {
-        vma_t *vma = vma_find(current_process->vma, info->fault_addr);
-        if (vma == NULL)
+        // no? KILL IT
+        KILL_PROC(current_process, SIGSEGV, "faulting address was outside the processes VMA", 0);
+    }
+    else
+    {
+        if (!info->present)
         {
-            log_info(MODULE, "%p has no vma entry", info->fault_addr);
-            return process_kill(current_process->pid, SIGSEGV);
-            return RETURN_GOOD;
-        }
-        else
-        {
-            if (!info->present)
+            log_info_int(MODULE, "FIX_FOUND: allocate a new physical frame and map that frame to the virtual address");
+            paddr_t frame = pmm_alloc_frame();
+            if (FLAGS_TO_RAW(vma->flags) == 0)
             {
-                log_info(MODULE, "here1");
-                paddr_t frame = pmm_alloc_frame();
-                if (FLAGS_TO_RAW(vma->flags) == 0)
-                {
-                    log_info(MODULE, "%p has no vma entry", info->fault_addr);
-                    return process_kill(current_process->pid, SIGSEGV);
-                }
-                // vma->flags.user = info->user;
-                vma->flags.user = 1;
-                int state = mmu_arch_map(current_process->page_dir, faulting_va, frame, vma->flags);
-                memset((void *)faulting_va, 0, PAGE_SIZE); // demand-zero
-                log_info(MODULE, "done with state %i", state);
-                return state;                              // resume faulting instruction
+                KILL_PROC(current_process, SIGSEGV, "processes VMA was no flags?", 0);
+                // ok this should count as a panic... instead of "just" killing the process
             }
-            if (info->is_cow && info->write)
+            vma->flags.user = 1;
+            int state = mmu_arch_map_no_print(current_process->page_dir, faulting_va, frame, vma->flags);
+            memset((void *)faulting_va, 0, PAGE_SIZE); // demand-zero
+            mmu_arch_flush_page(faulting_va);
+            return state;                              // resume faulting instruction
+        }
+        if (info->is_cow && info->write)
+        {
+            // here we use COW
+            log_info_int(MODULE, "FIX_FOUND: frame was allocated with COW");
+            paddr_t new_phys = pmm_alloc_frame();
+            if (new_phys == 0)
             {
-                log_debug(MODULE, "COW it to page dir %p", current_process->page_dir);
-                paddr_t new_phys = pmm_alloc_frame();
+                new_phys = pmm_alloc_frame();
                 if (new_phys == 0)
                 {
-                    new_phys = pmm_alloc_frame();
-                    if (new_phys == 0)
-                    {
-                        pmm_print_info_verbose();
-                        log_err(MODULE, "OOM");
-                        KernelPanic(MODULE, "OOM");
-                    }
+                    pmm_print_info_verbose();
+                    KERNEL_PANIC(MODULE, "OOM");
                 }
-
-                mmu_copy_contents(addr, new_phys);
-                pmm_deref_frame(addr); // decrement old frame's refcount
-                mmu_arch_unmap(current_process->page_dir, PAGE_ALIGN_DOWN(faulting_va));
-
-                // remap this VA to new_phys with write=1, cow=0
-                mmu_flags_t new_flags = info->entry_flags;
-                new_flags.write = 1;
-                new_flags.cow = 0;
-                new_flags.user = 1;
-                int state = mmu_arch_map(current_process->page_dir, PAGE_ALIGN_DOWN(faulting_va), new_phys, new_flags);
-                mmu_arch_flush_page(faulting_va);
-                log_debug(MODULE, "DONE with %i", state);
-                // hexdump((uint64_t *)faulting_va, PAGE_SIZE);
-                return state;
             }
-        }
 
-        if (addr != 0 && info->present && page_fault_try_count < 3)
-        {
-            page_fault_try_count++;
-            log_info(MODULE, "%p Page is present", info->fault_addr);
-            return RETURN_GOOD;
-        }
-        page_fault_try_count = 0;
+            mmu_copy_contents(addr, new_phys);
+            pmm_deref_frame(addr); // decrement old frame's refcount
+            mmu_arch_unmap(current_process->page_dir, PAGE_ALIGN_DOWN(faulting_va));
 
-        thread_t *current_thread = sched_get_current();
-        log_info(MODULE, "comes from thread %u", current_thread->tid);
-
-        if (info->pc >= (uint64_t)KERNEL_VIRT_BASE)
-        {
-            schedule(NULL);
-        }
-
-        if (info->as_kernel)
-        {
-            fprintf(VFS_FD_DEBUG, "[Page Fault] active is kernels (%p)\n", kernel_page);
-        }
-        log_info(MODULE, "came from %p", info->page_directory.page_dir_phys);
-
-        if (current_thread->state == THREAD_DEAD)
-        {
-            KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
-        }
-
-        if (current_thread->tid != 0 && current_thread->state != THREAD_DEAD)
-        {
-            sched_thread_exit();
-            return RETURN_GOOD;
-        }
-
-        pmm_print_info_verbose();
-
-        fprintf(VFS_FD_DEBUG, "[Page Fault] Virtual address %p\n", info->fault_addr);
-        fprintf(VFS_FD_DEBUG, "[Page Fault] Physical address %p\n", mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)info->fault_addr));
-
-        if (info->as_kernel)
-        {
-            KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
+            // remap this VA to new_phys with write=1, cow=0
+            mmu_flags_t new_flags = info->entry_flags;
+            new_flags.write = 1;
+            new_flags.cow = 0;
+            new_flags.user = 1;
+            int state = mmu_arch_map_no_print(current_process->page_dir, PAGE_ALIGN_DOWN(faulting_va), new_phys, new_flags);
+            mmu_arch_flush_page(faulting_va);
+            return state;
         }
     }
-    KernelPanic("Page Fault", "Got page fault from %p", info->fault_addr);
-    // return process_kill(current_process->pid, SIGSEGV);
-    return RETURN_GOOD;
+
+    return RETURN_FAILED;
+    #undef KILL_PROC
 }
 
 process_t *process_create()
@@ -268,6 +241,7 @@ int process_load(char *path, process_t *proc)
     fd_t file = fopen(path, "");
     loader *loader = Loader_probe(file);
     log_info(MODULE, "loading proc->vma = %p", proc->vma);
+    mmu_arch_load_table(proc->page_dir);
     int state = loader->load(file, proc, loader);
     if (state != RETURN_GOOD)
     {
@@ -336,7 +310,7 @@ pid_t process_vfork(syscall_info *info)
     ctx_dump(&parent_thread->ctx);
     log_debug(NO_MODULE, "======= FRAME =======");
     ivt_dump_frame(info->regs);
-    sched_thread_info();
+    // sched_thread_info();
     // 1.
     process_t *parent = parent_thread->proc;
 
@@ -412,6 +386,7 @@ pid_t process_vfork(syscall_info *info)
     mmu_arch_map_kernel(child->page_dir);
 
     log_debug(MODULE, "forked %u from %u", child->pid, parent->pid);
+    ctx_arch_set_retval(&child_thread->ctx, 0);
     frame_arch_set_retval(info->regs, child->pid);
 
     log_debug(NO_MODULE, "======= CHILD =======");
@@ -479,11 +454,15 @@ pid_t process_fork(syscall_info *info)
     child->threads[0] = child_thread;
     child->thread_count++;
 
+    ctx_arch_set_retval(&child_thread->ctx, 0);
     sched_add(child_thread);
 
     mmu_arch_map_kernel(child->page_dir);
 
     log_debug(MODULE, "forked %u from %u", child->pid, parent->pid);
+    trace(4, LVL1, "Process %u was forked from process %u\n", child->pid, parent->pid);
+
+    process_list(parent);
 
     return child->pid;
 }
@@ -613,6 +592,10 @@ process_t *process_find_child(process_t *parent, pid_t child_pid)
     while (child)
     {
         process_t *next = (process_t *)child->ladder.next;
+        if (next->pid == child_pid)
+        {
+            return next;
+        }
         if (next->child != NULL)
         {
             process_t *result = process_find_child(next, child_pid);
@@ -643,6 +626,7 @@ void kernel_init_process(process_t *proc, char *path, process_args_t *info)
     mmu_arch_current_table(&current_page);
 
     log_info(MODULE, "loading program %s", path);
+    mmu_arch_load_table(proc->page_dir);
     process_load(path, proc);
 
     log_info(MODULE, "loading args");
@@ -718,6 +702,7 @@ thread_t *process_exec(char *proc_path, char *argv[], char *envp[], process_t *p
     }
 
     log_info(MODULE, "loading program %s", path);
+    mmu_arch_load_table(proc->page_dir);
     process_load(path, proc);
 
     log_info(MODULE, "loading args");
@@ -817,9 +802,36 @@ pid_t proc_get_ppid()
 
 SYSCALL_DEFINE0(proc_get_ppid);
 
+void process_list(process_t *parent)
+{
+    char *state_string[5] = {
+        [PROC_STATE_RUNNING] = "RUNNING",
+        [PROC_STATE_READY] = "READY",
+        [PROC_STATE_SUSPENDED] = "SUSPENDED",
+        [PROC_STATE_SLEEP] = "SLEEP",
+        [PROC_STATE_ZOMBIE] = "ZOMBIE",
+    };
+    process_t *first = parent->child;
+    log_info(MODULE, "pid %u { state: %s }", parent->pid, state_string[parent->state]);
+    if (!first)
+    {
+        return; // no children
+    }
+    task_ladder_t *cur = &first->ladder;
+
+    do
+    {
+        process_t *p = (process_t *)cur;
+
+        log_info(MODULE, "> pid %u { state: %s }", p->pid, state_string[p->state]);
+
+        cur = cur->next;
+    } while (cur != NULL);
+}
+
 void process_init()
 {
-    mmu_arch_unmap(&kernel_page, KERNEL_VDSO_VIRT);
+    // mmu_arch_unmap(&kernel_page, KERNEL_VDSO_VIRT);
 
     log_debug(MODULE, "init process");
     next_pid = 0;

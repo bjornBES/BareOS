@@ -35,6 +35,14 @@ void smp_arch_send_ipi(uint8_t apic_id, uint8_t vector);
 void smp_arch_send_ipi_all(uint8_t vector);    // broadcast
 void smp_arch_send_ipi_others(uint8_t vector); // all except self
 
+uintptr_t smp_idle_thread(void *_);
+
+void smp_cpus_stop();
+bool smp_cpus_has_stop();
+void smp_cpus_continue();
+
+void smp_call_function(uint8_t ahci_id, void (*func)(void*), void *arg);
+
 // identity
 uint8_t smp_arch_current_apic_id();
 uint32_t smp_arch_cpu_count();

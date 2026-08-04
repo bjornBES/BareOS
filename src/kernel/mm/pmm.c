@@ -141,7 +141,8 @@ static paddr_t bump_alloc()
     if (bump_current >= bump_end)
     {
         log_err(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
-        KernelPanic(MODULE, "early heap exhausted");
+        return 0;
+        KERNEL_PANIC(MODULE, "early heap exhausted");
     }
     paddr_t frame = bump_current;
     bump_current += PAGE_SIZE;

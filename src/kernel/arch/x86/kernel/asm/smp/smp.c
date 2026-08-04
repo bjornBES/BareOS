@@ -12,6 +12,7 @@
 #include "cpu.h"
 #include "ipi.h"
 #include "kernel/asm/acpi/apic/lapic.h"
+#include "kernel/asm/acpi/apic/ioapic.h"
 #include "kernel/asm/cpuid/cpuid.h"
 #include "kernel/irq.h"
 #include "kernel/ivt.h"
@@ -39,23 +40,84 @@ void ap_startup(uint64_t apic_id)
     log_info("CPU", "AP %u started", apic_id);
     irq_arch_disable();
     cpu_init_ap(apic_id);
+
+    // x86_isr_initialize();
     ivt_arch_init();
-    lapic_enable();
+    inline_asm("sti" : : : "memory");
+    log_debug(MODULE, "IDT is done");
     syscall_per_cpu_init();
+
+    mmu_arch_load_table(&kernel_page);
+
     irq_arch_enable();
-    lapic_timer_init(calibrated);
+
+    lapic_enable();
+
+    lapic_timer_init(calibrate_lapic_timer());
+    irq_arch_enable();
     log_info("CPU", "AP %u online", apic_id);
 
     total_cores_init++;
     while (true)
     {
-        __asm__ volatile("hlt");
-        // fprintf(VFS_FD_DEBUG, "[got interrupt from %u]", apic_id);
+        irq_arch_enable();
     }
 }
 
 static smp_cpu_entry_t cpu_entries[MAX_CPUS];
 static uint32_t cpu_count = 0;
+
+uintptr_t smp_idle_thread(void *_)
+{
+    cpu_t *cpu = cpu_arch_get_current();
+    log_debug(MODULE, "cpu %u is going idle", cpu->apic_id);
+    while (true)
+    {
+        __asm__ volatile("cli");
+        if (sched_has_work(cpu) == RETURN_GOOD)
+        {
+            log_debug(MODULE, "cpu %u found work", cpu->apic_id);
+            __asm__ volatile("sti");
+            sched_yield();
+        }
+        __asm__ volatile("sti");
+        __asm__ volatile("hlt");
+    }
+}
+
+bool is_stopped;
+int stopped_cpus;
+
+void smp_cpus_stop()
+{
+    stopped_cpus = 0;
+    is_stopped = true;
+    smp_arch_send_ipi_others(IPI_CPUS_IDLE_VECTOR);
+}
+
+bool smp_cpus_has_stop()
+{
+    return stopped_cpus != (cpu_count - 1);
+}
+
+void smp_cpus_continue()
+{
+    is_stopped = false;
+}
+
+int smp_ipi_cpu_stop_handler(intr_frame_t *frame)
+{
+    __asm__ volatile("cli");
+    stopped_cpus++;
+    cpu_arch_get_current()->has_stopped = true;
+    while (is_stopped == true)
+    {
+    }
+    cpu_arch_get_current()->has_stopped = false;
+    __asm__ volatile("sti");
+
+    return RETURN_GOOD;
+}
 
 uint32_t smp_arch_cpu_count()
 {
@@ -102,7 +164,7 @@ void smp_arch_boot_ap(smp_cpu_entry_t *entry)
     uint64_t *orig = (uint64_t *)(trampoline + 2);
     orig[0] = (uint64_t)kernel_page.page_dir_phys;
     orig[1] = (uint64_t)ap_stack; // stack top for this AP
-    orig[2] = (uint64_t)&gdt_descriptor;
+    orig[2] = (uint64_t)&cpu_arch_get_current()->gdtr;
     orig[3] = (uint64_t)ap_startup;
     log_debug(MODULE, "sat up data for ap");
 
@@ -136,6 +198,25 @@ void smp_arch_boot_ap(smp_cpu_entry_t *entry)
     log_debug(MODULE, "here4");
 }
 
+void smp_call_function(uint8_t ahci_id, void (*func)(void *), void *arg)
+{
+    cpu_t *cpu = cpu_arch_get(ahci_id);
+    cpu->func_pending = func;
+    cpu->func_arg_pending = arg;
+    smp_arch_send_ipi(cpu->apic_id, IPI_CALL_FUNCTION_VECTOR);
+}
+
+int smp_ipi_call_function_handler(intr_frame_t *frame)
+{
+    ENTER_FUNC(MODULE, "%p", frame);
+    // ivt_dump_frame(frame);
+    cpu_t *cpu = cpu_arch_get_current();
+    cpu->func_pending(cpu->func_arg_pending);
+    cpu->func_pending = NULL;
+    // ivt_dump_frame(frame);
+    return RETURN_GOOD;
+}
+
 void smp_arch_init(boot_params_t *bp)
 {
     irq_arch_disable();
@@ -147,14 +228,17 @@ void smp_arch_init(boot_params_t *bp)
     log_debug(MODULE, "tram=%p bp->smp_trampoline=%p", trampoline, bp->cpu_core_trampoline);
 
     lapic_base = (void *)priv->local_apic_base;
-
-    lapic_id bspid = lapic_get_id(LAPIC_REG_ID);
-    log_info(MODULE, "BSP APIC ID %u, starting %u APs", bspid, cpu_count - 1);
-
-    calibrated = calibrate_lapic_timer();
-    cpu_init_bsp(calibrated);
     ivt_arch_set_handler(LAPIC_TIMER_VECTOR, lapic_timer_isr);
     ivt_arch_set_handler(IPI_RESCHEDULE_VECTOR, ipi_reschedule_handler);
+    ivt_arch_set_handler(IPI_CALL_FUNCTION_VECTOR, smp_ipi_call_function_handler);
+    ivt_arch_set_handler(IPI_CPUS_IDLE_VECTOR, smp_ipi_cpu_stop_handler);
+
+    lapic_id bspid = lapic_get_id(LAPIC_REG_ID);
+    
+    calibrated = calibrate_lapic_timer();
+    cpu_init_bsp(calibrated);
+    
+    log_info(MODULE, "APIC ID %u (the BSP), starting %u cores", bspid, cpu_count - 1);
 
     int last_total_cores_init = 0;
     for (size_t i = 0; i < cpu_count; i++)

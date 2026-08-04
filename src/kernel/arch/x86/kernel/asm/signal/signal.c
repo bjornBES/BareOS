@@ -137,6 +137,7 @@ void signal_arch_setup_frame(thread_t *t, intr_frame_t *frame, siginfo_t *info, 
         return;
     }
 
+    ivt_dump_frame(frame);
     frame->pc = (vaddr_t)sa->handler.sa_handler;
     frame->sp = user_stack;
     frame->di = info->si_signo;
@@ -177,6 +178,7 @@ void signal_arch_restore_frame(intr_frame_t *frame)
     frame->cs = USER_CODE_SELECTOR | 3;
     frame->ss = USER_DATA_SELECTOR | 3;
     frame->ds = USER_DATA_SELECTOR | 3;
+    ivt_dump_frame(frame);
 }
 
 void signal_arch_dispatch(intr_frame_t *frame)

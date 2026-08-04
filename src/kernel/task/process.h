@@ -31,4 +31,5 @@ int process_unexec_process(process_t *proc);
 int process_kill(pid_t pid, int sig);
 void proc_exit_group(int status);
 process_t* process_get_current();
+void process_list(process_t *parent);
 void process_init();

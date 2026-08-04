@@ -53,11 +53,15 @@ int breakpoint(intr_frame_t *regs)
     return RETURN_GOOD;
 }
 
+spinlock_t debug_lock = {0};
 int write_registers(intr_frame_t *regs)
 {
+    spinlock_acquire(&debug_lock);
     log_debug("DEBUG", "======== DEBUG ========");
+    log_debug(MODULE, "from cpu %d", cpu_arch_get_current()->apic_id);
     ivt_dump_frame(regs);
     log_debug("DEBUG", "======== DEBUG ========");
+    spinlock_release(&debug_lock);
     return RETURN_GOOD;
 }
 
@@ -73,8 +77,8 @@ int general_protection_fault(intr_frame_t *regs)
 {
     log_err("GPF", "General Protection Fault 0x%x", regs->error);
     ivt_dump_frame(regs);
-    x86_GDT_dump_selector(regs->error);
-    x86_idt_dump_selector(regs->error);
+    x86_gdt_dump_selector(regs->error & ~0x3);
+    x86_idt_dump_selector(regs->error & ~0x3);
     panic("GPF", __FILE__, __LINE__, "KERNEL GOT a GPF from %u ss", regs->error);
     // R9 = 0x464c452e54494e = "FLE.TIN"
     // R10 = 0x492f6e69622f3a72 = "I/nib/:r"
@@ -118,14 +122,15 @@ void setup_arch_post()
 
 boot_params_t *setup_arch(boot_params_t *bootParams)
 {
-    x86_GDT_initialize();
+    cpu_t *cpu = cpu_arch_get(0);
+    x86_GDT_initialize(cpu->gdt_table, &cpu->tss);
     // log_debug(MODULE, "GDT is done");
 
     i8259_get_driver()->disable();
     // you piece of shit...
     // - BjornBEs 28.07.2026 01:56
 
-    x86_GDT_load(&gdt_descriptor, gdt_table);
+    x86_GDT_load(&cpu->gdtr, cpu->gdt_table);
     // log_debug(MODULE, "GDT is loaded");
 
     tss_load(TSS_SELECTOR);

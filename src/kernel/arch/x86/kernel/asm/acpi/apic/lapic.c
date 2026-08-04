@@ -25,6 +25,7 @@
 
 typedef struct lapic_timer_priv
 {
+    cpu_id id;
     void (*callback)(device_t *dev);
     uint64_t ticks_per_ns_scaled; // calibrated once globally, cached here per-core for cheap use
 } lapic_timer_priv_t;
@@ -67,24 +68,26 @@ static int lapic_timer_set_oneshot(device_t *_, uint64_t ns, void (*cb)(device_t
     return 0;
 }
 
-static int lapic_timer_set_periodic(device_t *_, uint64_t ns, void (*cb)(device_t *))
+int lapic_timer_set_periodic(device_t *dev, uint64_t ns, void (*cb)(device_t *))
 {
-    device_t *dev = cpu_arch_get_current()->lapic_timer_dev;
+    ENTER_FUNC(MODULE, "%p, %u, %p", dev, ns, cb);
     timer_priv_t *priv = dev->priv;
     lapic_timer_priv_t *lapic_priv = priv->priv;
     lapic_priv->callback = cb;
-
+    lapic_priv->id = cpu_arch_get_current()->apic_id;
+    log_debug(MODULE, "setting periodic on cpu %u", cpu_arch_get_current()->apic_id);
+    
     uint64_t ticks = (ns * lapic_priv->ticks_per_ns_scaled) >> TIMER_SCALE_SHIFT;
-
+    
     // periodic mode: set mode bit once, initial count auto-reloads every period —
     // unlike HPET, no per-tick rewrite of the comparator needed
+    lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
     lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | LAPIC_TIMER_VECTOR);
     lapic_write(LAPIC_REG_TIMER_INITIAL, ticks);
-
     return 0;
 }
 
-static void lapic_timer_cancel(device_t *dev)
+void lapic_timer_cancel(device_t *dev)
 {
     // mask the LVT entry — don't just zero the count, a tick can still land
     // mid-reprogram and fire the old callback on the new state
@@ -120,25 +123,26 @@ uint64_t calibrate_lapic_timer()
 
 int lapic_timer_isr(intr_frame_t *frame)
 {
-    device_t *dev = cpu_arch_get_current()->lapic_timer_dev;
+    cpu_t *cpu = cpu_arch_get_current();
+    device_t *dev = cpu->lapic_timer_dev;
     timer_priv_t *priv = dev->priv;
     lapic_timer_priv_t *lapic_priv = priv->priv;
 
     if (lapic_priv->callback)
     {
+        // log_debug(MODULE, "apic_id = %u", lapic_priv->id);
         lapic_priv->callback(dev);
     }
 
-    irq_arch_eoi(0);
+    lapic_eoi();
 
     return RETURN_GOOD;
 }
 
 int ipi_reschedule_handler(intr_frame_t *frame)
 {
-    irq_arch_eoi(0);
-
     cpu_arch_get_current()->need_resched = true;
+    lapic_eoi();
     return RETURN_GOOD;
 }
 
@@ -148,19 +152,16 @@ void lapic_timer_init(uint64_t calibrated)
     // set divide config to 16
     lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
 
-    log_debug(MODULE, "here1");
+    lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
+
     // set timer to periodic mode, vector 0x40
     lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | LAPIC_TIMER_VECTOR);
-    
-    log_debug(MODULE, "here2");
-    lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
-    
-    log_debug(MODULE, "here3");
+
+
     device_t *lapic = malloc(sizeof(device_t));
     timer_priv_t *priv = malloc(sizeof(timer_priv_t));
     lapic_timer_priv_t *lapic_priv = malloc(sizeof(lapic_timer_priv_t));
-    log_debug(MODULE, "here4");
-    
+
     priv->name = "lapic";
     priv->rating = TIMER_RATING_LAPIC;
     priv->role = TIMER_ROLE_EVENT;
@@ -171,23 +172,18 @@ void lapic_timer_init(uint64_t calibrated)
     priv->set_oneshot = lapic_timer_set_oneshot;
     priv->set_periodic = lapic_timer_set_periodic;
     priv->cancel = lapic_timer_cancel;
-    log_debug(MODULE, "here5");
-    
-    log_debug(MODULE, "here6");
+
     lapic_priv->ticks_per_ns_scaled = calibrated;
-    
-    log_debug(MODULE, "here7");
+    lapic_priv->id = cpu_arch_get_current()->apic_id;
+
     priv->priv = lapic_priv;
-    
-    log_debug(MODULE, "here8");
+
     lapic->class_name = "lapic";
     lapic->type = DEVICE_TIMER;
     lapic->priv = priv;
-    
-    log_debug(MODULE, "here9");
+
     cpu_arch_get_current()->lapic_timer_dev = lapic;
-    
-    log_debug(MODULE, "here10");
+
     device_register(lapic);
     timer_register(lapic);
 }

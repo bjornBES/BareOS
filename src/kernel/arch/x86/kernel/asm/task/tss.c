@@ -15,8 +15,6 @@
 
 #define MODULE "TSS"
 
-tss_t tss_entry;
-
 void tss_load(uint16_t segment_sel)
 {
     // log_debug(MODULE, "loading TSS entry");
