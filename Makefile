@@ -19,7 +19,7 @@ $(BUILD_DIR)/image.iso: bootloader kernel user
 #
 # Bootloader
 #
-bootloader: src/bootloader/bios/stage2/include/config.h build_bootloader
+bootloader: libs src/bootloader/bios/stage2/include/config.h build_bootloader
 
 build_bootloader:
 	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) -s
@@ -58,7 +58,7 @@ $(BUILD_DIR)/tools/fat: always tools/fat/fat.c
 # user
 #
 user: $(TARGET_CORE_LIBS)
-	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) -s
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
 #	python tools/run_vm.py

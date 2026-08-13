@@ -1,2 +1,0 @@
-This file is required for booting.
-Do not delete. Do not modify. Do not ask why, i don't know what i write.
