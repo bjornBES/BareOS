@@ -1,6 +1,6 @@
 
 If:
-  PathMatch: Bootloader/state2/.*
+  PathMatch: bootloader/bios/state2/.*
 CompileFlags:
   Add: [--target=i686-elf]
 ---

@@ -1,6 +1,6 @@
 # Bare OS
 
-Bare OS is a DOS/Unix style OS that will support old intel CPU's like the 8080 and 8088 but will also have support for other features for other CPU's like the i386 and x86.
+Bare OS is a DOS/Unix-flavored style OS that will support old intel CPU's like the 8080 and 8088 but will also have support for other features for other CPU's like the i386 and x86.
 
 ## Phase 0.5 Bootloader
 

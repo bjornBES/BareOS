@@ -1,14 +1,32 @@
-[default_config]
+[[project]]
+path = "src/bootloader/bios/stage1"
 version = "0.10.1"
 assembler = "nasm"
-instruction_set = "x86-64"
+instruction_set = "x86"
+
+[project.opts]
+compiler = "nasm"
+diagnostics = true
+default_diagnostics = false
 
 [[project]]
-path = ""
+path = "src/bootloader/bios/stage2"
 version = "0.10.1"
 assembler = "nasm"
 instruction_set = "x86/x86-64"
 
 [project.opts]
+compiler = "nasm"
 diagnostics = true
-default_diagnostics = true
+default_diagnostics = false
+
+[[project]]
+path = "src/kernel/arch/x86"
+version = "0.10.1"
+assembler = "nasm"
+instruction_set = "x86/x86-64"
+
+[project.opts]
+compiler = "nasm"
+diagnostics = true
+default_diagnostics = false

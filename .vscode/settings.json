@@ -1,0 +1,23 @@
+{
+    "cSpell.words": [
+        "ASMCALL",
+        "bootable",
+        "CCFLAGS",
+        "cpuid",
+        "debugnow",
+        "DIRASM",
+        "DIRSTAGE",
+        "endmacro",
+        "intcall",
+        "lgdt",
+        "libcore",
+        "LINKFLAGS",
+        "nasm",
+        "resb",
+        "resd",
+        "resw",
+        "rootfs",
+        "runnow",
+        "UEFI"
+    ]
+}

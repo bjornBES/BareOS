@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "BareOS",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "defines": [ "__x86_64__" ]
+        }
+    ],
+    "version": 4
+}
