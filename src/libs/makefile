@@ -53,7 +53,7 @@ $(BUILD_DIR_CXX)/%.obj: %.cpp $(HEADERS_CXX)
 
 $(BUILD_DIR_C)/%.obj: %.c $(HEADERS_C)
 	@mkdir -p $(@D)
-	@$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+	@$(TARGET_CC) -m64 $(TARGET_CFLAGS) -c -o $@ $<
 	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIR_ASM)/%.obj: %.asm $(HEADERS_ASM)

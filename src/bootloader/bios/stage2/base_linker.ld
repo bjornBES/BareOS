@@ -23,7 +23,9 @@ SECTIONS
     .data               : { __data_start = .;       *(.data)    }
     .rodata             : { __rodata_start = .;     *(.rodata)  }
     .bss                : { __bss_start = .;        *(.bss)     }
-    __fat_driver = .;
+    text_end = .;
+    
+    __fat_driver = 0x00040000;
 
     res = 0x00080000;
     END = 0x000FFFFF;

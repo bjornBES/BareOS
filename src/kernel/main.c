@@ -12,5 +12,9 @@
 
 void kernel_main(boot_params_t *boot_params)
 {
-    
+
+    for (;;)
+    {
+        ;
+    }
 }

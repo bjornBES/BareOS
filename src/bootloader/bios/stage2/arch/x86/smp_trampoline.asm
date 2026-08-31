@@ -160,7 +160,8 @@ real_mode_gdt:
     
     ; 32-bit data segment
     GDTDescriptor 0xFFFF, 0, 0, 10010010b, 11001111b, 0
-    
+
+global real_mode_gdt_desc
 real_mode_gdt_desc:     dw real_mode_gdt_desc - real_mode_gdt - 1
                         dd real_mode_gdt
 

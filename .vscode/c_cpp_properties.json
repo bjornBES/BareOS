@@ -3,7 +3,8 @@
         {
             "name": "BareOS",
             "compileCommands": "${workspaceFolder}/compile_commands.json",
-            "defines": [ "__x86_64__" ]
+            "defines": [ "__x86_64__" ],
+            "compilerArgs": [ "-ffreestanding -nostdlib" ]
         }
     ],
     "version": 4

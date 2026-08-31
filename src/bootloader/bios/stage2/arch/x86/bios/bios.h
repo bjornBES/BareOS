@@ -10,9 +10,9 @@
 
 #pragma once
 #include "bios_regs.h"
+#include "debug/debug.h"
 #include <stdint.h>
 #include <defs.h>
-
 
 INLINE SECTION("arch_text") uint16_t bios_get_ds()
 {
@@ -49,8 +49,6 @@ void bios_arch_dump_frame(bios_regs_t *frame);
 
 void bios_arch_init_regs(bios_regs_t *regs);
 
-extern void bios_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg);
-void bios_arch_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg)
-{
-	bios_intcall(int_no, ireg, oreg);
-}
+ASMCALL32 extern void bios_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg);
+
+void bios_arch_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg);

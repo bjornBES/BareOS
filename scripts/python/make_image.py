@@ -460,6 +460,7 @@ def build_disk_from_disk(disk : disk_spec, build_dir : str, root_fs_dir : str):
         print(f"\t partition in vbr file:\"{partition.vbr_file}\"")
         print(f"\t partition in stage2 file:\"{partition.stage2}\"")
         print(f"\t partition in kernel file:\"{partition.kernel}\"")
+        print(f"\t partition files:{files}")
         print(f"\t partition calculated size in sectors from files:{calculate_files_partition_size(files, disk)}")
         print(f"}}")
         print(f"total size in sectors right now: {hex(total_size_sectors)}")
@@ -536,11 +537,11 @@ arch_build_path = os.path.join(build_path, f"{arch}_{config}")
 stage1_mbr = os.path.join(arch_build_path, "stage1/mbr.bin")
 stage1_vbr = os.path.join(arch_build_path, "stage1/vbr.bin")
 stage2_bin = os.path.join(arch_build_path, "stage2/stage2.bin")
-# kernel_bin = os.path.join(arch_build_path, "kernel/kernel.elf")
+kernel_bin = os.path.join(arch_build_path, "kernel/kernel.elf")
 
 disks.append(disk_spec("main", os.path.join(arch_build_path, "image.iso"), parse_size(image_size), 512, image_fs, False, [
     disk_partition_spec("user", "user", 2048, "fat32", parse_size("120m"), False, False, []), ## 120 mb fat32 partition
-    disk_partition_spec("boot", "root", 0, "fat32", parse_size("10m"), True, False, [], stage1_vbr, stage2_bin, ""), ## 10 mb fat32 partition
+    disk_partition_spec("boot", "boot", 0, "fat32", parse_size("10m"), True, False, [], stage1_vbr, stage2_bin, kernel_bin), ## 10 mb fat32 partition
     disk_partition_spec("test", "test", 0, "ext2", 0, False, False, []), ## 120 mb ext2 partition
     ], stage1_mbr))
 

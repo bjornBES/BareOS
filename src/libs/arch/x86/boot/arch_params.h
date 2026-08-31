@@ -16,4 +16,6 @@
 typedef struct arch_params
 {
     bool disabled_pic;
+    bool in_long_mode;
+    bool using_paging;
 } arch_params_t;

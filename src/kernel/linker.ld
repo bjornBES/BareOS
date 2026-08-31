@@ -1,30 +1,48 @@
-ENTRY(entry)
+ENTRY(asm_entry)
 
 PHDRS
 {
+    init PT_LOAD FLAGS(5);   /* R+X */
     text PT_LOAD FLAGS(5);   /* R+X */
     data PT_LOAD FLAGS(6);   /* R+W */
+    vdso PT_LOAD FLAGS(5);   /* R+X */
 }
 
 SECTIONS
 {
-
-    . = 0x8000;
-    __trampoline_start = .;
-
-    __KERNEL_VIRT = KERNEL_VMA;
-    __KERNEL_PHYS = KERNEL_LMA;
     . = KERNEL_VMA;
 
-	__kernel_start = .;
+    .init.text              : AT(KERNEL_LMA)
+    {
+        __init_text_start = .;
+        *(.init.text .init.text*)
+    } :init
+    /*
+    .init.rodata            : AT(ADDR(.init.rodata) - KERNEL_VMA + KERNEL_LMA)
+    {
+        __init_rodata_start = .;
+        *(.init.rodata .init.rodata*)
+    } :init
 
-    .text               : AT(KERNEL_LMA)
+    .init.data              : AT(ADDR(.init.data) - KERNEL_VMA + KERNEL_LMA)
+    {
+        __init_data_start = .;
+        *(.init.data .init.data*)
+    } :data
+    .init.bss               : AT(ADDR(.init.bss) - KERNEL_VMA + KERNEL_LMA)
+    {
+        __init_bss_start = .;
+        *(.init.bss .init.bss*)
+    } :data
+    */
+
+    .text                   : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA)
     {
         __text_start = .;
         *(.text .text*)
     } :text
 
-    .rodata             : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
+    .rodata                 : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
     {
         __rodata_start = .;
         *(.rodata .rodata*)
@@ -32,14 +50,14 @@ SECTIONS
 
     . = ALIGN(4096);
 
-    .data               : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
+    .data                   : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
     {
         __data_start = .;
         *(.data)
         *(.data.*)
     } :data
 
-    .bss                : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
+    .bss                    : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
     {
         __bss_start = .;
         *(.bss .bss*)
@@ -47,12 +65,11 @@ SECTIONS
     } :data
 
     . = ALIGN(0x1000);
-    .vdso               : AT(ADDR(.vdso) - KERNEL_VMA + KERNEL_LMA)
+    .vdso                   : AT(ADDR(.vdso) - KERNEL_VMA + KERNEL_LMA)
     {
-        __vdso_start_phys = . - KERNEL_VMA + KERNEL_LMA;
         __vdso_start = .;
         *(.vdso)
-    } :text
+    } :vdso
     . = ALIGN(0x1000);
     __vdso_end = .;
     
@@ -71,7 +88,9 @@ SECTIONS
 
     /* End of kernel */
     . = ALIGN(0x10000);
+    /*
     __kernel_end = .;
     __kernel_end_phys = . - KERNEL_VMA + KERNEL_LMA;
+    */
     __heap_size = HEAP_SIZE;
 }

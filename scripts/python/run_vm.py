@@ -60,11 +60,11 @@ if debug:
         os.remove(gdb_script)
     with open(gdb_script, "x") as gdb_file:
         gdb_file.write( "target remote :1234\n" +
-                    #    f"symbol-file {kernel_elf}\n" +
+                       f"symbol-file {kernel_elf}\n" +
                        f"add-symbol-file {stage2_elf}\n" +
-                    #    f"add-symbol-file {init_elf} 0x1000\n" +
-                        # "b kernel_main\n"+
-                        # "b panic\n" +
+                        "b kernel_main\n"+
+                        "b asm_entry\n"+
+                        "b panic\n" +
                         "set disassembly-flavor intel\n"
                         )
         gdb_file.close()
@@ -86,6 +86,9 @@ else:
     qemu_args.extend(["-drive", f"file={image},format=raw,id=disk,if=none"])
     qemu_args.extend(["-device", "ahci,id=ahci"])
     qemu_args.extend(["-device", "ide-hd,drive=disk"])
+    
+qemu_args.extend(["-device", "vmware-svga"])
+qemu_args.extend(["-device", "e1000"])
 
 qemu_args.extend(["-device", "sb16"])
 

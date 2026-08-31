@@ -32,8 +32,8 @@ fi
 echo "running qemu ${QEMU_ARGS}"
 
 if command -v gf2-gdb &>/dev/null; then
-    gf2-gdb -x .gdb_script.gdb
+    gf2-gdb $KERNEL -x .gdb_script.gdb
     # gdb $KERNEL -x .vscode/.gdb_script.gdb
 else
-    gdb -x .gdb_script.gdb
+    gdb $KERNEL -x .gdb_script.gdb
 fi

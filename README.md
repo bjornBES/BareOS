@@ -23,6 +23,6 @@ paru -S gcc make bison flex libgmp-static libmpc mpfr texinfo nasm mtools qemu-s
 
 Then you must run ```python3 -m pip install -r requirements.txt```
 
-Run `make toolchain`, this should download and build the required tools (binutils and GCC). If you encounter errors during this step, you might have to modify `build_scripts/config.env` and try a different version of **binutils** and **gcc**. Using the same versions as in your distribution's repositories is your best bet. Run `make clean-toolchain-all` to delete all toolchain related files and start over.
+Run `make toolchain`, this should download and build the required tools (binutils and GCC). If you encounter errors during this step, you might have to modify `config/config.env` and try a different version of **binutils** and **gcc**. Using the same versions as in your distribution's repositories is your best bet. Run `make clean-toolchain-all` to delete all toolchain related files and start over.
 
 Finally, you should be able to run `make`. Use `make run` to test your OS using qemu. If you need to debug then run `make debug`

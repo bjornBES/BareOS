@@ -10,8 +10,10 @@
 
 #pragma once
 
-#define ASMCALL32  __attribute__((cdecl))
-#define MS_ASMCALL __attribute__((ms_abi))
+#define CDECL        __attribute__((cdecl))
+#define ASMCALL32    __attribute__((cdecl))
+#define MS_ASMCALL   __attribute__((ms_abi))
+#define SYSV_ASMCALL __attribute__((sysv_abi))
 #ifdef __x86_64__
 #define ASMCALL
 #else
@@ -32,12 +34,14 @@
 
 #define INTERNAL
 
-#define INLINE                static inline
-#define ALWAYS_INLINE         __attribute__((always_inline))
+#define UNREACHABLE()       __builtin_unreachable()
 
-#define BTF_TYPE_TAG(value)   __attribute__((btf_type_tag(#value)))
+#define INLINE              static inline
+#define ALWAYS_INLINE       __attribute__((always_inline))
 
-#define __user                BTF_TYPE_TAG(user)
-#define __percpu              BTF_TYPE_TAG(percpu)
+#define BTF_TYPE_TAG(value) __attribute__((btf_type_tag(#value)))
 
-#define inline_asm            __asm__ __volatile__
+#define __user              BTF_TYPE_TAG(user)
+#define __percpu            BTF_TYPE_TAG(percpu)
+
+#define inline_asm          __asm__ __volatile__

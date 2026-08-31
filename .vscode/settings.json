@@ -1,5 +1,7 @@
 {
     "cSpell.words": [
+        "acpi",
+        "APIC",
         "ASMCALL",
         "bootable",
         "CCFLAGS",
@@ -7,17 +9,32 @@
         "debugnow",
         "DIRASM",
         "DIRSTAGE",
+        "Ehdr",
+        "ehsize",
         "endmacro",
+        "gdtr",
         "intcall",
         "lgdt",
         "libcore",
         "LINKFLAGS",
+        "logfl",
         "nasm",
+        "pdpt",
+        "phentsize",
+        "phnum",
+        "phoff",
         "resb",
         "resd",
         "resw",
         "rootfs",
+        "rsdp",
         "runnow",
-        "UEFI"
+        "shentsize",
+        "shnum",
+        "shoff",
+        "shstrndx",
+        "syscall",
+        "UEFI",
+        "Wpointer"
     ]
 }

@@ -44,13 +44,13 @@ $(BUILD_DIRSTAGE2)/stage2.elf: $(OBJECTS_ASM) $(OBJECTS_C)
 
 $(BUILD_DIRC)/%.obj: %.c
 	@mkdir -p $(@D)
-	@$(BOOT_CC) $(BOOT_CFLAGS_STAGE2) $(COMMON_INCLUDE) -c -o $@ $<
-# 	@$(BOOT_CC) $(BOOT_CFLAGS_STAGE2) $(COMMON_INCLUDE) --save-temps -c -o $@ $<
+	@$(BOOT_CC) $(BOOT_CFLAGS_STAGE2) -c -o $@ $<
+# 	@$(BOOT_CC) $(BOOT_CFLAGS_STAGE2) --save-temps -c -o $@ $<
 	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIRASM)/%.obj: %.asm
 	@mkdir -p $(@D)
-	@$(BOOT_AS) $(BOOT_ASFLAGS_STAGE2) $(COMMON_INCLUDE) -o $@ $<
+	@$(BOOT_AS) $(BOOT_ASFLAGS_STAGE2) -o $@ $<
 	@echo "$(AS_PREFIX)" $<
 
 always:

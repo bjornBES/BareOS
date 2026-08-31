@@ -11,7 +11,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include <defs.h>
 typedef struct mbr_entry {
     // 0x00	1	Drive attributes (bit 7 set = active or bootable)
     uint8_t attributes;
@@ -31,4 +31,4 @@ typedef struct mbr_entry {
     // 0x0C	4	Number of sectors in partition
     uint32_t size;
 
-} __attribute__((packed)) mbr_entry_t;
+} PACKED mbr_entry_t;

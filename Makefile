@@ -1,3 +1,4 @@
+
 include mk/config.mk
 
 include mk/toolchain_config.mk
@@ -23,8 +24,7 @@ $(BUILD_DIR)/image.iso: bootloader kernel
 #
 # Bootloader
 #
-bootloader: src/bootloader/bios/stage2/include/config.h build_bootloader
-# libs
+bootloader: config build_bootloader
 
 build_bootloader:
 	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR))
@@ -32,7 +32,7 @@ build_bootloader:
 #
 # Kernel
 #
-kernel: libs src/kernel/include/kernel/config.h $(BUILD_DIR)/kernel/kernel.elf
+kernel: libs config $(BUILD_DIR)/kernel/kernel.elf
 
 
 $(BUILD_DIR)/kernel/kernel.elf: always
@@ -40,16 +40,19 @@ $(BUILD_DIR)/kernel/kernel.elf: always
 
 config/config.env:
 
-src/kernel/include/kernel/config.h: config/config.env scripts/gen_config.sh
-	sh scripts/gen_config.sh config/config.env $@ src/kernel/include/kernel/config.inc
+config: src/libs/include/config.h
 
-src/bootloader/bios/stage2/include/config.h: config/config.env scripts/gen_config.sh
-	sh scripts/gen_config.sh config/config.env $@ src/bootloader/bios/stage2/include/config.inc
+src/libs/include/config.h: config/config.env scripts/gen_config.sh
+	sh scripts/gen_config.sh config/config.env $@ src/libs/include/config.inc
+
 
 libs: $(BUILD_DIR)/libcore.a
 
 $(BUILD_DIR)/libcore.a:
-	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR)) -s
+	@$(MAKE) -C src/libs TARGET_ARCH=64 BUILD_DIR=$(abspath $(BUILD_DIR)) -s
+
+
+
 
 #
 # user

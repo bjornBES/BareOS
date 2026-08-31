@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 #include "fs/disk.h"
 
 typedef struct partition
@@ -22,3 +23,4 @@ typedef struct partition
 } partition_t;
 
 int partition_detect(partition_t *part, disk_t *disk, void *partition_data, int boot_partition_idx);
+int partition_read(partition_t *part, uint32_t lba, size_t sector_count, void *buffer);

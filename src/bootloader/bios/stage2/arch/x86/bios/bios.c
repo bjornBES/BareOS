@@ -14,6 +14,7 @@
 
 #include "memory.h"
 #include "stdio.h"
+#include "debug/debug.h"
 
 extern void bios_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg);
 
@@ -33,4 +34,27 @@ SECTION("arch_text") void bios_arch_dump_frame(bios_regs_t *frame)
     printf("si: %x, di: %x\n", frame->si, frame->di);
     printf("flags: %x\n", frame->flags);
     printf("ds: %x, es: %x, fs: %x, gs: %x\n", frame->ds, frame->es, frame->fs, frame->gs);
+}
+
+void bios_arch_intcall(uint8_t int_no, bios_regs_t *ireg, bios_regs_t *oreg)
+{
+    // ENTER_FUNC("0x%x, 0x%p, 0x%p", int_no, ireg, oreg);
+
+/*     uint32_t stack_pointer;
+    uint32_t base_pointer;
+    __asm__("mov %0, esp" : "=r"(stack_pointer));
+    __asm__("mov %0, ebp" : "=r"(base_pointer));
+    printf("*base_pointer = 0x%lx\n", *((uint32_t *)base_pointer));
+    printf("*base_pointer + 1 = 0x%lx\n", *((uint32_t *)base_pointer + 1));
+    base_pointer = *((uint32_t *)base_pointer);
+    printf("*base_pointer = 0x%lx\n", *((uint32_t *)base_pointer));
+    printf("*base_pointer + 1 = 0x%lx\n", *((uint32_t *)base_pointer + 1));
+    base_pointer = *((uint32_t *)base_pointer);
+    printf("*base_pointer = 0x%lx\n", *((uint32_t *)base_pointer));
+    printf("*base_pointer + 1 = 0x%lx\n", *((uint32_t *)base_pointer + 1));
+    base_pointer = *((uint32_t *)base_pointer);
+    printf("*base_pointer = 0x%lx\n", *((uint32_t *)base_pointer));
+    printf("*base_pointer + 1 = 0x%lx\n", *((uint32_t *)base_pointer + 1)); */
+
+    bios_intcall(int_no, ireg, oreg);
 }

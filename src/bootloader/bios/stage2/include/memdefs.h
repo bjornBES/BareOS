@@ -22,7 +22,7 @@ extern char __fat_driver;
 
 // 0x00000700 - 0x00006600 - Bootparams
 #define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((a) - 1))
-#define MEMORY_BOOTPARAMS_ADDR ((void *)0x00000600)
+#define MEMORY_BOOTPARAMS_ADDR ((void *)0x00000800)
 #define MEMORY_BOOTPARAMS_SIZE sizeof(boot_params)
 
 // 0x00006600 - 0x00008000 - stack
@@ -38,3 +38,5 @@ extern char __fat_driver;
 // 0x00080000 - 0x0009FFFF - Extended BIOS data area
 // 0x000A0000 - 0x000C7FFF - Video
 // 0x000C8000 - 0x000FFFFF - BIOS
+
+#define MEMORY_LOAD_SIZE 0x00030000
