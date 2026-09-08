@@ -11,3 +11,5 @@
 #pragma once
 
 #include <string_lib.h>
+
+#define BOOL_TO_STRING ? "TRUE" : "FALSE" 

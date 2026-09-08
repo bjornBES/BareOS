@@ -45,8 +45,7 @@ inline static int memcmp(const char *cs, const char *ct, size_t num)
     __asm__(
         "xor %[result], %[result]\n\t"
         "repe cmpsb\n\t"
-        "setnz al" : "+D"(cs),
-        "+S"(ct), "+c"(num), [result] "=a"(ret) : : "memory");
+        "setnz al" : "+D"(cs), "+S"(ct), "+c"(num), [result] "=a"(ret) : : "memory");
 
     return ret;
 }

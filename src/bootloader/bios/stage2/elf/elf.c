@@ -106,7 +106,6 @@ int elf64_read(partition_t *part, fat_file_t *file, boot_params_t *bp)
         while (remaining > 0)
         {
             uint32_t chunk = min(remaining, MEMORY_LOAD_SIZE);
-            printf("chunk = %u\n", chunk);
 
             if (fat_read(part, file, chunk, p) != chunk)
             {

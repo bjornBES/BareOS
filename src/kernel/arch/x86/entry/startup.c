@@ -10,30 +10,41 @@
 
 #include "setup.h"
 
+#include "asm/cpu_arch.h"
+#include "asm/ivt_arch.h"
+#include "asm/vectors_arch.h"
+#include "asm/mmu_arch.h"
+
 #include "desc/gdt/gdt.h"
 #include "desc/idt/idt.h"
 #include "debug/debug.h"
 
-#include "asm/cpu_arch.h"
-#include "asm/ivt_arch.h"
-#include "asm/vectors_arch.h"
-
-#include "module.h"
-
 #include "kernel.h"
+#include "module.h"
+#include "memory.h"
 
 #include <defs.h>
 
 #define MODULE "x86-setup"
 
+extern void hexdump(void *ptr, size_t len, size_t size);
+
+typedef struct x86_arch_data
+{
+    struct
+    {
+
+
+        uint16_t type : 4;
+    } paging;
+    
+} x86_arch_data_t;
+
+
 int breakpoint(intr_frame_t *frame)
 {
     log_debug("breakpoint", "breakpoint\n");
     ivt_dump_frame(frame);
-
-    // kernel_breakpoint(regs);
-
-    // do something here
     return 0;
 }
 
@@ -99,6 +110,8 @@ int page_fault(intr_frame_t *regs)
     return ENOSYS;
 }
 
+x86_arch_data_t arch_runtime_data;
+
 void arch_setup(boot_params_t *boot_params)
 {
     // what do we know here?
@@ -129,7 +142,22 @@ void arch_setup(boot_params_t *boot_params)
     ivt_arch_set_handler(EXC_GP, general_protection_fault);
     ivt_arch_set_handler(EXC_PF, page_fault);
 
-    
+    mmu_arch_init(boot_params);
+
+    boot_params_t *bp;
+    {
+        bp = kmalloc(sizeof(boot_params_t));
+        vaddr_t virt_bootParams = ((vaddr_t)boot_params + PAGE_SIZE);
+        
+        mmu_map_region(&kernel_page, PAGE_SIZE, 0, sizeof(boot_params_t), kernel_text_flags);
+        memcpy(bp, (void *)virt_bootParams, sizeof(boot_params_t));
+        mmu_free_region(&kernel_page, virt_bootParams, sizeof(boot_params_t));
+        
+        log_debug(MODULE, "bootParams @ %p", bp);
+        hexdump(bp, sizeof(boot_params_t), 16);
+        
+        bp->arch_runtime_data = &arch_runtime_data;
+    }
 
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2

@@ -18,22 +18,23 @@
 #     String values emit %define CONFIG_X (no value) so %ifdef still works,
 #     since NASM %if cannot evaluate string literals the way C's #if can't either.
 
-set -eu
 
+set -eu
+ 
 IN="${1:-config/config.env}"
 OUT="${2:-src/kernel/include/kernel/config.h}"
 OUT_ASM="${3:-}"
-
+ 
 if [ ! -f "$IN" ]; then
     echo "gen_config.sh: input file '$IN' not found" >&2
     exit 1
 fi
-
+ 
 OUT_DIR=$(dirname "$OUT")
 mkdir -p "$OUT_DIR"
-
+ 
 TMP=$(mktemp)
-
+ 
 {
     echo "/* AUTO-GENERATED FILE - DO NOT EDIT BY HAND"
     echo " * Generated from $IN by scripts/gen_config.sh"
@@ -41,7 +42,7 @@ TMP=$(mktemp)
     echo "#pragma once"
     echo
 } > "$TMP"
-
+ 
 TMP_ASM=""
 if [ -n "$OUT_ASM" ]; then
     ASM_OUT_DIR=$(dirname "$OUT_ASM")
@@ -53,41 +54,50 @@ if [ -n "$OUT_ASM" ]; then
         echo
     } > "$TMP_ASM"
 fi
-
+ 
 while IFS= read -r raw_line || [ -n "$raw_line" ]; do
     line="$raw_line"
-
+ 
     # Strip a full-line comment (line starts with # after trimming leading spaces)
     trimmed_check=$(printf '%s' "$line" | sed 's/^[[:space:]]*//')
     case "$trimmed_check" in
         '#'*|'') continue ;;
     esac
-
+ 
     # Must contain '='
     case "$line" in
         *=*) : ;;
         *) continue ;;
     esac
-
+ 
     key=$(printf '%s' "$line" | cut -d'=' -f1)
     val=$(printf '%s' "$line" | cut -d'=' -f2-)
-
+ 
     # Strip inline comment from value (anything after #)
     val=$(printf '%s' "$val" | sed 's/#.*//')
-
+ 
     # Trim leading/trailing whitespace from key and val
     key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     val=$(printf '%s' "$val" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-
+ 
     [ -z "$key" ] && continue
-
+ 
     if [ "$key" = "config" ]; then
         continue
     fi
-
+ 
+    # Keys ending in _raw are emitted unquoted (raw token), suffix stripped from macro name
+    is_raw=0
+    case "$key" in
+        *_raw)
+            is_raw=1
+            key=${key%_raw}
+            ;;
+    esac
+ 
     # Uppercase the key, replace any non-alnum with underscore
     key_upper=$(printf '%s' "$key" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9_]/_/g')
-
+ 
     # Classify the value as one of: decimal | hex | long | string
     # decimal: [0-9]+           e.g. 0, 1, 250
     # hex:     0x[0-9A-Fa-f]*   e.g. 0xFF, 0x1000
@@ -124,7 +134,7 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
                 ;;
         esac
     fi
-
+ 
     case "$kind" in
         decimal|hex)
             echo "#define CONFIG_${key_upper} ${val}" >> "$TMP"
@@ -141,18 +151,25 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
             fi
             ;;
         string)
-            echo "#define CONFIG_${key_upper} \"${val}\"" >> "$TMP"
-            if [ -n "$TMP_ASM" ]; then
-                # No value in NASM form -> %ifdef works, %if (value) does not
-                echo "%define CONFIG_${key_upper}" >> "$TMP_ASM"
+            if [ "$is_raw" = "1" ]; then
+                echo "#define CONFIG_${key_upper} ${val}" >> "$TMP"
+                if [ -n "$TMP_ASM" ]; then
+                    echo "%define CONFIG_${key_upper} ${val}" >> "$TMP_ASM"
+                fi
+            else
+                echo "#define CONFIG_${key_upper} \"${val}\"" >> "$TMP"
+                if [ -n "$TMP_ASM" ]; then
+                    # No value in NASM form -> %ifdef works, %if (value) does not
+                    echo "%define CONFIG_${key_upper}" >> "$TMP_ASM"
+                fi
             fi
             ;;
     esac
 done < "$IN"
-
+ 
 mv "$TMP" "$OUT"
 echo "gen_config.sh: wrote $OUT"
-
+ 
 if [ -n "$OUT_ASM" ]; then
     mv "$TMP_ASM" "$OUT_ASM"
     echo "gen_config.sh: wrote $OUT_ASM"

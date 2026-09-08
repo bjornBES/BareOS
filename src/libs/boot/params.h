@@ -30,11 +30,11 @@ typedef struct boot_params
     uint32_t magic;
     uint32_t struct_version;
 
-    unsigned long long kernel_entry_point;
-    unsigned long long kernel_phys_base;
-    unsigned long long kernel_virt_base;
-    size_t kernel_size;
-
+    uint64_t kernel_entry_point;
+    uint64_t kernel_phys_base;
+    uint64_t kernel_virt_base;
+    uint64_t kernel_size;
+    
     uint32_t boot_flags;
     char cmd_line[MAX_CMDLINE];
     char bootloader_name[MAX_BOOTLOADER_NAME];
@@ -43,22 +43,25 @@ typedef struct boot_params
     {
         uint32_t count;
         memory_entry_t entries[MAX_MEMORY_ENTRIES];
-    } memory;
+    } PACKED memory;
 
     struct
     {
         uint32_t count;
         framebuffer_t entries[MAX_VIDEO_MODES];
-    } video;
+    } PACKED video;
 
     #if CONFIG_ENABLE_SMP == 1
     struct
     {
         uint8_t core_bringup[512];
-    } smp;
+    } PACKED smp;
     #endif
 
     bp_acpi_t acpi;
 
     arch_params_t arch;
-} boot_params_t;
+
+    /// @brief This is for architecture specific priv data
+    void *arch_runtime_data;
+} PACKED boot_params_t;

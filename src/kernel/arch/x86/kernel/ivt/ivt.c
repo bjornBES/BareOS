@@ -65,10 +65,10 @@ void ivt_arch_init()
 
 int ivt_arch_set_handler(interrupt_vector vector, interrupt_handler handler)
 {
-    if (FLAG_IS_SET(handlers[vector].state, HANDLER_IN_USE))
+/*     if (FLAG_IS_SET(handlers[vector].state, HANDLER_IN_USE))
     {
         ERRNO_RETURN(EPERM, "handler is already in use", 0);
-    }
+    } */
     log_debug(MODULE, "Registering IVT handler (%p) on vector %d", handler, vector);
     handlers[vector].state = 0;
     FLAG_SET(handlers[vector].state, HANDLER_IN_USE);

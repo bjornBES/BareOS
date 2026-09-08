@@ -563,11 +563,11 @@ int fat_read(partition_t *part, fat_file_t *file, uint32_t byte_count, void *buf
     uint32_t offset_cluster = offset / fat_data->bytes_per_cluster;
     if (offset_cluster != 0)
     {
-        printf("offset_cluster = %u\n", offset_cluster);
+        // printf("offset_cluster = %u\n", offset_cluster);
         for (size_t i = 0; i < offset_cluster; i++)
         {
             uint32_t next_cluster = fat_next_cluster(part, cluster_start, fat_data);
-            printf("next_cluster = %u, cluster_start = %u\n", next_cluster, cluster_start);
+            // printf("next_cluster = %u, cluster_start = %u\n", next_cluster, cluster_start);
             cluster_start = next_cluster;
             if (next_cluster >= FAT_CACHE_INVALID)
             {
@@ -583,22 +583,22 @@ int fat_read(partition_t *part, fat_file_t *file, uint32_t byte_count, void *buf
     uint32_t intra = offset % fat_data->bytes_per_cluster;
     size_t size = byte_count;
 
-    printf("fd->current_cluster = %u, cluster_start = %u\r\n", fd->current_cluster, cluster_start);
+    // printf("fd->current_cluster = %u, cluster_start = %u\r\n", fd->current_cluster, cluster_start);
     if (fd->current_cluster != 0 && fat_cluster_to_lba(part, fat_data, cluster_start) == fat_cluster_to_lba(part, fat_data, fd->current_cluster) + fd->current_sector_in_cluster && size < sizeof(fd->buffer))
     {
         uint32_t leftInBuffer = sizeof(fd->buffer) - (fd->public.position % sizeof(fd->buffer));
         uint32_t take = min(byte_count, leftInBuffer);
-        printf("%u: leftInBuffer=%lu take=%lu\r\n", count, leftInBuffer, take);
+        // printf("%u: leftInBuffer=%lu take=%lu\r\n", count, leftInBuffer, take);
 
         memcpy(buffer, fd->buffer + fd->public.position % sizeof(fd->buffer), take);
-        printf("memcpy(%p, %p, %u)\r\n", u8DataOut, fd->buffer + fd->public.position % sizeof(fd->buffer), take);
+        // printf("memcpy(%p, %p, %u)\r\n", u8DataOut, fd->buffer + fd->public.position % sizeof(fd->buffer), take);
         u8DataOut += take;
         fd->public.position += take;
         byte_count -= take;
 
         // hexdump(buffer, take);
 
-        printf("%u: leftInBuffer=%lu take=%lu\r\n", count, leftInBuffer, take);
+        // printf("%u: leftInBuffer=%lu take=%lu\r\n", count, leftInBuffer, take);
         return take;
     }
     else
@@ -621,12 +621,12 @@ int fat_read(partition_t *part, fat_file_t *file, uint32_t byte_count, void *buf
 
         uint32_t available = fat_data->bytes_per_cluster - intra;
         uint32_t to_copy = size < available ? size : available;
-        printf("buffer = 0x%p\n", buffer);
-        printf("bytes_read = 0x%x\n", bytes_read);
-        printf("tmp = 0x%p\n", tmp);
-        printf("intra = 0x%x\n", intra);
-        printf("to_copy = 0x%x\n", to_copy);
-        printf("memcpy(%p, %p, %u)\n", buffer + bytes_read, tmp + intra, to_copy);
+        // printf("buffer = 0x%p\n", buffer);
+        // printf("bytes_read = 0x%x\n", bytes_read);
+        // printf("tmp = 0x%p\n", tmp);
+        // printf("intra = 0x%x\n", intra);
+        // printf("to_copy = 0x%x\n", to_copy);
+        // printf("memcpy(%p, %p, %u)\n", buffer + bytes_read, tmp + intra, to_copy);
         memcpy(buffer + bytes_read, tmp + intra, to_copy);
 
         bytes_read += to_copy;

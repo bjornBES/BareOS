@@ -3,10 +3,10 @@ TARGET_CFLAGS += -I$(SOURCE_DIR)/src/kernel/arch/$(SRCARCH)
 TARGET_LDFLAGS += 
 
 ifeq ($(arch),i686)
-LINKER_SCRIPT += linker32.ld
+LINKER_SCRIPT += $(SOURCE_DIR)/src/kernel/arch/$(SRCARCH)/arch_linker32.ld
 endif
 ifeq ($(arch),x86_64)
-LINKER_SCRIPT += linker64.ld
+LINKER_SCRIPT += $(SOURCE_DIR)/src/kernel/arch/$(SRCARCH)/arch_linker64.ld
 endif
 
 BUILD_DIR_KERNEL = $(BUILD_DIR)/kernel
@@ -53,7 +53,7 @@ $(BUILD_DIR_KERNEL)/kernel.elf: $(OBJECTS_ASM) $(OBJECTS_C)
 $(BUILD_DIR_C)/%.obj: %.c
 	@mkdir -p $(@D)
 	@$(TARGET_CC) -m64 $(TARGET_CFLAGS) -c -o $@ $<
-# 	@$(TARGET_CC) $(TARGET_CFLAGS) -c -save-temps -o $@.c $<
+# 	@$(TARGET_CC) -m64 $(TARGET_CFLAGS) -c -save-temps -o $@.c $<
 	@echo "$(CC_PREFIX)" $<
 
 $(BUILD_DIR_ASM)/%.obj: %.asm $(HEADERS_ASM)

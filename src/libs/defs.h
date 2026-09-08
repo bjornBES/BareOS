@@ -45,3 +45,6 @@
 #define __percpu            BTF_TYPE_TAG(percpu)
 
 #define inline_asm          __asm__ __volatile__
+
+#define CONCAT_(a, b)       a##b
+#define CONCAT(a, b)        CONCAT_(a, b)

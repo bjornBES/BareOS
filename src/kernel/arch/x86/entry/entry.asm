@@ -8,7 +8,6 @@
 ; -----
 ;
 
-extern stack_top
 extern kernel_entry
 extern arch_setup
 
@@ -56,3 +55,11 @@ asm_entry:
 
 	jmp     $
 %endif
+
+section .init.bss
+
+global stack_bottom
+stack_bottom:
+	resb 0x1000*16;
+global stack_top
+stack_top:

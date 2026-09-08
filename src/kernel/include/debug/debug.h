@@ -69,11 +69,11 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 #endif
 #define log_info(module, ...)     logfl(module, LVL_INFO, __VA_ARGS__)
 #define log_info_int(module, ...) logfl_int(module, LVL_INFO, __VA_ARGS__)
-#define info(module, ...)                         \
+#define info(module, ...)                        \
     {                                            \
         if (vfs_init_is_done == false)           \
         {                                        \
-            log_info(module, __VA_ARGS__);      \
+            log_info(module, __VA_ARGS__);       \
         }                                        \
         else                                     \
         {                                        \
@@ -83,16 +83,16 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 
 #define log_warn(module, ...)     logfl(module, LVL_WARN, __VA_ARGS__)
 #define log_warn_int(module, ...) logfl_int(module, LVL_WARN, __VA_ARGS__)
-#define warn(module, ...)                         \
-    {                                            \
-        if (vfs_init_is_done == false)           \
-        {                                        \
-            log_warn(module, __VA_ARGS__);      \
-        }                                        \
-        else                                     \
-        {                                        \
+#define warn(module, ...)                               \
+    {                                                   \
+        if (vfs_init_is_done == false)                  \
+        {                                               \
+            log_warn(module, __VA_ARGS__);              \
+        }                                               \
+        else                                            \
+        {                                               \
             trace_with_id(4, LVL_WARNING, __VA_ARGS__); \
-        }                                        \
+        }                                               \
     }
 
 #define log_err(module, ...)      logfl(module, LVL_ERROR, __VA_ARGS__)
@@ -103,21 +103,11 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 
 #define trace_1(module, ...)      logfl(module, LVL_DEBUG, __VA_ARGS__)
 
-
-/* #define ENTER_FUNC(module, args, ...)                                                 \
-    {                                                                                 \
-        irq_arch_disable();                                                           \
-        if (vfs_init_is_done == false)                                                \
-        {                                                                             \
-            debug_enter_func(module, __FUNCTION__, args, __VA_ARGS__);                \
-        }                                                                             \
-        else                                                                          \
-        {                                                                             \
-            trace_enter_func(4, module, FUNC_ENTER, __FUNCTION__, args, __VA_ARGS__); \
-        }                                                                             \
-        irq_arch_enable();                                                            \
-    } */
-#define FUNC_NOT_IMPLEMENTED() \
+#define ENTER_FUNC(args, ...)                              \
+    {                                                              \
+        debug_enter_func(MODULE, __FUNCTION__, args, __VA_ARGS__); \
+    }
+#define FUNC_NOT_IMPLEMENTED()                                      \
     ERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__);
 
 // #define KERNEL_PANIC(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)

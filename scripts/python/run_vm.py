@@ -60,11 +60,8 @@ if debug:
         os.remove(gdb_script)
     with open(gdb_script, "x") as gdb_file:
         gdb_file.write( "target remote :1234\n" +
-                       f"symbol-file {kernel_elf}\n" +
-                       f"add-symbol-file {stage2_elf}\n" +
-                        "b kernel_main\n"+
-                        "b asm_entry\n"+
-                        "b panic\n" +
+                       f"add-symbol-file {kernel_elf} 0xffffffff80000000\n" +
+                       f"add-symbol-file {stage2_elf} 0x8000\n" +
                         "set disassembly-flavor intel\n"
                         )
         gdb_file.close()
