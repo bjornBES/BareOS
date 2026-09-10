@@ -23,6 +23,8 @@
 #include "module.h"
 #include "memory.h"
 
+#include "kernel/cpu/cpuid.h"
+
 #include <defs.h>
 
 #define MODULE "x86-setup"
@@ -31,15 +33,24 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 typedef struct x86_arch_data
 {
+    uint16_t long_mode : 1;
     struct
     {
-
-
-        uint16_t type : 4;
+        uint16_t max_phys;
+        uint16_t pse : 1;
+        uint16_t pae : 1;
+        uint16_t pat : 1;
+        uint16_t pse_36 : 1;
+        uint16_t paging_64 : 1;
+        uint16_t la47 : 1;
+        uint16_t huge_pdpt : 1;
+        uint16_t global : 1;
+        uint16_t has_nx : 1;
+        uint16_t has_user_pke : 1;
+        uint16_t has_super_pke : 1;
     } paging;
-    
-} x86_arch_data_t;
 
+} x86_arch_data_t;
 
 int breakpoint(intr_frame_t *frame)
 {
@@ -142,31 +153,103 @@ void arch_setup(boot_params_t *boot_params)
     ivt_arch_set_handler(EXC_GP, general_protection_fault);
     ivt_arch_set_handler(EXC_PF, page_fault);
 
+    
+    cpuid_regs regs;
+    cpuid(0x01, 0, &regs);
+    
+    // check CPUID.0x01:EDX[3] PSE
+    arch_runtime_data.paging.pse = BIT_GET(regs.edx, 3);
+    
+    // check CPUID.0x01:EDX[6] PAE
+    arch_runtime_data.paging.pae = BIT_GET(regs.edx, 6);
+    
+    // check CPUID.0x01:EDX[13] Global bit in paging
+    arch_runtime_data.paging.global = BIT_GET(regs.edx, 13);
+    
+    // check CPUID.0x01:EDX[16] PAT
+    arch_runtime_data.paging.pat = BIT_GET(regs.edx, 16);
+    
+    // check CPUID.0x01:EDX[17] PSE_36 (supports the 36-Bit Page Size Extension which enables 4-MByte)
+    arch_runtime_data.paging.pse_36 = BIT_GET(regs.edx, 17);
+
+    cpuid(0x07, 0, &regs);
+    // check CPUID.0x07.0x00:EAX[31:0] MAX_SUBLEAF
+    uint32_t max_subleaf = regs.eax;
+    
+    if (max_subleaf >= 0x00)
+    {
+        // check CPUID.0x07.0x00:ECX[3] PKU (protection keys for user-mode pages)
+        arch_runtime_data.paging.has_user_pke = BIT_GET(regs.ecx, 3);
+        
+        // check CPUID.0x07.0x00:ECX[16] LA57 (57-bit linear addresses and fivelevel paging)
+        arch_runtime_data.paging.la47 = BIT_GET(regs.ecx, 16);
+        
+        // check CPUID.0x07.0x00:ECX[31] PKS (protection keys for supervisormode pages)
+        arch_runtime_data.paging.has_super_pke = BIT_GET(regs.ecx, 31);
+    }
+    
+    cpuid(0x80000000, 0, &regs);
+    // check CPUID.0x80000000:EAX Maximum Input Value for Extended Function CPUID Information
+    uint32_t max_ext_subleaf = regs.eax;
+    
+    if (max_ext_subleaf >= 0x80000001)
+    {
+        cpuid(0x80000001, 0, &regs);
+        
+        // check CPUID.0x80000001:EDX[26] 1 GB pages
+        arch_runtime_data.paging.huge_pdpt = BIT_GET(regs.edx, 26);
+        
+        // check CPUID.0x80000001:EDX[20] EXECUTE_DIS
+        arch_runtime_data.paging.has_nx = BIT_GET(regs.edx, 20);
+        
+        // check CPUID.0x80000001:EDX[29] intel64
+        arch_runtime_data.long_mode = BIT_GET(regs.edx, 29);
+        arch_runtime_data.paging.paging_64 = arch_runtime_data.long_mode;
+    }
+    
+    if (max_ext_subleaf >= 0x80000008)
+    {
+        cpuid(0x80000008, 0, &regs);
+        
+        // check CPUID.0x80000008:EAX[7:0] PHYS_ADDR_SIZE
+        arch_runtime_data.paging.max_phys = BIT_GET_RANGE(regs.eax, 0, 7);
+    }
+    
+    
     mmu_arch_init(boot_params);
+    mmu_arch_disable_prints();
+    log_debug(MODULE, "max_phys = 0x%x/%d", arch_runtime_data.paging.max_phys, arch_runtime_data.paging.max_phys);
+    log_debug(MODULE, "pse = 0x%x", arch_runtime_data.paging.pse);
+    log_debug(MODULE, "pae = 0x%x", arch_runtime_data.paging.pae);
+    log_debug(MODULE, "pat = 0x%x", arch_runtime_data.paging.pat);
+    log_debug(MODULE, "pse_36 = 0x%x", arch_runtime_data.paging.pse_36);
+    log_debug(MODULE, "paging_64 = 0x%x", arch_runtime_data.paging.paging_64);
+    log_debug(MODULE, "la47 = 0x%x", arch_runtime_data.paging.la47);
+    log_debug(MODULE, "huge_pdpt = 0x%x", arch_runtime_data.paging.huge_pdpt);
+    log_debug(MODULE, "global = 0x%x", arch_runtime_data.paging.global);
+    log_debug(MODULE, "has_nx = 0x%x", arch_runtime_data.paging.has_nx);
+    log_debug(MODULE, "has_user_pke = 0x%x", arch_runtime_data.paging.has_user_pke);
+    log_debug(MODULE, "has_super_pke = 0x%x", arch_runtime_data.paging.has_super_pke);
+
+    log_debug(MODULE, "max_subleaf = 0x%x", max_subleaf);
+    log_debug(MODULE, "max_ext_subleaf = 0x%x", max_ext_subleaf);
 
     boot_params_t *bp;
     {
         bp = kmalloc(sizeof(boot_params_t));
         vaddr_t virt_bootParams = ((vaddr_t)boot_params + PAGE_SIZE);
-        
         mmu_map_region(&kernel_page, PAGE_SIZE, 0, sizeof(boot_params_t), kernel_text_flags);
         memcpy(bp, (void *)virt_bootParams, sizeof(boot_params_t));
         mmu_free_region(&kernel_page, virt_bootParams, sizeof(boot_params_t));
-        
+
         log_debug(MODULE, "bootParams @ %p", bp);
         hexdump(bp, sizeof(boot_params_t), 16);
-        
+
         bp->arch_runtime_data = &arch_runtime_data;
     }
 
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2
-
-    // check CPUID.0x01:EDX[3] PSE
-    // check CPUID.0x01:EDX[6] PAE
-    // check CPUID.0x01:EDX[13] Global bit in paging
-    // check CPUID.0x01:EDX[16] PAT
-    // check CPUID.0x01:EDX[17] PSE_36 (supports the 36-Bit Page Size Extension which enables 4-MByte)
 
     // check CPUID.0x01:EDX[2] DE
 
@@ -181,15 +264,10 @@ void arch_setup(boot_params_t *boot_params)
     // check CPUID.0x01:ECX[26] XSAVE
     // check CPUID.0x01:ECX[27] OSXSAVE
 
-    // check CPUID.0x07.0x00:EAX[31:0] MAX_SUBLEAF
     // check CPUID.0x07.0x00:EBX[0] FSGSBASE
 
     // check CPUID.0x07.0x00:EBX[7] SMEP (Supervisor-Mode Execution Prevention)
     // check CPUID.0x07.0x00:EBX[9] ENH_REP_MOVSB_STOSB (Enhanced REP MOVSB/STOSB)
-
-    // check CPUID.0x07.0x00:ECX[3] PKU (protection keys for user-mode pages)
-    // check CPUID.0x07.0x00:ECX[16] LA57 (57-bit linear addresses and fivelevel paging)
-    // check CPUID.0x07.0x00:ECX[31] PKS (protection keys for supervisormode pages)
 
     // check CPUID.0x07.0x00:EDX[29] ARCH_CAPABILITIES (IA32_ARCH_CAPABILITIES MSR)
     // check CPUID.0x07.0x00:EDX[30] CORE_CAPABILITIES (IA32_CORE_CAPABILITIES MSR)
@@ -197,6 +275,8 @@ void arch_setup(boot_params_t *boot_params)
     // check CPUID.0x07.0x01:EAX[2:0] SHA512, SM3, SM4 instructions
     // check CPUID.0x07.0x01:EAX[12:10] REP MOVSB STOSB CMPSB instructions
 
+    // check CPUID.0x01:EDX[11] support the SYSENTER and SYSEXIT Instructions
+    // check CPUID.0x80000001:EDX[11] syscall fast path
     // check CPUID.0x07.0x01:EAX[17] FRED
 
     // check CPUID.0x07.0x01:EAX[20] NMI_SRC
@@ -206,16 +286,6 @@ void arch_setup(boot_params_t *boot_params)
     // check CPUID.0x14 Processor Trace
 
     // check CPUID.0x16 Processor Frequency Information
-
-    // check CPUID.0x80000000:EAX Maximum Input Value for Extended Function CPUID Information
-
-    // check CPUID.0x01:EDX[11] support the SYSENTER and SYSEXIT Instructions
-    // check CPUID.0x80000001:EDX[11] syscall fast path
-    // check CPUID.0x80000001:EDX[26] 1 GB pages
-    // check CPUID.0x80000001:EDX[20] EXECUTE_DIS
-    // check CPUID.0x80000001:EDX[29] intel64
-
-    // check CPUID.0x80000008:EAX[7:0] PHYS_ADDR_SIZE
 
     while (true)
     {

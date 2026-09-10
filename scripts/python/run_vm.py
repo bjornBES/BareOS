@@ -45,6 +45,7 @@ if arch == "i686":
 else:
     qemu_args.extend(["-global", "hpet.timers=8"])
     qemu_args.extend(["-cpu", "core2duo-v1"])
+    # qemu_args.extend(["-cpu", "Icelake-Server-v7"])
     
 
 if debug:
