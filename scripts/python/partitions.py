@@ -11,7 +11,7 @@ import subprocess
 
 from numpy import byte
 
-from scripts.python.disk import disk_partition_spec, disk_spec
+from disk import disk_partition_spec, disk_spec
     
 PARTITION_TYPES = {
     "fat12": "01",

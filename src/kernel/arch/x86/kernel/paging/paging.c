@@ -97,16 +97,16 @@ int mmu_arch_page_fault(intr_frame_t *frame)
 
     // mmu_flags_t entry_flags;
 #ifdef PAGING_64
-/*     page_table_entry64 *entry = paging64_get_entry(&info.page_directory, cr2, PAGING_LEVEL_PT, 0, 0);
-    if (!entry)
-    {
-        entry = paging64_get_entry(&info.page_directory, cr2, PAGING_LEVEL_PD, 0, 0);
-    }
-    if (entry)
-    {
-        entry_flags = pte_to_mm_flags(entry->raw & PAGE_FLAGS_MASK);
-        // log_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
-    } */
+    /*     page_table_entry64 *entry = paging64_get_entry(&info.page_directory, cr2, PAGING_LEVEL_PT, 0, 0);
+        if (!entry)
+        {
+            entry = paging64_get_entry(&info.page_directory, cr2, PAGING_LEVEL_PD, 0, 0);
+        }
+        if (entry)
+        {
+            entry_flags = pte_to_mm_flags(entry->raw & PAGE_FLAGS_MASK);
+            // log_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
+        } */
     paging_print_info(&info.page_directory, cr2);
 #else
 #endif
@@ -191,8 +191,11 @@ size_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu
 
 paddr_t mmu_arch_unmap(page_table_t *table, vaddr_t virt)
 {
-    ENTER_FUNC(MODULE, "%p, %p", table, virt);
-    
+    if (!paging_disable_print)
+    {
+        ENTER_FUNC(MODULE, "%p, %p", table, virt);
+    }
+
     paddr_t addr = paging_unmap_page(table, virt);
 
     if (addr > 0 && addr < 1024)

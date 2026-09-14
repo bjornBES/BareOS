@@ -19,7 +19,7 @@ cpu_t *cpu_arch_get_current()
 {
     return NULL;
 }
-cpu_t *cpu_arch_get(cpu_id id)
+cpu_t *cpu_arch_get(uint32_t logical_id)
 {
     return NULL;
 }

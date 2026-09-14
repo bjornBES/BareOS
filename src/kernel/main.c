@@ -8,11 +8,13 @@
  * -----
  */
 
+#include "acpi/fadt/fadt.h"
+
 #include <boot/params.h>
 
 void kernel_main(boot_params_t *boot_params)
 {
-
+    fadt_parse();
     for (;;)
     {
         ;

@@ -12,10 +12,10 @@ import gpt_image
 from gpt_image.disk import Disk
 from pyfatfs.PyFatFS import PyFat
 
-from scripts.python.utility import find_index, glob_recursive, is_file_name, parse_size
+from utility import find_index, glob_recursive, is_file_name, parse_size
 from config import config, arch, image_type, image_fs, image_size
-from scripts.python.disk import *
-from scripts.python.partitions import make_partitions
+from disk import *
+from partitions import make_partitions
 
 project_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 

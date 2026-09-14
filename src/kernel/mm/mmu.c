@@ -35,7 +35,7 @@
 #define DEFINE_FLAGS_STACK(name, user)           DEF_FLAGS(name, 1, 1, 1, 0, user, 0, !user, 1)
 #define DEFINE_FLAGS_MMIO(name)                  DEF_FLAGS(name, 1, 1, 1, 0, 0, 1, 0, 0)
 
-#define MODULE "mmu"
+#define MODULE                                   "mmu"
 
 mmu_flags_t flags_none = {0};
 
@@ -76,9 +76,10 @@ size_t mmu_map_region(page_table_t *table, vaddr_t _virt, paddr_t _phys, size_t 
 
     // Round up to page boundary
     size_t pages = PAGE_ALIGN_UP(size) / PAGE_SIZE;
-    log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with 0x%lx to %p",
-             virt, virt + pages * PAGE_SIZE,
-             phys, phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
+    if (!mmu_arch_is_prints_disable())
+    {
+        log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with 0x%lx to %p", virt, virt + pages * PAGE_SIZE, phys, phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
+    }
 
     bool prints = mmu_arch_is_prints_disable();
     mmu_arch_disable_prints();

@@ -15,15 +15,20 @@
 #include "asm/vectors_arch.h"
 #include "asm/mmu_arch.h"
 
+#include "acpi/rsdt.h"
+#include "acpi/madt/madt.h"
+
 #include "desc/gdt/gdt.h"
 #include "desc/idt/idt.h"
 #include "debug/debug.h"
 
 #include "kernel.h"
+#include "kernel/cpu/cpuid.h"
+
 #include "module.h"
 #include "memory.h"
 
-#include "kernel/cpu/cpuid.h"
+#include "init.h"
 
 #include <defs.h>
 
@@ -248,6 +253,10 @@ void arch_setup(boot_params_t *boot_params)
         bp->arch_runtime_data = &arch_runtime_data;
     }
 
+    rsdt_parse(bp);
+
+    madt_parse();
+
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2
 
@@ -286,6 +295,8 @@ void arch_setup(boot_params_t *boot_params)
     // check CPUID.0x14 Processor Trace
 
     // check CPUID.0x16 Processor Frequency Information
+
+    kernel_main(bp);
 
     while (true)
     {

@@ -12,6 +12,7 @@
 #include "setup.h"
 
 #include "mm/pmm/pmm.h"
+#include "mm/ioremap.h"
 
 #include "stdio.h"
 #include "debug/debug.h"
@@ -35,6 +36,8 @@ void hexdump(void *ptr, size_t len, size_t size)
 NORETURN void kernel_entry(boot_params_t *boot_params)
 {
     pmm_early_init(boot_params);
+
+    ioremap_init();
 
     arch_setup(boot_params);
 

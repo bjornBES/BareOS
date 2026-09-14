@@ -25,10 +25,13 @@ typedef struct arch_cpu_info
     struct thread *current; // thread_t running on this core
     struct thread *idle;    // this core's idle thread_t
 
-    cpu_id cpu_id;          // sequential index 0..n
-    bool online;            // has this AP finished init
-    bool need_resched;
-    bool has_stopped;
+    uint32_t logical_id;    // sequential index 0..n
+    uint32_t apic_id;
+
+    uint8_t online : 1; // has this AP finished init
+    uint8_t need_resched : 1;
+    uint8_t has_stopped : 1;
+    uint8_t res : 5;
 
     // spinlock_t local_runq_lock;
     // sched_class_t *sched_class; // which algorithm this core (or system) uses
@@ -37,7 +40,7 @@ typedef struct arch_cpu_info
     // device_t *lapic_timer_dev;
 
     // calling functions using IPI
-    void (*func_pending)(void*);
+    void (*func_pending)(void *);
     void *func_arg_pending;
 
     // per-core TSS (needed so rsp0 is independent per core)
@@ -50,5 +53,5 @@ typedef struct arch_cpu_info
 } cpu_t;
 
 cpu_t *cpu_arch_get_current();
-cpu_t *cpu_arch_get(cpu_id id);
+cpu_t *cpu_arch_get(uint32_t logical_id);
 void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top);

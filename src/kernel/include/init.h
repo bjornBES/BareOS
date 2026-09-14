@@ -11,6 +11,9 @@
 #pragma once
 
 #include <defs.h>
+#include <boot/params.h>
+
+void kernel_main(boot_params_t *boot_params);
 
 /* sections */
 

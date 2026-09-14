@@ -9,13 +9,14 @@
  */
 
 #include "asm/cpu_arch.h"
-#include "cpu_config.h"
 
 #include "debug/debug.h"
 
+#include <config.h>
+
 #define MODULE "x86-cpu"
 
-cpu_t cpus[MAX_CPUS] = {0};
+cpu_t cpus[CONFIG_MAX_CPUS] = {0};
 cpu_t *bsp_cpu = NULL;
 
 cpu_t *cpu_arch_get_current()
@@ -24,9 +25,9 @@ cpu_t *cpu_arch_get_current()
     return &cpus[0];
 }
 
-cpu_t *cpu_arch_get(cpu_id id)
+cpu_t *cpu_arch_get(uint32_t id)
 {
-    if (id < MAX_CPUS)
+    if (id < CONFIG_MAX_CPUS)
     {
         return &cpus[id];
     }

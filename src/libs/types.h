@@ -35,4 +35,4 @@ typedef uint32_t gid_t;
 typedef uint32_t id_t;
 
 typedef int32_64 nlink_t;
-typedef int32_64 cpu_id;
+// typedef int32_64 cpu_id;

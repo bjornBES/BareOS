@@ -162,7 +162,10 @@ INLINE void paging64_make_entry(page_table_entry64 *entry, paddr_t addr, paging_
     }
 
     entry->addr = (addr >> 12);
-    log_debug(MODULE, "in paging64_make_entry %03lx-%010lx-%03lx", (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "in paging64_make_entry %03lx-%010lx-%03lx", (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+    }
 }
 
 // Returns a pointer to the table AT the requested level, or NULL on failure.
@@ -455,15 +458,21 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
     {
         page_table->page_dir = (vaddr_t)phys_to_virt_auto(page_table->page_dir_phys);
         page_map_level_4 *pml4 = (void *)page_table->page_dir;
-        log_debug(MODULE, "pml4 = %p", pml4);
+        if (!paging_disable_print)
+        {
+            log_debug(MODULE, "pml4 = %p", pml4);
+        }
         for (size_t i = 0; i < PT64_ENTRIES; i++)
         {
             pml4->e[i].raw = 0;
         }
     }
     size_t total_size = ALIGN_2_UP(size, PAGE_SIZE);
-    log_debug(MODULE, "map %p..%p for %u bytes", start_phys, start_virt, total_size);
-    log_debug(MODULE, "map %p..%p-%p..%p", start_phys, start_virt, start_phys + total_size, start_virt + total_size);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "map %p..%p for %u bytes", start_phys, start_virt, total_size);
+        log_debug(MODULE, "map %p..%p-%p..%p", start_phys, start_virt, start_phys + total_size, start_virt + total_size);
+    }
     vaddr_t virt = (vaddr_t)ALIGN_2_UP((uint64_t)start_virt, PAGE_SIZE);
     uint64_t resolved_flags = PAGE_PRESENT | PAGE_WRITABLE;
 
@@ -471,7 +480,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
     int pdpt_idx = GET_PDPT_IDX(virt);
     int pd_idx = GET_PD_IDX(virt);
     int pt_idx = GET_PT_IDX(virt);
-    log_debug(MODULE, "indices pml4=%u pdpt=%u pd=%u pt=%u", pml4_idx, pdpt_idx, pd_idx, pt_idx);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "indices pml4=%u pdpt=%u pd=%u pt=%u", pml4_idx, pdpt_idx, pd_idx, pt_idx);
+    }
 
     int pt_count = total_size / PAGE_SIZE;
     int pd_count = pt_count / PT64_ENTRIES;
@@ -481,7 +493,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
         ERRNO_RETURN(EINVAL, "pd is null, aborting");
     }
 
-    log_debug(MODULE, "pt_count=%u, pd_count=%u", pt_count, pd_count);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "pt_count=%u, pd_count=%u", pt_count, pd_count);
+    }
     int frame_index = 0;
     if (pd_count == 0)
     {
@@ -491,7 +506,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
             ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
         }
         vaddr_t v = phys_to_virt_auto(phys);
-        log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + 0, phys, v);
+        if (!paging_disable_print)
+        {
+            log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + 0, phys, v);
+        }
         uint64_t *new_entry = (uint64_t *)v;
         for (size_t j = 0; j < 512; j++)
         {
@@ -505,7 +523,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
         for (size_t k = 0; k < PT64_ENTRIES; k++)
         {
             uint64_t target_index = (uint64_t)frame_index + ((uint64_t)start_phys >> 12);
-            log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + 0, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+            if (!paging_disable_print)
+            {
+                log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + 0, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+            }
             pt->e[k].raw = 0;
             pt->e[k].present = 1;
             pt->e[k].writable = 1;
@@ -526,7 +547,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
                     ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
                 }
                 vaddr_t v = phys_to_virt_auto(phys);
-                log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + i, phys, v);
+                if (!paging_disable_print)
+                {
+                    log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + i, phys, v);
+                }
                 uint64_t *new_entry = (uint64_t *)v;
                 for (size_t j = 0; j < 512; j++)
                 {
@@ -540,7 +564,10 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
                 for (size_t k = 0; k < PT64_ENTRIES; k++)
                 {
                     uint64_t target_index = (uint64_t)frame_index + ((uint64_t)start_phys >> 12);
-                    log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + i, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+                    if (!paging_disable_print)
+                    {
+                        log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + i, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+                    }
                     pt->e[k].raw = 0;
                     pt->e[k].present = 1;
                     pt->e[k].writable = 1;
@@ -555,26 +582,35 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
                 {
                     ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
                 }
-                log_debug(MODULE, "2MiB path: pd[%u] phys=%p virt=%p", pd_idx + i, huge_phys, virt + i * 0x200000);
+                if (!paging_disable_print)
+                {
+                    log_debug(MODULE, "2MiB path: pd[%u] phys=%p virt=%p", pd_idx + i, huge_phys, virt + i * 0x200000);
+                }
                 pd_huge_entry64 *huge_pd = (pd_huge_entry64 *)(void *)(&pd->e[pd_idx + i]);
                 huge_pd->raw = 0;
                 huge_pd->present = 1;
                 huge_pd->writable = 1;
                 huge_pd->ps = 1;
                 huge_pd->addr = (uint64_t)huge_phys >> 21;
-                log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u] mapping huge entry @ %p = raw=0x%llx addr_field=%llx", pml4_idx, pdpt_idx, pd_idx + i, huge_pd, huge_pd->raw, huge_pd->addr);
+                if (!paging_disable_print)
+                {
+                    log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u] mapping huge entry @ %p = raw=0x%llx addr_field=%llx", pml4_idx, pdpt_idx, pd_idx + i, huge_pd, huge_pd->raw, huge_pd->addr);
+                }
             }
         }
         else
         {
-            log_debug(MODULE, "pd[%u] already present, skipping", pd_idx + i);
-            log_debug(MODULE, "pd[%u] = %08llx", pd_idx + i, pd->e[pd_idx + i].raw);
+            if (!paging_disable_print)
+            {
+                log_debug(MODULE, "pd[%u] already present, skipping", pd_idx + i);
+                log_debug(MODULE, "pd[%u] = %08llx", pd_idx + i, pd->e[pd_idx + i].raw);
+            }
         }
     }
-    log_info(MODULE, "mapped virt=%08llx -> phys=%08llx (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%x)",
-             start_virt, start_phys,
-             GET_PML4_IDX((uint64_t)start_virt), GET_PDPT_IDX((uint64_t)start_virt),
-             GET_PD_IDX((uint64_t)start_virt), GET_PT_IDX((uint64_t)start_virt), resolved_flags);
+    if (!paging_disable_print)
+    {
+        log_info(MODULE, "mapped virt=%08llx -> phys=%08llx (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%x)", start_virt, start_phys, GET_PML4_IDX((uint64_t)start_virt), GET_PDPT_IDX((uint64_t)start_virt), GET_PD_IDX((uint64_t)start_virt), GET_PT_IDX((uint64_t)start_virt), resolved_flags);
+    }
 
     return 0;
 }
@@ -633,9 +669,9 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
 #define PRINT_LP(table, entry) \
     if (flags.large == true)   \
     {                          \
-        entry->ps = 1;  \
+        entry->ps = 1;         \
     }                          \
-    if (!entry->ps)     \
+    if (!entry->ps)            \
     {                          \
         PRINT(table, entry)    \
     }
@@ -720,10 +756,10 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
     }
 
     paging64_make_entry((page_table_entry64 *)pte, phys, PAGING_LEVEL_PT, flags);
-    log_debug(MODULE, "pte @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr, pte->raw & PAGE_FLAGS_MASK);
-
     if (!paging_disable_print)
     {
+        log_debug(MODULE, "pte @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr, pte->raw & PAGE_FLAGS_MASK);
+        
         log_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
         log_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
         log_debug(MODULE, "addr = p%p, flags = 0x%llx", pde->addr << 12, pde->raw & PAGE_FLAGS_MASK);
@@ -782,8 +818,10 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     uint64_t pd_index = GET_PD_IDX(virt);
     uint64_t pt_index = GET_PT_IDX(virt);
 
-    log_debug(MODULE, "paging64_clean_up: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]",
-              virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "paging64_clean_up: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+    }
 
     // Fetch all four tables (no alloc — if any is missing, nothing to unmap)
     page_map_level_4 *pml4 = paging64_get_pml4(page_table, virtAddr, 0, flags_none);
@@ -795,11 +833,11 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     {
         ERRNO_RETURN(EPERM, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
     }
-    
+
     page_table_entry64 *pml4_entry = &pml4->e[pml4_index];
     page_table_entry64 *pdpt_entry = &pdpt->e[pdpt_index];
     page_table_entry64 *pd_entry = &pd->e[pd_index];
-    
+
     if (!pt->e[pt_index].present)
     {
         ERRNO_RETURN(EPERM, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
@@ -813,19 +851,28 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     // Walk back up, freeing empty tables
     if (paging64_table_is_empty((page_table_entry64 *)pt->e, PAGING_LEVEL_PT))
     {
-        log_debug(MODULE, "paging64_clean_up: PT empty, freeing PT phys=0x%016llx", pt_phys);
+        if (!paging_disable_print)
+        {
+            log_debug(MODULE, "paging64_clean_up: PT empty, freeing PT phys=0x%016llx", pt_phys);
+        }
         pd_entry->raw = 0;
         pmm_free_frame(pt_phys);
 
         if (paging64_table_is_empty(pd->e, PAGING_LEVEL_PD))
         {
-            log_debug(MODULE, "paging64_clean_up: PD empty, freeing PD phys=0x%016llx", pd_phys);
+            if (!paging_disable_print)
+            {
+                log_debug(MODULE, "paging64_clean_up: PD empty, freeing PD phys=0x%016llx", pd_phys);
+            }
             pdpt_entry->raw = 0;
             pmm_free_frame(pd_phys);
 
             if (paging64_table_is_empty(pdpt->e, PAGING_LEVEL_PDPT))
             {
-                log_debug(MODULE, "paging64_clean_up: PDPT empty, freeing PDPT phys=0x%016llx", pdpt_phys);
+                if (!paging_disable_print)
+                {
+                    log_debug(MODULE, "paging64_clean_up: PDPT empty, freeing PDPT phys=0x%016llx", pdpt_phys);
+                }
                 pml4_entry->raw = 0;
                 pmm_free_frame(pdpt_phys);
             }
@@ -833,22 +880,30 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     }
 
     mmu_arch_flush_page(virtAddr);
-    log_debug(MODULE, "paging64_clean_up: TLB flushed for virt=0x%016llx", virtAddr);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "paging64_clean_up: TLB flushed for virt=0x%016llx", virtAddr);
+    }
     return 0;
 }
 
 // Unmap a single virtual page.
 paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 {
-    ENTER_FUNC(MODULE, "%p, %p", page_table, virtAddr);
+    if (!paging_disable_print)
+    {
+        ENTER_FUNC(MODULE, "%p, %p", page_table, virtAddr);
+    }
     vaddr_t virt = virtAddr;
     uint64_t pml4_index = GET_PML4_IDX(virt);
     uint64_t pdpt_index = GET_PDPT_IDX(virt);
     uint64_t pd_index = GET_PD_IDX(virt);
     uint64_t pt_index = GET_PT_IDX(virt);
 
-    log_debug(MODULE, "paging_unmap_page: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]",
-              virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "paging_unmap_page: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+    }
 
     // Fetch all four tables (no alloc — if any is missing, nothing to unmap)
     page_table64 *pt = paging64_get_pt(page_table, virtAddr, 0, flags_none);
@@ -865,14 +920,20 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
         ERRNO_RETURN(EPERM, "PTE not present for virt=0x%016llx, skipping", virtAddr);
     }
 
-    log_info(MODULE, "paging_unmap_page: unmapping virt=0x%016llx", virtAddr);
+    if (!paging_disable_print)
+    {
+        log_info(MODULE, "paging_unmap_page: unmapping virt=0x%016llx", virtAddr);
+    }
 
     paddr_t result = (paddr_t)((pt_entry->addr << 12) | (virt & 0xFFF));
 
     pt_entry->destroy = 1;
 
     mmu_arch_flush_page(virtAddr);
-    log_debug(MODULE, "paging_unmap_page: TLB flushed for virt=0x%016llx", virtAddr);
+    if (!paging_disable_print)
+    {
+        log_debug(MODULE, "paging_unmap_page: TLB flushed for virt=0x%016llx", virtAddr);
+    }
     return result;
 }
 
@@ -1108,7 +1169,7 @@ void paging_print_tree(page_table_t *page_dir)
                             {
                                 log_info(NO_MODULE, "\t\tpd[%i] = %p: phys addr = %p", pd_idx, pde->raw, pde->addr << 12);
                             }
-                            
+
                             paddr_t pt_phys = pde->addr << 12;
                             page_table64 *pt = (page_table64 *)phys_to_virt_auto(pt_phys);
                             for (size_t pt_idx = 0; pt_idx < PT64_ENTRIES; pt_idx++)
