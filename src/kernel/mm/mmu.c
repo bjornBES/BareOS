@@ -97,7 +97,7 @@ size_t mmu_map_region(page_table_t *table, vaddr_t _virt, paddr_t _phys, size_t 
     return total_size;
 }
 
-int mmu_free_region(page_table_t *table, vaddr_t _virt, size_t size)
+status_t mmu_free_region(page_table_t *table, vaddr_t _virt, size_t size)
 {
     vaddr_t virt = _virt;
     // error things maybe?
@@ -110,5 +110,5 @@ int mmu_free_region(page_table_t *table, vaddr_t _virt, size_t size)
         mmu_arch_unmap(table, virt);
         virt += PAGE_SIZE;
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }

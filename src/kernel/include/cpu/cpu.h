@@ -22,11 +22,13 @@ enum cpu_state
 
 typedef struct cpu_entry
 {
-    uint32_t logical_id;    // kernel-internal index, 0..N-1, what scheduler/percpu arrays index by
-    uint32_t processor_uid; // ACPI Processor UID, cross-ref DSDT _UID, later SRAT
-    uint32_t arch_id;       // opaque addressing handle for arch layer (APIC ID on x86), never interpreted generically
+    cpu_logical_id_t logical_id; // kernel-internal index, 0..N-1, what scheduler/percpu arrays index by
+    uint32_t processor_uid;      // ACPI Processor UID, cross-ref DSDT _UID
+    uint32_t arch_id;            // opaque addressing handle for arch layer (APIC ID on x86), never interpreted generically
     bool is_bsp;
-    enum cpu_state state;   // enumerated but not yet started until AP bring-up phase
+    enum cpu_state state;        // enumerated but not yet started until AP bring-up phase
 } cpu_entry_t;
 
 int cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp);
+cpu_entry_t *cpu_get_entry(cpu_logical_id_t id);
+

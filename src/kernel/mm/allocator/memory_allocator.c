@@ -99,16 +99,16 @@ void allocator_print_blocks()
 	log_debug(MODULE, "=== End of Blocks ===");
 }
 
-int kfree(void *mem)
+status_t kfree(void *mem)
 {
 	if (mem == NULL)
 	{
-		ERRNO_RETURN(EINVAL, "ptr was null");
+		KERRNO_RETURN(KERRNO_BAD_VALUE, "ptr was null");
 	}
 	alloc_t *alloc = (mem - sizeof(alloc_t));
 	memory_used -= alloc->size + sizeof(alloc_t);
 	alloc->status = 0;
-	return 0;
+	return KERRNO_SUCCESSES;
 }
 
 void *kmalloc(size_t size)
@@ -212,7 +212,7 @@ int free(void* ptr)
 {
 	if (ptr == NULL)
 	{
-		ERRNO_RETURN(EINVAL, "ptr was null");
+		KERRNO_RETURN(KERRNO_BAD_VALUE, "ptr was null");
 	}
     return kfree(ptr);
 }

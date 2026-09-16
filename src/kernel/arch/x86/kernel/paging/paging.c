@@ -9,19 +9,24 @@
  */
 
 #include "asm/mmu_arch.h"
+#include "asm/frame_arch.h"
+#include "asm/ivt_arch.h"
+#include "asm/vectors_arch.h"
+
 #include "mm/pmm/pmm.h"
 #include "mm/memdefs.h"
 
 #include "debug/debug.h"
 
-#include "asm/ivt_arch.h"
-#include "asm/vectors_arch.h"
+#include "ivt/ivt.h"
 
 #include "align.h"
 #include "memory.h"
 #include "string.h"
 #include "paging.h"
 #include "panic.h"
+
+#include <binary.h>
 
 /// @ingroup arch_x86_mmu
 /// @{
@@ -90,7 +95,7 @@ int mmu_arch_page_fault(intr_frame_t *frame)
     info.page_directory.page_dir = phys_to_virt_auto(cr3);
     info.page_directory.page_dir_phys = (paddr_t)cr3;
 
-    ivt_dump_frame(frame);
+    frame_arch_dump_frame(frame);
     log_info(NO_MODULE, "CR2: 0x%016llx CR3: 0x%016llx", cr2, cr3);
 
     info.fault_addr = cr2;
@@ -161,18 +166,18 @@ void mmu_arch_init(boot_params_t *bp)
     inline_asm("mov cr3, %0" : : "r"(kernel_page.page_dir_phys));
     log_debug(MODULE, "kernel_page @%p", &kernel_page);
 
-    ivt_arch_set_handler(EXC_PF, mmu_arch_page_fault);
+    ivt_set_handler(EXC_FAULT, mmu_arch_page_fault);
 
     paging_print_tree(&kernel_page);
 
     pmm_init();
 }
 
-int mmu_arch_load_table(page_table_t *table)
+status_t mmu_arch_load_table(page_table_t *table)
 {
     paddr_t cr3 = (paddr_t)table->page_dir_phys;
     inline_asm("mov cr3, %0" : : "r"(cr3));
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 size_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu_flags_t flags)
@@ -200,12 +205,12 @@ paddr_t mmu_arch_unmap(page_table_t *table, vaddr_t virt)
 
     if (addr > 0 && addr < 1024)
     {
-        ERRNO_RETURN(EPERM, "Internal function (paging_unmap_page) return %u", addr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_unmap_page) return %u", addr);
     }
     int state = paging_clean_up(table, virt);
     if (state != 0)
     {
-        ERRNO_RETURN(EPERM, "Internal function (paging_clean_up) return %u", state);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_clean_up) return %u", state);
     }
     return addr;
 }

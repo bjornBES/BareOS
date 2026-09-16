@@ -46,7 +46,7 @@ typedef struct xsdp
 
 extern void hexdump(void *ptr, size_t len, size_t size);
 
-int rsdt_parse(boot_params_t *bp)
+status_t rsdt_parse(boot_params_t *bp)
 {
     rsdp_t *rsdp = (rsdp_t *)(ioremap(bp->acpi.rsdp_address, 1024) + GET_PAGE_OFFSET(bp->acpi.rsdp_address));
     hexdump(rsdp, sizeof(rsdp_t), 16);
@@ -66,6 +66,6 @@ int rsdt_parse(boot_params_t *bp)
 
     table_set_base((vaddr_t)rsdp->rsdt_address);
 
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 

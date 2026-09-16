@@ -38,7 +38,7 @@ frame_allocator_t registry[CONFIG_MAX_FRAME_ALLOCATORS];
 uint16_t *pmm_refcounts = NULL;
 size_t pmm_frame_count = 0;
 
-int pmm_early_init(boot_params_t *bp)
+status_t pmm_early_init(boot_params_t *bp)
 {
     pmm_ready = false;
     size_t early_size = (size_t)&pmm_early_heap_size;
@@ -121,10 +121,10 @@ int pmm_early_init(boot_params_t *bp)
     log_debug(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
     log_debug(MODULE, "start        = %p end      = %p", info.phys_start, info.phys_end);
 
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int pmm_init()
+status_t pmm_init()
 {
     pmm_reg_initialize(&info, registry);
 
@@ -139,14 +139,14 @@ int pmm_init()
 
     allocator_init();
 
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 INTERNAL static paddr_t bump_alloc()
 {
     if (bump_current >= bump_end)
     {
-        ERRNO_RETURN(ENOMEM, "early heap exhausted");
+        KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "early heap exhausted");
     }
     paddr_t frame = bump_current;
     bump_current += PAGE_SIZE;
@@ -198,16 +198,16 @@ paddr_t pmm_alloc_frames_contiguous(size_t times)
     return base;
 }
 
-int pmm_ref_frame(paddr_t phys)
+status_t pmm_ref_frame(paddr_t phys)
 {
     log_debug(MODULE, "phys = %p", phys);
     size_t idx = pmm_frame_idx(phys);
     ASSERT(idx < pmm_frame_count, "idx = %u, pmm_frame_count = %u\n", idx, pmm_frame_count);
     pmm_refcounts[idx]++;
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int pmm_deref_frame(paddr_t phys)
+status_t pmm_deref_frame(paddr_t phys)
 {
     paddr_t phys_addr = PAGE_ALIGN_DOWN(phys);
     size_t idx = pmm_frame_idx(phys_addr);
@@ -218,7 +218,7 @@ int pmm_deref_frame(paddr_t phys)
     {
         pmm_free_frame(phys_addr); // give it back to the buddy allocator
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 uint16_t pmm_get_refcount(paddr_t phys)

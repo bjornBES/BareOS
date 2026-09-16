@@ -43,3 +43,6 @@ INLINE uint32_t lapic_get_id()
 {
     return *(volatile uint32_t *)(local_apic_base + LAPIC_REG_ID);
 }
+
+void lapic_enable();
+void lapic_wait_idle();

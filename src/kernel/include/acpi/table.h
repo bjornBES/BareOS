@@ -33,6 +33,9 @@ typedef struct sdt_header
 #define ADDRESS_SPACE_MEMORY 0
 #define ADDRESS_SPACE_IO 1
 #define ADDRESS_SPACE_PCI 2
+#define ADDRESS_SPACE_EMBEDDED_CONTROLLER 3
+#define ADDRESS_SPACE_PCI_DEVICE_BAR 6
+#define ADDRESS_SPACE_OEM 0x80
 
 typedef struct
 {

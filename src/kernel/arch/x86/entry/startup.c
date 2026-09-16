@@ -9,11 +9,13 @@
  */
 
 #include "setup.h"
+#include "x86_arch_data.h"
 
 #include "asm/cpu_arch.h"
 #include "asm/ivt_arch.h"
 #include "asm/vectors_arch.h"
 #include "asm/mmu_arch.h"
+#include "asm/frame_arch.h"
 
 #include "acpi/rsdt.h"
 #include "acpi/madt/madt.h"
@@ -24,68 +26,51 @@
 
 #include "kernel.h"
 #include "kernel/cpu/cpuid.h"
+#include "kernel/msr/msr.h"
+#include "kernel/acpi/apic/apic.h"
 
 #include "module.h"
 #include "memory.h"
 
 #include "init.h"
+#include "ivt/ivt.h"
 
+#include <binary.h>
 #include <defs.h>
 
 #define MODULE "x86-setup"
 
 extern void hexdump(void *ptr, size_t len, size_t size);
 
-typedef struct x86_arch_data
-{
-    uint16_t long_mode : 1;
-    struct
-    {
-        uint16_t max_phys;
-        uint16_t pse : 1;
-        uint16_t pae : 1;
-        uint16_t pat : 1;
-        uint16_t pse_36 : 1;
-        uint16_t paging_64 : 1;
-        uint16_t la47 : 1;
-        uint16_t huge_pdpt : 1;
-        uint16_t global : 1;
-        uint16_t has_nx : 1;
-        uint16_t has_user_pke : 1;
-        uint16_t has_super_pke : 1;
-    } paging;
-
-} x86_arch_data_t;
-
-int breakpoint(intr_frame_t *frame)
+status_t breakpoint(intr_frame_t *frame)
 {
     log_debug("breakpoint", "breakpoint\n");
-    ivt_dump_frame(frame);
-    return 0;
+    frame_arch_dump_frame(frame);
+    return KERRNO_SUCCESSES;
 }
 
-int write_registers(intr_frame_t *regs)
+status_t write_registers(intr_frame_t *regs)
 {
     log_debug("DEBUG", "======== DEBUG ========");
     log_debug(MODULE, "from cpu %d", cpu_arch_get_current());
-    ivt_dump_frame(regs);
+    frame_arch_dump_frame(regs);
     log_debug("DEBUG", "======== DEBUG ========");
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int double_fault(intr_frame_t *regs)
+status_t double_fault(intr_frame_t *regs)
 {
-    ivt_dump_frame(regs);
+    frame_arch_dump_frame(regs);
     log_err("double", "double fault");
 
     FUNC_NOT_IMPLEMENTED();
     return ENOSYS;
 }
 
-int general_protection_fault(intr_frame_t *frame)
+status_t general_protection_fault(intr_frame_t *frame)
 {
     log_err("GPF", "General Protection Fault 0x%x", frame->error);
-    ivt_dump_frame(frame);
+    frame_arch_dump_frame(frame);
     uint8_t table = BIT_GET_RANGE(frame->error, 1, 2);
     uint16_t selector = frame->error & ~0x3;
     if (table == 0b00)
@@ -96,7 +81,7 @@ int general_protection_fault(intr_frame_t *frame)
         if (selector == 0 && checksum != 0)
         {
             gdt_set_entry(entry, 0, 0, 0, 0, 0);
-            return 0;
+            return KERRNO_SUCCESSES;
         }
     }
     else if (table == 0b01 || table == 0b11)
@@ -111,13 +96,13 @@ int general_protection_fault(intr_frame_t *frame)
 
 uint8_t PF_times = 0;
 
-int page_fault(intr_frame_t *regs)
+status_t page_fault(intr_frame_t *regs)
 {
     vaddr_t cr2;
     __asm__("mov %0, cr2" : "=rm"(cr2));
 
     log_info(MODULE, "========== PAGE FAULT ==========");
-    ivt_dump_frame(regs);
+    frame_arch_dump_frame(regs);
     log_info(MODULE, "\t{ cr2 = %016p }", cr2);
     log_info(MODULE, "========== PAGE FAULT ==========");
 
@@ -128,7 +113,7 @@ int page_fault(intr_frame_t *regs)
 
 x86_arch_data_t arch_runtime_data;
 
-void arch_setup(boot_params_t *boot_params)
+__init void arch_setup(boot_params_t *boot_params)
 {
     // what do we know here?
     // - what some devices needs what drivers using cmdline
@@ -148,19 +133,21 @@ void arch_setup(boot_params_t *boot_params)
 
     tss_load(TSS_SELECTOR);
 
-    ivt_arch_init();
 
     idt_load();
 
-    ivt_arch_set_handler(EXC_DEBUG, write_registers);
-    ivt_arch_set_handler(EXC_BREAKPOINT, breakpoint);
-    ivt_arch_set_handler(EXC_DF, double_fault);
-    ivt_arch_set_handler(EXC_GP, general_protection_fault);
-    ivt_arch_set_handler(EXC_PF, page_fault);
+    ivt_set_handler(EXC_DEBUG, write_registers);
+    ivt_set_handler(EXC_BREAKPOINT, breakpoint);
+    ivt_set_handler(EXC_DF, double_fault);
+    ivt_set_handler(EXC_GP, general_protection_fault);
+    ivt_set_handler(EXC_FAULT, page_fault);
 
     
     cpuid_regs regs;
     cpuid(0x01, 0, &regs);
+
+    // check CPUID.0x01:EDX[5] MSR
+    arch_runtime_data.has_msr = BIT_GET(regs.edx, 5);
     
     // check CPUID.0x01:EDX[3] PSE
     arch_runtime_data.paging.pse = BIT_GET(regs.edx, 3);
@@ -206,6 +193,11 @@ void arch_setup(boot_params_t *boot_params)
         
         // check CPUID.0x80000001:EDX[20] EXECUTE_DIS
         arch_runtime_data.paging.has_nx = BIT_GET(regs.edx, 20);
+        if (arch_runtime_data.paging.has_nx == 1)
+        {
+            uint64_t efer = msr_get_64(MSR_EFER) | BIT(MSR_EFER_NX_BIT);
+            msr_set_64(MSR_EFER, efer);
+        }
         
         // check CPUID.0x80000001:EDX[29] intel64
         arch_runtime_data.long_mode = BIT_GET(regs.edx, 29);
@@ -257,6 +249,12 @@ void arch_setup(boot_params_t *boot_params)
 
     madt_parse();
 
+    status_t status = irq_initialize(apic_get_driver);
+    if (status != KERRNO_SUCCESSES)
+    {
+        log_err(MODULE, "PIC time");
+    }
+
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2
 
@@ -296,7 +294,7 @@ void arch_setup(boot_params_t *boot_params)
 
     // check CPUID.0x16 Processor Frequency Information
 
-    kernel_main(bp);
+    kernel_early_main(bp);
 
     while (true)
     {

@@ -74,7 +74,7 @@ else:
 
 qemu_args.extend(["-smp", "cores=2,threads=4,sockets=1"])
 qemu_args.extend([
-    "-k", "da", "-debugcon", "stdio", "-m", "64m", "-d", "guest_errors,int,cpu_reset", "-D", "debug.txt",
+    "-k", "da", "-debugcon", "stdio", "-m", "64m", "-d", "guest_errors,int", "-D", "debug.txt",
     "-netdev", "user,id=mynet0", "-net", "nic,model=rtl8139,netdev=mynet0"])
 
 if image_type == "floppy":

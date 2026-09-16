@@ -9,10 +9,11 @@
  */
 
 #include "entry/desc/idt/idt.h"
-#include "kernel/ivt/ivt.h"
+#include "kernel/frame/frame.h"
 #include "type_arch.h"
 
 #include "debug/debug.h"
+#include "ivt/ivt.h"
 #include "kernel.h"
 
 #include <defs.h>
@@ -71,11 +72,11 @@ void isr_handler(intr_frame_t *frame)
 {
     inline_asm("cli");
 
-    interrupt_vector vector = frame->interrupt;
+    interrupt_vector_t vector = frame->interrupt;
 
-    if (ivt_arch_handler(vector, frame) != 0)
+    if (ivt_handler(vector, frame) != 0)
     {
-        ivt_dump_frame(frame);
+        frame_arch_dump_frame(frame);
 
         log_crit(MODULE, "Unhandled exception %d %s 0x%x", vector, exception_names[vector], frame->error);
         KERNEL_PANIC(MODULE, "Unhandled exception %d", vector);

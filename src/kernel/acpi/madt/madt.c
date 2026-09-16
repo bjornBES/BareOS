@@ -16,7 +16,7 @@
 
 #define MODULE "MADT"
 
-int madt_parse()
+status_t madt_parse()
 {
     madt_t *_madt = (madt_t *)table_get_table(0x43495041); // apic
     if (!_madt)

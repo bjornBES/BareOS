@@ -9,7 +9,9 @@
  */
 
 #include "asm/madt_arch.h"
-#include "lapic.h"
+#include "kernel/acpi/apic/apic.h"
+#include "kernel/acpi/apic/lapic.h"
+#include "kernel/acpi/apic/ioapic.h"
 
 #include "debug/debug.h"
 
@@ -51,7 +53,7 @@ typedef struct
 // type 4 — non-maskable interrupts
 typedef struct
 {
-    uint8_t io_apic_id;
+    uint8_t apic_id;
     uint16_t flags;
     uint8_t lint;
 } PACKED madt_nmi;
@@ -67,10 +69,11 @@ typedef struct
         madt_local_apic_t local;
         madt_io_apic io;
         madt_iso iso;
+        madt_nmi nmi;
     } PACKED;
 } PACKED madt_entry;
 
-int madt_arch_parse(madt_t *madt)
+status_t madt_arch_parse(madt_t *madt)
 {
     local_apic_base = ioremap(madt->local_interrupt_address, 1024);
     uint8_t *entry = madt->entries;
@@ -107,20 +110,22 @@ int madt_arch_parse(madt_t *madt)
                     madt_io_apic *ia = (madt_io_apic *)&en->io;
                     // apic_set_io_base((paddr_t)ia->io_apic_address);
                     log_info(MODULE, "IOAPIC ID %u base=0x%x GSI base=%u", ia->io_apic_id, ia->io_apic_address, ia->global_system_interrupt_base);
+                    ioapic_register(ia->io_apic_id, ia->io_apic_address, ia->global_system_interrupt_base);
                     break;
                 }
             case 2 : // interrupt source override
                 {
                     madt_iso *iso = (madt_iso *)&en->iso;
-                    log_info(MODULE, "ISO IRQ %u -> GSI %u flags=0x%x", iso->source, iso->global_system_interrupt, iso->flags);
+                    log_info(MODULE, "IOAPIC ID %u ISO IRQ %u -> GSI %u flags=0x%x", iso->bus, iso->source, iso->global_system_interrupt, iso->flags);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
+                    ioapic_set_entry(iso->bus, iso->global_system_interrupt, iso->source, iso->flags, 0);
                     break;
                 }
             case 4 : // interrupt source override
                 {
-                    madt_nmi *nmi = (madt_nmi *)&en->iso;
-                    log_info(MODULE, "NMI APIC %d, flags=0x%x, lint=%u", nmi->io_apic_id, nmi->flags, nmi->lint);
+                    madt_nmi *nmi = (madt_nmi *)&en->nmi;
+                    log_info(MODULE, "NMI APIC ID %u, flags=0x%x, lint=%u", nmi->apic_id, nmi->flags, nmi->lint);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
                     break;
@@ -133,5 +138,5 @@ int madt_arch_parse(madt_t *madt)
         }
         entry += en->length; // advance by entry length, not sizeof
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }

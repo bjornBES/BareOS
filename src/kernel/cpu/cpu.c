@@ -18,10 +18,10 @@
 
 #define MODULE "SMP"
 
-int cpu_count = 0;
+cpu_logical_id_t cpu_count = 0;
 cpu_entry_t entries[CONFIG_MAX_CPUS];
 
-int cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp)
+status_t cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp)
 {
     ENTER_FUNC("%u, %u, %s", processor_uid, arch_id, is_bsp BOOL_TO_STRING)
     entries[cpu_count].logical_id = cpu_count;
@@ -38,5 +38,10 @@ int cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp)
     }
     cpu_count++;
     
-    return 0;
+    return KERRNO_SUCCESSES;
+}
+
+cpu_entry_t *cpu_get_entry(cpu_logical_id_t id)
+{
+    return &entries[id];
 }

@@ -49,10 +49,8 @@ at bottom). Until decided, default to the table above and treat
 
 - Arch-specific functions: `subsystem_arch_verb()` (e.g. `vmm_arch_map()`,
   `signal_arch_dispatch()`). Never bury arch logic under a generic name.
-- Return convention: internal kernel functions return either `0` (success)
-  or a positive errno code (failure) — that's the entire contract, no
-  separate `RETURN_GOOD`/`RETURN_FAILED` sentinel values. Syscalls
-  translate this to POSIX `-errno` at the ABI boundary on the way out.
+- Return convention: internal kernel functions return either `KERRNO_SUCCESSES` (success)
+  or a positive kerrno code (failure).
 - Address space constants: centralized in `memdefs.h`, not re-`#define`d
   per file.
 - Assembly: Intel syntax, always.

@@ -76,14 +76,14 @@ aml_opcode_info_t aml_opcode(uint8_t *code, int *start_index)
     return info;
 }
 
-int aml_parse_byte_data(uint8_t *code, int *start_index, uint8_t *out_data)
+status_t aml_parse_byte_data(uint8_t *code, int *start_index, uint8_t *out_data)
 {
     if (code[*start_index] == 0x0a)
     {
         (*start_index)++;
         *out_data = code[*start_index];
         (*start_index)++;
-        return 0;
+        return KERRNO_SUCCESSES;
     }
     return 1;
 }

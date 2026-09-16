@@ -159,12 +159,12 @@ void mmu_copy_contents(paddr_t src, paddr_t dst);
 /// @param[in] phys The physical start address of the contiguous regions that needs to be mapped to the virtual contiguous addresses
 /// @param[in] size The size (in bytes) that will be mapped this will be aligned to the nearest PAGE_SIZE by the function
 /// @param[in] flags The flags of the leaf entry
-/// @return The physical address of the mapping or an errno number
-/// @retval EPERM: virt or size are not valid e.g. They are too large or not page aligned
-/// @retval EINVAL: flags, size or table are not valid
-/// @retval EFAULT: virt or virt+size exceeds the virtual space of the CPU
-/// @retval EACCES: flags requests for execution with write (W^X)
-/// @retval ENOMEM: The PMM is out of memory
+/// @return The physical address of the mapping or an kerrno number
+/// @retval KERRNO_NOT_ALLOWED: virt or size are not valid e.g. They are too large or not page aligned
+/// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
+/// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
+/// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
+/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
 paddr_t mmu_alloc_and_map(page_table_t *table, vaddr_t virt, mmu_flags_t flags);
 
 /// @brief Map a contiguous virtual region to newly allocated physical frames with the given flags
@@ -174,12 +174,12 @@ paddr_t mmu_alloc_and_map(page_table_t *table, vaddr_t virt, mmu_flags_t flags);
 /// @param[in] virt The virtual start address of the contiguous regions that needs to be mapped to the contiguous physical frames
 /// @param[in] size The size (in bytes) that will be mapped this will be aligned to the nearest PAGE_SIZE by the function
 /// @param[in] flags The flags of the leaf entry
-/// @return The physical address of the mapped region or an errno number
-/// @retval EPERM: virt or size are not valid e.g. They are too large or not page aligned
-/// @retval EINVAL: flags, size or table are not valid
-/// @retval EFAULT: virt or virt+size exceeds the virtual space of the CPU
-/// @retval EACCES: flags requests for execution with write (W^X)
-/// @retval ENOMEM: The PMM is out of memory
+/// @return The physical address of the mapped region or an kerrno number
+/// @retval KERRNO_NOT_ALLOWED: virt or size are not valid e.g. They are too large or not page aligned
+/// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
+/// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
+/// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
+/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
 paddr_t mmu_alloc_and_map_region(page_table_t *table, vaddr_t virt, size_t size, mmu_flags_t flags);
 
 /// @brief Map a contiguous physical region to a contiguous virtual address with the given flags
@@ -190,12 +190,12 @@ paddr_t mmu_alloc_and_map_region(page_table_t *table, vaddr_t virt, size_t size,
 /// @param[in] phys The physical start address of the contiguous regions that needs to be mapped to the virtual contiguous addresses
 /// @param[in] size The size (in bytes) that will be mapped this will be aligned to the nearest PAGE_SIZE by the function
 /// @param[in] flags The flags of the leaf entry
-/// @return The size of the mapped region or an errno number
-/// @retval EPERM: phys, virt or size are not valid e.g. They are too large or not page aligned
-/// @retval EINVAL: flags, size or table are not valid
-/// @retval EFAULT: virt or virt+size exceeds the virtual space of the CPU
-/// @retval EACCES: flags requests for execution with write (W^X)
-/// @retval ENOMEM: The PMM is out of memory
+/// @return The size of the mapped region or an kerrno number
+/// @retval KERRNO_NOT_ALLOWED: phys, virt or size are not valid e.g. They are too large or not page aligned
+/// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
+/// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
+/// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
+/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
 size_t mmu_map_region(page_table_t *table, vaddr_t virt, paddr_t phys, size_t size, mmu_flags_t flags);
 
 // Unmap [virt, virt + size) and free the backing frames.

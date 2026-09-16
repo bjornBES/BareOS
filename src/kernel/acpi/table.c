@@ -50,7 +50,7 @@ sdt_header_t *table_get_table(uint32_t signature)
     return NULL;
 }
 
-int table_verify_checksum(sdt_header_t *header)
+status_t table_verify_checksum(sdt_header_t *header)
 {
     uint8_t sum = 0;
 
@@ -61,7 +61,7 @@ int table_verify_checksum(sdt_header_t *header)
 
     if (sum == 0)
     {
-        return 0;
+        return KERRNO_SUCCESSES;
     }
     return 1;
 }

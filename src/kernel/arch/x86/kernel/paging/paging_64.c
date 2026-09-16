@@ -452,7 +452,7 @@ page_table_entry64 *paging64_get_pt_entry(page_table_t *page, paddr_t p, vaddr_t
     return (page_table_entry64 *)paging64_get_entry(page, p, v, PAGING_LEVEL_PT, alloc, flags);
 }
 
-int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t size, mmu_flags_t flags)
+status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t size, mmu_flags_t flags)
 {
     if (page_table->page_dir == 0)
     {
@@ -490,7 +490,7 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
     page_directory64 *pd = paging64_get_pd(page_table, start_virt, 1, flags);
     if (!pd)
     {
-        ERRNO_RETURN(EINVAL, "pd is null, aborting");
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "pd is null, aborting");
     }
 
     if (!paging_disable_print)
@@ -503,7 +503,7 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
         paddr_t phys = pmm_alloc_frame();
         if (phys == 0)
         {
-            ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
+            KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "OMM with %u entries left", pd_count);
         }
         vaddr_t v = phys_to_virt_auto(phys);
         if (!paging_disable_print)
@@ -544,7 +544,7 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
                 paddr_t phys = pmm_alloc_frame();
                 if (phys == 0)
                 {
-                    ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
+                    KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "OMM with %u entries left", pd_count);
                 }
                 vaddr_t v = phys_to_virt_auto(phys);
                 if (!paging_disable_print)
@@ -580,7 +580,7 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
                 paddr_t huge_phys = (paddr_t)((uint64_t)start_phys + i * 0x200000);
                 if (huge_phys == 0)
                 {
-                    ERRNO_RETURN(ENOMEM, "OMM with %u entries left", pd_count);
+                    KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "OMM with %u entries left", pd_count);
                 }
                 if (!paging_disable_print)
                 {
@@ -612,7 +612,7 @@ int map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, size_t
         log_info(MODULE, "mapped virt=%08llx -> phys=%08llx (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%x)", start_virt, start_phys, GET_PML4_IDX((uint64_t)start_virt), GET_PDPT_IDX((uint64_t)start_virt), GET_PD_IDX((uint64_t)start_virt), GET_PT_IDX((uint64_t)start_virt), resolved_flags);
     }
 
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_flags_t flags)
@@ -790,7 +790,7 @@ done_map:
     return PAGE_SIZE;
 }
 
-INTERNAL INLINE int paging64_table_is_empty(page_table_entry64 *entries, int level)
+INTERNAL INLINE status_t paging64_table_is_empty(page_table_entry64 *entries, int level)
 {
     for (int i = 0; i < 512; i++)
     {
@@ -804,13 +804,13 @@ INTERNAL INLINE int paging64_table_is_empty(page_table_entry64 *entries, int lev
         }
         if (entries[i].present)
         {
-            return 0;
+            return KERRNO_SUCCESSES;
         }
     }
     return 1;
 }
 
-int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
+status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
 {
     vaddr_t virt = virtAddr;
     uint64_t pml4_index = GET_PML4_IDX(virt);
@@ -831,7 +831,7 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!pt)
     {
-        ERRNO_RETURN(EPERM, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
     }
 
     page_table_entry64 *pml4_entry = &pml4->e[pml4_index];
@@ -840,7 +840,7 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!pt->e[pt_index].present)
     {
-        ERRNO_RETURN(EPERM, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "no PT for virt=0x%016llx, nothing to clean up", virtAddr);
     }
 
     // Grab physical addresses before we zero the entries
@@ -884,7 +884,7 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     {
         log_debug(MODULE, "paging64_clean_up: TLB flushed for virt=0x%016llx", virtAddr);
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 // Unmap a single virtual page.
@@ -910,14 +910,14 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!pt)
     {
-        ERRNO_RETURN(EPERM, "no PT for virt=0x%016llx, nothing to unmap", virtAddr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "no PT for virt=0x%016llx, nothing to unmap", virtAddr);
     }
 
     page_table_entry64_leaf *pt_entry = &pt->e[pt_index];
 
     if (!pt_entry->present)
     {
-        ERRNO_RETURN(EPERM, "PTE not present for virt=0x%016llx, skipping", virtAddr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "PTE not present for virt=0x%016llx, skipping", virtAddr);
     }
 
     if (!paging_disable_print)

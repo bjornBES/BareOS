@@ -27,7 +27,7 @@ typedef int int32_64;
 typedef unsigned int uint32_64;
 typedef unsigned int reg_t;
 #endif
-typedef uint32_t interrupt_vector;
+typedef uint8_t interrupt_vector_t;
 
 #define _SIGSET_NWORDS (int)(128 / sizeof(long))
 typedef struct __kernel_sigset_t

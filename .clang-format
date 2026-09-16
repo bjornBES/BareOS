@@ -27,7 +27,7 @@ AlignConsecutiveDeclarations:
 AlignConsecutiveMacros:
   Enabled: true
   AcrossEmptyLines: true
-  AcrossComments: false
+  AcrossComments: true
 
 AlignConsecutiveShortCaseStatements:
   Enabled: false

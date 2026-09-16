@@ -132,7 +132,7 @@ INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
     global_buddy->free_bitmap[bit / 8] &= ~(1 << (bit % 8));
 }
 
-int buddy_setup(frame_allocator_t *out, pmm_info_t *info)
+status_t buddy_setup(frame_allocator_t *out, pmm_info_t *info)
 {
     ENTER_FUNC("%p, %p", out, info);
     paddr_t phys_buddy = pmm_alloc_frame();
@@ -167,10 +167,10 @@ int buddy_setup(frame_allocator_t *out, pmm_info_t *info)
     out->ops.alloc_at = buddy_alloc_at;
     out->name = "buddy";
 
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
+status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
 {
     ENTER_FUNC("%p, %p", out, info);
     buddy_t *global_buddy = out->priv;
@@ -202,7 +202,7 @@ int buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
         buddy_free_block(out, addr, order);
         addr += BUDDY_BLOCK_SIZE(order);
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
 void buddy_print_info_verbose(frame_allocator_t *allocator)
@@ -269,13 +269,13 @@ void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out)
     }
 }
 
-int buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order)
+status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order)
 {
     buddy_t *global_buddy = allocator->priv;
     log_debug(MODULE, "buddy_free addr=%p order=%d", physaddr, order);
     if (order >= BUDDY_MAX_ORDER)
     {
-        ERRNO_RETURN(EINVAL, "order is not valid");
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "order is not valid");
     }
 
     paddr_t addr = physaddr;
@@ -311,10 +311,10 @@ int buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t or
     // log_debug(MODULE, "node = %p", node);
     list_push(&global_buddy->orders[order], node);
     buddy_bit_set(global_buddy, order, idx);
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
+status_t buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
 {
     paddr_t addr = phys;
     size_t remaining = nframes;
@@ -330,15 +330,15 @@ int buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
         addr += (1 << chunk_order) * PAGE_SIZE;
         remaining -= (1 << chunk_order);
     }
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_out)
+status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_out)
 {
     buddy_t *global_buddy = allocator->priv;
     if (order >= BUDDY_MAX_ORDER)
     {
-        ERRNO_RETURN(EINVAL, "order is not valid");
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "order is not valid");
     }
 
     uint32_t found_order = order;
@@ -349,7 +349,7 @@ int buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_
 
     if (found_order == BUDDY_MAX_ORDER)
     {
-        ERRNO_RETURN(ENOMEM, "Out of memory");
+        KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "Out of memory");
     }
 
     buddy_free_node_t *node = list_pop(&global_buddy->orders[found_order]);
@@ -367,10 +367,10 @@ int buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_
 
     log_debug(MODULE, "got addr=%p order=%d", addr, order);
     *phys_out = addr;
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-int buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_phys)
+status_t buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_phys)
 {
     size_t order = ceil_log2(nframes);
 
@@ -400,10 +400,10 @@ int buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_phys)
     }
 
     *out_phys = base;
-    return 0;
+    return KERRNO_SUCCESSES;
 }
 
-static int buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr)
+static status_t buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr)
 {
     buddy_t *global_buddy = allocator->priv;
     for (uint32_t order = BUDDY_MAX_ORDER - 1;; order--)
@@ -433,7 +433,7 @@ static int buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr)
                     buddy_free_block(allocator, upper, order);
                 }
             }
-            return 0;
+            return KERRNO_SUCCESSES;
         }
         if (order == 0)
         {
@@ -443,7 +443,7 @@ static int buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr)
     return 1; // already allocated / not in any free list
 }
 
-int buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t nframes, paddr_t *phys_out)
+status_t buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t nframes, paddr_t *phys_out)
 {
     for (size_t i = 0; i < nframes; i++)
     {
@@ -454,5 +454,5 @@ int buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t nframes, p
         }
     }
     *phys_out = addr;
-    return 0;
+    return KERRNO_SUCCESSES;
 }

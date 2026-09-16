@@ -13,7 +13,7 @@
 // #include "task/threading/spinlock/spinlock.h"
 // #include "trace.h"
 // #include "time/timer.h"
-#include "errno.h"
+#include "kerrno.h"
 #include <types.h>
 
 #if DEBUG
@@ -108,7 +108,7 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
         debug_enter_func(MODULE, __FUNCTION__, args, __VA_ARGS__); \
     }
 #define FUNC_NOT_IMPLEMENTED()                                      \
-    ERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__);
+    KERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__);
 
 // #define KERNEL_PANIC(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)
 
