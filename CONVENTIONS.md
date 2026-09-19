@@ -102,9 +102,9 @@ at bottom). Until decided, default to the table above and treat
 
 Format: `subsystem: what changed, stated plainly`
 
-- `bootloader_stage2: added GOP pixel format detection`
-- `processes: changed fork so it copies the fd table refcounted`
-- `signal: fixed sigaction_t clobbering kernel-side sigset`
+- `Bootloader_stage2: added GOP pixel format detection`
+- `Processes: changed fork so it copies the fd table refcounted`
+- `Signal: fixed sigaction_t clobbering kernel-side sigset`
 
 Subsystem prefix matches the directory/subsystem name (or closest
 sensible one). No vague messages ("fixes", "wip", "stuff") — state is
