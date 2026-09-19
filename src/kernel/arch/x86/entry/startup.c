@@ -30,6 +30,7 @@
 #include "kernel/cpuid/cpuid.h"
 #include "kernel/msr/msr.h"
 #include "kernel/acpi/apic/apic.h"
+#include "kernel/dev/pit/pit.h"
 
 #include "module.h"
 #include "memory.h"
@@ -285,6 +286,8 @@ pic_time:
     }
 
     hpet_parse();
+
+    pit_init();
 
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2

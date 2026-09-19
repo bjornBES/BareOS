@@ -99,12 +99,12 @@ uint64_t hpet_arch_read_counter()
     return hpet_arch_read(HPET_REG_COUNTER);
 }
 
-uint64_t hpet_read_counter(timer_source_t *dev)
+uint64_t hpet_read_counter(timer_source_t *self)
 {
     return hpet_arch_read(HPET_REG_COUNTER);
 }
 
-uint64_t hpet_ticks_to_ns(timer_source_t *dev, uint64_t ticks)
+uint64_t hpet_ticks_to_ns(timer_source_t *self, uint64_t ticks)
 {
     return (ticks * 1000000000ull) / hpet_freq;
 }
