@@ -54,6 +54,10 @@ typedef struct boot_params
     #if CONFIG_ENABLE_SMP == 1
     struct
     {
+        uint8_t using_trampoline : 1;
+        uint8_t unused : 7;
+        uint64_t trampoline_phys_address;
+        uint64_t trampoline_size;
         uint8_t core_bringup[512];
     } PACKED smp;
     #endif

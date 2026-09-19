@@ -18,6 +18,7 @@
 #define LAPIC_REG_SPURIOUS 0xF0
 #define LAPIC_REG_ICR_LOW 0x300
 #define LAPIC_REG_ICR_HIGH 0x310
+#define LAPIC_REG_ICR 0x330
 #define LAPIC_REG_TIMER 0x320
 #define LAPIC_REG_TIMER_INITIAL 0x380
 #define LAPIC_REG_TIMER_CURRENT 0x390
@@ -29,20 +30,12 @@
 
 extern vaddr_t local_apic_base;
 
-INLINE void lapic_write(uint32_t reg, uint32_t value)
-{
-    *(volatile uint32_t *)(local_apic_base + reg) = value;
-}
-
-INLINE uint32_t lapic_read(uint32_t reg)
-{
-    return *(volatile uint32_t *)(local_apic_base + reg);
-}
-
-INLINE uint32_t lapic_get_id()
-{
-    return *(volatile uint32_t *)(local_apic_base + LAPIC_REG_ID);
-}
+void lapic_write_icr(uint32_t high, uint32_t low);
+void lapic_write(uint32_t reg, uint64_t value);
+uint64_t lapic_read(uint32_t reg);
+uint32_t lapic_get_id();
 
 void lapic_enable();
 void lapic_wait_idle();
+
+status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id);

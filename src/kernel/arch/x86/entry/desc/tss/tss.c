@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "tss.h"
+#include "entry/desc/tss/tss.h"
 
 #include "memory.h"
 

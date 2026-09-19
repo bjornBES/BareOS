@@ -79,7 +79,7 @@ uint8_t ioapic_get_id(gsi_t target_gsi)
     return 0xFF;
 }
 
-void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint8_t dest_apic_id)
+void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint32_t dest_apic_id)
 {
     uint32_t low = vector;
 
@@ -98,14 +98,14 @@ void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t fla
     // start masked
     low |= (1 << 16);
 
-    // destination = local APIC ID , uint8_t dest_apic_id
+    // destination = local APIC ID , uint32_t dest_apic_id
     uint32_t high = (dest_apic_id << 24);
 
     ioapic_write(ioapic_id, IOAPIC_REG_REDTBL + gsi * 2, low);
     ioapic_write(ioapic_id, IOAPIC_REG_REDTBL + gsi * 2 + 1, high);
 }
 
-void ioapic_set_apic_dest(uint8_t ioapic_id, gsi_t gsi, uint8_t dest_apic_id)
+void ioapic_set_apic_dest(uint8_t ioapic_id, gsi_t gsi, uint32_t dest_apic_id)
 {
     // destination = local APIC ID , uint8_t dest_apic_id
     uint32_t high = (dest_apic_id << 24);

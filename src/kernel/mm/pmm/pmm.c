@@ -163,6 +163,7 @@ paddr_t pmm_alloc_frame()
     paddr_t phys;
     if (!pmm_ready)
     {
+        log_debug(MODULE, "Allocating from bump %p/%p, %p", bump_current, bump_end, &pmm_ready);
         phys = bump_alloc();
     }
     else

@@ -13,4 +13,8 @@
 #include <types.h>
 #include "acpi/table.h"
 
-status_t hpet_init(sdt_header_t *hpet_header);
+extern uint64_t hpet_freq;
+
+uint64_t hpet_arch_read(uint32_t reg);
+uint64_t hpet_arch_read_counter();
+status_t hpet_arch_init(sdt_header_t *hpet_header);

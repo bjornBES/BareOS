@@ -10,12 +10,15 @@
 
 #pragma once
 
+#include "kernel/cpuid/types.h"
 #include <types.h>
 
 typedef struct x86_arch_data
 {
+    
     uint16_t long_mode : 1;
     uint16_t has_msr : 1;
+
     struct
     {
         uint16_t max_phys;
@@ -31,5 +34,7 @@ typedef struct x86_arch_data
         uint16_t has_user_pke : 1;
         uint16_t has_super_pke : 1;
     } paging;
+
+    cpuid_leaves_t cpuid;
 
 } x86_arch_data_t;

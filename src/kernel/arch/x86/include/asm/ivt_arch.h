@@ -14,4 +14,6 @@
 
 #include "ivt/ivt.h"
 
-typedef int (*interrupt_handler)(intr_frame_t *regs);
+#include <types.h>
+
+typedef status_t (*interrupt_handler)(intr_frame_t *regs);

@@ -1,5 +1,5 @@
 /*
- * File: apic.c
+ * File: madt.c
  * File Created: 14 Sep 2026
  * Author: BjornBEs
  * -----
@@ -13,6 +13,10 @@
 #include "kernel/acpi/apic/lapic.h"
 #include "kernel/acpi/apic/ioapic.h"
 
+#include "kernel/cpuid/cpuid.h"
+#include "kernel/msr/msr.h"
+#include "x86_arch_data.h"
+
 #include "debug/debug.h"
 
 #include "mm/ioremap.h"
@@ -22,7 +26,7 @@
 #include <types.h>
 #include <binary.h>
 
-#define MODULE "x86-APIC"
+#define MODULE "x86-madt"
 
 // type 0 — processor local APIC
 typedef struct madt_local_apic
@@ -73,8 +77,24 @@ typedef struct
     } PACKED;
 } PACKED madt_entry;
 
+extern x86_arch_data_t arch_runtime_data;
+
 status_t madt_arch_parse(madt_t *madt)
 {
+    if (arch_runtime_data.cpuid.leaf_0x1_0->apic)
+    {
+        log_info(MODULE, "enabled xapic");
+        uint64_t apic_base = rdmsr(MSR_IA32_APIC_BASE);
+        apic_base |= BIT(MSR_IA32_APIC_GLOBAL_ENABLE_BIT); // EN
+        wrmsr(MSR_IA32_APIC_BASE, apic_base);
+    }
+    if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
+    {
+        log_info(MODULE, "enabled x2apic");
+        uint64_t apic_base = rdmsr(MSR_IA32_APIC_BASE);
+        apic_base |= BIT(MSR_IA32_X2APIC_ENABLE_BIT); // EXTD
+        wrmsr(MSR_IA32_APIC_BASE, apic_base);
+    }
     local_apic_base = ioremap(madt->local_interrupt_address, 1024);
     uint8_t *entry = madt->entries;
     uint8_t *end = (uint8_t *)madt + madt->header.length;
@@ -90,7 +110,7 @@ status_t madt_arch_parse(madt_t *madt)
                 {
                     madt_local_apic_t *la = (madt_local_apic_t *)&en->local;
                     log_info(MODULE, "CPU %u APIC ID %u flags=%u", la->processor_id, la->apic_id, la->flags);
-                    
+
                     if (FLAG_IS_SET(la->flags, 1) == false)
                     {
                         log_err(MODULE, "CPU flags=0x2 not good");
@@ -98,7 +118,6 @@ status_t madt_arch_parse(madt_t *madt)
                         {
                             ;
                         }
-                        
                     }
 
                     cpu_register(la->processor_id, la->apic_id, bsp_id == la->apic_id);

@@ -14,6 +14,8 @@
 // #include "trace.h"
 // #include "time/timer.h"
 #include "kerrno.h"
+#include "panic.h"
+#include "sync/spinlock.h"
 #include <types.h>
 
 #if DEBUG
@@ -37,14 +39,12 @@ typedef enum
 } DebugLevel;
 #endif
 
-// extern spinlock_t debug_logs;
+extern spinlock_t debug_logs;
 
 void logfl(const char *module, DebugLevel level, const char *fmt, ...);
 void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void logf(const char *module, DebugLevel level, const char *fmt, ...);
 void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args);
-void logfl_int(const char *module, DebugLevel level, const char *fmt, ...);
-void logfl_int_args(const char *module, DebugLevel level, const char *fmt, va_list args);
 void debug_enter_func(const char *module, const char *function, const char *fmt, ...);
 
 // from VFS/vfs.h/c
@@ -52,7 +52,6 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 
 #ifdef DEBUG
 #define log_debug(module, ...)     logfl(module, LVL_DEBUG, __VA_ARGS__)
-#define log_debug_int(module, ...) logfl_int(module, LVL_DEBUG, __VA_ARGS__)
 #define log(module, ...)                         \
     {                                            \
         if (vfs_init_is_done == false)           \
@@ -68,7 +67,6 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 #define log_debug(module, ...) __asm__("nop")
 #endif
 #define log_info(module, ...)     logfl(module, LVL_INFO, __VA_ARGS__)
-#define log_info_int(module, ...) logfl_int(module, LVL_INFO, __VA_ARGS__)
 #define info(module, ...)                        \
     {                                            \
         if (vfs_init_is_done == false)           \
@@ -82,7 +80,6 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
     }
 
 #define log_warn(module, ...)     logfl(module, LVL_WARN, __VA_ARGS__)
-#define log_warn_int(module, ...) logfl_int(module, LVL_WARN, __VA_ARGS__)
 #define warn(module, ...)                               \
     {                                                   \
         if (vfs_init_is_done == false)                  \
@@ -96,10 +93,8 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
     }
 
 #define log_err(module, ...)      logfl(module, LVL_ERROR, __VA_ARGS__)
-#define log_err_int(module, ...)  logfl_int(module, LVL_ERROR, __VA_ARGS__)
 
 #define log_crit(module, ...)     logfl(module, LVL_CRITICAL, __VA_ARGS__)
-#define log_crit_int(module, ...) logfl_int(module, LVL_CRITICAL, __VA_ARGS__)
 
 #define trace_1(module, ...)      logfl(module, LVL_DEBUG, __VA_ARGS__)
 
@@ -108,7 +103,8 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
         debug_enter_func(MODULE, __FUNCTION__, args, __VA_ARGS__); \
     }
 #define FUNC_NOT_IMPLEMENTED()                                      \
-    KERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__);
+    KERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__); \
+    KERNEL_PANIC(MODULE, "%s is not implemented", __FUNCTION__);
 
 // #define KERNEL_PANIC(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)
 

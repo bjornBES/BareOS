@@ -13,6 +13,9 @@
 #include <types.h>
 #include <defs.h>
 
+#include "types.h"
+#include "leaf_types.h"
+
 #define INIT_CPUID_REG(regs) memset(regs, 0, sizeof(cpuid_regs))
 
 typedef struct {

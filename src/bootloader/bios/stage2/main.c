@@ -92,6 +92,20 @@ NORETURN CDECL void start(void *partition_data)
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     boot_params->arch.disabled_pic = true;
+#ifdef CONFIG_ENABLE_SMP
+    {
+        extern char __trampoline_start;
+        extern char __trampoline_end;
+        size_t trampoline_size = (size_t)(&__trampoline_end - &__trampoline_start);
+        memcpy(boot_params->smp.core_bringup, &__trampoline_start, trampoline_size);
+        boot_params->smp.using_trampoline = 1;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+        boot_params->smp.trampoline_phys_address = (uint64_t)&__trampoline_start;
+#pragma GCC diagnostic pop
+        boot_params->smp.trampoline_size = (uint64_t)trampoline_size;
+    }
+#endif
 #endif
 
     printf("======== START ========\n");

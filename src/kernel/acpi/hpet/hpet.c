@@ -29,5 +29,5 @@ void hpet_parse()
 
     table_verify_checksum(hpet);
 
-    hpet_init(hpet);
+    hpet_arch_init(hpet);
 }

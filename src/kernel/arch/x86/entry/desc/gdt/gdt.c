@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "gdt.h"
+#include "entry/desc/gdt/gdt.h"
 
 #include <defs.h>
 

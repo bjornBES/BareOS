@@ -1015,7 +1015,7 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     uint64_t PDPT = GET_PDPT_IDX(cr2);
     uint64_t PD = GET_PD_IDX(cr2);
     uint64_t PT = GET_PT_IDX(cr2);
-    log_debug_int(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]", PML4, PDPT, PD, PT);
+    log_debug(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]", PML4, PDPT, PD, PT);
 
     page_map_level_4 *pml4 = paging64_get_pml4(page_dir, cr2, 0, flags_none);
     page_dpt *pdpt = paging64_get_pdpt(page_dir, cr2, 0, flags_none);
@@ -1025,44 +1025,44 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     page_table_entry64 *pdpt_entry = &pdpt->e[PDPT];
     page_table_entry64 *pd_entry = &pd->e[PD];
     page_table_entry64_leaf *pt_entry = &pt->e[PT];
-    log_debug_int(MODULE, "v%p/p%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pml4, paging_get_physical(page_dir, (vaddr_t)pml4), PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
+    log_debug(MODULE, "v%p/p%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pml4, paging_get_physical(page_dir, (vaddr_t)pml4), PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
     if (!pml4_entry || pml4_entry->present == 0)
     {
-        log_debug_int(MODULE, "The mapping is fucked\n");
+        log_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
-    log_debug_int(MODULE, "v%p/p%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pdpt, paging_get_physical(page_dir, (vaddr_t)pdpt), PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
+    log_debug(MODULE, "v%p/p%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pdpt, paging_get_physical(page_dir, (vaddr_t)pdpt), PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
     if (!pdpt_entry || pdpt_entry->present == 0)
     {
-        log_debug_int(MODULE, "The mapping is fucked\n");
+        log_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 1 GiB huge page
     if (pdpt_entry->ps)
     {
-        log_debug_int(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
+        log_debug(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
         return (paddr_t)((pdpt_entry->addr << 30) | (cr2 & 0x3FFFFFFF));
     }
 
-    log_debug_int(MODULE, "v%p/p%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pd, paging_get_physical(page_dir, (vaddr_t)pd), PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
+    log_debug(MODULE, "v%p/p%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pd, paging_get_physical(page_dir, (vaddr_t)pd), PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
     if (!pd_entry || pd_entry->present == 0)
     {
-        log_debug_int(MODULE, "The mapping is fucked\n");
+        log_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 2 MiB huge page
     if (pd_entry->ps)
     {
-        log_debug_int(MODULE, "%p PD[%u] is huge\n", pd, PD);
+        log_debug(MODULE, "%p PD[%u] is huge\n", pd, PD);
         return (paddr_t)((pd_entry->addr << 21) | (cr2 & 0x1FFFFF));
     }
 
-    log_debug_int(MODULE, "v%p/p%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pt, paging_get_physical(page_dir, (vaddr_t)pt), PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
+    log_debug(MODULE, "v%p/p%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pt, paging_get_physical(page_dir, (vaddr_t)pt), PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
     if (!pt_entry || pt_entry->present == 0)
     {
-        log_debug_int(MODULE, "The mapping is fucked\n");
+        log_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 

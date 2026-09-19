@@ -53,7 +53,7 @@ export COMMON_INCLUDE := -I./ -I./include \
 
 export COMMON_LIBS = -lgcc
 export ASFLAGS_COMMON := $(ASFLAGS_DEFINE)
-export CFLAGS_COMMON := -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-unused-const-variable $(CFLAGS_DEFINE) -masm=intel -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone $(OPT_FLAGS)
+export CFLAGS_COMMON := -Wall -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable -Wno-unused-const-variable $(CFLAGS_DEFINE) -masm=intel -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone $(OPT_FLAGS)
 export LDFLAGS_COMMON := -nostdlib -z max-page-size=0x1000
 
 ifeq ($(use_bios),1)

@@ -20,6 +20,7 @@ typedef int32_64 tid_t;
 
 typedef int32_64 ino_t;
 typedef int32_64 dev_t;
+typedef uint64_t kernel_dev_t;
 
 typedef int32_64 ssize_t;
 typedef int32_64 clock_t;

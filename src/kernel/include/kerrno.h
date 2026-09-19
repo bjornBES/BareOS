@@ -12,20 +12,25 @@
 
 #include "debug/debug.h"
 
-
 // Design from https://github.com/haiku/haiku/blob/master/headers/os/support/Errors.h
 
-#define KERRNO_RETURN(number, ...)                                        \
+#define KERRNO_NO_RETURN(number, ...)                                    \
     {                                                                    \
-        log_err(MODULE, "func %s outputting %s", __FUNCTION__, #number); \
+        log_err(MODULE, "%s:%u", __FILE__, __LINE__);                    \
+        log_err(MODULE, "func %s outputting %s", __FUNCTION__, number); \
         logfl(MODULE, LVL_INFO, __VA_ARGS__);                            \
-        return number;                                                   \
     }
 
-#define KERRNO_NO_RETURN(number, ...)                                     \
-    {                                                                    \
-        log_err(MODULE, "func %s outputting %s", __FUNCTION__, #number); \
-        logfl(MODULE, LVL_INFO, __VA_ARGS__);                            \
+#define KERRNO_RETURN(number, ...)            \
+    {                                         \
+        KERRNO_NO_RETURN(#number, __VA_ARGS__) \
+        return number;                        \
+    }
+
+#define KERRNO_RETURN_TYPE(number, type, ...) \
+    {                                         \
+        KERRNO_NO_RETURN(#number, __VA_ARGS__) \
+        return (type)number;                  \
     }
 
 // most (if not all) of the comments in this file are made by an AI, this will be changed in later versions of the kernel.
@@ -134,8 +139,8 @@
 #define KERRNO_PARTIAL_WRITE                     (KERRNO_STORAGE_ERROR_BASE + 17) /* Write completed only partially */
 
 /* POSIX Errors */
-#define KERRNO_TO_POSIX_ERROR(error)             ((error))                                          /* Convert a positive kernel error to a negative POSIX-style result */
-#define KERRNO_FROM_POSIX_ERROR(error)           ((error))                                          /* Convert a negative POSIX-style result to a positive kernel error */
+#define KERRNO_TO_POSIX_ERROR(error)             ((error))                                           /* Convert a positive kernel error to a negative POSIX-style result */
+#define KERRNO_FROM_POSIX_ERROR(error)           ((error))                                           /* Convert a negative POSIX-style result to a positive kernel error */
 
 #define KERRNO_POSIX_ENOMEM                      KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 0)  /* Memory allocation failed */
 #define E2BIG                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 1)  /* Argument list is too long */

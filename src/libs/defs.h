@@ -37,7 +37,7 @@
 #define UNREACHABLE()       __builtin_unreachable()
 
 #define INLINE              static inline
-#define ALWAYS_INLINE       __attribute__((always_inline))
+#define ALWAYS_INLINE       inline __attribute__((always_inline))
 
 #define BTF_TYPE_TAG(value) __attribute__((btf_type_tag(#value)))
 

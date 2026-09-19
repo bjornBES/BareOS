@@ -20,6 +20,8 @@
 
 #define MODULE "x86-apic"
 
+bool enabled_x2apic = false;
+
 status_t apic_probe()
 {
     if (local_apic_base == 0)

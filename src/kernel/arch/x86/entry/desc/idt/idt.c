@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "idt.h"
+#include "entry/desc/idt/idt.h"
 
 #include "kernel/isr/isr.h"
 

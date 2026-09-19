@@ -14,5 +14,6 @@
 
 #include <types.h>
 
+extern bool enabled_x2apic;
 
 irq_controller_t *apic_get_driver();

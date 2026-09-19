@@ -58,6 +58,7 @@ asm_entry:
 
 section .init.bss
 
+align 8
 global stack_bottom
 stack_bottom:
 	resb 0x1000*16;
