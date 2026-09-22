@@ -52,7 +52,8 @@ $(BUILD_DIR)/libcore.a:
 	@$(MAKE) -C src/libs TARGET_ARCH=64 BUILD_DIR=$(abspath $(BUILD_DIR)) -s
 
 
-
+documentation:
+	doxygen ./.doxygen
 
 #
 # user

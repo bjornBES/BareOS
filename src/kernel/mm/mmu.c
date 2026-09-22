@@ -78,7 +78,7 @@ size_t mmu_map_region(page_table_t *table, vaddr_t _virt, paddr_t _phys, size_t 
     size_t pages = PAGE_ALIGN_UP(size) / PAGE_SIZE;
     if (!mmu_arch_is_prints_disable())
     {
-        log_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with 0x%lx to %p", virt, virt + pages * PAGE_SIZE, phys, phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
+        trace_info(MODULE, "mapping region [v%p-v%p] to [p%p-p%p] size in pages is %u with 0x%lx to %p", virt, virt + pages * PAGE_SIZE, phys, phys + pages * PAGE_SIZE, pages, flags, table->page_dir);
     }
 
     bool prints = mmu_arch_is_prints_disable();

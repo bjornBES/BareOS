@@ -29,7 +29,7 @@ static const char *const g_ColorReset = "\033[0m";
 
 spinlock_t debug_logs = {0};
 
-void logfl(const char *module, DebugLevel level, const char *fmt, ...)
+void logfl(const char *module, debug_level_t level, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -39,7 +39,7 @@ void logfl(const char *module, DebugLevel level, const char *fmt, ...)
     va_end(args);
 }
 
-void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args)
+void logfl_args(const char *module, debug_level_t level, const char *fmt, va_list args)
 {
     if (level < MIN_LOG_LEVEL)
     {
@@ -71,7 +71,7 @@ void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list a
     spinlock_release(&debug_logs);
 }
 
-void logf(const char *module, DebugLevel level, const char *fmt, ...)
+void logf(const char *module, debug_level_t level, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -81,32 +81,33 @@ void logf(const char *module, DebugLevel level, const char *fmt, ...)
     va_end(args);
 }
 
-void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args)
+void logf_args(const char *module, debug_level_t level, const char *fmt, va_list args)
 {
-        if (level < MIN_LOG_LEVEL)
+    if (level < MIN_LOG_LEVEL)
     {
         return;
     }
 
     char log[255];
+    char message[255];
     int count;
     memset(log, 0, sizeof(log));
-    count = vsprintf(log, fmt, args); // write text
-    log[count] = '\0';
+    memset(message, 0, sizeof(message));
+    count = vsprintf(message, fmt, args); // write text
+    message[count] = '\0';
     if (*module != '\0')
     {
-        count = sprintf(log, "%s[%s] %s", log_severity_colors[level], module, log);
+        count = sprintf(log, "%s[%s] %s%s", log_severity_colors[level], module, message, g_ColorReset);
         // set color depending on level
         // write module
     }
     else
     {
-        count = sprintf(log, "%s %s", log_severity_colors[level], log);
+        count = sprintf(log, "%s %s%s", log_severity_colors[level], message, g_ColorReset);
         // set color depending on level
     }
     log[count] = '\0';
-    count = sprintf(log, "%s%s", log, g_ColorReset); // write text
-    
+
     spinlock_acquire(&debug_logs);
     debug_write_line(log, count);
     spinlock_release(&debug_logs);

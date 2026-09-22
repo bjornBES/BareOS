@@ -64,7 +64,7 @@ typedef union
         uint64_t ignored1 : 7;
         uint64_t addr : 40; /* Physical address >> 12 */
         uint64_t reserved : 12;
-    } __attribute__((packed));
+    } PACKED;
 } cr3_t;
 
 /* 2 MiB Page Directory entry (PS=1) */
@@ -147,7 +147,7 @@ typedef union
         /// @pre EXECUTE_DIS (CPUID.0x80000001:EDX[20]) and EFER.NXE
         /// @note only for leaf entries
         uint64_t nx : 1;
-    } __attribute__((packed));
+    } PACKED;
 } pd_huge_entry64; /* 2 MiB */
 
 /* 1 GiB Page Directory Pointer entry (PS=1) */
@@ -230,7 +230,7 @@ typedef union
         /// @pre EXECUTE_DIS (CPUID.0x80000001:EDX[20]) and EFER.NXE
         /// @note only for leaf entries
         uint64_t nx : 1;
-    } __attribute__((packed));
+    } PACKED;
 } pdpt_huge_entry64; /* 1 GiB */
 
 typedef union
@@ -305,7 +305,7 @@ typedef union
         /// @pre EXECUTE_DIS (CPUID.0x80000001:EDX[20]) and EFER.NXE
         /// @note only for leaf entries
         uint64_t nx : 1;
-    } __attribute__((packed));
+    } PACKED;
 } page_table_entry64_leaf;
 
 typedef union
@@ -358,7 +358,7 @@ typedef union
         /// @brief Must be 0 on non leaf entries
         /// @note It's a shared switch that would clobber all sibling mappings if you touched it, so DONT TOUCHED IS. ~ok~
         uint64_t reserved : 1;
-    } __attribute__((packed));
+    } PACKED;
 } page_table_entry64;
 
 typedef struct

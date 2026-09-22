@@ -62,3 +62,8 @@ cpu_entry_t *cpu_get_bsp()
 {
     return &entries[bsp_index];
 }
+
+size_t cpu_get_count()
+{
+    return (size_t)cpu_count;
+}

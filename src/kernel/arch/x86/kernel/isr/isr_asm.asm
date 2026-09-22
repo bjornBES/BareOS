@@ -41,6 +41,7 @@ isr_common:
     ; push ss, sp, flags, cs, ip
     ;
     ; push rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8-15
+	cli
 	push    rax
 	push    rcx
 	push    rdx

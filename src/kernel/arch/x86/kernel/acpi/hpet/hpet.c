@@ -175,7 +175,7 @@ status_t hpet_cancel(timer_source_t *dev)
 
 status_t hpet_irq_handler(intr_frame_t *regs, void *ctx)
 {
-    log_debug(MODULE, "comparator IRQ fired");
+    trace_debug(MODULE, "comparator IRQ fired");
     hpet_comparator_t *comp = (hpet_comparator_t *)ctx;
     hpet_write(HPET_REG_CONFIG, 1 << comp->index);
     if (comp->callback)
@@ -199,26 +199,26 @@ status_t hpet_arch_init(sdt_header_t *hpet_header)
         KERRNO_RETURN(0, ""); // TODO
     }
     hexdump(hpet, sizeof(hpet_table_t), 16);
-    log_info(MODULE, "IO address_space = %x", hpet->base_address.address_space);
-    log_info(MODULE, "IO access_size = %x", hpet->base_address.access_size);
-    log_info(MODULE, "IO address = %p", hpet->base_address.address);
+    trace_info(MODULE, "IO address_space = %x", hpet->base_address.address_space);
+    trace_info(MODULE, "IO access_size = %x", hpet->base_address.access_size);
+    trace_info(MODULE, "IO address = %p", hpet->base_address.address);
     volatile paddr_t phys = hpet->base_address.address;
     volatile vaddr_t virt = ioremap(phys, 4096);
     hpet_base = virt;
-    log_info(MODULE, "mapped IO address from %p to %p", phys, virt);
+    trace_info(MODULE, "mapped IO address from %p to %p", phys, virt);
 
     uint64_t caps = hpet_arch_read(HPET_REG_CAPS);
     if (!caps)
     {
         KERRNO_RETURN(0, "caps 0x%016x are not valid", caps); // TODO
     }
-    log_info(MODULE, "caps=0x%llx", caps);
+    trace_info(MODULE, "caps=0x%llx", caps);
 
     // clock period is in femtoseconds, stored in bits [63:32]
     period_fs = caps >> 32;
     hpet_freq = 1000000000000000ull / period_fs;
 
-    log_info(MODULE, "period=%u fs freq=%u hz", period_fs, hpet_freq);
+    trace_info(MODULE, "period=%u fs freq=%u hz", period_fs, hpet_freq);
 
     // enable the main counter
     hpet_write(HPET_REG_CONFIG, hpet_arch_read(HPET_REG_CONFIG) | HPET_CONFIG_ENABLE);
@@ -233,18 +233,18 @@ status_t hpet_arch_init(sdt_header_t *hpet_header)
 
     // enumerate comparators
     comparator_count = BIT_GET_RANGE(caps, 8, 12);
-    log_debug(MODULE, "hpet->comparator_count = %u", hpet->comparator_count);
-    log_debug(MODULE, "comparator_count = %u", comparator_count);
+    trace_debug(MODULE, "hpet->comparator_count = %u", hpet->comparator_count);
+    trace_debug(MODULE, "comparator_count = %u", comparator_count);
     comparators = kcalloc(comparator_count, sizeof(hpet_comparator_t));
     for (int i = 0; i < comparator_count; i++)
     {
         uint64_t timer_cfg = hpet_arch_read(0x100 + 0x20 * i);
-        log_debug(MODULE, "comparator %u cfg = 0x%llx", i, timer_cfg);
+        trace_debug(MODULE, "comparator %u cfg = 0x%llx", i, timer_cfg);
         uint32_t irq_mask = BIT_GET_RANGE(timer_cfg, 32, 63);
 
-        log_debug(MODULE, "comparator has mask 0x%x", irq_mask);
+        trace_debug(MODULE, "comparator has mask 0x%x", irq_mask);
         gsi_t gsi = irq_pick_free_gsi(irq_mask);
-        log_debug(MODULE, "comparator %u got gsi%u", i, gsi);
+        trace_debug(MODULE, "comparator %u got gsi%u", i, gsi);
 
         comparators[i].index = i;
         comparators[i].irq = gsi;
@@ -254,7 +254,7 @@ status_t hpet_arch_init(sdt_header_t *hpet_header)
         uint64_t expected_value = hpet_arch_read(HPET_TIMER_CONFIG(i)) | (gsi << 9);
         hpet_write(HPET_TIMER_CONFIG(i), expected_value);
 
-        log_debug(MODULE, "%x == %x", BIT_GET_RANGE(hpet_arch_read(HPET_TIMER_CONFIG(i)), 9, 13), gsi);
+        trace_debug(MODULE, "%x == %x", BIT_GET_RANGE(hpet_arch_read(HPET_TIMER_CONFIG(i)), 9, 13), gsi);
 
         irq_register_handler(gsi, hpet_irq_handler, &comparators[i], IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
 

@@ -159,7 +159,7 @@ status_t timer_register(timer_source_t *src)
     timer_role_t role = timer_caps_to_role(&src->caps);
     src->role = role;
 
-    log_info(MODULE, "registered %s (role=%d)", src->name, src->role);
+    trace_info(MODULE, "registered %s (role=%d)", src->name, src->role);
 
     timer_source_t *timer_src = timer_select(role);
     if (timer_src < (timer_source_t *)KERRNO_ERRORS_END)
@@ -169,12 +169,24 @@ status_t timer_register(timer_source_t *src)
     switch (role)
     {
         case TIMER_ROLE_COUNTER :
+            if (cached_counter_source != timer_src)
+            {
+                trace_info(MODULE, "%s is now the new best counter source", timer_src->name);
+            }
             cached_counter_source = timer_src;
             break;
         case TIMER_ROLE_DEADLINE :
+            if (cached_deadline_source != timer_src)
+            {
+                trace_info(MODULE, "%s is now the new best deadline source", timer_src->name);
+            }
             cached_deadline_source = timer_src;
             break;
         case TIMER_ROLE_TICK :
+            if (cached_tick_source != timer_src)
+            {
+                trace_info(MODULE, "%s is now the new best tick source", timer_src->name);
+            }
             cached_tick_source = timer_src;
             break;
         default :
@@ -185,6 +197,10 @@ status_t timer_register(timer_source_t *src)
 
 uint64_t timer_now_ns()
 {
+    if (cached_counter_source == NULL)
+    {
+        return 0;
+    }
     uint64_t ticks = cached_counter_source->read_counter(cached_counter_source);
     return cached_counter_source->ticks_to_ns(cached_counter_source, ticks);
 }
@@ -205,3 +221,13 @@ uint64_t timer_now_ticks()
     return cached_counter_source->read_counter(cached_counter_source);
 }
 
+
+void timer_set_device_periodic_wrapper(uintptr_t _args)
+{
+    ENTER_FUNC("%p", _args);
+    periodic_function_args_t *args = (periodic_function_args_t*)_args;
+    trace_debug(MODULE, "source = %p", args->source);
+    trace_debug(MODULE, "source->name = %s", args->source->name);
+    trace_debug(MODULE, "source->arm_periodic = %p", args->source->arm_periodic);
+    args->source->arm_periodic(args->source, args->ns, args->cb);
+}

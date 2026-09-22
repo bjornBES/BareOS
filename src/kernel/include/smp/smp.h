@@ -14,3 +14,5 @@
 #include <boot/params.h>
 
 status_t smp_init(boot_params_t *bp);
+
+status_t smp_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg);

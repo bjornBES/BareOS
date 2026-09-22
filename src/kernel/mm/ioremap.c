@@ -31,8 +31,8 @@ vaddr_t ioremap(paddr_t phys, size_t size)
 
     if (!mmu_arch_is_prints_disable())
     {
-        log_info(MODULE, "mapping p%p to v%p", phys, virt);
-        log_info(MODULE, "mapping %u bytes", size);
+        trace_info(MODULE, "mapping p%p to v%p", phys, virt);
+        trace_info(MODULE, "mapping %u bytes", size);
     }
 
     mmu_map_region(&kernel_page, virt, phys, size, mmio_flags);

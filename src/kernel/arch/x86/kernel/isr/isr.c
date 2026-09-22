@@ -70,6 +70,7 @@ void isr_initialize()
 
 void isr_handler(intr_frame_t *frame)
 {
+    ENTER_FUNC("%p", frame);
     inline_asm("cli");
 
     interrupt_vector_t vector = frame->interrupt;

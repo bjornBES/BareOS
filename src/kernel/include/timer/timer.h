@@ -90,6 +90,13 @@ typedef struct timer_source
     status_t (*set_callback)(timer_source_t *self, timer_callback_t cb, void *ctx);
 } timer_source_t;
 
+typedef struct periodic_function_args
+{
+    timer_source_t *source;
+    uint64_t ns;
+    timer_callback_t cb;
+} periodic_function_args_t;
+
 timer_source_t *timer_create();
 
 status_t timer_register(timer_source_t *src);
@@ -98,3 +105,6 @@ uint64_t timer_now_ns();        // nanoseconds since kernel boot
 uint64_t timer_now_sec();       // seconds since kernel boot
 uint64_t timer_get_boot_time(); // nanoseconds since stage2 boot
 uint64_t timer_now_ticks();     // raw ticks of current source
+
+
+void timer_set_device_periodic_wrapper(uintptr_t _args);

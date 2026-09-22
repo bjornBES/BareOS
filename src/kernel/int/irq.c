@@ -76,7 +76,7 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
 status_t irq_register_handler(gsi_t gsi, irq_handler_func_t handler, void *ctx, irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target)
 {
     interrupt_vector_t vector = gsi + IRQ_BASE;
-    log_info(MODULE, "Registering IRQ handler (%p) on gsi %u/vector %d", handler, gsi, vector);
+    trace_info(MODULE, "Registering IRQ handler (%p) on gsi %u/vector %d", handler, gsi, vector);
     status_t status = ivt_set_handler(vector, irq_handler);
     if (status != KERRNO_SUCCESSES)
     {
@@ -131,7 +131,7 @@ gsi_t irq_pick_free_gsi(gsi_t allowed_mask)
             continue;
         }
 
-        log_debug(MODULE, "irq%u is free to take", irq);
+        trace_debug(MODULE, "irq%u is free to take", irq);
         return irq;
     }
 

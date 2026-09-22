@@ -1,9 +1,9 @@
 /*
  * File: debug.h
- * File Created: 20 Jan 2026
+ * File Created: 30 Aug 2026
  * Author: BjornBEs
  * -----
- * Last Modified: 02 Jul 2026
+ * Last Modified: 22 Sep 2026
  * Modified By: BjornBEs
  * -----
  */
@@ -11,8 +11,8 @@
 #pragma once
 
 // #include "task/threading/spinlock/spinlock.h"
-// #include "trace.h"
 // #include "time/timer.h"
+#include "trace.h"
 #include "kerrno.h"
 #include "panic.h"
 #include "sync/spinlock.h"
@@ -36,22 +36,22 @@ typedef enum
     LVL_WARN = 2,
     LVL_ERROR = 3,
     LVL_CRITICAL = 4
-} DebugLevel;
+} debug_level_t;
 #endif
 
 extern spinlock_t debug_logs;
 
-void logfl(const char *module, DebugLevel level, const char *fmt, ...);
-void logfl_args(const char *module, DebugLevel level, const char *fmt, va_list args);
-void logf(const char *module, DebugLevel level, const char *fmt, ...);
-void logf_args(const char *module, DebugLevel level, const char *fmt, va_list args);
+void logfl(const char *module, debug_level_t level, const char *fmt, ...);
+void logfl_args(const char *module, debug_level_t level, const char *fmt, va_list args);
+void logf(const char *module, debug_level_t level, const char *fmt, ...);
+void logf_args(const char *module, debug_level_t level, const char *fmt, va_list args);
 void debug_enter_func(const char *module, const char *function, const char *fmt, ...);
 
 // from VFS/vfs.h/c
 // extern bool vfs_init_is_done;
 
 #ifdef DEBUG
-#define log_debug(module, ...)     logfl(module, LVL_DEBUG, __VA_ARGS__)
+#define log_debug(module, ...) logfl(module, LVL_DEBUG, __VA_ARGS__)
 #define log(module, ...)                         \
     {                                            \
         if (vfs_init_is_done == false)           \
@@ -66,7 +66,7 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 #else
 #define log_debug(module, ...) __asm__("nop")
 #endif
-#define log_info(module, ...)     logfl(module, LVL_INFO, __VA_ARGS__)
+#define log_info(module, ...) logfl(module, LVL_INFO, __VA_ARGS__)
 #define info(module, ...)                        \
     {                                            \
         if (vfs_init_is_done == false)           \
@@ -79,7 +79,7 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
         }                                        \
     }
 
-#define log_warn(module, ...)     logfl(module, LVL_WARN, __VA_ARGS__)
+#define log_warn(module, ...) logfl(module, LVL_WARN, __VA_ARGS__)
 #define warn(module, ...)                               \
     {                                                   \
         if (vfs_init_is_done == false)                  \
@@ -92,17 +92,19 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
         }                                               \
     }
 
-#define log_err(module, ...)      logfl(module, LVL_ERROR, __VA_ARGS__)
+#define log_err(module, ...)     logfl(module, LVL_ERROR, __VA_ARGS__)
 
-#define log_crit(module, ...)     logfl(module, LVL_CRITICAL, __VA_ARGS__)
+#define log_crit(module, ...)    logfl(module, LVL_CRITICAL, __VA_ARGS__)
 
-#define trace_1(module, ...)      logfl(module, LVL_DEBUG, __VA_ARGS__)
+#define trace_debug(module, ...) trace_with_id(4, LVL1, module, __VA_ARGS__)
+#define trace_info(module, ...)  trace_with_id(4, LVL2, module, __VA_ARGS__)
+#define trace_warn(module, ...)  trace_with_id(4, LVL_WARNING, module, __VA_ARGS__)
 
-#define ENTER_FUNC(args, ...)                              \
-    {                                                              \
-        debug_enter_func(MODULE, __FUNCTION__, args, __VA_ARGS__); \
+#define ENTER_FUNC(args, ...)                                                     \
+    {                                                                             \
+        trace_enter_func(4, MODULE, FUNC_ENTER, __FUNCTION__, args, __VA_ARGS__); \
     }
-#define FUNC_NOT_IMPLEMENTED()                                      \
+#define FUNC_NOT_IMPLEMENTED()                                       \
     KERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__); \
     KERNEL_PANIC(MODULE, "%s is not implemented", __FUNCTION__);
 

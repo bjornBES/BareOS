@@ -45,8 +45,8 @@ status_t apic_initialize()
     for (uint8_t i = 0; i < ioapic_count; i++)
     {
         ioapic_entry_t *entry = ioapic_get_entry(i);
-        log_info(MODULE, "entry = %p", entry);
-        log_debug(NO_MODULE, "IOAPIC %u = {base: %p, gsi range: %u-%u, redir limit: %u}", i, entry->io_apic_base, entry->gsi_base, entry->gsi_end, entry->ioapic_max_redir);
+        trace_info(MODULE, "entry = %p", entry);
+        trace_debug(MODULE, "IOAPIC %u = {base: %p, gsi range: %u-%u, redir limit: %u}", i, entry->io_apic_base, entry->gsi_base, entry->gsi_end, entry->ioapic_max_redir);
 
         for (uint8_t irq = entry->gsi_base; irq < entry->ioapic_max_redir + 1; irq++)
         {
@@ -54,7 +54,7 @@ status_t apic_initialize()
             uint16_t flags = entry->redir_entries[irq].flags;
             uint8_t vector = entry->redir_entries[irq].vector;
             ioapic_set_entry(i, gsi, vector, flags, entry->redir_entries[irq].lapic_target);
-            log_info(MODULE, "IRQ %u -> GSI %u vector 0x%x", irq, gsi, vector);
+            trace_info(MODULE, "IRQ %u -> GSI %u vector 0x%x", irq, gsi, vector);
         }
     }
     return KERRNO_SUCCESSES;
@@ -65,7 +65,7 @@ int apic_route(gsi_t gsi, interrupt_vector_t vector, cpu_logical_id_t target, ir
     ENTER_FUNC("%u, %u, %u, %u, %u", gsi, vector, target, trigger, polarity);
     cpu_entry_t *cpu = cpu_get_entry(target);
     uint8_t ioapic_id = ioapic_get_id(gsi);
-    log_debug(MODULE, "ioapic_id = %u", ioapic_id);
+    trace_debug(MODULE, "ioapic_id = %u", ioapic_id);
     FUNC_NOT_IMPLEMENTED();
     return 0;
 }

@@ -57,8 +57,8 @@ status_t pmm_early_init(boot_params_t *bp)
     info.kernel_virt_base = bp->kernel_virt_base;
     info.kernel_phys_base = bp->kernel_phys_base;
 
-    log_debug(MODULE, "pmm_init(%p)", bp);
-    log_debug(MODULE, "count = %u entries =%p", entry_count, memory);
+    trace_debug(MODULE, "pmm_init(%p)", bp);
+    trace_debug(MODULE, "count = %u entries =%p", entry_count, memory);
     for (size_t i = 0; i < entry_count; i++)
     {
         entry = &memory[i];
@@ -69,7 +69,7 @@ status_t pmm_early_init(boot_params_t *bp)
     {
         entry = &memory[i];
 
-        log_debug(MODULE, "region entry start=%p size=%p type=%u", entry->addr, entry->size,
+        trace_info(MODULE, "region entry start=%p size=%p type=%u", entry->addr, entry->size,
                   entry->type);
 
         if (entry->type != MEMORY_AVAILABLE)
@@ -94,7 +94,7 @@ status_t pmm_early_init(boot_params_t *bp)
         if (entry->addr < (paddr_t)kernel_phys_end)
         {
             info.phys_start = (paddr_t)PAGE_ALIGN_UP((paddr_t)kernel_phys_end);
-            log_debug(MODULE, "region start=%p end=%p", info.phys_start, info.phys_end);
+            trace_debug(MODULE, "region start=%p end=%p", info.phys_start, info.phys_end);
         }
         
         info.memory = entry;
@@ -108,18 +108,18 @@ status_t pmm_early_init(boot_params_t *bp)
     }
 
     info.virt_start = info.phys_start + (info.kernel_virt_base - info.kernel_phys_base);
-    log_debug(MODULE, "info.virt_start=%p + (%p - %p)", info.phys_start, info.kernel_virt_base, info.kernel_phys_base);
-    log_debug(MODULE, "info.virt_start=%p", info.virt_start);
+    trace_debug(MODULE, "info.virt_start=%p + (%p - %p)", info.phys_start, info.kernel_virt_base, info.kernel_phys_base);
+    trace_debug(MODULE, "info.virt_start=%p", info.virt_start);
 
-    log_debug(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
-    log_debug(MODULE, "start        = %p end      = %p", info.phys_start, info.phys_end);
+    trace_debug(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
+    trace_debug(MODULE, "start        = %p end      = %p", info.phys_start, info.phys_end);
 
     int selection_index = 0;
     pmm_reg_get_allocator(&info, registry, &selection_index);
     info.allocator = &registry[selection_index];
 
-    log_debug(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
-    log_debug(MODULE, "start        = %p end      = %p", info.phys_start, info.phys_end);
+    trace_debug(MODULE, "bump_current = %p bump_end = %p", bump_current, bump_end);
+    trace_debug(MODULE, "start        = %p end      = %p", info.phys_start, info.phys_end);
 
     return KERRNO_SUCCESSES;
 }
@@ -131,7 +131,7 @@ status_t pmm_init()
     info.allocator->ops.print_stat_verbose(info.allocator);
 
     pmm_frame_count = info.mem_size / PAGE_SIZE;
-    log_debug(MODULE, "pmm_frame_count = %u", pmm_frame_count);
+    trace_debug(MODULE, "pmm_frame_count = %u", pmm_frame_count);
     pmm_refcounts = (uint16_t *)phys_to_virt_auto(pmm_alloc_frames_contiguous(PAGE_ALIGN_UP(pmm_frame_count * sizeof(uint16_t)) / PAGE_SIZE));
     memset(pmm_refcounts, 0, pmm_frame_count * sizeof(uint16_t));
 
@@ -163,7 +163,7 @@ paddr_t pmm_alloc_frame()
     paddr_t phys;
     if (!pmm_ready)
     {
-        log_debug(MODULE, "Allocating from bump %p/%p, %p", bump_current, bump_end, &pmm_ready);
+        trace_debug(MODULE, "Allocating from bump %p/%p, %p", bump_current, bump_end, &pmm_ready);
         phys = bump_alloc();
     }
     else
@@ -171,7 +171,7 @@ paddr_t pmm_alloc_frame()
         int state = info.allocator->ops.alloc(info.allocator, 1, &phys);
         if (state != 0)
         {
-            log_debug(MODULE, "OOM");
+            trace_debug(MODULE, "OOM");
             return 0;
         }
         if (phys)
@@ -179,7 +179,7 @@ paddr_t pmm_alloc_frame()
             pmm_refcounts[pmm_frame_idx(phys)] = 1;
         }
     }
-    log_debug(MODULE, "got addr=%p", phys);
+    trace_debug(MODULE, "got addr=%p", phys);
     return phys;
 }
 
@@ -201,7 +201,7 @@ paddr_t pmm_alloc_frames_contiguous(size_t times)
 
 status_t pmm_ref_frame(paddr_t phys)
 {
-    log_debug(MODULE, "phys = %p", phys);
+    trace_debug(MODULE, "phys = %p", phys);
     size_t idx = pmm_frame_idx(phys);
     ASSERT(idx < pmm_frame_count, "idx = %u, pmm_frame_count = %u\n", idx, pmm_frame_count);
     pmm_refcounts[idx]++;

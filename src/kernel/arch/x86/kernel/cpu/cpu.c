@@ -15,6 +15,8 @@
 #include "kernel/msr/msr.h"
 #include "kernel/acpi/apic/lapic.h"
 
+#include "entry/desc/idt/idt.h"
+
 #include "mm/allocator/kstack_allocator.h"
 
 #include "debug/debug.h"
@@ -29,29 +31,32 @@
 cpu_t cpus[CONFIG_MAX_CPUS] = {0};
 cpu_t *bsp_cpu = NULL;
 
-// called once per CPU during init
 void cpu_set_gsbase(cpu_t *cpu)
 {
     uint64_t addr = (uint64_t)cpu;
-    log_debug(MODULE, "setting GS base to %p", addr);
+    trace_debug(MODULE, "setting GS base to %p", addr);
     msr_set_64(MSR_KERNEL_GS_BASE, addr);
     msr_set_64(MSR_GS_BASE, addr);
 }
-
+extern void hexdump(void *ptr, size_t len, size_t size);
 void cpu_arch_init_bsp()
 {
+    ENTER_FUNC("", 0);
     cpu_t *cpu = &cpus[0];
     cpu->self = cpu;
     cpu->online = true;
     cpu->kernel_stack = kstack_per_cpu_alloc(NULL);
     bsp_cpu = cpu;
 
+    hexdump(cpu->gdt_table, sizeof(cpu->gdt_table), 16);
+    hexdump(&cpu->gdtr, sizeof(cpu->gdtr), 16);
+
     cpu_set_gsbase(cpu);
 
-    lapic_timer_init(cpu->apic_id, cpu->logical_id);
-    log_info(MODULE, "local APIC enabled");
+    lapic_timer_init(cpu->arch_id, cpu->logical_id);
+    trace_info(MODULE, "local APIC enabled");
 
-    log_info("CPU", "BSP cpu_t init, APIC ID %u", cpu->apic_id);
+    trace_info("CPU", "BSP cpu_t init, APIC ID %u", cpu->arch_id);
 }
 
 status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu)
@@ -78,19 +83,24 @@ status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu)
 
     tss_load(TSS_SELECTOR);
 
+    idt_load();
+
     cpu->self = cpu;
     cpu_set_gsbase(cpu);
 
     cpu->online = true;
-    log_info(MODULE, "AP %u init done", apic_id);
+    trace_info(MODULE, "AP %u init done", apic_id);
     return KERRNO_SUCCESSES;
 }
 
 status_t cpu_create(cpu_entry_t *entry)
 {
     cpu_t *cpu = &cpus[entry->logical_id];
-    memset(cpu, 0, sizeof(cpu_t));
-    cpu->apic_id = entry->arch_id;
+    if (!entry->is_bsp)
+    {
+        memset(cpu, 0, sizeof(cpu_t));
+    }
+    cpu->arch_id = entry->arch_id;
     cpu->logical_id = entry->logical_id;
     entry->cpu = cpu;
     if (entry->is_bsp)
@@ -107,7 +117,7 @@ cpu_t *cpu_arch_get_bsp()
 
 cpu_t *cpu_arch_get_current()
 {
-    return &cpus[0];
+    return (cpu_t *)msr_get_64(MSR_GS_BASE);
 }
 
 cpu_t *cpu_arch_get(cpu_logical_id_t id)
@@ -117,4 +127,9 @@ cpu_t *cpu_arch_get(cpu_logical_id_t id)
         return &cpus[id];
     }
     return NULL;
+}
+
+void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top)
+{
+    cpu->tss.sp0 = stack_top;
 }

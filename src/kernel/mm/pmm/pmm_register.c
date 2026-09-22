@@ -63,14 +63,14 @@ status_t pmm_reg_get_allocator(pmm_info_t *info, frame_allocator_t table[CONFIG_
             KERRNO_RETURN(KERRNO_BAD_INDEX, "registry didn't have enough space");
         }
         frame_allocator_t func;
-        log_debug(MODULE, "table[%u] @ %p, &func @ %p", i, table[i], &func);
+        trace_debug(MODULE, "table[%u] @ %p, &func @ %p", i, table[i], &func);
         int state = allocator_table[i].setup(&func, info);
         if (state != 0)
         {
             KERRNO_RETURN(KERRNO_NO_INIT, "setup failed");
             return state;
         }
-        log_debug(MODULE, "table[%u] @ %p, &func @ %p", i, table[i], &func);
+        trace_debug(MODULE, "table[%u] @ %p, &func @ %p", i, table[i], &func);
         memcpy(&table[i], &func, sizeof(frame_allocator_t));
     }
 
@@ -84,7 +84,7 @@ status_t pmm_reg_initialize(pmm_info_t *info, frame_allocator_t table[CONFIG_MAX
     {
         KERRNO_RETURN(KERRNO_BAD_INDEX, "registry didn't have enough space");
     }
-    log_debug(MODULE, "table[%u] @ %p, &func @ %p", index, &table[index], info->allocator);
+    trace_debug(MODULE, "table[%u] @ %p, &func @ %p", index, &table[index], info->allocator);
     int state = allocator_table[index].initialize(info->allocator, info);
     if (state != 0)
     {

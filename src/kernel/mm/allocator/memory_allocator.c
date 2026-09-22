@@ -31,7 +31,7 @@ vaddr_t heap_begin = 0;
 uint64_t memory_used = 0;
 size_t heap_size;
 
-void alloc_new_page()
+status_t alloc_new_page()
 {
 	ENTER_FUNC("", 0);
     paddr_t phys = pmm_alloc_frame();
@@ -39,17 +39,22 @@ void alloc_new_page()
 	mmu_arch_enable_prints();
     size_t size_mapped = mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags);
 	mmu_arch_disable_prints();
-	log_debug(MODULE, "mapped %p..%p for %u page(s)", virt, phys, PAGE_COUNT(size_mapped));
+	if (!(size_mapped > KERRNO_ERRORS_END))
+	{
+		return size_mapped;
+	}
+	trace_debug(MODULE, "mapped %p..%p for %u page(s)", virt, phys, PAGE_COUNT(size_mapped));
 	
     heap_size++;
-	log_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, size_mapped, heap_begin + (heap_size * size_mapped));
+	trace_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, size_mapped, heap_begin + (heap_size * size_mapped));
     heap_end = heap_begin + (heap_size * size_mapped);
 	memset((void*)virt, 0, size_mapped);
+	return KERRNO_SUCCESSES;
 }
 
 void allocator_init()
 {
-	log_info(MODULE, "init allocator");
+	trace_info(MODULE, "init allocator");
 	heap_begin = MEMORY_HEAP_VIRT_BASE;
 	heap_end = heap_begin;
 	heap_size = 0;
@@ -60,22 +65,22 @@ void allocator_init()
 
 	allocator_print_status();
 
-	log_info(MODULE, "Kernel heap starts at %p", heap_begin);
+	trace_info(MODULE, "Kernel heap starts at %p", heap_begin);
 }
 
 void allocator_print_status()
 {
-	log_debug(MODULE, "Memory used: %d bytes", memory_used);
-	log_debug(MODULE, "Memory free: %d bytes", heap_end - heap_begin - memory_used);
-	log_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
-	log_debug(MODULE, "Heap start: %p", heap_begin);
-	log_debug(MODULE, "Heap end: %p", heap_end);
-	log_debug(MODULE, "last_alloc: %p", last_alloc);
+	trace_debug(MODULE, "Memory used: %d bytes", memory_used);
+	trace_debug(MODULE, "Memory free: %d bytes", heap_end - heap_begin - memory_used);
+	trace_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
+	trace_debug(MODULE, "Heap start: %p", heap_begin);
+	trace_debug(MODULE, "Heap end: %p", heap_end);
+	trace_debug(MODULE, "last_alloc: %p", last_alloc);
 }
 
 void allocator_print_blocks()
 {
-	log_debug(MODULE, "=== Heap Blocks ===");
+	trace_debug(MODULE, "=== Heap Blocks ===");
 	vaddr_t mem = heap_begin;
 	int block_index = 0;
 
@@ -86,7 +91,7 @@ void allocator_print_blocks()
 		if (!a->size)
 			break; // no more blocks
 
-		log_debug(MODULE, "Block %d: addr=%p size=%u status=%s(%08b)",
+		trace_debug(MODULE, "Block %d: addr=%p size=%u status=%s(%08b)",
 				  block_index, (mem + sizeof(alloc_t)),
 				  a->size, a->status ? "allocated" : "free", a->status);
 
@@ -96,7 +101,7 @@ void allocator_print_blocks()
 		mem += 0x10;
 		block_index++;
 	}
-	log_debug(MODULE, "=== End of Blocks ===");
+	trace_debug(MODULE, "=== End of Blocks ===");
 }
 
 status_t kfree(void *mem)
@@ -115,15 +120,16 @@ void *kmalloc(size_t size)
 {
 	if (!size)
 	{
-		return 0;
+		KERRNO_NO_RETURN(KERRNO_BAD_VALUE, "size is zero");
+		return NULL;
 	}
 
 	vaddr_t mem = heap_begin;
 	while (mem < last_alloc)
 	{
 		alloc_t *a = (alloc_t *)mem;
-		// log_debug(MODULE, "mem=%p-%p", mem, mem + a->size + sizeof(alloc_t));
-		// log_debug(MODULE, "mem=%p a={.status=%d, .size=%d}", mem, a->status, a->size);
+		// trace_debug(MODULE, "mem=%p-%p", mem, mem + a->size + sizeof(alloc_t));
+		// trace_debug(MODULE, "mem=%p a={.status=%d, .size=%d}", mem, a->status, a->size);
 
 		if (!a->size)
 		{
@@ -141,8 +147,8 @@ void *kmalloc(size_t size)
 		if (a->size >= size && !(a->status & STATUS_ALLOCATED))
 		{
 			a->status |= STATUS_ALLOCATED;
-			// log_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a, a + sizeof(alloc_t));
-			// log_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
+			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a, a + sizeof(alloc_t));
+			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
 			memory_used += size + 0x10 + sizeof(alloc_t);
 			return (void *)(mem + sizeof(alloc_t));
 		}
@@ -152,7 +158,11 @@ void *kmalloc(size_t size)
 		mem += 0x10;
 		if (mem >= heap_end)
 		{
-			alloc_new_page();
+			if (alloc_new_page() != KERRNO_SUCCESSES)
+			{
+				KERRNO_NO_RETURN(KERRNO_OOM, "Out of memory");
+				return NULL;
+			}
 		}
 	}
 	
@@ -160,7 +170,11 @@ void *kmalloc(size_t size)
 	{
 		while (last_alloc + size + sizeof(alloc_t) >= heap_end)
 		{
-			alloc_new_page();
+			if (alloc_new_page() != KERRNO_SUCCESSES)
+			{
+				KERRNO_NO_RETURN(KERRNO_OOM, "Out of memory");
+				return NULL;
+			}
 		}
 		// KERNEL_PANIC(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
 	}
@@ -174,8 +188,8 @@ void *kmalloc(size_t size)
 	last_alloc += sizeof(alloc_t);
 	last_alloc += 0x10;
 
-	// log_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
-	// log_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
 
 	memory_used += size + 0x10 + sizeof(alloc_t);
 	return (char *)((vaddr_t)alloc + sizeof(alloc_t));

@@ -13,6 +13,11 @@
 
 #include <defs.h>
 
+void irq_arch_disable()
+{
+    inline_asm("cli");
+}
+
 void irq_save(reg_t *irq)
 {
 #ifdef __x86_64__

@@ -26,13 +26,14 @@ vaddr_t cpu_stack_bump = MEMORY_CPU_STACKS_VIRT_BASE;
 
 vaddr_t kstack_alloc(stack_info_t *info)
 {
+    ENTER_FUNC("%p", info);
     // guard page sits at stack_bump, leave it unmapped
     vaddr_t guard = stack_bump;
-    log_debug(MODULE, "guard = %p", guard);
+    trace_debug(MODULE, "guard = %p", guard);
     vaddr_t stack_bottom = guard + PAGE_SIZE;
-    log_debug(MODULE, "stack_bottom = %p", stack_bottom);
+    trace_debug(MODULE, "stack_bottom = %p", stack_bottom);
     vaddr_t stack_top = guard + KERNEL_STACK_SIZE;
-    log_debug(MODULE, "stack_top = %p", stack_top);
+    trace_debug(MODULE, "stack_top = %p", stack_top);
 
     // alloc physical frames and map them
     for (vaddr_t va = stack_bottom; va < stack_top; va += PAGE_SIZE)
@@ -59,14 +60,14 @@ vaddr_t kstack_alloc(stack_info_t *info)
 
 vaddr_t kstack_per_cpu_alloc(stack_info_t *info)
 {
-    ENTER_FUNC(MODULE, "", "");
+    ENTER_FUNC("%p", info);
     // guard page sits at cpu_stack_bump, leave it unmapped
     vaddr_t guard = cpu_stack_bump;
-    log_debug(MODULE, "guard = %p", guard);
+    trace_debug(MODULE, "guard = %p", guard);
     vaddr_t stack_bottom = guard + PAGE_SIZE;
-    log_debug(MODULE, "stack_bottom = %p", stack_bottom);
+    trace_debug(MODULE, "stack_bottom = %p", stack_bottom);
     vaddr_t stack_top = guard + (PAGE_SIZE * 4);
-    log_debug(MODULE, "stack_top = %p", stack_top);
+    trace_debug(MODULE, "stack_top = %p", stack_top);
 
     // alloc physical frames and map them
     for (vaddr_t va = stack_bottom; va < stack_top; va += PAGE_SIZE)
@@ -95,7 +96,7 @@ void kstack_free(vaddr_t stack_top)
 {
     vaddr_t top = (vaddr_t)stack_top;
     vaddr_t stack_bottom = (top - KERNEL_STACK_SIZE) + PAGE_SIZE;
-    log_debug(MODULE, "freeing %p bottom @ %p", stack_top, stack_bottom);
+    trace_debug(MODULE, "freeing %p bottom @ %p", stack_top, stack_bottom);
 
     paddr_t pa;
     for (vaddr_t va = stack_bottom; va < top; va += PAGE_SIZE)

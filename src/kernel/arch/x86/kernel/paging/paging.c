@@ -45,7 +45,7 @@ typedef union
         uint64_t ignored1 : 7;
         uint64_t addr : 40; /* Physical address >> 12 */
         uint64_t reserved : 12;
-    } __attribute__((packed));
+    } PACKED;
 } cr3_t;
 
 page_table_t kernel_page;
@@ -66,7 +66,7 @@ void stack_trace(uint32_t max_frames)
 
     stack_frame_t *frame = (stack_frame_t *)bp;
 
-    log_debug(MODULE, "Stack trace:");
+    trace_debug(MODULE, "Stack trace:");
     for (uint32_t i = 0; i < max_frames; i++)
     {
         // sanity check — bail if EBP looks invalid
@@ -75,7 +75,7 @@ void stack_trace(uint32_t max_frames)
             break;
         }
 
-        log_debug(MODULE, "  [%u] ip = %p, bp = %p", i, frame->ip, frame->bp);
+        trace_debug(MODULE, "  [%u] ip = %p, bp = %p", i, frame->ip, frame->bp);
         frame = (stack_frame_t *)frame->bp;
     }
 }
@@ -110,7 +110,7 @@ int mmu_arch_page_fault(intr_frame_t *frame)
         if (entry)
         {
             entry_flags = pte_to_mm_flags(entry->raw & PAGE_FLAGS_MASK);
-            // log_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
+            // trace_debug(MODULE, "flags = %x raw = %x", entry_flags, entry->raw & PAGE_FLAGS_MASK);
         } */
     paging_print_info(&info.page_directory, cr2);
 #else
@@ -126,16 +126,16 @@ int mmu_arch_page_fault(intr_frame_t *frame)
     info.pc = frame->pc;
     info.sp = frame->sp;
 
-    log_info(MODULE, "[Page Fault] present %s", info.present BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] write %s", info.write BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] user %s", info.user BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] exec %s", info.fetch BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] is cow page %s", info.is_cow BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] reserved bit violation %s", BIT_GET(frame->error, 3) BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] protection keys %s", BIT_GET(frame->error, 5) BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] shadow-stack access %s", BIT_GET(frame->error, 6) BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] HLAT paging %s", BIT_GET(frame->error, 7) BOOL_TO_STRING);
-    log_info(MODULE, "[Page Fault] SGX-specific access-control %s", BIT_GET(frame->error, 15) BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] present %s", info.present BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] write %s", info.write BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] user %s", info.user BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] exec %s", info.fetch BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] is cow page %s", info.is_cow BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] reserved bit violation %s", BIT_GET(frame->error, 3) BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] protection keys %s", BIT_GET(frame->error, 5) BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] shadow-stack access %s", BIT_GET(frame->error, 6) BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] HLAT paging %s", BIT_GET(frame->error, 7) BOOL_TO_STRING);
+    trace_info(MODULE, "[Page Fault] SGX-specific access-control %s", BIT_GET(frame->error, 15) BOOL_TO_STRING);
 
     KERNEL_PANIC(MODULE, "");
 
@@ -153,18 +153,18 @@ void mmu_arch_init(boot_params_t *bp)
 
     kernel_page.page_dir_phys = pmm_alloc_frame();
 
-    log_debug(MODULE, "kernel_text_flags = %llx, @ %p", kernel_text_flags, &kernel_text_flags);
+    trace_debug(MODULE, "kernel_text_flags = %llx, @ %p", kernel_text_flags, &kernel_text_flags);
     map(&kernel_page, kernel_start_phys, bp->kernel_virt_base, bp->kernel_size, kernel_text_flags);
 
     paddr_t start_phys_aligned = info->phys_start; // pmm_start gotten from the pmm allocator (buddy)
     paddr_t end_phys_aligned = info->phys_end;     // pmm_end gotten from the pmm allocator (buddy)
     size_t pmm_size = ALIGN_2_UP(info->phys_end - info->phys_start, 0x1000000);
-    log_warn(MODULE, "pmm_start = %p pmm_end = %p", info->phys_start, info->phys_end);
+    trace_warn(MODULE, "pmm_start = %p pmm_end = %p", info->phys_start, info->phys_end);
     map(&kernel_page, info->phys_start, (vaddr_t)MEMORY_DIRECT_MAP_VIRT_BASE, pmm_size, kernel_data_flags);
 
-    log_debug(MODULE, "setting cr3");
+    trace_debug(MODULE, "setting cr3");
     inline_asm("mov cr3, %0" : : "r"(kernel_page.page_dir_phys));
-    log_debug(MODULE, "kernel_page @%p", &kernel_page);
+    trace_debug(MODULE, "kernel_page @%p", &kernel_page);
 
     ivt_set_handler(EXC_FAULT, mmu_arch_page_fault);
 
@@ -224,7 +224,7 @@ void mmu_arch_flush_all()
 {
     uint64_t kernel_cr3;
     inline_asm("mov %0, cr3" : "=r"(kernel_cr3));
-    log_debug(MODULE, "reloading cr3 %p", kernel_cr3);
+    trace_debug(MODULE, "reloading cr3 %p", kernel_cr3);
     inline_asm("mov cr3, %0" ::"r"(kernel_cr3) : "memory");
 }
 

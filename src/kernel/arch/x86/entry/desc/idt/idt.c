@@ -83,7 +83,7 @@ void idt_dump_selector_index(uint16_t index)
 #else
     uint64_t offset = ((uint64_t)e.base_1 << 48) | ((uint64_t)e.base_2 << 32) | e.base_3;
 #endif
-    log_info(MODULE, "idt[%02x]: offset=0x%08X selector=0x%04X type_attr=0x%02X", index, offset, e.segment_selector, e.flags);
+    trace_info(MODULE, "idt[%02x]: offset=0x%08X selector=0x%04X type_attr=0x%02X", index, offset, e.segment_selector, e.flags);
 
 #endif
 }

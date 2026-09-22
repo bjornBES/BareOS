@@ -17,6 +17,9 @@
 #include "kernel/smp/ipi.h"
 #include "kernel/acpi/apic/lapic.h"
 
+#include "thread/thread.h"
+#include "sched/sched.h"
+
 #include "mm/allocator/kstack_allocator.h"
 
 #include "debug/debug.h"
@@ -38,7 +41,7 @@ void ap_startup()
     for (uint32_t subleaf = 0;; subleaf++)
     {
         cpuid(0x0B, subleaf, &regs_leaf);
-        log_info(MODULE, "0x0B.0x%02x = {eax = 0x%08x, ebx = 0x%08x, ecx = 0x%08x, edx = 0x%08x}", subleaf, regs_leaf.eax, regs_leaf.ebx, regs_leaf.ecx, regs_leaf.edx);
+        trace_info(MODULE, "0x0B.0x%02x = {eax = 0x%08x, ebx = 0x%08x, ecx = 0x%08x, edx = 0x%08x}", subleaf, regs_leaf.eax, regs_leaf.ebx, regs_leaf.ecx, regs_leaf.edx);
         uint32_t level_type = BIT_GET_RANGE(regs_leaf.ecx, 8, 15);
         
         if (level_type == 0)
@@ -60,10 +63,10 @@ void ap_startup()
     uint32_t smt_id = apic_id & ((1u << smt_shift) - 1);
     uint32_t core_id = (apic_id >> smt_shift) & ((1u << (core_shift - smt_shift)) - 1);
     uint32_t package_id = apic_id >> core_shift;
-    log_info(MODULE, "ap%u has = {smt = %u, core = %u, package id = %u}", apic_id, smt_id, core_id, package_id);
+    trace_info(MODULE, "ap%u has = {smt = %u, core = %u, package id = %u}", apic_id, smt_id, core_id, package_id);
 
     cpu_t *cpu = cpu_arch_get(apic_id);
-    log_info("CPU", "AP %u started %p", apic_id, cpu);
+    trace_info("CPU", "AP %u started %p", apic_id, cpu);
     
     cpu_init_ap(apic_id, cpu);
     
@@ -74,12 +77,13 @@ void ap_startup()
     lapic_enable();
     lapic_timer_init(apic_id, cpu->logical_id);
 
-    log_info("CPU", "AP %u online", apic_id);
+    trace_info("CPU", "AP %u online", apic_id);
 
     total_cores_init++;
     while (true)
     {
-        // irq_arch_enable();
+        inline_asm("sti" : : : "memory");
+        inline_asm("hlt" : : : "memory");
     }
 }
 
@@ -96,11 +100,11 @@ void smp_arch_boot_ap(cpu_entry_t *entry, vaddr_t trampoline)
     orig[2] = (uint64_t)&entry->cpu->gdtr;
     orig[3] = (uint64_t)ap_startup;
     // hexdump((void *)trampoline, 64, 16);
-    log_debug(MODULE, "sat up data for ap%u", entry->arch_id);
-    // log_debug(MODULE, "rt var[0] = %p", kernel_page.page_dir_phys);
-    // log_debug(MODULE, "rt var[1] = %p", ap_stack);
-    // log_debug(MODULE, "rt var[2] = %p", &entry->cpu->gdtr);
-    // log_debug(MODULE, "rt var[3] = %p", ap_startup);
+    trace_debug(MODULE, "sat up data for ap%u", entry->arch_id);
+    // trace_debug(MODULE, "rt var[0] = %p", kernel_page.page_dir_phys);
+    // trace_debug(MODULE, "rt var[1] = %p", ap_stack);
+    // trace_debug(MODULE, "rt var[2] = %p", &entry->cpu->gdtr);
+    // trace_debug(MODULE, "rt var[3] = %p", ap_startup);
 
     // send INIT IPI
     // delivery mode 101 (INIT), level assert, edge triggered
@@ -109,7 +113,7 @@ void smp_arch_boot_ap(cpu_entry_t *entry, vaddr_t trampoline)
     for (size_t i = 0; i < 10000; i++)
     {
     }
-    log_debug(MODULE, "here2");
+    trace_debug(MODULE, "here2");
 
     // send first SIPI
     // delivery mode 110 (SIPI), vector = 0x09 (0x9000 >> 12)
@@ -118,7 +122,7 @@ void smp_arch_boot_ap(cpu_entry_t *entry, vaddr_t trampoline)
     for (size_t i = 0; i < 200 * 10000; i++)
     {
     }
-    log_debug(MODULE, "here3");
+    trace_debug(MODULE, "here3");
 
     // send second SIPI (spec says send twice)
     lapic_write_icr((uint32_t)entry->arch_id, MAKE_LOW(0x09, DELI_STARTUP, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, TRIGGER_EDGE, DEST_NO));
@@ -126,10 +130,49 @@ void smp_arch_boot_ap(cpu_entry_t *entry, vaddr_t trampoline)
     for (size_t i = 0; i < 200 * 10000; i++)
     {
     }
-    log_debug(MODULE, "here4");
+    trace_debug(MODULE, "here4");
 
     while (last_total_cores_init == total_cores_init)
     {
         ;
     }
 }
+
+void smp_arch_idle_thread()
+{
+    cpu_t *cpu = cpu_arch_get_current();
+    trace_debug(MODULE, "cpu %u is going idle", cpu->arch_id);
+    while (true)
+    {
+        __asm__ volatile("cli");
+        if (sched_has_work(cpu) == KERRNO_SUCCESSES)
+        {
+            trace_debug(MODULE, "cpu %u found work", cpu->arch_id);
+            __asm__ volatile("sti");
+            sched_yield();
+        }
+        __asm__ volatile("sti");
+        __asm__ volatile("hlt");
+    }
+}
+THREAD_WARPER_NO_RETURN_ARG(smp_arch_idle_thread);
+
+status_t smp_arch_send_ipi(uint32_t apic_id, interrupt_vector_t vector)
+{
+    ENTER_FUNC("%u, 0x%x", apic_id, vector);
+    lapic_write_icr(apic_id, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_NO));
+    return KERRNO_SUCCESSES;
+}
+
+status_t smp_arch_send_ipi_all(interrupt_vector_t vector)
+{
+    lapic_write_icr(0xFFFFFFFF, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_ALL));
+    return KERRNO_SUCCESSES;
+}
+
+status_t smp_arch_send_ipi_others(interrupt_vector_t vector)
+{
+    lapic_write_icr(0xFFFFFFFF, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_EXCLUDE_SELF));
+    return KERRNO_SUCCESSES;
+}
+

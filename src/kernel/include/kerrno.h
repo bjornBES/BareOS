@@ -37,20 +37,19 @@
 
 /* Error baselines */
 #define KERRNO_GENERAL_ERROR_BASE                0                                    /* General errors */
-#define KERRNO_OS_ERROR_BASE                     (KERRNO_GENERAL_ERROR_BASE + 0x1000) /* Kernel Kit errors */
-#define KERRNO_APP_ERROR_BASE                    (KERRNO_GENERAL_ERROR_BASE + 0x2000) /* Application Kit errors */
-#define KERRNO_INTERFACE_ERROR_BASE              (KERRNO_GENERAL_ERROR_BASE + 0x3000) /* Interface Kit errors */
-#define KERRNO_MEDIA_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x4000) /* Media Kit errors: 0x4000-0x41ff */
-#define KERRNO_TRANSLATION_ERROR_BASE            (KERRNO_GENERAL_ERROR_BASE + 0x4800) /* Translation Kit errors: 0x4800-0x48ff */
-#define KERRNO_MIDI_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x5000) /* MIDI Kit errors */
-#define KERRNO_STORAGE_ERROR_BASE                (KERRNO_GENERAL_ERROR_BASE + 0x6000) /* Storage Kit and file-system errors */
-#define KERRNO_POSIX_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x7000) /* POSIX-compatible errors */
-#define KERRNO_MAIL_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x8000) /* Mail Kit errors */
-#define KERRNO_PRINT_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x9000) /* Printing errors */
-#define KERRNO_DEVICE_ERROR_BASE                 (KERRNO_GENERAL_ERROR_BASE + 0xA000) /* Device Kit errors */
+#define KERRNO_OS_ERROR_BASE                     (KERRNO_GENERAL_ERROR_BASE + 0x100) /* Kernel Kit errors */
+#define KERRNO_APP_ERROR_BASE                    (KERRNO_GENERAL_ERROR_BASE + 0x200) /* Application Kit errors */
+#define KERRNO_INTERFACE_ERROR_BASE              (KERRNO_GENERAL_ERROR_BASE + 0x300) /* Interface Kit errors */
+#define KERRNO_MEDIA_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x400) /* Media Kit errors: 0x400-0x47f */
+#define KERRNO_TRANSLATION_ERROR_BASE            (KERRNO_GENERAL_ERROR_BASE + 0x480) /* Translation Kit errors: 0x480-0x4ff */
+#define KERRNO_MIDI_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x500) /* MIDI Kit errors */
+#define KERRNO_STORAGE_ERROR_BASE                (KERRNO_GENERAL_ERROR_BASE + 0x600) /* Storage Kit and file-system errors */
+#define KERRNO_POSIX_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x700) /* POSIX-compatible errors */
+#define KERRNO_MAIL_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x800) /* Mail Kit errors */
+#define KERRNO_PRINT_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x900) /* Printing errors */
+#define KERRNO_DEVICE_ERROR_BASE                 (KERRNO_GENERAL_ERROR_BASE + 0xA00) /* Device Kit errors */
 
-/* Developer-defined errors start at (KERRNO_ERRORS_END+1) */
-#define KERRNO_ERRORS_END                        (KERRNO_GENERAL_ERROR_BASE + 0xFFFF) /* Last reserved system error value */
+#define KERRNO_ERRORS_END                        (KERRNO_GENERAL_ERROR_BASE + 0xFFF) /* Last reserved system error value */
 
 /* General Errors */
 #define KERRNO_OOM                               (KERRNO_GENERAL_ERROR_BASE + 1)  /* Out of memory */

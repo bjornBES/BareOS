@@ -18,6 +18,8 @@
 
 #include <binary.h>
 
+#define MODULE "x86-ioapic"
+
 uint8_t ioapic_count = 0;
 ioapic_entry_t ioapic_table[16];
 
@@ -43,7 +45,7 @@ status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi
     uint32_t version = ioapic_read(ioapic_id, IOAPIC_REG_VERSION);
     ioapic_table[ioapic_count].ioapic_max_redir = BIT_GET_RANGE(version, 16, 23);
     ioapic_table[ioapic_count].gsi_end = gsi_base + ioapic_table[ioapic_id].ioapic_max_redir;
-    log_debug(NO_MODULE, "IOAPIC %u = {base: %p, gsi range: %u-%u, redir limit: %u}", ioapic_count, ioapic_table[ioapic_count].io_apic_base, ioapic_table[ioapic_count].gsi_base, ioapic_table[ioapic_count].gsi_end, ioapic_table[ioapic_count].ioapic_max_redir);
+    trace_debug(MODULE, "IOAPIC %u = {base: %p, gsi range: %u-%u, redir limit: %u}", ioapic_count, ioapic_table[ioapic_count].io_apic_base, ioapic_table[ioapic_count].gsi_base, ioapic_table[ioapic_count].gsi_end, ioapic_table[ioapic_count].ioapic_max_redir);
     for (uint32_t i = gsi_base; i < ioapic_table[ioapic_count].ioapic_max_redir + 1; i++)
     {
         ioapic_table[ioapic_count].redir_entries[i].flags = 0;
@@ -65,7 +67,7 @@ uint8_t ioapic_get_id(gsi_t target_gsi)
     for (uint8_t i = 0; i < ioapic_count; i++)
     {
         ioapic_entry_t *entry = &ioapic_table[i];
-        log_debug(NO_MODULE, "IOAPIC %u: %u within %u-%u}", i, target_gsi, entry->gsi_base, entry->gsi_end);
+        trace_debug(MODULE, "IOAPIC %u: %u within %u-%u}", i, target_gsi, entry->gsi_base, entry->gsi_end);
         if (target_gsi < entry->gsi_base)
         {
             continue;

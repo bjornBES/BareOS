@@ -21,7 +21,7 @@
 #include "align.h"
 #include "memory.h"
 
-#define MODULE                  "BUDDY"
+#define MODULE                  "buddy"
 
 #define BUDDY_MAX_ORDER         11 // 2^0 * 4KiB to 2^10 * 4KiB = 4KiB to 4MiB
 #define MAX_SIZE                (1 << (BUDDY_MAX_ORDER - 1)) * PAGE_SIZE
@@ -180,9 +180,9 @@ status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
     global_buddy->free_bitmap = (uint8_t *)phys_to_virt_auto(global_buddy->bitmap_phys);
     memset(global_buddy->free_bitmap, 0, global_buddy->bitmap_bytes);
 
-    log_debug(MODULE, "region start=%p end=%p", global_buddy->start, global_buddy->end);
-    log_debug(MODULE, "mapping the frames");
-    log_debug(MODULE, "%p..%p size %x", global_buddy->start, global_buddy->end, global_buddy->end - global_buddy->start);
+    trace_debug(MODULE, "region start=%p end=%p", global_buddy->start, global_buddy->end);
+    trace_debug(MODULE, "mapping the frames");
+    trace_debug(MODULE, "%p..%p size %x", global_buddy->start, global_buddy->end, global_buddy->end - global_buddy->start);
 
     paddr_t addr = global_buddy->start;
     while (addr < global_buddy->end)
@@ -198,7 +198,7 @@ status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
             order--;
         }
 
-        log_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
+        trace_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
         buddy_free_block(out, addr, order);
         addr += BUDDY_BLOCK_SIZE(order);
     }
@@ -218,13 +218,13 @@ void buddy_print_info_verbose(frame_allocator_t *allocator)
             continue;
         }
 
-        log_debug(MODULE, "  order[%u] blocks:", i);
+        log_debug(NO_MODULE, "  order[%u] blocks:", i);
         buddy_free_node_t *node = o->free_list;
         size_t j = 0;
         while (node)
         {
             paddr_t addr = virt_to_phys_auto((vaddr_t)node);
-            log_debug(MODULE, "    [%4zu] %p/%p", j, addr, node);
+            log_debug(NO_MODULE, "    [%4zu] %p/%p", j, addr, node);
             node = node->next;
             j++;
         }
@@ -237,22 +237,22 @@ void buddy_print_info(frame_allocator_t *allocator)
     frame_allocator_stats_t st;
     buddy_stats(allocator, &st);
 
-    log_debug(MODULE, "=== Buddy Allocator Info ===");
-    log_debug(MODULE, "Region: %p..%p (size: %x)", global_buddy->start, global_buddy->end, (uint32_t)(global_buddy->end - global_buddy->start));
-    log_debug(MODULE, "");
+    log_debug(NO_MODULE, "=== Buddy Allocator Info ===");
+    log_debug(NO_MODULE, "Region: %p..%p (size: %x)", global_buddy->start, global_buddy->end, (uint32_t)(global_buddy->end - global_buddy->start));
+    log_debug(NO_MODULE, "");
 
     for (size_t i = 0; i < BUDDY_MAX_ORDER; i++)
     {
         size_t block_size = BUDDY_BLOCK_SIZE(i);
         size_t free_bytes = st.per_order_count[i] * block_size;
-        log_debug(MODULE, "  order[%2u] block_size=%8x  count=%5u  free=%x bytes", i, block_size, st.per_order_count[i], free_bytes);
+        log_debug(NO_MODULE, "  order[%2u] block_size=%8x  count=%5u  free=%x bytes", i, block_size, st.per_order_count[i], free_bytes);
     }
 
-    log_debug(MODULE, "");
+    log_debug(NO_MODULE, "");
     size_t total_free_bytes = st.free_frames * PAGE_SIZE;
     size_t total_bytes = st.total_frames * PAGE_SIZE;
-    log_debug(MODULE, "Total free: %x/%x bytes (%u KiB / %u MiB)", total_free_bytes, total_bytes, (uint32_t)(total_free_bytes / 1024), (uint32_t)(total_free_bytes / (1024 * 1024)));
-    log_debug(MODULE, "============================");
+    log_debug(NO_MODULE, "Total free: %x/%x bytes (%u KiB / %u MiB)", total_free_bytes, total_bytes, (uint32_t)(total_free_bytes / 1024), (uint32_t)(total_free_bytes / (1024 * 1024)));
+    log_debug(NO_MODULE, "============================");
 }
 
 void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out)
@@ -272,7 +272,7 @@ void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out)
 status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order)
 {
     buddy_t *global_buddy = allocator->priv;
-    log_debug(MODULE, "buddy_free addr=%p order=%d", physaddr, order);
+    trace_debug(MODULE, "buddy_free addr=%p order=%d", physaddr, order);
     if (order >= BUDDY_MAX_ORDER)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "order is not valid");
@@ -285,7 +285,7 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
         size_t idx = buddy_block_index(global_buddy, addr, order);
         size_t buddy_idx = idx ^ 1;
         paddr_t buddy_addr = global_buddy->start + (buddy_idx << order) * PAGE_SIZE;
-        // log_debug(MODULE, "buddy_addr = %p", buddy_addr);
+        // trace_debug(MODULE, "buddy_addr = %p", buddy_addr);
 
         if (buddy_addr + BUDDY_BLOCK_SIZE(order) > global_buddy->end)
         {
@@ -297,7 +297,7 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
         }
 
         buddy_free_node_t *buddy_node = (buddy_free_node_t *)phys_to_virt_auto(buddy_addr);
-        // log_debug(MODULE, "buddy_node = %p", buddy_node);
+        // trace_debug(MODULE, "buddy_node = %p", buddy_node);
         list_remove(&global_buddy->orders[order], buddy_node);
         buddy_bit_clear(global_buddy, order, buddy_idx);
 
@@ -306,9 +306,9 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
     }
 
     size_t idx = buddy_block_index(global_buddy, addr, order);
-    // log_debug(MODULE, "idx = %u", idx);
+    // trace_debug(MODULE, "idx = %u", idx);
     buddy_free_node_t *node = (buddy_free_node_t *)phys_to_virt_auto(addr);
-    // log_debug(MODULE, "node = %p", node);
+    // trace_debug(MODULE, "node = %p", node);
     list_push(&global_buddy->orders[order], node);
     buddy_bit_set(global_buddy, order, idx);
     return KERRNO_SUCCESSES;
@@ -365,7 +365,7 @@ status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *
         buddy_bit_set(global_buddy, found_order, buddy_block_index(global_buddy, split, found_order));
     }
 
-    log_debug(MODULE, "got addr=%p order=%d", addr, order);
+    trace_debug(MODULE, "got addr=%p order=%d", addr, order);
     *phys_out = addr;
     return KERRNO_SUCCESSES;
 }

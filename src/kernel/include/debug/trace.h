@@ -25,5 +25,5 @@ typedef enum
 } trace_level_t;
 
 void trace(fd_t file, trace_level_t level, char *fmt, ...);
-void trace_with_id(fd_t file, trace_level_t level, char *fmt, ...);
+void trace_with_id(fd_t file, trace_level_t level, const char *module, char *fmt, ...);
 void trace_enter_func(fd_t file, const char *module, trace_level_t level, const char *function, char *fmt, ...);

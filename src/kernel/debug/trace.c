@@ -35,12 +35,23 @@ static const char *const LogLevelSymbol[] =
         [LVL4] = "",
         [LVL5] = "ERR",
 };
+static debug_level_t LogLevelDebugLevel[] =
+    {
+        [FUNC_ENTER] = LVL_INFO,
+        [LVL_WARNING] = LVL_WARN,
+        [LVL_FIX] = LVL_INFO,
+        [LVL1] = LVL_DEBUG,
+        [LVL2] = LVL_INFO,
+        [LVL3] = LVL_DEBUG,
+        [LVL4] = LVL_DEBUG,
+        [LVL5] = LVL_ERROR,
+};
 
 spinlock_t trace_lock = {0};
 
 static inline void get_time(uint64_t *out_ns, uint64_t *out_ms, uint32_t *out_sec, uint32_t *out_min, uint32_t *out_hour)
 {
-    uint64_t ns = 0/* timer_now_ns() */;
+    uint64_t ns = 0 /* timer_now_ns() */;
     if (ns == 0)
     {
         *out_ns = 0;
@@ -64,14 +75,15 @@ static inline void get_time(uint64_t *out_ns, uint64_t *out_ms, uint32_t *out_se
 
 static inline void get_time_string(char *line)
 {
-    uint64_t ns = 0/* timer_now_ns() */;
+    uint64_t ns = timer_now_ns();
     if (ns == 0)
     {
-        line[0] = '\0';
+        int count = sprintf(line, "[0:0:0.0]");
+        line[count] = '\0';
         return;
     }
     uint32_t ms = NANOSEC_TO_MILLISEC(ns) % 1000;
-    uint64_t sec = 0/* timer_now_sec() */;
+    uint64_t sec = MILLISEC_TO_SEC(ms);
     uint32_t min = sec / 60;
     uint32_t hour = min / 60;
 
@@ -87,17 +99,18 @@ static inline void get_ids(char *id_log)
     {
         count = sprintf(id_log, "%u.%u.%u", cpu->apic_id, cpu->current->tid, cpu->current->proc->pid);
     }
-    else if (cpu != NULL && cpu->current != NULL)
+    */
+    if (cpu != NULL && cpu->current != NULL)
     {
-        count = sprintf(id_log, "%u.%u", cpu->apic_id, cpu->current->tid);
+        count = sprintf(id_log, "%u.%u.N", cpu->arch_id, cpu->current->tid);
     }
-    else  */if (cpu != NULL)
+    else if (cpu != NULL)
     {
-        count = sprintf(id_log, "%u", cpu->apic_id);
+        count = sprintf(id_log, "%u.N.N", cpu->arch_id);
     }
     else
     {
-        count = 0;
+        count = sprintf(id_log, "P.SMP");
     }
     id_log[count] = '\0';
 }
@@ -112,25 +125,23 @@ void trace_enter_func(fd_t file, const char *module, trace_level_t level, const 
     count = vsprintf(fmt_log, fmt, args);
     fmt_log[count] = '\0';
 
+    va_end(args);
     const char *symbol = LogLevelSymbol[level];
-
+    
     NEW_BUFFER(time, 50);
     get_time_string(time);
-
+    
     NEW_BUFFER(id_log, 20);
     get_ids(id_log);
-
+    
     NEW_BUFFER(log, 300);
-    count = sprintf(log, "%s [%s] %s: %s(%s)\n", time, id_log, symbol, function, fmt_log);
+    count = sprintf(log, "%s [%s] %s, %s: %s(%s)", time, id_log, symbol, module, function, fmt_log);
     log[count] = '\0';
-
-    spinlock_acquire(&debug_logs);
+    
     spinlock_acquire(&trace_lock);
-    log_info(NO_MODULE, log);
+    logfl(NO_MODULE, LogLevelDebugLevel[level], log);
     // vfs_write(file, log, count);
-    va_end(args);
     spinlock_release(&trace_lock);
-    spinlock_release(&debug_logs);
 }
 
 void trace(fd_t file, trace_level_t level, char *fmt, ...)
@@ -152,16 +163,14 @@ void trace(fd_t file, trace_level_t level, char *fmt, ...)
     count = sprintf(log, "%s %s: %s", time, symbol, fmt_log);
     log[count] = '\0';
 
-    spinlock_acquire(&debug_logs);
     spinlock_acquire(&trace_lock);
-    log_info(NO_MODULE, log);
+    logfl(NO_MODULE, LogLevelDebugLevel[level], log);
     // vfs_write(file, log, count);
     va_end(args);
     spinlock_release(&trace_lock);
-    spinlock_release(&debug_logs);
 }
 
-void trace_with_id(fd_t file, trace_level_t level, char *fmt, ...)
+void trace_with_id(fd_t file, trace_level_t level, const char *module, char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -180,14 +189,19 @@ void trace_with_id(fd_t file, trace_level_t level, char *fmt, ...)
     get_time_string(time);
 
     NEW_BUFFER(log, 300);
-    count = sprintf(log, "%s [%s] %s: %s", time, id_log, symbol, fmt_log);
+    if (*module != '\0')
+    {
+        count = sprintf(log, "%s [%s] %s, %s: %s", time, id_log, symbol, module, fmt_log);
+    }
+    else
+    {
+        count = sprintf(log, "%s [%s] %s, : %s", time, id_log, symbol, fmt_log);
+    }
     log[count] = '\0';
 
-    spinlock_acquire(&debug_logs);
     spinlock_acquire(&trace_lock);
-    log_info(NO_MODULE, log);
+    logfl(NO_MODULE, LogLevelDebugLevel[level], log);
     // vfs_write(file, log, count);
     va_end(args);
     spinlock_release(&trace_lock);
-    spinlock_release(&debug_logs);
 }

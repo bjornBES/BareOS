@@ -41,7 +41,7 @@ sdt_header_t *table_get_table(uint32_t signature)
 {
     for (int i = 0; i < table_count; i++)
     {
-        log_info(MODULE, "comparing 0x%04x to 0x%04x", signature_table[i], signature);
+        trace_info(MODULE, "comparing 0x%04x to 0x%04x", signature_table[i], signature);
         if (signature_table[i] == signature)
         {
             return tables[i];
@@ -69,8 +69,8 @@ status_t table_verify_checksum(sdt_header_t *header)
 void table_cache_tables(rsdt_t *rsd_table)
 {
     int entries = (rsd_table->header.length - sizeof(sdt_header_t)) / 4;
-    log_info(MODULE, "%u,%u", rsd_table->header.length, rsd_table->header.creator_revision);
-    log_info(MODULE, "number of entries = %u", entries);
+    trace_info(MODULE, "%u,%u", rsd_table->header.length, rsd_table->header.creator_revision);
+    trace_info(MODULE, "number of entries = %u", entries);
     for (int i = 0; i < entries; i++)
     {
         sdt_header_t *entry = (void *)(paddr_t)rsd_table->entries[i];
@@ -78,7 +78,7 @@ void table_cache_tables(rsdt_t *rsd_table)
         if (table_count < CONFIG_ACPI_MAX_TABLES)
         {
             mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)entry), PAGE_ALIGN_DOWN((paddr_t)entry), kernel_data_flags);
-            log_info(MODULE, "table[%i] sig=%04x/%c%c%c%c addr=%p", i, entry->signature, ((char*)&entry->signature)[0], ((char*)&entry->signature)[1], ((char*)&entry->signature)[2], ((char*)&entry->signature)[3], entry);
+            trace_info(MODULE, "table[%i] sig=%04x/%c%c%c%c addr=%p", i, entry->signature, ((char*)&entry->signature)[0], ((char*)&entry->signature)[1], ((char*)&entry->signature)[2], ((char*)&entry->signature)[3], entry);
             signature_table[table_count] = entry->signature;
 
             uint32_t size = entry->length;
@@ -94,11 +94,11 @@ void table_set_base(vaddr_t base)
     mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)base), PAGE_ALIGN_DOWN((paddr_t)base), kernel_data_flags);
     rsdt_t *rsd_table = (rsdt_t *)base;
     uint32_t size = rsd_table->header.length;
-    log_debug(MODULE, "size = %u", size);
+    trace_debug(MODULE, "size = %u", size);
     mmu_arch_unmap(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)base));
     rsd_table = (rsdt_t *)(ioremap((paddr_t)base, size) + GET_PAGE_OFFSET(base));
-    log_debug(MODULE, "offset = %x", GET_PAGE_OFFSET(base));
+    trace_debug(MODULE, "offset = %x", GET_PAGE_OFFSET(base));
     size = rsd_table->header.length;
-    log_debug(MODULE, "size = %u", size);
+    trace_debug(MODULE, "size = %u", size);
     table_cache_tables(rsd_table);
 }

@@ -25,7 +25,7 @@ void hpet_parse()
         log_crit(MODULE, "no hpet found");
         return;
     }
-    log_info(MODULE, "hpet found revision=%u", hpet->revision);
+    trace_info(MODULE, "hpet found revision=%u", hpet->revision);
 
     table_verify_checksum(hpet);
 

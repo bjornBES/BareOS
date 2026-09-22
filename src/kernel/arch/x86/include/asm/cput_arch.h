@@ -14,7 +14,10 @@
 #include "entry/desc/gdt/gdt.h"
 #include "entry/desc/tss/tss.h"
 
+#include "sync/spinlock.h"
+
 #include "timer/timer.h"
+#include "sched/sched_class.h"
 
 #include "kernel/cpuid/types.h"
 
@@ -27,30 +30,28 @@ typedef struct arch_cpu_info
     vaddr_t kernel_stack;
 
     // scheduler
-    // struct thread *current; // thread_t running on this core
-    // struct thread *idle;    // this core's idle thread_t
+    struct thread *current;      // thread_t running on this core
+    struct thread *idle;         // this core's idle thread_t
 
-    cpu_logical_id_t logical_id;    // sequential index 0..n
-    uint32_t apic_id;
+    cpu_logical_id_t logical_id; // sequential index 0..n
+    uint32_t arch_id;
 
     uint8_t online : 1; // has this AP finished init
     uint8_t need_resched : 1;
     uint8_t has_stopped : 1;
     uint8_t res : 5;
-    
+
     cpuid_leaves_t cpuid;
 
-    // spinlock_t local_runq_lock;
-    // sched_class_t *sched_class; // which algorithm this core (or system) uses
-    // void *runq_data;                  // opaque — algo-specific struct, cast internally
-    // int local_count;
-    // device_t *lapic_timer_dev;
+    spinlock_t local_runq_lock;
+    sched_class_t *sched_class; // which algorithm this core (or system) uses
+    void *runq_data; // opaque — algo-specific struct, cast internally
 
-    timer_source_t *lapic_timer_dev;
+    timer_source_t *cpu_timer_dev;
 
     // calling functions using IPI
-    void (*func_pending)(void *);
-    void *func_arg_pending;
+    void (*func_pending)(uintptr_t);
+    uintptr_t func_arg_pending;
 
     // per-core TSS (needed so rsp0 is independent per core)
     tss_entry_t tss;

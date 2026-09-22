@@ -19,16 +19,23 @@
 
 #include "debug/debug.h"
 
+#include "thread/thread.h"
+#include "sched/sched.h"
+
 #include <boot/params.h>
+
+#define MODULE "main"
 
 void kernel_main(boot_params_t *boot_params)
 {
-
+    ENTER_FUNC("%p", boot_params);
     for (;;)
     {
         ;
     }
 }
+
+THREAD_WARPER_NO_RETURN(kernel_main, boot_params_t *);
 
 __init void kernel_early_main(boot_params_t *boot_params)
 {
@@ -36,16 +43,18 @@ __init void kernel_early_main(boot_params_t *boot_params)
 
     fadt_parse();
 
-    for (size_t i = 0; i < 500000000; i++)
-    {
-        ;
-    }
-    
-
-    log_info(NO_MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
-    log_info(NO_MODULE, "timer_now_ns() = %lld", timer_now_ns());
+    trace_info(NO_MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
+    trace_info(NO_MODULE, "timer_now_ns()    = %lld", timer_now_ns());
 
     device_debug();
+
+    thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_main), (uintptr_t)boot_params, 0);
+    sched_init(main_thread);
+
+    trace_info(MODULE, "jump to kernel_main");
+
+    schedule(NULL);
+    
     for (;;)
     {
         ;

@@ -47,17 +47,17 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t breakpoint(intr_frame_t *frame)
 {
-    log_debug("breakpoint", "breakpoint\n");
+    trace_debug("breakpoint", "breakpoint\n");
     frame_arch_dump_frame(frame);
     return KERRNO_SUCCESSES;
 }
 
 status_t write_registers(intr_frame_t *regs)
 {
-    log_debug("DEBUG", "======== DEBUG ========");
-    log_debug(MODULE, "from cpu %d", cpu_arch_get_current());
+    trace_debug("DEBUG", "======== DEBUG ========");
+    trace_debug(MODULE, "from cpu %d", cpu_arch_get_current());
     frame_arch_dump_frame(regs);
-    log_debug("DEBUG", "======== DEBUG ========");
+    trace_debug("DEBUG", "======== DEBUG ========");
     return KERRNO_SUCCESSES;
 }
 
@@ -104,10 +104,10 @@ status_t page_fault(intr_frame_t *regs)
     vaddr_t cr2;
     __asm__("mov %0, cr2" : "=rm"(cr2));
 
-    log_info(MODULE, "========== PAGE FAULT ==========");
+    trace_info(MODULE, "========== PAGE FAULT ==========");
     frame_arch_dump_frame(regs);
-    log_info(MODULE, "\t{ cr2 = %016p }", cr2);
-    log_info(MODULE, "========== PAGE FAULT ==========");
+    trace_info(MODULE, "\t{ cr2 = %016p }", cr2);
+    trace_info(MODULE, "========== PAGE FAULT ==========");
 
     KERNEL_PANIC("PF", "KERNEL GOT a PF at %p", cr2);
     FUNC_NOT_IMPLEMENTED();
@@ -137,16 +137,16 @@ __init void arch_setup(boot_params_t *boot_params)
         cpuid_regs regs_leaf0b;
         cpuid(0x0B, 0, &regs_leaf0b);
         apic_id = regs_leaf0b.edx;
-        log_info(MODULE, "x2apic = %u", apic_id);
+        trace_info(MODULE, "x2apic = %u", apic_id);
     }
     else
     {
         apic_id = BIT_GET_RANGE(regs_leaf1.ebx, 24, 31);
-        log_info(MODULE, "xapic = %u", apic_id);
+        trace_info(MODULE, "xapic = %u", apic_id);
     }
     cpu = cpu_arch_get(apic_id);
     cpu->cpuid.leaf_0x1_0[0] = *((leaf_0x1_0_t *)((void *)&regs_leaf1));
-    log_info(MODULE, "cpu = %p", cpu);
+    trace_info(MODULE, "cpu = %p", cpu);
 
     gdt_initialize(&cpu->gdtr, cpu->gdt_table);
     tss_initialize(&cpu->tss, cpu->gdt_table, TSS_INDEX);
@@ -235,20 +235,20 @@ __init void arch_setup(boot_params_t *boot_params)
 
     mmu_arch_init(boot_params);
     mmu_arch_disable_prints();
-    log_debug(MODULE, "max_phys = 0x%x/%d", arch_runtime_data.paging.max_phys, arch_runtime_data.paging.max_phys);
-    log_debug(MODULE, "pse = 0x%x", arch_runtime_data.paging.pse);
-    log_debug(MODULE, "pae = 0x%x", arch_runtime_data.paging.pae);
-    log_debug(MODULE, "pat = 0x%x", arch_runtime_data.paging.pat);
-    log_debug(MODULE, "pse_36 = 0x%x", arch_runtime_data.paging.pse_36);
-    log_debug(MODULE, "paging_64 = 0x%x", arch_runtime_data.paging.paging_64);
-    log_debug(MODULE, "la47 = 0x%x", arch_runtime_data.paging.la47);
-    log_debug(MODULE, "huge_pdpt = 0x%x", arch_runtime_data.paging.huge_pdpt);
-    log_debug(MODULE, "global = 0x%x", arch_runtime_data.paging.global);
-    log_debug(MODULE, "has_nx = 0x%x", arch_runtime_data.paging.has_nx);
-    log_debug(MODULE, "has_user_pke = 0x%x", arch_runtime_data.paging.has_user_pke);
-    log_debug(MODULE, "has_super_pke = 0x%x", arch_runtime_data.paging.has_super_pke);
+    trace_debug(MODULE, "max_phys = 0x%x/%d", arch_runtime_data.paging.max_phys, arch_runtime_data.paging.max_phys);
+    trace_debug(MODULE, "pse = 0x%x", arch_runtime_data.paging.pse);
+    trace_debug(MODULE, "pae = 0x%x", arch_runtime_data.paging.pae);
+    trace_debug(MODULE, "pat = 0x%x", arch_runtime_data.paging.pat);
+    trace_debug(MODULE, "pse_36 = 0x%x", arch_runtime_data.paging.pse_36);
+    trace_debug(MODULE, "paging_64 = 0x%x", arch_runtime_data.paging.paging_64);
+    trace_debug(MODULE, "la47 = 0x%x", arch_runtime_data.paging.la47);
+    trace_debug(MODULE, "huge_pdpt = 0x%x", arch_runtime_data.paging.huge_pdpt);
+    trace_debug(MODULE, "global = 0x%x", arch_runtime_data.paging.global);
+    trace_debug(MODULE, "has_nx = 0x%x", arch_runtime_data.paging.has_nx);
+    trace_debug(MODULE, "has_user_pke = 0x%x", arch_runtime_data.paging.has_user_pke);
+    trace_debug(MODULE, "has_super_pke = 0x%x", arch_runtime_data.paging.has_super_pke);
 
-    log_debug(MODULE, "max_ext_subleaf = 0x%x", max_ext_subleaf);
+    trace_debug(MODULE, "max_ext_subleaf = 0x%x", max_ext_subleaf);
 
     boot_params_t *bp;
     {
@@ -258,7 +258,7 @@ __init void arch_setup(boot_params_t *boot_params)
         memcpy(bp, (void *)virt_bootParams, sizeof(boot_params_t));
         mmu_free_region(&kernel_page, virt_bootParams, sizeof(boot_params_t));
 
-        log_debug(MODULE, "bootParams @ %p", bp);
+        trace_debug(MODULE, "bootParams @ %p", bp);
         hexdump(bp, sizeof(boot_params_t), 16);
         hexdump(&bp->smp, sizeof(bp->smp), 16);
 
@@ -266,7 +266,7 @@ __init void arch_setup(boot_params_t *boot_params)
     }
 
     rsdt_parse(bp);
-
+    
     madt_parse();
 
     // check CPUID.0x01:EDX[9] APIC

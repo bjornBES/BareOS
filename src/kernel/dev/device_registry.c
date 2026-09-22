@@ -33,7 +33,7 @@ int device_register_under_dev_id(device_t *dev, dev_t device_id)
         return -EINVAL; // TODO
     }
 
-    log_info(MODULE, "device is a partition of %s", dev->class_name);
+    trace_info(MODULE, "device is a partition of %s", dev->class_name);
     uint32_t class_id = device_id_get_next_class_id(dev->class_name);
     snprintf(dev->name, DEVICE_NAME_MAX, "%sp%u", dev->class_name, class_id);
     uint64_t raw_device = DEVICE(device_id);
@@ -44,7 +44,7 @@ int device_register_under_dev_id(device_t *dev, dev_t device_id)
 
     uint64_t major = dev->devt.major;
     uint64_t minor = dev->devt.minor;
-    log_info(MODULE, "registered %s (type=%d id=%d dev_id=%u:%u:%u)", dev->name, dev->class, dev->id, major, raw_device, minor);
+    trace_info(MODULE, "registered %s (type=%d id=%d dev_id=%u:%u:%u)", dev->name, dev->class, dev->id, major, raw_device, minor);
     dev_count++;
 
 /*     switch (dev->class)
@@ -92,7 +92,7 @@ status_t device_register(device_t *dev)
     uint64_t major = dev->devt.major;
     uint64_t device = dev->devt.device;
     uint64_t minor = dev->devt.minor;
-    log_info(MODULE, "registered %s (type=%d id=%d dev_id=%u:%u:%u/0x%016x)", dev->name, dev->class, dev->id, major, device, minor, dev->devt.id);
+    trace_info(MODULE, "registered %s (type=%d id=%d dev_id=%u:%u:%u/0x%016x)", dev->name, dev->class, dev->id, major, device, minor, dev->devt.id);
     dev_count++;
 
 /*     switch (dev->class)
@@ -140,7 +140,7 @@ void device_unregister(device_t *dev)
 
 void device_debug()
 {
-    log_info(MODULE, "device count: %u", dev_count);
+    trace_info(MODULE, "device count: %u", dev_count);
     char *DEVICE_TYPE_STRING[DEVICE_TYPE_MAX] = {
         [DEVICE_UNKNOWN] = "UNKNOWN",
         [DEVICE_SERIAL] = "SERIAL",
@@ -160,7 +160,7 @@ void device_debug()
         {
             if (dev == NULL)
             {
-                log_info(MODULE, "device: %u, NULL", i);
+                trace_info(MODULE, "device: %u, NULL", i);
                 continue;
             }
 
@@ -168,7 +168,7 @@ void device_debug()
             uint64_t device = dev->devt.device;
             uint64_t minor = dev->devt.minor;
 
-            log_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, DEVICE_TYPE_STRING[dev->class], dev->class, dev->name, dev->ops, dev->driver);
+            trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, DEVICE_TYPE_STRING[dev->class], dev->class, dev->name, dev->ops, dev->driver);
             dev = dev->siblings;
         }
     }

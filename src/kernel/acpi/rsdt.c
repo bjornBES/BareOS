@@ -51,7 +51,7 @@ status_t rsdt_parse(boot_params_t *bp)
     rsdp_t *rsdp = (rsdp_t *)(ioremap(bp->acpi.rsdp_address, 1024) + GET_PAGE_OFFSET(bp->acpi.rsdp_address));
     hexdump(rsdp, sizeof(rsdp_t), 16);
 
-    log_info(MODULE, "%u,%u,0x%08x", rsdp->checksum, rsdp->revision, rsdp->rsdt_address);
+    trace_info(MODULE, "%u,%u,0x%08x", rsdp->checksum, rsdp->revision, rsdp->rsdt_address);
 
     if (rsdp->revision != 0)
     {

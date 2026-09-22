@@ -157,8 +157,11 @@ void pit_init()
     pit_timer->name = "pit";
     pit_timer->dev = pit->devt.id;
     pit_timer->caps.freq_hz = PIT_BASE_FREQ;
-    pit_timer->caps.interrupt_capable = true;
-    pit_timer->caps.max_interval_ns = false;
+    pit_timer->caps.interrupt_capable = 1;
+    pit_timer->caps.invariant = 1;
+    pit_timer->caps.read_cost_ns = 500000;
+    pit_timer->caps.min_interval_ns = 1 / PIT_BASE_FREQ;
+    pit_timer->caps.max_interval_ns = UINT16_MAX / PIT_BASE_FREQ;
     pit_timer->read_counter = pit_read_count;
     pit_timer->ticks_to_ns = pit_ticks_to_ns;
     timer_register(pit_timer);

@@ -79,6 +79,6 @@ typedef struct
     generic_address_structure x_pm_timer_block;
     generic_address_structure x_gpe_0_block;
     generic_address_structure x_gpe_1_block;
-} __attribute__((packed)) fadt_t;
+} PACKED fadt_t;
 
 void fadt_parse();

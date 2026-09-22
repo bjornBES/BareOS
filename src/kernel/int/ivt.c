@@ -51,7 +51,7 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
     }
     else
     {
-        log_debug(MODULE, "flags = 0x%x", handlers[vector].state);
+        trace_debug(MODULE, "flags = 0x%x", handlers[vector].state);
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Vector %u's handler is not active", vector);
     }
     return KERRNO_SUCCESSES;
@@ -65,7 +65,7 @@ void ivt_init()
 
 status_t ivt_set_handler(interrupt_vector_t vector, interrupt_handler handler)
 {
-    log_info(MODULE, "Registering IVT handler (%p) on vector %d", handler, vector);
+    trace_info(MODULE, "Registering IVT handler (%p) on vector 0x%x", handler, vector);
     handlers[vector].state = 0;
     FLAG_SET(handlers[vector].state, HANDLER_IN_USE);
     handlers[vector].count = 0;

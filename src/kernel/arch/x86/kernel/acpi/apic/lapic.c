@@ -26,6 +26,8 @@
 
 #include "debug/debug.h"
 
+#include "memory.h"
+
 #include <binary.h>
 #include <defs.h>
 
@@ -200,7 +202,7 @@ uint64_t lapic_timer_get_freq()
 
 static int lapic_timer_set_oneshot(timer_source_t *_, uint64_t ns, timer_callback_t cb)
 {
-    timer_source_t *self = cpu_arch_get_current()->lapic_timer_dev;
+    timer_source_t *self = cpu_arch_get_current()->cpu_timer_dev;
     lapic_timer_priv_t *lapic_priv = self->priv;
     
     lapic_priv->callback = cb;
@@ -216,12 +218,12 @@ static int lapic_timer_set_oneshot(timer_source_t *_, uint64_t ns, timer_callbac
 int lapic_timer_set_periodic(timer_source_t *_, uint64_t ns, timer_callback_t cb)
 {
     cpu_t *cpu = cpu_arch_get_current();
-    timer_source_t *self = cpu->lapic_timer_dev;
-    ENTER_FUNC(MODULE, "%p, %u, %p", self, ns, cb);
+    timer_source_t *self = cpu->cpu_timer_dev;
+    ENTER_FUNC("%p, %u, %p", self, ns, cb);
     lapic_timer_priv_t *lapic_priv = self->priv;
 
     lapic_priv->callback = cb;
-    log_debug(MODULE, "setting periodic on cpu %u", cpu->apic_id);
+    trace_debug(MODULE, "setting periodic on cpu %u", cpu->arch_id);
     
     uint64_t ticks = (ns * self->caps.freq_hz);
     
@@ -229,12 +231,13 @@ int lapic_timer_set_periodic(timer_source_t *_, uint64_t ns, timer_callback_t cb
     lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
     lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
     lapic_write(LAPIC_REG_TIMER_INITIAL, ticks);
+    trace_debug(MODULE, "done here");
     return 0;
 }
 
 status_t lapic_timer_cancel(timer_source_t *_)
 {
-    timer_source_t *self = cpu_arch_get_current()->lapic_timer_dev;
+    timer_source_t *self = cpu_arch_get_current()->cpu_timer_dev;
     lapic_timer_priv_t *lapic_priv = self->priv;
     
     lapic_priv->callback = NULL;
@@ -253,7 +256,7 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     cpu_t *cpu = cpu_arch_get(logical_id);
 
     timer_source_t *lapic_timer = timer_create();
-    cpu->lapic_timer_dev = lapic_timer;
+    cpu->cpu_timer_dev = lapic_timer;
     lapic_timer->name = "lapic";
     lapic_timer->caps.per_cpu = 1;
     lapic_timer->caps.interrupt_capable = 1;
@@ -268,7 +271,9 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     lapic_timer->arm_periodic = lapic_timer_set_periodic;
     lapic_timer->cancel = lapic_timer_cancel;
 
-    if (lapic_id == cpu_arch_get_bsp()->apic_id)
+    lapic_timer->priv = kmalloc(sizeof(lapic_timer_priv_t));
+
+    if (lapic_id == cpu_arch_get_bsp()->arch_id)
     {
         device_t *lapic = device_create();
         lapic->class_name = "lapic";

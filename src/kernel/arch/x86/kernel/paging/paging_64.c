@@ -124,7 +124,7 @@ INLINE vaddr_t get_next(page_table_entry64 *entry, paging_level level)
         return 0;
     }
 
-    // log_debug(MODULE, "entry raw = 0x%llx", entry->raw);
+    // trace_debug(MODULE, "entry raw = 0x%llx", entry->raw);
 
     uint64_t next = entry->addr << 12;
 
@@ -143,7 +143,7 @@ INLINE vaddr_t get_next(page_table_entry64 *entry, paging_level level)
     vaddr_t result = phys_to_virt_auto(next_addr);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "get_next: phys=%p -> virt=%p (level=%u)", next_addr, result, level);
+        trace_debug(MODULE, "get_next: phys=%p -> virt=%p (level=%u)", next_addr, result, level);
     }
     return result;
 }
@@ -164,7 +164,7 @@ INLINE void paging64_make_entry(page_table_entry64 *entry, paddr_t addr, paging_
     entry->addr = (addr >> 12);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "in paging64_make_entry %03lx-%010lx-%03lx", (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+        trace_debug(MODULE, "in paging64_make_entry %03lx-%010lx-%03lx", (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
     }
 }
 
@@ -190,7 +190,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
     page_table_entry64 *table = pml4->e;
     if (!paging_disable_print)
     {
-        log_info(MODULE, "trying to find pml4[%u]->pdpt[%u]->pd[%u]->pt[%u]", idx[0], idx[1], idx[2], idx[3]);
+        trace_info(MODULE, "trying to find pml4[%u]->pdpt[%u]->pd[%u]->pt[%u]", idx[0], idx[1], idx[2], idx[3]);
     }
 
     for (int level = 4; level >= (int)target_level; level--)
@@ -202,7 +202,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
         {
             if (!paging_disable_print)
             {
-                log_info(MODULE, "found %s @ %p", current_table_name, table);
+                trace_info(MODULE, "found %s @ %p", current_table_name, table);
             }
             return (void *)table;
             // cast to page_map_level_4/page_directory64/etc. at call site
@@ -210,8 +210,8 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
         page_table_entry64 *entry = &table[current_index];
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "%s[%u] @ %p", current_table_name, current_index, entry);
-            log_debug(MODULE, "%s[%u] = %03lx-%010lx-%03lx", current_table_name, current_index, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+            trace_debug(MODULE, "%s[%u] @ %p", current_table_name, current_index, entry);
+            trace_debug(MODULE, "%s[%u] = %03lx-%010lx-%03lx", current_table_name, current_index, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
         }
 
         if (!entry->present)
@@ -223,7 +223,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
 
             if (!paging_disable_print)
             {
-                log_debug(MODULE, "allocating new %s table entry in %s at index %u", table_names[4 - (level - 1)], current_table_name, current_index);
+                trace_debug(MODULE, "allocating new %s table entry in %s at index %u", table_names[4 - (level - 1)], current_table_name, current_index);
             }
 
             paddr_t new_phys;
@@ -241,9 +241,9 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
             if (!paging_disable_print)
             {
                 paddr_t entry_slot_phys = virt_to_phys_auto((vaddr_t)entry);
-                log_debug(MODULE, "wrote entry@v%p (phys=%p) raw=0x%llx [table=%s idx=%u]", entry, entry_slot_phys, entry->raw, current_table_name, current_index);
+                trace_debug(MODULE, "wrote entry@v%p (phys=%p) raw=0x%llx [table=%s idx=%u]", entry, entry_slot_phys, entry->raw, current_table_name, current_index);
 
-                log_debug(MODULE, "%s[%u] = %03lx-%010lx-%03lx", current_table_name, current_index, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+                trace_debug(MODULE, "%s[%u] = %03lx-%010lx-%03lx", current_table_name, current_index, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
             }
         }
         else
@@ -267,7 +267,7 @@ void *paging64_get_table(page_table_t *page_table, vaddr_t virt_addr, paging_lev
         page_map_level_4 *next_table_entry = ((page_map_level_4 *)get_next(entry, level));
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "next level table at v%p/p%p", next_table_entry, next_phys, entry->addr);
+            trace_debug(MODULE, "next level table at v%p/p%p", next_table_entry, next_phys, entry->addr);
 
             if (next_table_entry != NULL)
             {
@@ -301,20 +301,20 @@ page_table_entry64 *paging64_get_entry(page_table_t *page_table, paddr_t phys_ad
     page_table_entry64 *table = pml4->e;
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "table at %p", table);
+        trace_debug(MODULE, "table at %p", table);
     }
 
     for (int level = 4; level > (int)target_level; level--)
     {
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "table[%u] at %p", idx[4 - level], &table[idx[4 - level]]);
+            trace_debug(MODULE, "table[%u] at %p", idx[4 - level], &table[idx[4 - level]]);
         }
         page_table_entry64 *entry = &table[idx[4 - level]];
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "at level %u(%u): entry raw = 0x%08llx", level, idx[4 - level], entry->raw);
-            log_debug(MODULE, "addr = p%p, flags = 0x%x", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK);
+            trace_debug(MODULE, "at level %u(%u): entry raw = 0x%08llx", level, idx[4 - level], entry->raw);
+            trace_debug(MODULE, "addr = p%p, flags = 0x%x", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK);
         }
         if (!entry->present)
         {
@@ -325,7 +325,7 @@ page_table_entry64 *paging64_get_entry(page_table_t *page_table, paddr_t phys_ad
 
             if (!paging_disable_print)
             {
-                log_debug(MODULE, "allocating new at level %u at %u", level, idx[4 - level]);
+                trace_debug(MODULE, "allocating new at level %u at %u", level, idx[4 - level]);
             }
 
             paddr_t new_phys;
@@ -366,7 +366,7 @@ page_table_entry64 *paging64_get_entry(page_table_t *page_table, paddr_t phys_ad
         page_map_level_4 *next_table_entry = ((page_map_level_4 *)get_next(entry, level));
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "next level table at v%p/p%p", next_table_entry, next_phys);
+            trace_debug(MODULE, "next level table at v%p/p%p", next_table_entry, next_phys);
         }
         table = next_table_entry->e;
     }
@@ -374,8 +374,8 @@ page_table_entry64 *paging64_get_entry(page_table_t *page_table, paddr_t phys_ad
     page_table_entry64 *result = &table[idx[4 - target_level]];
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "result level %u: entry raw = 0x%08llx", target_level, result->raw);
-        log_debug(MODULE, "addr = p%p, flags = 0x%x", result->addr, result->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "result level %u: entry raw = 0x%08llx", target_level, result->raw);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%x", result->addr, result->raw & PAGE_FLAGS_MASK);
     }
     return result;
 }
@@ -384,7 +384,7 @@ page_map_level_4 *paging64_get_pml4(page_table_t *page, vaddr_t v, int alloc, mm
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pml4 table at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pml4 table at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_map_level_4 *)paging64_get_table(page, v, PAGING_LEVEL_PML4, alloc, flags);
 }
@@ -393,7 +393,7 @@ page_dpt *paging64_get_pdpt(page_table_t *page, vaddr_t v, int alloc, mmu_flags_
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pdpt table at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pdpt table at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_dpt *)paging64_get_table(page, v, PAGING_LEVEL_PDPT, alloc, flags);
 }
@@ -402,7 +402,7 @@ page_directory64 *paging64_get_pd(page_table_t *page, vaddr_t v, int alloc, mmu_
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pd table at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pd table at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_directory64 *)paging64_get_table(page, v, PAGING_LEVEL_PD, alloc, flags);
 }
@@ -411,7 +411,7 @@ page_table64 *paging64_get_pt(page_table_t *page, vaddr_t v, int alloc, mmu_flag
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pt table at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pt table at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_table64 *)paging64_get_table(page, v, PAGING_LEVEL_PT, alloc, flags);
 }
@@ -420,7 +420,7 @@ page_table_entry64 *paging64_get_pml4_entry(page_table_t *page, paddr_t p, vaddr
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pml4 entry at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pml4 entry at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_table_entry64 *)paging64_get_entry(page, p, v, PAGING_LEVEL_PML4, alloc, flags);
 }
@@ -429,7 +429,7 @@ page_table_entry64 *paging64_get_pdpt_entry(page_table_t *page, paddr_t p, vaddr
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pdpt entry at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pdpt entry at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_table_entry64 *)paging64_get_entry(page, p, v, PAGING_LEVEL_PDPT, alloc, flags);
 }
@@ -438,7 +438,7 @@ page_table_entry64 *paging64_get_pd_entry(page_table_t *page, paddr_t p, vaddr_t
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pd entry at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pd entry at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_table_entry64 *)paging64_get_entry(page, p, v, PAGING_LEVEL_PD, alloc, flags);
 }
@@ -447,7 +447,7 @@ page_table_entry64 *paging64_get_pt_entry(page_table_t *page, paddr_t p, vaddr_t
 {
     if (!paging_disable_print)
     {
-        log_info(MODULE, "finding and try allocate (%s) pt entry at virt %p", alloc BOOL_TO_STRING, v);
+        trace_info(MODULE, "finding and try allocate (%s) pt entry at virt %p", alloc BOOL_TO_STRING, v);
     }
     return (page_table_entry64 *)paging64_get_entry(page, p, v, PAGING_LEVEL_PT, alloc, flags);
 }
@@ -460,7 +460,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
         page_map_level_4 *pml4 = (void *)page_table->page_dir;
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "pml4 = %p", pml4);
+            trace_debug(MODULE, "pml4 = %p", pml4);
         }
         for (size_t i = 0; i < PT64_ENTRIES; i++)
         {
@@ -470,8 +470,8 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
     size_t total_size = ALIGN_2_UP(size, PAGE_SIZE);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "map %p..%p for %u bytes", start_phys, start_virt, total_size);
-        log_debug(MODULE, "map %p..%p-%p..%p", start_phys, start_virt, start_phys + total_size, start_virt + total_size);
+        trace_debug(MODULE, "map %p..%p for %u bytes", start_phys, start_virt, total_size);
+        trace_debug(MODULE, "map %p..%p-%p..%p", start_phys, start_virt, start_phys + total_size, start_virt + total_size);
     }
     vaddr_t virt = (vaddr_t)ALIGN_2_UP((uint64_t)start_virt, PAGE_SIZE);
     uint64_t resolved_flags = PAGE_PRESENT | PAGE_WRITABLE;
@@ -482,7 +482,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
     int pt_idx = GET_PT_IDX(virt);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "indices pml4=%u pdpt=%u pd=%u pt=%u", pml4_idx, pdpt_idx, pd_idx, pt_idx);
+        trace_debug(MODULE, "indices pml4=%u pdpt=%u pd=%u pt=%u", pml4_idx, pdpt_idx, pd_idx, pt_idx);
     }
 
     int pt_count = total_size / PAGE_SIZE;
@@ -495,7 +495,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "pt_count=%u, pd_count=%u", pt_count, pd_count);
+        trace_debug(MODULE, "pt_count=%u, pd_count=%u", pt_count, pd_count);
     }
     int frame_index = 0;
     if (pd_count == 0)
@@ -508,7 +508,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
         vaddr_t v = phys_to_virt_auto(phys);
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + 0, phys, v);
+            trace_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + 0, phys, v);
         }
         uint64_t *new_entry = (uint64_t *)v;
         for (size_t j = 0; j < 512; j++)
@@ -525,7 +525,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
             uint64_t target_index = (uint64_t)frame_index + ((uint64_t)start_phys >> 12);
             if (!paging_disable_print)
             {
-                log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + 0, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+                trace_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + 0, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
             }
             pt->e[k].raw = 0;
             pt->e[k].present = 1;
@@ -536,7 +536,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
     }
     for (int i = 0; i < pd_count; i++)
     {
-        log_debug(MODULE, "pd = %08llx", pd->e[pd_idx + i].raw);
+        trace_debug(MODULE, "pd = %08llx", pd->e[pd_idx + i].raw);
         if (!pd->e[pd_idx + i].present)
         {
             if (pt_count < PT64_ENTRIES && pd_count < 10)
@@ -549,7 +549,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
                 vaddr_t v = phys_to_virt_auto(phys);
                 if (!paging_disable_print)
                 {
-                    log_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + i, phys, v);
+                    trace_debug(MODULE, "4K path: pd[%u] PT phys=%p virt=%p", pd_idx + i, phys, v);
                 }
                 uint64_t *new_entry = (uint64_t *)v;
                 for (size_t j = 0; j < 512; j++)
@@ -566,7 +566,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
                     uint64_t target_index = (uint64_t)frame_index + ((uint64_t)start_phys >> 12);
                     if (!paging_disable_print)
                     {
-                        log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + i, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
+                        trace_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u]->pt[%u] mapping p%p..v%p", pml4_idx, pdpt_idx, pd_idx + i, k, (uint64_t)target_index << 12, virt + frame_index * PAGE_SIZE);
                     }
                     pt->e[k].raw = 0;
                     pt->e[k].present = 1;
@@ -584,7 +584,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
                 }
                 if (!paging_disable_print)
                 {
-                    log_debug(MODULE, "2MiB path: pd[%u] phys=%p virt=%p", pd_idx + i, huge_phys, virt + i * 0x200000);
+                    trace_debug(MODULE, "2MiB path: pd[%u] phys=%p virt=%p", pd_idx + i, huge_phys, virt + i * 0x200000);
                 }
                 pd_huge_entry64 *huge_pd = (pd_huge_entry64 *)(void *)(&pd->e[pd_idx + i]);
                 huge_pd->raw = 0;
@@ -594,7 +594,7 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
                 huge_pd->addr = (uint64_t)huge_phys >> 21;
                 if (!paging_disable_print)
                 {
-                    log_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u] mapping huge entry @ %p = raw=0x%llx addr_field=%llx", pml4_idx, pdpt_idx, pd_idx + i, huge_pd, huge_pd->raw, huge_pd->addr);
+                    trace_debug(MODULE, "pml4[%d]->pdpt[%d]->pd[%u] mapping huge entry @ %p = raw=0x%llx addr_field=%llx", pml4_idx, pdpt_idx, pd_idx + i, huge_pd, huge_pd->raw, huge_pd->addr);
                 }
             }
         }
@@ -602,14 +602,14 @@ status_t map(page_table_t *page_table, paddr_t start_phys, vaddr_t start_virt, s
         {
             if (!paging_disable_print)
             {
-                log_debug(MODULE, "pd[%u] already present, skipping", pd_idx + i);
-                log_debug(MODULE, "pd[%u] = %08llx", pd_idx + i, pd->e[pd_idx + i].raw);
+                trace_debug(MODULE, "pd[%u] already present, skipping", pd_idx + i);
+                trace_debug(MODULE, "pd[%u] = %08llx", pd_idx + i, pd->e[pd_idx + i].raw);
             }
         }
     }
     if (!paging_disable_print)
     {
-        log_info(MODULE, "mapped virt=%08llx -> phys=%08llx (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%x)", start_virt, start_phys, GET_PML4_IDX((uint64_t)start_virt), GET_PDPT_IDX((uint64_t)start_virt), GET_PD_IDX((uint64_t)start_virt), GET_PT_IDX((uint64_t)start_virt), resolved_flags);
+        trace_info(MODULE, "mapped virt=%08llx -> phys=%08llx (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%x)", start_virt, start_phys, GET_PML4_IDX((uint64_t)start_virt), GET_PDPT_IDX((uint64_t)start_virt), GET_PD_IDX((uint64_t)start_virt), GET_PT_IDX((uint64_t)start_virt), resolved_flags);
     }
 
     return KERRNO_SUCCESSES;
@@ -627,12 +627,12 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "resolved flags=%llx", resolved_flags);
+        trace_debug(MODULE, "resolved flags=%llx", resolved_flags);
     }
 
     if (!paging_disable_print)
     {
-        log_info(MODULE, "map_page virt=%p phys=%p flags=%lx leaf_flags=%lx pml4[%u]->pdpt[%u]->pd[%u]->pt[%u] to %p", virt, phys, resolved_flags, leaf_resolved_flags, pml4_idx, pdpt_idx, pd_idx, pt_idx, page_table->page_dir);
+        trace_info(MODULE, "map_page virt=%p phys=%p flags=%lx leaf_flags=%lx pml4[%u]->pdpt[%u]->pd[%u]->pt[%u] to %p", virt, phys, resolved_flags, leaf_resolved_flags, pml4_idx, pdpt_idx, pd_idx, pt_idx, page_table->page_dir);
     }
 
 #define PRINT(table, entry)                                                                                                                       \
@@ -643,8 +643,8 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
     }                                                                                                                                             \
     if (!paging_disable_print)                                                                                                                    \
     {                                                                                                                                             \
-        log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr, entry->raw & PAGE_FLAGS_MASK); \
-        log_debug(MODULE, "%s = %03lx-%010lx-%03lx", #entry, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);                        \
+        trace_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr, entry->raw & PAGE_FLAGS_MASK); \
+        trace_debug(MODULE, "%s = %03lx-%010lx-%03lx", #entry, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);                        \
     }                                                                                                                                             \
     if (false)                                                                                                                                    \
     {                                                                                                                                             \
@@ -660,10 +660,10 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
         uint64_t raw = entry->raw & 0x0FF;                                                                                                                  \
         if (!paging_disable_print)                                                                                                                          \
         {                                                                                                                                                   \
-            log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
-            log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, raw);                                                                      \
+            trace_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); \
+            trace_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, raw);                                                                      \
         } /* entry->raw = raw */;                                                                                                                           \
-        /* log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */                                           \
+        /* trace_debug(MODULE, "{ addr = %p, flags = 0x%lx }", entry->addr << 12, entry->raw & PAGE_FLAGS_MASK); */                                           \
     }
 
 #define PRINT_LP(table, entry) \
@@ -714,14 +714,14 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
     PRINT_LP(pd, pde);
     if (pde->ps || flags.large == 1)
     {
-        log_warn(NO_MODULE, "============== MAPPING WITH A LARGE PAGE ==============");
+        trace_warn(NO_MODULE, "============== MAPPING WITH A LARGE PAGE ==============");
         pd_huge_entry64 *h_entry = (pd_huge_entry64 *)pde;
         h_entry->raw = leaf_resolved_flags & PAGE_FLAGS_MASK;
         h_entry->addr = (uint64_t)phys >> 21;
         h_entry->ps = 1;
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pde->addr << 21, pde->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pde->addr << 21, pde->raw & PAGE_FLAGS_MASK);
         goto done_map;
     }
 
@@ -744,37 +744,37 @@ size_t allocate_leaf(page_table_t *page_table, vaddr_t virt, paddr_t phys, mmu_f
     {
         log_err(MODULE, "Failed to allocate page table for virt 0x%llx", virt);
         log_err(MODULE, "Remapping already-mapped page at virt 0x%llx", virt);
-        log_debug(MODULE, "pt @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr << 12, pte->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "{ addr = %p, flags = 0x%lx }", pte->addr << 12, pte->raw);
+        trace_debug(MODULE, "pt @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr << 12, pte->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "{ addr = %p, flags = 0x%lx }", pte->addr << 12, pte->raw);
         log_err(MODULE, "pt[%u] is already present @ %p", pt_idx, pte);
         return 1;
     }
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "got entry at v%p from table %p", pte, pt);
+        trace_debug(MODULE, "got entry at v%p from table %p", pte, pt);
     }
 
     paging64_make_entry((page_table_entry64 *)pte, phys, PAGING_LEVEL_PT, flags);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "pte @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr, pte->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "pte @ %p = 0x%llx { addr = %p, flags = 0x%lx }", pte, pte->raw, pte->addr, pte->raw & PAGE_FLAGS_MASK);
         
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
-        log_debug(MODULE, "addr = p%p, flags = 0x%llx", pde->addr << 12, pde->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pml4e->addr << 12, pml4e->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pdpte->addr << 12, pdpte->raw & PAGE_FLAGS_MASK);
+        trace_debug(MODULE, "addr = p%p, flags = 0x%llx", pde->addr << 12, pde->raw & PAGE_FLAGS_MASK);
 
-        log_debug(MODULE, "PT[%u] readback = 0x%llx", pt_idx, pte->raw);
+        trace_debug(MODULE, "PT[%u] readback = 0x%llx", pt_idx, pte->raw);
     }
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "pte = %03lx-%010lx-%03lx", (pte->raw >> 52) & 0xFFF, pte->addr, pte->raw & 0xFFF);
+        trace_debug(MODULE, "pte = %03lx-%010lx-%03lx", (pte->raw >> 52) & 0xFFF, pte->addr, pte->raw & 0xFFF);
     }
 done_map:
     if (!paging_disable_print)
     {
-        log_info(MODULE, "mapped virt=%p -> phys=%p (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%llx)", virt, phys, pml4_idx, pdpt_idx, pd_idx, pt_idx, resolved_flags);
+        trace_info(MODULE, "mapped virt=%p -> phys=%p (pml4i=%u pdpti=%u pdi=%u pti=%u flags=%llx)", virt, phys, pml4_idx, pdpt_idx, pd_idx, pt_idx, resolved_flags);
     }
 
     // Invalidate the TLB entry for this address
@@ -820,7 +820,7 @@ status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "paging64_clean_up: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+        trace_debug(MODULE, "paging64_clean_up: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
     }
 
     // Fetch all four tables (no alloc — if any is missing, nothing to unmap)
@@ -853,7 +853,7 @@ status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     {
         if (!paging_disable_print)
         {
-            log_debug(MODULE, "paging64_clean_up: PT empty, freeing PT phys=0x%016llx", pt_phys);
+            trace_debug(MODULE, "paging64_clean_up: PT empty, freeing PT phys=0x%016llx", pt_phys);
         }
         pd_entry->raw = 0;
         pmm_free_frame(pt_phys);
@@ -862,7 +862,7 @@ status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
         {
             if (!paging_disable_print)
             {
-                log_debug(MODULE, "paging64_clean_up: PD empty, freeing PD phys=0x%016llx", pd_phys);
+                trace_debug(MODULE, "paging64_clean_up: PD empty, freeing PD phys=0x%016llx", pd_phys);
             }
             pdpt_entry->raw = 0;
             pmm_free_frame(pd_phys);
@@ -871,7 +871,7 @@ status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
             {
                 if (!paging_disable_print)
                 {
-                    log_debug(MODULE, "paging64_clean_up: PDPT empty, freeing PDPT phys=0x%016llx", pdpt_phys);
+                    trace_debug(MODULE, "paging64_clean_up: PDPT empty, freeing PDPT phys=0x%016llx", pdpt_phys);
                 }
                 pml4_entry->raw = 0;
                 pmm_free_frame(pdpt_phys);
@@ -882,7 +882,7 @@ status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr)
     mmu_arch_flush_page(virtAddr);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "paging64_clean_up: TLB flushed for virt=0x%016llx", virtAddr);
+        trace_debug(MODULE, "paging64_clean_up: TLB flushed for virt=0x%016llx", virtAddr);
     }
     return KERRNO_SUCCESSES;
 }
@@ -902,7 +902,7 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "paging_unmap_page: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
+        trace_debug(MODULE, "paging_unmap_page: virt=0x%016llx [pml4=%llu pdpt=%llu pd=%llu pt=%llu]", virtAddr, pml4_index, pdpt_index, pd_index, pt_index);
     }
 
     // Fetch all four tables (no alloc — if any is missing, nothing to unmap)
@@ -922,7 +922,7 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 
     if (!paging_disable_print)
     {
-        log_info(MODULE, "paging_unmap_page: unmapping virt=0x%016llx", virtAddr);
+        trace_info(MODULE, "paging_unmap_page: unmapping virt=0x%016llx", virtAddr);
     }
 
     paddr_t result = (paddr_t)((pt_entry->addr << 12) | (virt & 0xFFF));
@@ -932,7 +932,7 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
     mmu_arch_flush_page(virtAddr);
     if (!paging_disable_print)
     {
-        log_debug(MODULE, "paging_unmap_page: TLB flushed for virt=0x%016llx", virtAddr);
+        trace_debug(MODULE, "paging_unmap_page: TLB flushed for virt=0x%016llx", virtAddr);
     }
     return result;
 }
@@ -942,8 +942,8 @@ paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr)
 paddr_t paging_get_physical(page_table_t *page_table, vaddr_t virt)
 {
 #define PRINT_ENTRY(entry)                                                                                                                   \
-    log_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr, entry->raw &PAGE_FLAGS_MASK); \
-    log_debug(MODULE, "%s = %03lx-%010lx-%03lx", #entry, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
+    trace_debug(MODULE, "%s @ %p = 0x%llx { addr = %p, flags = 0x%lx }", #entry, entry, entry->raw, entry->addr, entry->raw &PAGE_FLAGS_MASK); \
+    trace_debug(MODULE, "%s = %03lx-%010lx-%03lx", #entry, (entry->raw >> 52) & 0xFFF, entry->addr, entry->raw & 0xFFF);
 
     ENTER_FUNC("%p, %p", page_table, virt);
     page_map_level_4 *pml4 = (page_map_level_4 *)page_table->page_dir;
@@ -987,8 +987,8 @@ paddr_t paging_get_physical(page_table_t *page_table, vaddr_t virt)
     if (pde->ps)
     {
         pd_huge_entry64 *huge_pde = (pd_huge_entry64 *)pde;
-        // log_debug(MODULE, "huge pde @ %p = 0x%llx { addr = %p, flags = 0x%lx }", huge_pde, huge_pde->raw, huge_pde->addr, huge_pde->raw & PAGE_FLAGS_MASK);
-        // log_debug(MODULE, "huge pde = %03lx-%010lx-%03lx", (huge_pde->raw >> 52) & 0xFFF, huge_pde->addr, huge_pde->raw & 0xFFF);
+        // trace_debug(MODULE, "huge pde @ %p = 0x%llx { addr = %p, flags = 0x%lx }", huge_pde, huge_pde->raw, huge_pde->addr, huge_pde->raw & PAGE_FLAGS_MASK);
+        // trace_debug(MODULE, "huge pde = %03lx-%010lx-%03lx", (huge_pde->raw >> 52) & 0xFFF, huge_pde->addr, huge_pde->raw & 0xFFF);
         return (paddr_t)((huge_pde->addr << 21) | (virt & 0x1FFFFF));
     }
     else
@@ -1015,7 +1015,7 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     uint64_t PDPT = GET_PDPT_IDX(cr2);
     uint64_t PD = GET_PD_IDX(cr2);
     uint64_t PT = GET_PT_IDX(cr2);
-    log_debug(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]", PML4, PDPT, PD, PT);
+    trace_debug(MODULE, "cr3->PML4[%u]->PDPT[%u]->PD[%u]->PT[%u]", PML4, PDPT, PD, PT);
 
     page_map_level_4 *pml4 = paging64_get_pml4(page_dir, cr2, 0, flags_none);
     page_dpt *pdpt = paging64_get_pdpt(page_dir, cr2, 0, flags_none);
@@ -1025,44 +1025,44 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
     page_table_entry64 *pdpt_entry = &pdpt->e[PDPT];
     page_table_entry64 *pd_entry = &pd->e[PD];
     page_table_entry64_leaf *pt_entry = &pt->e[PT];
-    log_debug(MODULE, "v%p/p%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pml4, paging_get_physical(page_dir, (vaddr_t)pml4), PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
+    trace_debug(MODULE, "v%p/p%p PML4[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pml4, paging_get_physical(page_dir, (vaddr_t)pml4), PML4, pml4_entry->raw, pml4_entry->addr << 12, pml4_entry->raw & PAGE_FLAGS_MASK);
     if (!pml4_entry || pml4_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        trace_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
-    log_debug(MODULE, "v%p/p%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pdpt, paging_get_physical(page_dir, (vaddr_t)pdpt), PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
+    trace_debug(MODULE, "v%p/p%p PDPT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pdpt, paging_get_physical(page_dir, (vaddr_t)pdpt), PDPT, pdpt_entry->raw, pdpt_entry->addr << 12, pdpt_entry->raw & PAGE_FLAGS_MASK);
     if (!pdpt_entry || pdpt_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        trace_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 1 GiB huge page
     if (pdpt_entry->ps)
     {
-        log_debug(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
+        trace_debug(MODULE, "%p PDPT[%u] is huge\n", pdpt, PDPT);
         return (paddr_t)((pdpt_entry->addr << 30) | (cr2 & 0x3FFFFFFF));
     }
 
-    log_debug(MODULE, "v%p/p%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pd, paging_get_physical(page_dir, (vaddr_t)pd), PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
+    trace_debug(MODULE, "v%p/p%p PD[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pd, paging_get_physical(page_dir, (vaddr_t)pd), PD, pd_entry->raw, pd_entry->addr << 12, pd_entry->raw & PAGE_FLAGS_MASK);
     if (!pd_entry || pd_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        trace_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
     // 2 MiB huge page
     if (pd_entry->ps)
     {
-        log_debug(MODULE, "%p PD[%u] is huge\n", pd, PD);
+        trace_debug(MODULE, "%p PD[%u] is huge\n", pd, PD);
         return (paddr_t)((pd_entry->addr << 21) | (cr2 & 0x1FFFFF));
     }
 
-    log_debug(MODULE, "v%p/p%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pt, paging_get_physical(page_dir, (vaddr_t)pt), PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
+    trace_debug(MODULE, "v%p/p%p PT[%u].raw = 0x%llx addr = phys0x%llx, flags = 0x%llx", pt, paging_get_physical(page_dir, (vaddr_t)pt), PT, pt_entry->raw, pt_entry->addr << 12, pt_entry->raw & PAGE_FLAGS_MASK);
     if (!pt_entry || pt_entry->present == 0)
     {
-        log_debug(MODULE, "The mapping is fucked\n");
+        trace_debug(MODULE, "The mapping is fucked\n");
         return 0;
     }
 
@@ -1072,7 +1072,7 @@ paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2)
 
 void paging_print_tree(page_table_t *page_dir)
 {
-    log_info(NO_MODULE, "walking page table %p and cr3 %p", page_dir, page_dir->page_dir_phys);
+    trace_info(NO_MODULE, "walking page table %p and cr3 %p", page_dir, page_dir->page_dir_phys);
     page_map_level_4 *pml4 = (page_map_level_4 *)page_dir->page_dir;
     for (int pml4_idx = PT64_ENTRIES / 2; pml4_idx < PT64_ENTRIES; pml4_idx++)
     {
@@ -1090,16 +1090,16 @@ void paging_print_tree(page_table_t *page_dir)
             }
             if (start_idx != pml4_idx - 1)
             {
-                log_info(NO_MODULE, "pml4[%i..%i] = %p", start_idx, pml4_idx - 1, 0);
+                trace_info(NO_MODULE, "pml4[%i..%i] = %p", start_idx, pml4_idx - 1, 0);
             }
             else
             {
-                log_info(NO_MODULE, "pml4[%i] = %p", pml4_idx, pml4e->raw);
+                trace_info(NO_MODULE, "pml4[%i] = %p", pml4_idx, pml4e->raw);
             }
         }
         if (pml4e->raw != 0)
         {
-            log_info(NO_MODULE, "pml4[%i] = %p: phys addr = %p", pml4_idx, pml4e->raw, pml4e->addr << 12);
+            trace_info(NO_MODULE, "pml4[%i] = %p: phys addr = %p", pml4_idx, pml4e->raw, pml4e->addr << 12);
             paddr_t pdpt_phys = pml4e->addr << 12;
             page_dpt *pdpt = (page_dpt *)phys_to_virt_auto(pdpt_phys);
             for (size_t pdpt_idx = 0; pdpt_idx < PT64_ENTRIES; pdpt_idx++)
@@ -1118,16 +1118,16 @@ void paging_print_tree(page_table_t *page_dir)
                     }
                     if (start_idx != pdpt_idx - 1)
                     {
-                        log_info(NO_MODULE, "\tpdpt[%i..%i] = %p", start_idx, pdpt_idx - 1, 0);
+                        trace_info(NO_MODULE, "\tpdpt[%i..%i] = %p", start_idx, pdpt_idx - 1, 0);
                     }
                     else
                     {
-                        log_info(NO_MODULE, "\tpdpt[%i] = %p", pdpt_idx - 1, 0);
+                        trace_info(NO_MODULE, "\tpdpt[%i] = %p", pdpt_idx - 1, 0);
                     }
                 }
                 if (pdpte->raw != 0)
                 {
-                    log_info(NO_MODULE, "\tpdpt[%i] = %p: phys addr = %p", pdpt_idx, pdpte->raw, pdpte->addr << 12);
+                    trace_info(NO_MODULE, "\tpdpt[%i] = %p: phys addr = %p", pdpt_idx, pdpte->raw, pdpte->addr << 12);
                     if (pdpte->ps == 1)
                     {
                         continue;
@@ -1150,11 +1150,11 @@ void paging_print_tree(page_table_t *page_dir)
                             }
                             if (start_idx != pd_idx - 1)
                             {
-                                log_info(NO_MODULE, "\t\tpd[%i..%i] = %p", start_idx, pd_idx - 1, 0);
+                                trace_info(NO_MODULE, "\t\tpd[%i..%i] = %p", start_idx, pd_idx - 1, 0);
                             }
                             else
                             {
-                                log_info(NO_MODULE, "\t\tpd[%i] = %p", pd_idx - 1, pde->raw);
+                                trace_info(NO_MODULE, "\t\tpd[%i] = %p", pd_idx - 1, pde->raw);
                             }
                         }
                         if (pde->raw != 0)
@@ -1162,12 +1162,12 @@ void paging_print_tree(page_table_t *page_dir)
                             if (pde->ps == 1)
                             {
                                 pd_huge_entry64 *huge_pd = (pd_huge_entry64 *)pde;
-                                log_info(NO_MODULE, "\t\tpd[%i] = %p: phys addr = %p", pd_idx, pde->raw, huge_pd->addr << 21);
+                                trace_info(NO_MODULE, "\t\tpd[%i] = %p: phys addr = %p", pd_idx, pde->raw, huge_pd->addr << 21);
                                 continue;
                             }
                             else
                             {
-                                log_info(NO_MODULE, "\t\tpd[%i] = %p: phys addr = %p", pd_idx, pde->raw, pde->addr << 12);
+                                trace_info(NO_MODULE, "\t\tpd[%i] = %p: phys addr = %p", pd_idx, pde->raw, pde->addr << 12);
                             }
 
                             paddr_t pt_phys = pde->addr << 12;
@@ -1188,16 +1188,16 @@ void paging_print_tree(page_table_t *page_dir)
                                     }
                                     if (start_idx != pt_idx - 1)
                                     {
-                                        log_info(NO_MODULE, "\t\t\tpt[%i..%i] = %p", start_idx, pt_idx - 1, 0);
+                                        trace_info(NO_MODULE, "\t\t\tpt[%i..%i] = %p", start_idx, pt_idx - 1, 0);
                                     }
                                     else
                                     {
-                                        log_info(NO_MODULE, "\t\t\tpt[%i] = %p", pt_idx - 1, pte->raw);
+                                        trace_info(NO_MODULE, "\t\t\tpt[%i] = %p", pt_idx - 1, pte->raw);
                                     }
                                 }
                                 if (pte->raw != 0)
                                 {
-                                    log_info(NO_MODULE, "\t\t\tpt[%i] = %p: phys addr = %p", pt_idx, pte->raw, pte->addr << 12);
+                                    trace_info(NO_MODULE, "\t\t\tpt[%i] = %p: phys addr = %p", pt_idx, pte->raw, pte->addr << 12);
                                 }
                             }
                         }

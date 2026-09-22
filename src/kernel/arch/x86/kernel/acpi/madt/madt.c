@@ -83,14 +83,14 @@ status_t madt_arch_parse(madt_t *madt)
 {
     if (arch_runtime_data.cpuid.leaf_0x1_0->apic)
     {
-        log_info(MODULE, "enabled xapic");
+        trace_info(MODULE, "enabled xapic");
         uint64_t apic_base = rdmsr(MSR_IA32_APIC_BASE);
         apic_base |= BIT(MSR_IA32_APIC_GLOBAL_ENABLE_BIT); // EN
         wrmsr(MSR_IA32_APIC_BASE, apic_base);
     }
     if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
     {
-        log_info(MODULE, "enabled x2apic");
+        trace_info(MODULE, "enabled x2apic");
         uint64_t apic_base = rdmsr(MSR_IA32_APIC_BASE);
         apic_base |= BIT(MSR_IA32_X2APIC_ENABLE_BIT); // EXTD
         wrmsr(MSR_IA32_APIC_BASE, apic_base);
@@ -109,7 +109,7 @@ status_t madt_arch_parse(madt_t *madt)
             case 0 : // local APIC
                 {
                     madt_local_apic_t *la = (madt_local_apic_t *)&en->local;
-                    log_info(MODULE, "CPU %u APIC ID %u flags=%u", la->processor_id, la->apic_id, la->flags);
+                    trace_info(MODULE, "CPU %u APIC ID %u flags=%u", la->processor_id, la->apic_id, la->flags);
 
                     if (FLAG_IS_SET(la->flags, 1) == false)
                     {
@@ -128,14 +128,14 @@ status_t madt_arch_parse(madt_t *madt)
                 {
                     madt_io_apic *ia = (madt_io_apic *)&en->io;
                     // apic_set_io_base((paddr_t)ia->io_apic_address);
-                    log_info(MODULE, "IOAPIC ID %u base=0x%x GSI base=%u", ia->io_apic_id, ia->io_apic_address, ia->global_system_interrupt_base);
+                    trace_info(MODULE, "IOAPIC ID %u base=0x%x GSI base=%u", ia->io_apic_id, ia->io_apic_address, ia->global_system_interrupt_base);
                     ioapic_register(ia->io_apic_id, ia->io_apic_address, ia->global_system_interrupt_base);
                     break;
                 }
             case 2 : // interrupt source override
                 {
                     madt_iso *iso = (madt_iso *)&en->iso;
-                    log_info(MODULE, "IOAPIC ID %u ISO IRQ %u -> GSI %u flags=0x%x", iso->bus, iso->source, iso->global_system_interrupt, iso->flags);
+                    trace_info(MODULE, "IOAPIC ID %u ISO IRQ %u -> GSI %u flags=0x%x", iso->bus, iso->source, iso->global_system_interrupt, iso->flags);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
                     ioapic_set_entry(iso->bus, iso->global_system_interrupt, iso->source, iso->flags, 0);
@@ -144,14 +144,14 @@ status_t madt_arch_parse(madt_t *madt)
             case 4 : // interrupt source override
                 {
                     madt_nmi *nmi = (madt_nmi *)&en->nmi;
-                    log_info(MODULE, "NMI APIC ID %u, flags=0x%x, lint=%u", nmi->apic_id, nmi->flags, nmi->lint);
+                    trace_info(MODULE, "NMI APIC ID %u, flags=0x%x, lint=%u", nmi->apic_id, nmi->flags, nmi->lint);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
                     break;
                 }
             default :
                 {
-                    log_info(MODULE, "Entry type = 0x%x, length = %u", en->type, en->length);
+                    trace_info(MODULE, "Entry type = 0x%x, length = %u", en->type, en->length);
                 }
                 break;
         }

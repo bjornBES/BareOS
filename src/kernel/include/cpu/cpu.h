@@ -35,4 +35,5 @@ typedef struct cpu_entry
 int cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp);
 cpu_entry_t *cpu_get_entry(cpu_logical_id_t id);
 cpu_entry_t *cpu_get_bsp();
+size_t cpu_get_count();
 

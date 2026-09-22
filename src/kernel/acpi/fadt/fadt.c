@@ -28,12 +28,12 @@ void fadt_parse()
         log_crit(MODULE, "no fadt_t found");
         return;
     }
-    log_info(MODULE, "fadt_t found revision=%u", fadt->h.revision);
+    trace_info(MODULE, "fadt_t found revision=%u", fadt->h.revision);
 
     table_verify_checksum(&fadt->h);
 
-    log_debug(MODULE, "fadt->dsdt = %p", fadt->dsdt);
-    log_debug(MODULE, "fadt->x_dsdt = %p", fadt->x_dsdt);
+    trace_debug(MODULE, "fadt->dsdt = %p", fadt->dsdt);
+    trace_debug(MODULE, "fadt->x_dsdt = %p", fadt->x_dsdt);
 
     // paddr_t dsdt_phys = fadt->dsdt;
     // dsdt_init(dsdt_phys);
