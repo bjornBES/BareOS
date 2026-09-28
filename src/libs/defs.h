@@ -48,3 +48,6 @@
 
 #define CONCAT_(a, b)       a##b
 #define CONCAT(a, b)        CONCAT_(a, b)
+
+#define STRINGIFY_(x...)    #x
+#define STRINGIFY(x...)     STRINGIFY_(x)

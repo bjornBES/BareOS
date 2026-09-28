@@ -16,7 +16,8 @@
 #include <types.h>
 
 status_t pmm_early_init(boot_params_t *bp);
-status_t pmm_init();
+
+status_t pmm_insert_resource(boot_params_t *params);
 
 /// @brief Allocate the next free physical frame.
 ///

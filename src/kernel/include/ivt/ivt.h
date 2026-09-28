@@ -24,7 +24,7 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame);
 
 
 /// @brief Zone all the handlers using memset
-void ivt_init();
+status_t ivt_init();
 
 /// @brief Registers the given vector, with the given handler, so that the handler runs when an interrupt happens on that vector.
 /// 

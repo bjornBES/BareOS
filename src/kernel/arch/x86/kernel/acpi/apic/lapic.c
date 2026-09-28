@@ -19,6 +19,7 @@
 
 #include "dev/device.h"
 #include "timer/timer.h"
+#include "ivt/ivt.h"
 
 #include "asm/cpu_arch.h"
 #include "asm/hpet_arch.h"
@@ -32,6 +33,9 @@
 #include <defs.h>
 
 #define MODULE "x86-lapic"
+
+#define TIMER_SCALE_SHIFT 32
+#define SCALE_FACTOR      (1ull << TIMER_SCALE_SHIFT) // 2^32
 
 typedef struct lapic_timer_priv
 {
@@ -85,6 +89,16 @@ inline uint32_t lapic_get_id()
         return BIT_GET_RANGE(*(volatile uint32_t *)(local_apic_base + LAPIC_REG_ID), 24, 31);
     }
     return BIT_GET_RANGE(*(volatile uint32_t *)(local_apic_base + LAPIC_REG_ID), 24, 27);
+}
+
+void lapic_eoi()
+{
+    if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
+    {
+        msr_set_64(0x80B, 0);
+        return;
+    }
+    *(volatile uint32_t *)(local_apic_base + LAPIC_REG_EOI) = (uint32_t)0;
 }
 
 void lapic_enable()
@@ -204,9 +218,9 @@ static int lapic_timer_set_oneshot(timer_source_t *_, uint64_t ns, timer_callbac
 {
     timer_source_t *self = cpu_arch_get_current()->cpu_timer_dev;
     lapic_timer_priv_t *lapic_priv = self->priv;
-    
+
     lapic_priv->callback = cb;
-    uint64_t ticks = (ns * self->caps.freq_hz);
+    uint64_t ticks = (ns * self->caps.freq_hz) >> TIMER_SCALE_SHIFT;
 
     // one-shot mode: clear periodic bit, keep vector, unmask
     lapic_write(LAPIC_REG_TIMER, CPU_TIMER_VECTOR); // mode=0, mask=0
@@ -224,9 +238,10 @@ int lapic_timer_set_periodic(timer_source_t *_, uint64_t ns, timer_callback_t cb
 
     lapic_priv->callback = cb;
     trace_debug(MODULE, "setting periodic on cpu %u", cpu->arch_id);
-    
-    uint64_t ticks = (ns * self->caps.freq_hz);
-    
+
+    uint64_t ticks = (ns * self->caps.freq_hz) >> TIMER_SCALE_SHIFT;
+    trace_debug(MODULE, "firing every 0x%x ticks", ticks);
+
     // periodic mode: set mode bit once, initial count auto-reloads every period
     lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
     lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
@@ -239,13 +254,30 @@ status_t lapic_timer_cancel(timer_source_t *_)
 {
     timer_source_t *self = cpu_arch_get_current()->cpu_timer_dev;
     lapic_timer_priv_t *lapic_priv = self->priv;
-    
+
     lapic_priv->callback = NULL;
 
     // mask the LVT entry don't just zero the count, a tick can still land
     // mid-reprogram and fire the old callback on the new state
     lapic_write(LAPIC_REG_TIMER, CPU_TIMER_VECTOR | LAPIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
+    return KERRNO_SUCCESSES;
+}
+
+status_t lapic_timer_isr(intr_frame_t *frame)
+{
+    cpu_t *cpu = cpu_arch_get_current();
+    timer_source_t *self = cpu->cpu_timer_dev;
+    lapic_timer_priv_t *lapic_priv = self->priv;
+
+    if (lapic_priv->callback)
+    {
+        // log_debug(MODULE, "apic_id = %u", lapic_priv->id);
+        lapic_priv->callback(self);
+    }
+
+    lapic_eoi();
+
     return KERRNO_SUCCESSES;
 }
 
@@ -266,7 +298,7 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     lapic_timer->caps.freq_hz = lapic_freq;
     lapic_timer->caps.min_interval_ns = 1;
     lapic_timer->caps.max_interval_ns = UINT32_MAX / lapic_freq;
-    
+
     lapic_timer->arm_oneshot = lapic_timer_set_oneshot;
     lapic_timer->arm_periodic = lapic_timer_set_periodic;
     lapic_timer->cancel = lapic_timer_cancel;
@@ -276,13 +308,18 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     if (lapic_id == cpu_arch_get_bsp()->arch_id)
     {
         device_t *lapic = device_create();
-        lapic->class_name = "lapic";
+        lapic->init_name = "lapic";
         lapic->class = DEVICE_TIMER;
         device_register(lapic);
         timer_register(lapic_timer);
+        ivt_set_handler(CPU_TIMER_VECTOR, lapic_timer_isr);
     }
     
-
+    // set divide config to 16
+    lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
+    lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
+    // set timer to periodic mode
+    lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
 
     return KERRNO_SUCCESSES;
 }

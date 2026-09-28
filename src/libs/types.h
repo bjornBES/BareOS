@@ -39,6 +39,6 @@ typedef int32_64 nlink_t;
 typedef uint16_t cpu_logical_id_t;
 
 /// @brief the default return type of functions
-typedef int status_t;
+typedef int32_t status_t;
 
 typedef uint32_t gsi_t;

@@ -53,4 +53,4 @@ sdt_header_t *table_get_table(uint32_t signature);
 /// @return 
 int table_verify_checksum(sdt_header_t *header);
 
-void table_set_base(vaddr_t base);
+void table_set_base(vaddr_t base, paddr_t pbase);

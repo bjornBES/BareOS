@@ -14,16 +14,19 @@
 #include "asm/mmu_arch.h"
 #include "debug/debug.h"
 
-#define MODULE "IOREMAP"
+#include "init.h"
 
 #define MODULE "IOREMAP"
 
 vaddr_t mmio_bump = (vaddr_t)MEMORY_MMIO_VIRT_BASE;
 
-void ioremap_init()
+__init status_t ioremap_init()
 {
     mmio_bump = (vaddr_t)MEMORY_MMIO_VIRT_BASE;
+    return KERRNO_SUCCESSES;
 }
+
+EARLY_INITCALL(ioremap_init);
 
 vaddr_t ioremap(paddr_t phys, size_t size)
 {

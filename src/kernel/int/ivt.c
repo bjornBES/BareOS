@@ -16,6 +16,8 @@
 #include "memory.h"
 #include "kerrno.h"
 
+#include "init.h"
+
 #include <types.h>
 #include <binary.h>
 
@@ -57,11 +59,14 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
     return KERRNO_SUCCESSES;
 }
 
-void ivt_init()
+__init status_t ivt_init()
 {
     memset(handlers, 0, sizeof(handlers));
     // handler_init();
+    return KERRNO_SUCCESSES;
 }
+
+EARLY_INITCALL(ivt_init);
 
 status_t ivt_set_handler(interrupt_vector_t vector, interrupt_handler handler)
 {

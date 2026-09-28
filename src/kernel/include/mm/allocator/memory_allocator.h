@@ -16,7 +16,6 @@ typedef struct {
 	uint32_t size;
 } alloc_t;
 
-void allocator_init();
 void allocator_print_status();
 void allocator_print_blocks();
 

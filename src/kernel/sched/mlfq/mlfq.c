@@ -177,7 +177,7 @@ void *mlfq_init(void *runq_data)
     }
     for (int i = 0; i < MLFQ_NUM_BUCKETS - 1; i++)
     {
-        list_init(&q->queues[i]);
+        list_initialize(&q->queues[i]);
     }
     q->count = 0;
     return q;

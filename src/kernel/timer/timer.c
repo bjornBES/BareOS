@@ -205,11 +205,16 @@ uint64_t timer_now_ns()
     return cached_counter_source->ticks_to_ns(cached_counter_source, ticks);
 }
 
-/* uint64_t timer_now_sec()
+uint64_t timer_now_sec()
 {
-
+    if (cached_counter_source == NULL)
+    {
+        return 0;
+    }
+    uint64_t ticks = cached_counter_source->read_counter(cached_counter_source);
+    return ticks / cached_counter_source->caps.freq_hz;
 }
-
+/* 
 uint64_t timer_get_boot_time()
 {
 

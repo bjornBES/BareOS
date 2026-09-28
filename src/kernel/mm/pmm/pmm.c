@@ -22,6 +22,10 @@
 #include "asm/page_arch.h"
 #include "asm/mmu_arch.h"
 
+#include "resource/resource.h"
+
+#include "init.h"
+
 #define MODULE "pmm"
 
 static paddr_t bump_base;
@@ -70,7 +74,7 @@ status_t pmm_early_init(boot_params_t *bp)
         entry = &memory[i];
 
         trace_info(MODULE, "region entry start=%p size=%p type=%u", entry->addr, entry->size,
-                  entry->type);
+                   entry->type);
 
         if (entry->type != MEMORY_AVAILABLE)
         {
@@ -96,9 +100,9 @@ status_t pmm_early_init(boot_params_t *bp)
             info.phys_start = (paddr_t)PAGE_ALIGN_UP((paddr_t)kernel_phys_end);
             trace_debug(MODULE, "region start=%p end=%p", info.phys_start, info.phys_end);
         }
-        
+
         info.memory = entry;
-        
+
         bump_base = info.phys_start;
         bump_current = bump_base;
         bump_end = bump_base + early_size;
@@ -137,8 +141,45 @@ status_t pmm_init()
 
     pmm_ready = true;
 
-    allocator_init();
+    return KERRNO_SUCCESSES;
+}
 
+CORE_INITCALL(pmm_init);
+
+status_t pmm_insert_resource(boot_params_t *params)
+{
+    memory_entry_t *memory = params->memory.entries;
+    uint32_t entry_count = params->memory.count;
+
+    for (size_t i = 0; i < entry_count; i++)
+    {
+        memory_entry_t *entry = &memory[i];
+        resource_t *node = kmalloc(sizeof(resource_t));
+        const char *name;
+        res_type_t type;
+        switch (entry->type)
+        {
+            case MEMORY_AVAILABLE :
+                name = "System RAM";
+                type = RES_TYPE_RAM;
+                break;
+            case MEMORY_RESERVED :
+            case MEMORY_ACPI_RECLAIMABLE :
+            case MEMORY_ACPI_NVS :
+            case MEMORY_BAD_RAM :
+                name = "Reserved";
+                type = RES_TYPE_RESERVED;
+                break;
+
+            default :
+                break;
+        }
+        if (resource_request(&mem_space.root, node, entry->addr, entry->addr + entry->size, name, type, RES_FLAG_NONE) != KERRNO_SUCCESSES)
+        {
+            KERNEL_PANIC(MODULE, "something is wrong");
+        }
+    }
+    
     return KERRNO_SUCCESSES;
 }
 

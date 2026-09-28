@@ -13,6 +13,8 @@
 #include "kernel/acpi/apic/lapic.h"
 #include "kernel/acpi/apic/ioapic.h"
 
+#include "resource/resource.h"
+
 #include "kernel/cpuid/cpuid.h"
 #include "kernel/msr/msr.h"
 #include "x86_arch_data.h"
@@ -95,7 +97,11 @@ status_t madt_arch_parse(madt_t *madt)
         apic_base |= BIT(MSR_IA32_X2APIC_ENABLE_BIT); // EXTD
         wrmsr(MSR_IA32_APIC_BASE, apic_base);
     }
+
+    resource_t *lapic = resource_create();
+    resource_request(&mem_space.root, lapic, madt->local_interrupt_address, madt->local_interrupt_address + 1024, "LAPIC", RES_TYPE_PLATFORM_FIXED, RES_FLAG_NONE);
     local_apic_base = ioremap(madt->local_interrupt_address, 1024);
+
     uint8_t *entry = madt->entries;
     uint8_t *end = (uint8_t *)madt + madt->header.length;
 
@@ -145,6 +151,9 @@ status_t madt_arch_parse(madt_t *madt)
                 {
                     madt_nmi *nmi = (madt_nmi *)&en->nmi;
                     trace_info(MODULE, "NMI APIC ID %u, flags=0x%x, lint=%u", nmi->apic_id, nmi->flags, nmi->lint);
+
+                    resource_t *nmi_res = resource_create();
+                    resource_request(&irq_space.root, nmi_res, nmi->lint, nmi->lint, "NMI", RES_TYPE_RESERVED, RES_FLAG_NONE);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
                     break;

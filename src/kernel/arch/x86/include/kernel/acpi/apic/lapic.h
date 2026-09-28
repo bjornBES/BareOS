@@ -34,6 +34,7 @@ void lapic_write_icr(uint32_t high, uint32_t low);
 void lapic_write(uint32_t reg, uint64_t value);
 uint64_t lapic_read(uint32_t reg);
 uint32_t lapic_get_id();
+void lapic_eoi();
 
 void lapic_enable();
 void lapic_wait_idle();

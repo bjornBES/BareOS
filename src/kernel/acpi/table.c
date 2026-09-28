@@ -17,6 +17,8 @@
 
 #include "mm/ioremap.h"
 
+#include "resource/resource.h"
+
 #include <config.h>
 
 #define MODULE "ACPI-TABLE"
@@ -78,18 +80,17 @@ void table_cache_tables(rsdt_t *rsd_table)
         if (table_count < CONFIG_ACPI_MAX_TABLES)
         {
             mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)entry), PAGE_ALIGN_DOWN((paddr_t)entry), kernel_data_flags);
-            trace_info(MODULE, "table[%i] sig=%04x/%c%c%c%c addr=%p", i, entry->signature, ((char*)&entry->signature)[0], ((char*)&entry->signature)[1], ((char*)&entry->signature)[2], ((char*)&entry->signature)[3], entry);
+            trace_info(MODULE, "table[%i] sig=%04x/%c%c%c%c addr=%p", i, entry->signature, ((char *)&entry->signature)[0], ((char *)&entry->signature)[1], ((char *)&entry->signature)[2], ((char *)&entry->signature)[3], entry);
             signature_table[table_count] = entry->signature;
 
             uint32_t size = entry->length;
             mmu_arch_unmap(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)entry));
             tables[table_count++] = (sdt_header_t *)(ioremap((paddr_t)entry, size) + GET_PAGE_OFFSET((paddr_t)entry));
         }
-        
     }
 }
 
-void table_set_base(vaddr_t base)
+void table_set_base(vaddr_t base, paddr_t pbase)
 {
     mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)base), PAGE_ALIGN_DOWN((paddr_t)base), kernel_data_flags);
     rsdt_t *rsd_table = (rsdt_t *)base;
@@ -100,5 +101,8 @@ void table_set_base(vaddr_t base)
     trace_debug(MODULE, "offset = %x", GET_PAGE_OFFSET(base));
     size = rsd_table->header.length;
     trace_debug(MODULE, "size = %u", size);
+
+    resource_t *acpi = resource_create();
+    resource_request(&mem_space.root, acpi, pbase, pbase + size, "ACPI tables", RES_TYPE_ACPI_TABLES, RES_FLAG_NONE);
     table_cache_tables(rsd_table);
 }

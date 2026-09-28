@@ -230,10 +230,12 @@ spinlock_t schedule_lock = {0};
 
 status_t schedule(intr_frame_t *regs)
 {
-    spinlock_acquire(&schedule_lock);
+    irq_arch_disable();
+    // spinlock_acquire(&schedule_lock);
     if (sched_init_done == 0)
     {
-        spinlock_release(&schedule_lock);
+        // spinlock_release(&schedule_lock);
+        irq_arch_enable();
         irq_eoi(regs->interrupt);
         return KERRNO_SUCCESSES;
     }
@@ -280,6 +282,7 @@ status_t schedule(intr_frame_t *regs)
     // if (cpu->current == NULL)
     // {
     //     irq_eoi(0);
+    // irq_arch_enable();
     //     return RETURN_FAILED;
     // }
 try_again:
@@ -357,7 +360,7 @@ try_again:
         current_thread->last_cpu = cpu;
     } */
 
-    spinlock_release(&schedule_lock);
+    // spinlock_release(&schedule_lock);
     schedule_switch(next);
     return KERRNO_SUCCESSES;
 }
@@ -492,7 +495,7 @@ status_t sched_init(thread_t *main_thread)
     sched_runq.sched_class = (sched_class_t *)active_sched_class;
     sched_runq.threads = sched_runq.sched_class->ops.init(sched_runq.threads);
     sleep_queue.count = 0;
-    list_init(&sleep_queue.threads);
+    list_initialize(&sleep_queue.threads);
 
     memcpy(main_thread->name, "MAIN\0", 4);
     trace_info(MODULE, "setting T%u (%s) as the main thread", main_thread->tid, main_thread->name);

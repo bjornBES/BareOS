@@ -13,7 +13,7 @@
 #include <types.h>
 
 /// @brief 
-void ioremap_init();
+status_t ioremap_init();
 
 /// @brief 
 /// @param[in] phys

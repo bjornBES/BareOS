@@ -53,10 +53,11 @@ status_t apic_initialize()
             gsi_t gsi = entry->redir_entries[irq].gsi;
             uint16_t flags = entry->redir_entries[irq].flags;
             uint8_t vector = entry->redir_entries[irq].vector;
-            ioapic_set_entry(i, gsi, vector, flags, entry->redir_entries[irq].lapic_target);
+            ioapic_set_entry(entry->ioapic_id, gsi, vector, flags, entry->redir_entries[irq].lapic_target);
             trace_info(MODULE, "IRQ %u -> GSI %u vector 0x%x", irq, gsi, vector);
         }
     }
+    lapic_eoi();
     return KERRNO_SUCCESSES;
 }
 

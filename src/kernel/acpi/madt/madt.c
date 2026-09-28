@@ -14,6 +14,8 @@
 
 #include "debug/debug.h"
 
+#include "init.h"
+
 #define MODULE "MADT"
 
 status_t madt_parse()
@@ -27,3 +29,4 @@ status_t madt_parse()
 
     return madt_arch_parse(_madt);
 }
+POSTCORE_INITCALL(madt_parse);

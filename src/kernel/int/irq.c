@@ -13,6 +13,8 @@
 
 #include "asm/vectors_arch.h"
 
+#include "resource/resource.h"
+
 #include "kerrno.h"
 #include "panic.h"
 
@@ -67,6 +69,10 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
         current = NULL;
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "%s failed initialize", controller->name);
     }
+
+    resource_t *irqs = resource_create();
+    resource_request(&irq_space.root, irqs, IRQ_BASE, MAX_VECTOR - IRQ_BASE, "Kernel IRQ", RES_TYPE_RAM, RES_FLAG_NONE);
+    resource_dump(&irq_space.root);
 
     current = get_ops();
 

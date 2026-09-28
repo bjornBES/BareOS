@@ -8,16 +8,16 @@
  * -----
  */
 
-
-
 #pragma once
 
 #include <stdint.h>
 #include <defs.h>
 
-#define MEMORY_AVAILABLE 1
-#define MEMORY_RESERVED 2
-#define MEMORY_BAD_RAM 5
+#define MEMORY_AVAILABLE        1
+#define MEMORY_RESERVED         2
+#define MEMORY_ACPI_RECLAIMABLE 3
+#define MEMORY_ACPI_NVS         4
+#define MEMORY_BAD_RAM          5
 
 typedef struct memory_entry
 {

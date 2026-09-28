@@ -145,10 +145,10 @@ status_t pit_irq_handler(intr_frame_t *frame, void *ctx)
     return KERRNO_SUCCESSES;
 }
 
-void pit_init()
+status_t pit_init()
 {
     device_t *pit = device_create();
-    pit->class_name = "pit";
+    pit->init_name = "pit";
     pit->class = DEVICE_TIMER;
     device_register(pit);
 
@@ -167,4 +167,7 @@ void pit_init()
     timer_register(pit_timer);
 
     irq_register_handler(0, pit_irq_handler, NULL, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
+    return KERRNO_SUCCESSES;
 }
+
+POSTCORE_INITCALL(pit_init);

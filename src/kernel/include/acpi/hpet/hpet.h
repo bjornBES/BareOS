@@ -12,4 +12,4 @@
 
 #include <types.h>
 
-void hpet_parse();
+status_t hpet_parse();

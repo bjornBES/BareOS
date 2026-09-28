@@ -18,6 +18,7 @@
 #define EXC_GP                   0x0D // General Protection Fault
 #define EXC_FAULT                0x0E // Page Fault
 
+#define EXC_END                  0x20
 #define IRQ0                     0x20
 #define IRQ23                    0x37
 

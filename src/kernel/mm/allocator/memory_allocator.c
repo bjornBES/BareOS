@@ -20,6 +20,7 @@
 #include "debug/debug.h"
 
 #include "memory.h"
+#include "init.h"
 
 #define MODULE "memory_allocator"
 
@@ -36,9 +37,9 @@ status_t alloc_new_page()
 	ENTER_FUNC("", 0);
     paddr_t phys = pmm_alloc_frame();
     vaddr_t virt = heap_end;  // next virtual page after current end
-	mmu_arch_enable_prints();
+	// mmu_arch_enable_prints();
     size_t size_mapped = mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags);
-	mmu_arch_disable_prints();
+	// mmu_arch_disable_prints();
 	if (!(size_mapped > KERRNO_ERRORS_END))
 	{
 		return size_mapped;
@@ -52,7 +53,7 @@ status_t alloc_new_page()
 	return KERRNO_SUCCESSES;
 }
 
-void allocator_init()
+status_t allocator_init()
 {
 	trace_info(MODULE, "init allocator");
 	heap_begin = MEMORY_HEAP_VIRT_BASE;
@@ -66,7 +67,9 @@ void allocator_init()
 	allocator_print_status();
 
 	trace_info(MODULE, "Kernel heap starts at %p", heap_begin);
+	return KERRNO_SUCCESSES;
 }
+CORE_INITCALL(allocator_init);
 
 void allocator_print_status()
 {
