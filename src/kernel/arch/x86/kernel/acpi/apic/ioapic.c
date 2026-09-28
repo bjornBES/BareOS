@@ -14,6 +14,8 @@
 
 #include "mm/ioremap.h"
 
+// #include "resource/resource.h"
+
 #include "kerrno.h"
 
 #include <binary.h>
@@ -39,6 +41,9 @@ uint32_t ioapic_read(uint8_t ioapic_id, uint32_t reg)
 
 status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi_base)
 {
+    // resource_t *ioapic = resource_create();
+    // resource_request(&mem_space.root, ioapic, ioapic_address, ioapic_address + 4096, "IOAPIC", RES_TYPE_PLATFORM_FIXED, RES_FLAG_NONE);
+
     ioapic_table[ioapic_count].ioapic_id = ioapic_id;
     ioapic_table[ioapic_count].io_apic_base = ioremap(ioapic_address, 4096);
     ioapic_table[ioapic_count].gsi_base = gsi_base;
@@ -83,7 +88,13 @@ uint8_t ioapic_get_id(gsi_t target_gsi)
 
 void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint32_t dest_apic_id)
 {
+    // ENTER_FUNC("%u, %u, %u, 0x%x, 0x%x", ioapic_id, gsi, vector, flags, dest_apic_id);
     uint32_t low = vector;
+
+    ioapic_table[ioapic_id].redir_entries[vector].flags = flags;
+    ioapic_table[ioapic_id].redir_entries[vector].gsi = gsi;
+    ioapic_table[ioapic_id].redir_entries[vector].lapic_target = dest_apic_id;
+    ioapic_table[ioapic_id].redir_entries[vector].vector = vector + IRQ_BASE;
 
     // polarity — bit 1 of flags, 1 = active low
     if (flags & 0x2)
