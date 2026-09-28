@@ -16,5 +16,5 @@
 extern uint64_t hpet_freq;
 
 uint64_t hpet_arch_read(uint32_t reg);
+void hpet_arch_write(uint32_t reg, uint64_t value);
 uint64_t hpet_arch_read_counter();
-status_t hpet_arch_init(sdt_header_t *hpet_header);

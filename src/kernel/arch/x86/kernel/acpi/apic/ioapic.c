@@ -14,7 +14,7 @@
 
 #include "mm/ioremap.h"
 
-// #include "resource/resource.h"
+#include "resource/resource.h"
 
 #include "kerrno.h"
 
@@ -41,8 +41,8 @@ uint32_t ioapic_read(uint8_t ioapic_id, uint32_t reg)
 
 status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi_base)
 {
-    // resource_t *ioapic = resource_create();
-    // resource_request(&mem_space.root, ioapic, ioapic_address, ioapic_address + 4096, "IOAPIC", RES_TYPE_PLATFORM_FIXED, RES_FLAG_NONE);
+    resource_t *ioapic = resource_create();
+    resource_request(&mem_space.root, ioapic, ioapic_address, ioapic_address + 4096, "IOAPIC", RES_TYPE_PLATFORM_FIXED, RES_FLAG_NONE);
 
     ioapic_table[ioapic_count].ioapic_id = ioapic_id;
     ioapic_table[ioapic_count].io_apic_base = ioremap(ioapic_address, 4096);
