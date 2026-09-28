@@ -25,12 +25,16 @@
 #include "entry/desc/idt/idt.h"
 #include "debug/debug.h"
 
+#include "mm/pmm/pmm.h"
+
 #include "kernel.h"
 #include "kernel/isr/isr.h"
 #include "kernel/cpuid/cpuid.h"
 #include "kernel/msr/msr.h"
 #include "kernel/acpi/apic/apic.h"
 #include "kernel/dev/pit/pit.h"
+
+#include "resource/resource.h"
 
 #include "module.h"
 #include "memory.h"
@@ -114,48 +118,29 @@ status_t page_fault(intr_frame_t *regs)
     return ENOSYS;
 }
 
+static resource_t x86_exceptions = {
+    .name = "x86 Exceptions",
+    .start = 0,
+    .end = 31,
+    .flags = RES_FLAG_NONE,
+    .type = RES_TYPE_RESERVED,
+};
+
 x86_arch_data_t arch_runtime_data;
+boot_params_t *pre_boot_params;
+boot_params_t *bp_arch;
 
 __init void arch_setup(boot_params_t *boot_params)
 {
-    // what do we know here?
-    // - what some devices needs what drivers using cmdline
-    // - where the kernel is
-    // - we have the acpi location
-    // - we have the systems memory map
-    // - we know what video mode we use
-    // - we are in 64 bit long mode or 32 bit pmode
-    // - we know we can use cpuid
-    // - we know we are i386+
+    pre_boot_params = boot_params;
+    resource_space_init(&io_space, RES_SPACE_IO, 0, 0xFFFF);
+    resource_space_init(&irq_space, RES_SPACE_IRQ, 0, 255);
 
-    cpuid_regs regs_leaf1;
-    cpuid(0x01, 0, &regs_leaf1);
-    cpu_t *cpu;
-    uint32_t apic_id = 0;
-    if (BIT_GET(regs_leaf1.ecx, 21) == 1)
-    {
-        cpuid_regs regs_leaf0b;
-        cpuid(0x0B, 0, &regs_leaf0b);
-        apic_id = regs_leaf0b.edx;
-        trace_info(MODULE, "x2apic = %u", apic_id);
-    }
-    else
-    {
-        apic_id = BIT_GET_RANGE(regs_leaf1.ebx, 24, 31);
-        trace_info(MODULE, "xapic = %u", apic_id);
-    }
-    cpu = cpu_arch_get(apic_id);
-    cpu->cpuid.leaf_0x1_0[0] = *((leaf_0x1_0_t *)((void *)&regs_leaf1));
-    trace_info(MODULE, "cpu = %p", cpu);
+    resource_insert(&irq_space.root, &x86_exceptions);
 
-    gdt_initialize(&cpu->gdtr, cpu->gdt_table);
-    tss_initialize(&cpu->tss, cpu->gdt_table, TSS_INDEX);
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_ARCH);
 
-    gdt_load(&cpu->gdtr, cpu->gdt_table);
-
-    tss_load(TSS_SELECTOR);
-
-    idt_load();
+    resource_space_init(&mem_space, RES_SPACE_MEM, 0, UINT64_MAX);
 
     ivt_set_handler(EXC_DEBUG, write_registers);
     ivt_set_handler(EXC_BREAKPOINT, breakpoint);
@@ -163,78 +148,11 @@ __init void arch_setup(boot_params_t *boot_params)
     ivt_set_handler(EXC_GP, general_protection_fault);
     ivt_set_handler(EXC_FAULT, page_fault);
 
-    // check CPUID.0x01:EDX[5] MSR
-    arch_runtime_data.has_msr = cpu->cpuid.leaf_0x1_0[0].msr;
-
-    // check CPUID.0x01:EDX[3] PSE
-    arch_runtime_data.paging.pse = cpu->cpuid.leaf_0x1_0[0].pse;
-
-    // check CPUID.0x01:EDX[6] PAE
-    arch_runtime_data.paging.pae = cpu->cpuid.leaf_0x1_0[0].pae;
-
-    // check CPUID.0x01:EDX[13] Global bit in paging
-    arch_runtime_data.paging.global = cpu->cpuid.leaf_0x1_0[0].pge;
-
-    // check CPUID.0x01:EDX[16] PAT
-    arch_runtime_data.paging.pat = cpu->cpuid.leaf_0x1_0[0].pat;
-
-    // check CPUID.0x01:EDX[17] PSE_36 (supports the 36-Bit Page Size Extension which enables 4-MByte)
-    arch_runtime_data.paging.pse_36 = cpu->cpuid.leaf_0x1_0[0].pse36;
-
-    cpuid_regs regs_leaf7_0;
-    cpuid(0x07, 0, &regs_leaf7_0);
-    cpu->cpuid.leaf_0x7_0[0] = *((leaf_0x7_0_t *)((void *)&regs_leaf7_0));
-
-    // check CPUID.0x07.0x00:EAX[31:0] MAX_SUBLEAF
-    if (cpu->cpuid.leaf_0x7_0[0].leaf7_n_subleaves >= 0x00)
-    {
-        // check CPUID.0x07.0x00:ECX[3] PKU (protection keys for user-mode pages)
-        arch_runtime_data.paging.has_user_pke = cpu->cpuid.leaf_0x7_0[0].pku;
-
-        // check CPUID.0x07.0x00:ECX[16] LA57 (57-bit linear addresses and fivelevel paging)
-        arch_runtime_data.paging.la47 = cpu->cpuid.leaf_0x7_0[0].la57;
-
-        // check CPUID.0x07.0x00:ECX[31] PKS (protection keys for supervisormode pages)
-        arch_runtime_data.paging.has_super_pke = cpu->cpuid.leaf_0x7_0[0].pks;
-    }
-
-    cpuid_regs regs_leaf_ext0;
-    cpuid(0x80000000, 0, &regs_leaf_ext0);
-    // check CPUID.0x80000000:EAX Maximum Input Value for Extended Function CPUID Information
-    uint32_t max_ext_subleaf = regs_leaf_ext0.eax;
-
-    if (max_ext_subleaf >= 0x80000001)
-    {
-        cpuid_regs regs_leaf_ext1;
-        cpuid(0x80000001, 0, &regs_leaf_ext1);
-
-        // check CPUID.0x80000001:EDX[26] 1 GB pages
-        arch_runtime_data.paging.huge_pdpt = BIT_GET(regs_leaf_ext1.edx, 26);
-
-        // check CPUID.0x80000001:EDX[20] EXECUTE_DIS
-        arch_runtime_data.paging.has_nx = BIT_GET(regs_leaf_ext1.edx, 20);
-        if (arch_runtime_data.paging.has_nx == 1)
-        {
-            uint64_t efer = msr_get_64(MSR_EFER) | BIT(MSR_EFER_NX_BIT);
-            msr_set_64(MSR_EFER, efer);
-        }
-
-        // check CPUID.0x80000001:EDX[29] intel64
-        arch_runtime_data.long_mode = BIT_GET(regs_leaf_ext1.edx, 29);
-        arch_runtime_data.paging.paging_64 = arch_runtime_data.long_mode;
-    }
-
-    if (max_ext_subleaf >= 0x80000008)
-    {
-        cpuid_regs regs_leaf_ext8;
-        cpuid(0x80000008, 0, &regs_leaf_ext8);
-
-        // check CPUID.0x80000008:EAX[7:0] PHYS_ADDR_SIZE
-        arch_runtime_data.paging.max_phys = BIT_GET_RANGE(regs_leaf_ext8.eax, 0, 7);
-    }
-
     mmu_arch_init(boot_params);
     mmu_arch_disable_prints();
+
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_CORE);
+
     trace_debug(MODULE, "max_phys = 0x%x/%d", arch_runtime_data.paging.max_phys, arch_runtime_data.paging.max_phys);
     trace_debug(MODULE, "pse = 0x%x", arch_runtime_data.paging.pse);
     trace_debug(MODULE, "pae = 0x%x", arch_runtime_data.paging.pae);
@@ -248,46 +166,26 @@ __init void arch_setup(boot_params_t *boot_params)
     trace_debug(MODULE, "has_user_pke = 0x%x", arch_runtime_data.paging.has_user_pke);
     trace_debug(MODULE, "has_super_pke = 0x%x", arch_runtime_data.paging.has_super_pke);
 
-    trace_debug(MODULE, "max_ext_subleaf = 0x%x", max_ext_subleaf);
+    // trace_debug(MODULE, "max_ext_subleaf = 0x%x", max_ext_subleaf);
 
-    boot_params_t *bp;
     {
-        bp = kmalloc(sizeof(boot_params_t));
+        bp_arch = kmalloc(sizeof(boot_params_t));
+        trace_debug(MODULE, "bootParams @ %p", bp_arch);
         vaddr_t virt_bootParams = ((vaddr_t)boot_params + PAGE_SIZE);
         mmu_map_region(&kernel_page, PAGE_SIZE, 0, sizeof(boot_params_t), kernel_text_flags);
-        memcpy(bp, (void *)virt_bootParams, sizeof(boot_params_t));
+        memcpy(bp_arch, (void *)virt_bootParams, sizeof(boot_params_t));
         mmu_free_region(&kernel_page, virt_bootParams, sizeof(boot_params_t));
 
-        trace_debug(MODULE, "bootParams @ %p", bp);
-        hexdump(bp, sizeof(boot_params_t), 16);
-        hexdump(&bp->smp, sizeof(bp->smp), 16);
-
-        bp->arch_runtime_data = &arch_runtime_data;
+        trace_debug(MODULE, "bootParams @ %p", bp_arch);
+        pmm_insert_resource(bp_arch);
     }
+    bp_arch->arch_runtime_data = &arch_runtime_data;
 
-    rsdt_parse(bp);
+    rsdt_parse(bp_arch);
     
-    madt_parse();
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_POSTCORE);
 
-    // check CPUID.0x01:EDX[9] APIC
-    if (BIT_GET(regs_leaf1.edx, 9) == 1)
-    {
-        status_t status = irq_initialize(apic_get_driver);
-        if (status != KERRNO_SUCCESSES)
-        {
-            log_err(MODULE, "PIC time");
-            goto pic_time; // sorry...
-        }
-    }
-    else
-    {
-pic_time:
-        FUNC_NOT_IMPLEMENTED();
-    }
-
-    hpet_parse();
-
-    pit_init();
+    resource_dump(&mem_space.root);
 
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2
@@ -327,7 +225,7 @@ pic_time:
 
     // check CPUID.0x16 Processor Frequency Information
 
-    kernel_early_main(bp);
+    kernel_early_main(bp_arch);
 
     while (true)
     {

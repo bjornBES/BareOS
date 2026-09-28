@@ -17,6 +17,8 @@
 
 #include "mm/ioremap.h"
 
+#include "init.h"
+
 // structure for revision 0 (version 1.0)
 typedef struct rsdp
 {
@@ -50,9 +52,9 @@ status_t rsdt_parse(boot_params_t *bp)
 {
     rsdp_t *rsdp = (rsdp_t *)(ioremap(bp->acpi.rsdp_address, 1024) + GET_PAGE_OFFSET(bp->acpi.rsdp_address));
     hexdump(rsdp, sizeof(rsdp_t), 16);
-
+    
     trace_info(MODULE, "%u,%u,0x%08x", rsdp->checksum, rsdp->revision, rsdp->rsdt_address);
-
+    
     if (rsdp->revision != 0)
     {
         log_crit(MODULE, "rsdp is XSDT");
@@ -60,12 +62,14 @@ status_t rsdt_parse(boot_params_t *bp)
         {
             ;
         }
-
+        
         return 1;
     }
-
-    table_set_base((vaddr_t)rsdp->rsdt_address);
+    
+    trace_info(MODULE, "phys base = %p", bp->acpi.rsdp_address);
+    table_set_base((vaddr_t)rsdp->rsdt_address, bp->acpi.rsdp_address);
 
     return KERRNO_SUCCESSES;
 }
+
 

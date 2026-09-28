@@ -27,24 +27,30 @@
 static const char *const LogLevelSymbol[] =
     {
         [FUNC_ENTER] = "ENTER",
-        [LVL_WARNING] = "WARNING",
-        [LVL_FIX] = "FIX_FOUND",
         [LVL1] = "DEBUG",
         [LVL2] = "INFO",
         [LVL3] = "",
         [LVL4] = "",
-        [LVL5] = "ERR",
+        [LVL5] = "",
+        [LVL_WARNING] = "WARNING",
+        [LVL_FIX] = "FIX_FOUND",
+        [LVL_ERR] = "ERR",
+        [LVL_CRIT] = "CRIT",
+        [LVL_BUG] = "BUG",
 };
 static debug_level_t LogLevelDebugLevel[] =
     {
         [FUNC_ENTER] = LVL_INFO,
-        [LVL_WARNING] = LVL_WARN,
-        [LVL_FIX] = LVL_INFO,
         [LVL1] = LVL_DEBUG,
         [LVL2] = LVL_INFO,
         [LVL3] = LVL_DEBUG,
         [LVL4] = LVL_DEBUG,
-        [LVL5] = LVL_ERROR,
+        [LVL5] = LVL_DEBUG,
+        [LVL_WARNING] = LVL_WARN,
+        [LVL_FIX] = LVL_INFO,
+        [LVL_ERR] = LVL_ERROR,
+        [LVL_CRIT] = LVL_CRITICAL,
+        [LVL_BUG] = LVL_CRITICAL,
 };
 
 spinlock_t trace_lock = {0};
@@ -82,12 +88,12 @@ static inline void get_time_string(char *line)
         line[count] = '\0';
         return;
     }
-    uint32_t ms = NANOSEC_TO_MILLISEC(ns) % 1000;
-    uint64_t sec = MILLISEC_TO_SEC(ms);
+    uint32_t ms = NANOSEC_TO_MILLISEC(ns);
+    uint64_t sec = timer_now_sec();
     uint32_t min = sec / 60;
     uint32_t hour = min / 60;
 
-    int count = sprintf(line, "[%u:%u:%u.%u]", hour % 24, min % 60, sec % 60, ms);
+    int count = sprintf(line, "[%u:%u:%u.%u]", hour % 24, min % 60, sec % 60, ms % 1000);
     line[count] = '\0';
 }
 
@@ -127,17 +133,17 @@ void trace_enter_func(fd_t file, const char *module, trace_level_t level, const 
 
     va_end(args);
     const char *symbol = LogLevelSymbol[level];
-    
+
     NEW_BUFFER(time, 50);
     get_time_string(time);
-    
+
     NEW_BUFFER(id_log, 20);
     get_ids(id_log);
-    
+
     NEW_BUFFER(log, 300);
     count = sprintf(log, "%s [%s] %s, %s: %s(%s)", time, id_log, symbol, module, function, fmt_log);
     log[count] = '\0';
-    
+
     spinlock_acquire(&trace_lock);
     logfl(NO_MODULE, LogLevelDebugLevel[level], log);
     // vfs_write(file, log, count);

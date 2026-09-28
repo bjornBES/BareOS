@@ -14,29 +14,56 @@
 
 // Design from https://github.com/haiku/haiku/blob/master/headers/os/support/Errors.h
 
-#define KERRNO_NO_RETURN(number, ...)                                    \
-    {                                                                    \
-        log_err(MODULE, "%s:%u", __FILE__, __LINE__);                    \
+#define KERRNO_NO_RETURN(number, ...)                                   \
+    {                                                                   \
+        log_err(MODULE, "%s:%u", __FILE__, __LINE__);                   \
         log_err(MODULE, "func %s outputting %s", __FUNCTION__, number); \
-        logfl(MODULE, LVL_INFO, __VA_ARGS__);                            \
+        logfl(MODULE, LVL_INFO, __VA_ARGS__);                           \
     }
 
-#define KERRNO_RETURN(number, ...)            \
-    {                                         \
+#define KERRNO_RETURN(number, ...)             \
+    {                                          \
         KERRNO_NO_RETURN(#number, __VA_ARGS__) \
-        return number;                        \
+        return number;                         \
     }
 
-#define KERRNO_RETURN_TYPE(number, type, ...) \
-    {                                         \
+#define KERRNO_RETURN_TYPE(number, type, ...)  \
+    {                                          \
         KERRNO_NO_RETURN(#number, __VA_ARGS__) \
-        return (type)number;                  \
+        return (type)number;                   \
     }
+
+#if DEBUG == 1
+#define KERRNO_RETURN_DEBUG(number, type, ...)                                                       \
+    {                                                                                                \
+        trace_info(NO_MODULE, "Debugging \"%s\" becurse it returned \"%s\"", __FUNCTION__, #number); \
+        KERRNO_RETURN_TYPE(number, type, __VA_ARGS__);                                               \
+    }
+#else
+#define KERRNO_RETURN_DEBUG(number, type, ...)         \
+    {                                                  \
+        KERRNO_RETURN_TYPE(number, type, __VA_ARGS__); \
+    }
+#endif
+
+#if DEBUG == 1
+#define KERRNO_CHECK_DEBUG(status)                                                                                                                          \
+    {                                                                                                                                                       \
+        if (status == KERRNO_DEBUG)                                                                                                                         \
+        {                                                                                                                                                   \
+            trace_info(NO_MODULE, "Debug:\nCalled in \"%s\" on around line %u\n%s:%s in \"%s\"", __FUNCTION__, __LINE__, __FILE__, __LINE__, __FUNCTION__); \
+        }                                                                                                                                                   \
+    }
+#else
+#define KERRNO_CHECK_DEBUG(status) \
+    {                              \
+    }
+#endif
 
 // most (if not all) of the comments in this file are made by an AI, this will be changed in later versions of the kernel.
 
 /* Error baselines */
-#define KERRNO_GENERAL_ERROR_BASE                0                                    /* General errors */
+#define KERRNO_GENERAL_ERROR_BASE                0                                   /* General errors */
 #define KERRNO_OS_ERROR_BASE                     (KERRNO_GENERAL_ERROR_BASE + 0x100) /* Kernel Kit errors */
 #define KERRNO_APP_ERROR_BASE                    (KERRNO_GENERAL_ERROR_BASE + 0x200) /* Application Kit errors */
 #define KERRNO_INTERFACE_ERROR_BASE              (KERRNO_GENERAL_ERROR_BASE + 0x300) /* Interface Kit errors */
@@ -71,7 +98,10 @@
 #define KERRNO_NOT_ALLOWED                       (KERRNO_GENERAL_ERROR_BASE + 17) /* Operation is not allowed */
 #define KERRNO_BAD_DATA                          (KERRNO_GENERAL_ERROR_BASE + 18) /* Data is malformed or invalid */
 #define KERRNO_DONT_DO_THAT                      (KERRNO_GENERAL_ERROR_BASE + 19) /* Operation is explicitly unsupported */
+#define KERRNO_DEBUG                             (KERRNO_GENERAL_ERROR_BASE + 20) /* Only for debug builds */
+#define KERRNO_PROBE_DEFER                      (KERRNO_GENERAL_ERROR_BASE + 21) /* Driver requests probe retry */
 
+#define KERRNO_UNSUCCESS                         ((int)~0)
 #define KERRNO_SUCCESSES                         ((int)0)
 
 /* Kernel Kit Errors */

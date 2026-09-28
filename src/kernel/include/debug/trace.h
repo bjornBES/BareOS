@@ -15,13 +15,16 @@
 typedef enum
 {
     FUNC_ENTER = 0,
-    LVL_WARNING = 0xEE,
-    LVL_FIX = 0xEF, // fix
-    LVL1 = 0xF0, // debug
-    LVL2 = 0xF1, // info
-    LVL3 = 0xF2, //
-    LVL4 = 0xF3,
-    LVL5 = 0xF4
+    LVL1 = 0x1, // debug
+    LVL2 = 0x2, // info
+    LVL3 = 0x3, //
+    LVL4 = 0x4,
+    LVL5 = 0x5,
+    LVL_WARNING = 0xE0,
+    LVL_FIX, // fix
+    LVL_ERR, // error
+    LVL_CRIT, // crit
+    LVL_BUG = 0xFF,
 } trace_level_t;
 
 void trace(fd_t file, trace_level_t level, char *fmt, ...);

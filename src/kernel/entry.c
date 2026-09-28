@@ -8,15 +8,19 @@
  * -----
  */
 
+#include "init.h"
+
 #include <boot/params.h>
 #include "setup.h"
 
 #include "mm/pmm/pmm.h"
 #include "mm/ioremap.h"
 
+#include "drivers/driver.h"
+#include "drivers/bus.h"
+
 #include "ivt/ivt.h"
 
-#include "init.h"
 #include "stdio.h"
 #include "debug/debug.h"
 
@@ -38,11 +42,22 @@ void hexdump(void *ptr, size_t len, size_t size)
 
 NORETURN __init void kernel_entry(boot_params_t *boot_params)
 {
+    extern char __initcall_start;
+    initcall_t *funcs = (initcall_t *)&__initcall_start;
+    while (*funcs != NULL)
+    {
+        trace_debug("entry", "init func %p", *funcs);
+        status_t ret = (*funcs)();
+        if (ret != KERRNO_SUCCESSES)
+        {
+            KERNEL_PANIC("entry", "init function at %p returned non zero", *funcs);
+        }
+        funcs++;
+    }
+
     pmm_early_init(boot_params);
-
-    ioremap_init();
-
-    ivt_init();
+    
+    // TODO maybe also call Core and PostCore around here?
 
     arch_setup(boot_params);
 

@@ -99,6 +99,8 @@ void debug_enter_func(const char *module, const char *function, const char *fmt,
 #define trace_debug(module, ...) trace_with_id(4, LVL1, module, __VA_ARGS__)
 #define trace_info(module, ...)  trace_with_id(4, LVL2, module, __VA_ARGS__)
 #define trace_warn(module, ...)  trace_with_id(4, LVL_WARNING, module, __VA_ARGS__)
+#define trace_err(module, ...)   trace_with_id(4, LVL_ERR, module, __VA_ARGS__)
+#define trace_crit(module, ...)  trace_with_id(4, LVL_CRIT, module, __VA_ARGS__)
 
 #define ENTER_FUNC(args, ...)                                                     \
     {                                                                             \

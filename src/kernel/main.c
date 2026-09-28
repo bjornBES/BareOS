@@ -19,6 +19,10 @@
 
 #include "debug/debug.h"
 
+#include "pci/pci.h"
+
+#include "vfs/vfs.h"
+
 #include "thread/thread.h"
 #include "sched/sched.h"
 
@@ -26,20 +30,40 @@
 
 #define MODULE "main"
 
-void kernel_main(boot_params_t *boot_params)
+boot_params_t *main_boot_params;
+
+NORETURN void kernel_main()
 {
-    ENTER_FUNC("%p", boot_params);
+    ENTER_FUNC("", 0);
+
+    trace_info(NO_MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
+    trace_info(NO_MODULE, "timer_now_ns()    = %lld", timer_now_ns());
+
+    pci_initialize();
+
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
+    
     for (;;)
     {
         ;
     }
 }
 
-THREAD_WARPER_NO_RETURN(kernel_main, boot_params_t *);
+THREAD_WARPER_NO_RETURN_ARG(kernel_main);
 
 __init void kernel_early_main(boot_params_t *boot_params)
 {
-    smp_init(boot_params);
+    main_boot_params = boot_params;
+
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_SUBSYS);
+
+    vfs_initialize();
+
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_ROOTFS);
+
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_DEVICE);
+
+    smp_init(main_boot_params);
 
     fadt_parse();
 
@@ -48,13 +72,13 @@ __init void kernel_early_main(boot_params_t *boot_params)
 
     device_debug();
 
-    thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_main), (uintptr_t)boot_params, 0);
+    thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_main), 0, 0);
     sched_init(main_thread);
 
     trace_info(MODULE, "jump to kernel_main");
 
     schedule(NULL);
-    
+
     for (;;)
     {
         ;
