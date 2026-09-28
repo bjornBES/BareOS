@@ -11,6 +11,9 @@
 #include "dev/device.h"
 #include "dev/device_id.h"
 
+#include "drivers/driver.h"
+#include "drivers/bus.h"
+
 #include "kerrno.h"
 
 #include "stdio.h"
@@ -33,9 +36,9 @@ int device_register_under_dev_id(device_t *dev, dev_t device_id)
         return -EINVAL; // TODO
     }
 
-    trace_info(MODULE, "device is a partition of %s", dev->class_name);
-    uint32_t class_id = device_id_get_next_class_id(dev->class_name);
-    snprintf(dev->name, DEVICE_NAME_MAX, "%sp%u", dev->class_name, class_id);
+    trace_info(MODULE, "device is a partition of %s", dev->init_name);
+    uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+    snprintf(dev->name, DEVICE_NAME_MAX, "%sp%u", dev->init_name, class_id);
     uint64_t raw_device = DEVICE(device_id);
     dev->devt.id = MKDEV_KERNEL(dev->class, raw_device, class_id);
 
@@ -71,14 +74,20 @@ status_t device_register(device_t *dev)
         return -EINVAL;
     }
 
-    if (dev->class_name != NULL)
+    if (dev->driver == NULL)
     {
-        uint32_t class_id = device_id_get_next_class_id(dev->class_name);
-        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->class_name, class_id);
+        bus_probe_device(dev);
+    }
+
+    if (dev->init_name != NULL)
+    {
+        uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
     }
     else
     {
         log_err(MODULE, "class name is NULL for type %u", dev->class);
+        return KERRNO_UNSUCCESS;
     }
     dev->id = device_id_get_id(dev);
     dev->devt.device = dev->id;

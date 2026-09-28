@@ -52,34 +52,6 @@ page_table_t kernel_page;
 
 bool paging_disable_print = false;
 
-void stack_trace(uint32_t max_frames)
-{
-    // ENTER_FUNC("%u, %p", max_frames, regs);
-    vaddr_t bp;
-    inline_asm("mov %0, rbp" : "=r"(bp));
-
-    typedef struct
-    {
-        vaddr_t bp;
-        vaddr_t ip;
-    } stack_frame_t;
-
-    stack_frame_t *frame = (stack_frame_t *)bp;
-
-    trace_debug(MODULE, "Stack trace:");
-    for (uint32_t i = 0; i < max_frames; i++)
-    {
-        // sanity check — bail if EBP looks invalid
-        if (!frame || frame->ip == 0)
-        {
-            break;
-        }
-
-        trace_debug(MODULE, "  [%u] ip = %p, bp = %p", i, frame->ip, frame->bp);
-        frame = (stack_frame_t *)frame->bp;
-    }
-}
-
 int mmu_arch_page_fault(intr_frame_t *frame)
 {
     // irq_arch_disable();
@@ -169,8 +141,6 @@ void mmu_arch_init(boot_params_t *bp)
     ivt_set_handler(EXC_FAULT, mmu_arch_page_fault);
 
     paging_print_tree(&kernel_page);
-
-    pmm_init();
 }
 
 status_t mmu_arch_load_table(page_table_t *table)
@@ -182,7 +152,7 @@ status_t mmu_arch_load_table(page_table_t *table)
 
 size_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu_flags_t flags)
 {
-    // this is done becurse the kernel should bbe able to map with 2 MB pages only 4 KB for the kernel
+    // this is done becurse the kernel should be able to map with 2 MB pages only 4 KB for the kernel
     // and then other systems like the DMA can map with 2 MB pages.
     flags.large = 0;
     if (!paging_disable_print)

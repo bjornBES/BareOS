@@ -10,4 +10,6 @@
 
 #pragma once
 
-void pit_init();
+#include <types.h>
+
+status_t pit_init();

@@ -8,4 +8,8 @@
  * -----
  */
 
-#define ENTER_MODULE(arch, sub_system) arch "-" sub_system
+#pragma once
+
+#include "init.h"
+
+#define MODULE_INIT(x)	INITCALL(x)
