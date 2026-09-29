@@ -183,7 +183,7 @@ status_t pmm_insert_resource(boot_params_t *params)
     return KERRNO_SUCCESSES;
 }
 
-INTERNAL static paddr_t bump_alloc()
+INTERNAL_INLINE paddr_t bump_alloc()
 {
     if (bump_current >= bump_end)
     {
@@ -194,7 +194,7 @@ INTERNAL static paddr_t bump_alloc()
     return frame;
 }
 
-static inline size_t pmm_frame_idx(paddr_t phys)
+INTERNAL_INLINE size_t pmm_frame_idx(paddr_t phys)
 {
     return phys >> 12;
 }

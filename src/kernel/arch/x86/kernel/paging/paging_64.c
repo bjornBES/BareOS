@@ -96,14 +96,14 @@ mmu_flags_t pte_to_mm_flags(paging_flags pte)
     return f;
 }
 
-INTERNAL INLINE paddr_t read_cr3(void)
+INTERNAL_INLINE paddr_t read_cr3(void)
 {
     paddr_t val;
     inline_asm("mov %0, cr3" : "=r"(val));
     return val;
 }
 
-INTERNAL INLINE void assert_physmap_roundtrip(const char *where, paddr_t phys)
+INTERNAL_INLINE void assert_physmap_roundtrip(const char *where, paddr_t phys)
 {
     vaddr_t v = phys_to_virt_auto(phys);
     paddr_t back = virt_to_phys_auto(v);
@@ -113,7 +113,7 @@ INTERNAL INLINE void assert_physmap_roundtrip(const char *where, paddr_t phys)
     }
 }
 
-INLINE vaddr_t get_next(page_table_entry64 *entry, paging_level level)
+INTERNAL_INLINE vaddr_t get_next(page_table_entry64 *entry, paging_level level)
 {
     if (!paging_disable_print)
     {
@@ -148,7 +148,7 @@ INLINE vaddr_t get_next(page_table_entry64 *entry, paging_level level)
     return result;
 }
 
-INLINE void paging64_make_entry(page_table_entry64 *entry, paddr_t addr, paging_level level, mmu_flags_t flags)
+INTERNAL_INLINE void paging64_make_entry(page_table_entry64 *entry, paddr_t addr, paging_level level, mmu_flags_t flags)
 {
     entry->raw = 0;
     if (level != PAGING_LEVEL_PT)
@@ -790,7 +790,7 @@ done_map:
     return PAGE_SIZE;
 }
 
-INTERNAL INLINE status_t paging64_table_is_empty(page_table_entry64 *entries, int level)
+INTERNAL_INLINE status_t paging64_table_is_empty(page_table_entry64 *entries, int level)
 {
     for (int i = 0; i < 512; i++)
     {

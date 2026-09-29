@@ -101,7 +101,7 @@ uint64_t hpet_ticks_to_ns(timer_source_t *self, uint64_t ticks)
     return (ticks * 1000000000ull) / hpet_freq;
 }
 
-static inline hpet_comparator_t *hpet_alloc_comparator()
+INTERNAL_INLINE hpet_comparator_t *hpet_alloc_comparator()
 {
     for (size_t i = 0; i < comparator_count; i++)
     {

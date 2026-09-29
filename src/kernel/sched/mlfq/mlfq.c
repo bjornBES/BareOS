@@ -33,7 +33,7 @@ typedef struct
     int count;
 } mlfq_data_t;
 
-static inline int priority_to_bucket(uint8_t priority)
+INTERNAL_INLINE int priority_to_bucket(uint8_t priority)
 {
     return (priority * MLFQ_NUM_BUCKETS) / 256; // 0-63->0, 64-127->1, 128-191->2, 192-255->3
 }

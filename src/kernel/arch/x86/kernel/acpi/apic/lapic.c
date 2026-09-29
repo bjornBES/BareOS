@@ -45,7 +45,7 @@ typedef struct lapic_timer_priv
 vaddr_t local_apic_base;
 extern x86_arch_data_t arch_runtime_data;
 
-inline void lapic_write_icr(uint32_t high, uint32_t low)
+void lapic_write_icr(uint32_t high, uint32_t low)
 {
     if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
     {
@@ -56,7 +56,7 @@ inline void lapic_write_icr(uint32_t high, uint32_t low)
     *(volatile uint32_t *)(local_apic_base + LAPIC_REG_ICR_LOW) = (uint32_t)low;
 }
 
-inline void lapic_write(uint32_t reg, uint64_t value)
+void lapic_write(uint32_t reg, uint64_t value)
 {
     if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
     {
@@ -66,7 +66,7 @@ inline void lapic_write(uint32_t reg, uint64_t value)
     *(volatile uint32_t *)(local_apic_base + reg) = (uint32_t)value;
 }
 
-inline uint64_t lapic_read(uint32_t reg)
+uint64_t lapic_read(uint32_t reg)
 {
     if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
     {
@@ -75,7 +75,7 @@ inline uint64_t lapic_read(uint32_t reg)
     return (uint64_t)*(volatile uint32_t *)(local_apic_base + reg);
 }
 
-inline uint32_t lapic_get_id()
+uint32_t lapic_get_id()
 {
     if (arch_runtime_data.cpuid.leaf_0x1_0->x2apic)
     {

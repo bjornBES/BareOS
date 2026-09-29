@@ -15,7 +15,7 @@
 #include "defs.h"
 
 
-INLINE char *strcpy(char *dest, const char *src)
+static INLINE char *strcpy(char *dest, const char *src)
 {
     char *origDst = dest;
 
@@ -29,7 +29,7 @@ INLINE char *strcpy(char *dest, const char *src)
     return origDst;
 }
 
-INLINE char *strncpy(char *dest, const char *src, size_t count)
+static INLINE char *strncpy(char *dest, const char *src, size_t count)
 {
     char *origDst = dest;
     inline_asm(
@@ -47,7 +47,7 @@ INLINE char *strncpy(char *dest, const char *src, size_t count)
     return origDst;
 }
 
-INLINE char *strcat(char *dest, const char *src)
+static INLINE char *strcat(char *dest, const char *src)
 {
     char *origDst = dest;
     inline_asm(
@@ -63,7 +63,7 @@ INLINE char *strcat(char *dest, const char *src)
     return origDst;
 }
 
-INLINE char *strncat(char *dest, const char *src, size_t count)
+static INLINE char *strncat(char *dest, const char *src, size_t count)
 {
     char *origDst = dest;
     inline_asm(
@@ -89,7 +89,7 @@ INLINE char *strncat(char *dest, const char *src, size_t count)
     return origDst;
 }
 
-INLINE int strcmp(const char *cs, const char *ct)
+static INLINE int strcmp(const char *cs, const char *ct)
 {
     int res;
     inline_asm(
@@ -109,7 +109,7 @@ INLINE int strcmp(const char *cs, const char *ct)
     return res;
 }
 
-INLINE int strncmp(const char *cs, const char *ct, size_t count)
+static INLINE int strncmp(const char *cs, const char *ct, size_t count)
 {
     int res;
     inline_asm(
@@ -132,7 +132,7 @@ INLINE int strncmp(const char *cs, const char *ct, size_t count)
     return res;
 }
 
-INLINE char *strchr(const char *s, int c)
+static INLINE char *strchr(const char *s, int c)
 {
     while (*s != (char)c)
     {
@@ -144,7 +144,7 @@ INLINE char *strchr(const char *s, int c)
     return (char *)s;
 }
 
-INLINE size_t strlen(const char *s)
+static INLINE size_t strlen(const char *s)
 {
     size_t res = __SIZE_MAX__;
     inline_asm(
@@ -152,7 +152,7 @@ INLINE size_t strlen(const char *s)
     return ~res - 1;
 }
 
-INLINE size_t strnlen(const char *s, size_t count)
+static INLINE size_t strnlen(const char *s, size_t count)
 {
     size_t res;
     inline_asm(

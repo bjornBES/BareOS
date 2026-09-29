@@ -51,7 +51,7 @@ extern x86_arch_data_t arch_runtime_data;
 #define wrmsr(msr, value) msr_set_64(msr, value)
 #define rdmsr(msr)        msr_get_64(msr)
 
-static inline void msr_get_32(uint32_t msr, uint32_t *low, uint32_t *high)
+FORCE_INLINE void msr_get_32(uint32_t msr, uint32_t *low, uint32_t *high)
 {
     if (!arch_runtime_data.has_msr)
     {
@@ -62,7 +62,7 @@ static inline void msr_get_32(uint32_t msr, uint32_t *low, uint32_t *high)
     inline_asm("rdmsr" : "=a"(*low), "=d"(*high) : "c"(msr));
 }
 
-static inline void msr_set_32(uint32_t msr, uint32_t low, uint32_t high)
+FORCE_INLINE void msr_set_32(uint32_t msr, uint32_t low, uint32_t high)
 {
     if (!arch_runtime_data.has_msr)
     {
@@ -71,7 +71,7 @@ static inline void msr_set_32(uint32_t msr, uint32_t low, uint32_t high)
     inline_asm("wrmsr" : : "a"(low), "d"(high), "c"(msr));
 }
 
-static inline uint64_t msr_get_64(uint32_t msr)
+FORCE_INLINE uint64_t msr_get_64(uint32_t msr)
 {
     if (!arch_runtime_data.has_msr)
     {
@@ -83,7 +83,7 @@ static inline uint64_t msr_get_64(uint32_t msr)
     return ((uint64_t)high << 32) | low;
 }
 
-static inline void msr_set_64(uint32_t msr, uint64_t value)
+FORCE_INLINE void msr_set_64(uint32_t msr, uint64_t value)
 {
     if (!arch_runtime_data.has_msr)
     {

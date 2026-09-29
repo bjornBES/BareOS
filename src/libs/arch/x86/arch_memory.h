@@ -13,7 +13,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-inline static void *memcpy(void *dest, const void *src, size_t n)
+#include "defs.h"
+
+static INLINE void *memcpy(void *dest, const void *src, size_t n)
 {
     char *origDst = (char*)dest;
     __asm__(
@@ -22,7 +24,7 @@ inline static void *memcpy(void *dest, const void *src, size_t n)
     return origDst;
 }
 
-inline static void *memset(void *s, int c, size_t n)
+static INLINE void *memset(void *s, int c, size_t n)
 {
     char *origDst = (char*)s;
     __asm__(
@@ -30,7 +32,7 @@ inline static void *memset(void *s, int c, size_t n)
 
     return origDst;
 }
-inline static void *memset32(void *s, int c, size_t n)
+static INLINE void *memset32(void *s, int c, size_t n)
 {
     char *origDst = (char*)s;
     __asm__(
@@ -39,7 +41,7 @@ inline static void *memset32(void *s, int c, size_t n)
     return origDst;
 }
 
-inline static int memcmp(const char *cs, const char *ct, size_t num)
+static INLINE int memcmp(const char *cs, const char *ct, size_t num)
 {
     int ret;
     __asm__(
@@ -50,7 +52,7 @@ inline static int memcmp(const char *cs, const char *ct, size_t num)
     return ret;
 }
 
-inline static void *memmove(void *dest, const void *src, size_t n)
+static INLINE void *memmove(void *dest, const void *src, size_t n)
 {
     char *origDst = (char*)dest;
     __asm__(
@@ -71,7 +73,7 @@ inline static void *memmove(void *dest, const void *src, size_t n)
     return origDst;
 }
 
-inline static int memchr(const char *s, int c, size_t count)
+static INLINE int memchr(const char *s, int c, size_t count)
 {
     int ret;
     __asm__(
@@ -87,7 +89,7 @@ inline static int memchr(const char *s, int c, size_t count)
     return ret;
 }
 
-inline static void *memscan(void *s, int c, size_t size)
+static INLINE void *memscan(void *s, int c, size_t size)
 {
     void *origDst = s;
     __asm__(

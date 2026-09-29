@@ -32,22 +32,24 @@
 #define USED                  __attribute__((used))
 #define UNUSED                __attribute__((unused))
 
-#define INTERNAL
+#define INTERNAL              static
 
-#define UNREACHABLE()       __builtin_unreachable()
+#define UNREACHABLE()         __builtin_unreachable()
 
-#define INLINE              static inline
-#define ALWAYS_INLINE       inline __attribute__((always_inline))
+#define INLINE                inline
+#define INTERNAL_INLINE       INTERNAL inline
+#define FORCE_INLINE          static inline __attribute__((always_inline))
+#define ALWAYS_INLINE         inline __attribute__((always_inline))
 
-#define BTF_TYPE_TAG(value) __attribute__((btf_type_tag(#value)))
+#define BTF_TYPE_TAG(value)   __attribute__((btf_type_tag(#value)))
 
-#define __user              BTF_TYPE_TAG(user)
-#define __percpu            BTF_TYPE_TAG(percpu)
+#define __user                BTF_TYPE_TAG(user)
+#define __percpu              BTF_TYPE_TAG(percpu)
 
-#define inline_asm          __asm__ __volatile__
+#define inline_asm            __asm__ __volatile__
 
-#define CONCAT_(a, b)       a##b
-#define CONCAT(a, b)        CONCAT_(a, b)
+#define CONCAT_(a, b)         a##b
+#define CONCAT(a, b)          CONCAT_(a, b)
 
-#define STRINGIFY_(x...)    #x
-#define STRINGIFY(x...)     STRINGIFY_(x)
+#define STRINGIFY_(x...)      #x
+#define STRINGIFY(x...)       STRINGIFY_(x)

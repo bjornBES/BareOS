@@ -14,7 +14,7 @@
 #include "module.h"
 
 #define MODULE_DRIVER(__driver, __register, __unregister, ...) \
-    static status_t __init __driver##_init()                        \
+    static status_t __init __driver##_init()                   \
     {                                                          \
         return __register(&(__driver));                        \
     }                                                          \

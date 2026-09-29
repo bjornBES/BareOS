@@ -11,6 +11,7 @@
 #pragma once
 
 #include <types.h>
+#include <defs.h>
 
 typedef uint8_t priority_t;
 

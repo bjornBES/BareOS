@@ -23,12 +23,12 @@
 
 static tid_t next_tid = 0;
 
-static INTERNAL ALWAYS_INLINE tid_t get_tid()
+INTERNAL ALWAYS_INLINE tid_t get_tid()
 {
     return next_tid++;
 }
 
-INTERNAL INLINE thread_t *thread_allocate()
+INTERNAL_INLINE thread_t *thread_allocate()
 {
     thread_t *t = kmalloc(sizeof(thread_t));
     if (t == NULL)

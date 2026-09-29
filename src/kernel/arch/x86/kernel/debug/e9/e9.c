@@ -13,7 +13,7 @@
 #include "kernel/io.h"
 #include <defs.h>
 
-INLINE void e9_putc(char c)
+INTERNAL_INLINE void e9_putc(char c)
 {
     outb(0xE9, c);
 }

@@ -112,7 +112,7 @@ void scheduler_tick(void *_)
     } */
 }
 
-INTERNAL INLINE cpu_t *pick_steal_victim(cpu_t *me)
+INTERNAL_INLINE cpu_t *pick_steal_victim(cpu_t *me)
 {
     // ENTER_FUNC(MODULE, "%p", me);
     cpu_t *busiest = NULL;
@@ -140,7 +140,7 @@ INTERNAL INLINE cpu_t *pick_steal_victim(cpu_t *me)
     }
     return (max_count > 1) ? busiest : NULL; // don't steal down to 0, leave victim something
 }
-INTERNAL INLINE thread_t *sched_next()
+INTERNAL_INLINE thread_t *sched_next()
 {
     cpu_t *me = cpu_arch_get_current();
 
@@ -365,7 +365,7 @@ try_again:
     return KERRNO_SUCCESSES;
 }
 
-static INTERNAL ALWAYS_INLINE void sched_algorithm_enqueue(sched_class_t *class, void *runq_data, thread_t *t)
+INTERNAL ALWAYS_INLINE void sched_algorithm_enqueue(sched_class_t *class, void *runq_data, thread_t *t)
 {
     if (t->in_queue)
     {

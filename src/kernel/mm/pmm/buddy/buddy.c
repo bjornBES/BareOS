@@ -70,7 +70,7 @@ int buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t order, pad
 
 int buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order);
 
-INLINE void list_push(buddy_order_t *o, buddy_free_node_t *node)
+INTERNAL_INLINE void list_push(buddy_order_t *o, buddy_free_node_t *node)
 {
     node->prev = NULL;
     node->next = o->free_list;
@@ -82,7 +82,7 @@ INLINE void list_push(buddy_order_t *o, buddy_free_node_t *node)
     o->count++;
 }
 
-INLINE void list_remove(buddy_order_t *o, buddy_free_node_t *node)
+INTERNAL_INLINE void list_remove(buddy_order_t *o, buddy_free_node_t *node)
 {
     if (node->prev)
     {
@@ -99,7 +99,7 @@ INLINE void list_remove(buddy_order_t *o, buddy_free_node_t *node)
     o->count--;
 }
 
-INLINE buddy_free_node_t *list_pop(buddy_order_t *o)
+INTERNAL_INLINE buddy_free_node_t *list_pop(buddy_order_t *o)
 {
     buddy_free_node_t *node = o->free_list;
     if (node)
@@ -109,24 +109,24 @@ INLINE buddy_free_node_t *list_pop(buddy_order_t *o)
     return node;
 }
 
-INLINE size_t buddy_block_index(buddy_t *global_buddy, paddr_t addr, size_t order)
+INTERNAL_INLINE size_t buddy_block_index(buddy_t *global_buddy, paddr_t addr, size_t order)
 {
     return ((addr - global_buddy->start) / PAGE_SIZE) >> order;
 }
 
-INLINE bool buddy_bit_test(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL_INLINE bool buddy_bit_test(buddy_t *global_buddy, size_t order, size_t index)
 {
     size_t bit = global_buddy->order_bit_offset[order] + index;
     return (global_buddy->free_bitmap[bit / 8] >> (bit % 8)) & 1;
 }
 
-INLINE void buddy_bit_set(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL_INLINE void buddy_bit_set(buddy_t *global_buddy, size_t order, size_t index)
 {
     size_t bit = global_buddy->order_bit_offset[order] + index;
     global_buddy->free_bitmap[bit / 8] |= (1 << (bit % 8));
 }
 
-INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL_INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
 {
     size_t bit = global_buddy->order_bit_offset[order] + index;
     global_buddy->free_bitmap[bit / 8] &= ~(1 << (bit % 8));

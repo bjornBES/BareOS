@@ -55,7 +55,7 @@ static debug_level_t LogLevelDebugLevel[] =
 
 spinlock_t trace_lock = {0};
 
-static inline void get_time(uint64_t *out_ns, uint64_t *out_ms, uint32_t *out_sec, uint32_t *out_min, uint32_t *out_hour)
+INTERNAL_INLINE void get_time(uint64_t *out_ns, uint64_t *out_ms, uint32_t *out_sec, uint32_t *out_min, uint32_t *out_hour)
 {
     uint64_t ns = 0 /* timer_now_ns() */;
     if (ns == 0)
@@ -79,7 +79,7 @@ static inline void get_time(uint64_t *out_ns, uint64_t *out_ms, uint32_t *out_se
     *out_hour = hour % 24;
 }
 
-static inline void get_time_string(char *line)
+INTERNAL_INLINE void get_time_string(char *line)
 {
     uint64_t ns = timer_now_ns();
     if (ns == 0)
@@ -97,7 +97,7 @@ static inline void get_time_string(char *line)
     line[count] = '\0';
 }
 
-static inline void get_ids(char *id_log)
+INTERNAL_INLINE void get_ids(char *id_log)
 {
     int count = 0;
     cpu_t *cpu = cpu_arch_get_current();

@@ -26,7 +26,7 @@ typedef struct pci_dynid
     pci_device_id_t id;
 } pci_dynid_t;
 
-INTERNAL INLINE pci_device_id_t *pci_match_one_id(pci_device_id_t *id, pci_device_id_t *dev_id)
+INTERNAL_INLINE pci_device_id_t *pci_match_one_id(pci_device_id_t *id, pci_device_id_t *dev_id)
 {
     if ((id->vendor == PCI_ANY_ID || id->vendor == dev_id->vendor) &&
         (id->device == PCI_ANY_ID || id->device == dev_id->device) &&

@@ -25,7 +25,7 @@ typedef struct {
     uint32_t edx;
 } cpuid_regs;
 
-INLINE SECTION("arch_text") void cpuid(uint32_t leaf, uint32_t sub_leaf, cpuid_regs* outregs)
+INTERNAL_INLINE SECTION("arch_text") void cpuid(uint32_t leaf, uint32_t sub_leaf, cpuid_regs* outregs)
 {
     inline_asm("cpuid"
                 : "=a"(outregs->eax), "=b"(outregs->ebx), "=c"(outregs->ecx), "=d"(outregs->edx)
