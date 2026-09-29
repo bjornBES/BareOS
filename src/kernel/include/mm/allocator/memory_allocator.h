@@ -19,12 +19,3 @@ typedef struct {
 void allocator_print_status();
 void allocator_print_blocks();
 
-void* kmalloc(size_t size);
-int kfree(void* ptr);
-void* kcalloc(size_t num, size_t size);
-void* krealloc(void* ptr, size_t size);
-
-void* malloc(size_t size);
-int free(void* ptr);
-void* calloc(size_t num, size_t size);
-void* realloc(void* ptr, size_t size);

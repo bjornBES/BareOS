@@ -119,12 +119,11 @@ status_t kfree(void *mem)
 	return KERRNO_SUCCESSES;
 }
 
-void *kmalloc(size_t size)
+INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 {
 	if (!size)
 	{
-		KERRNO_NO_RETURN(KERRNO_BAD_VALUE, "size is zero");
-		return NULL;
+		KERRNO_RETURN(KERRNO_BAD_VALUE, "size is zero");
 	}
 
 	vaddr_t mem = heap_begin;
@@ -153,7 +152,8 @@ void *kmalloc(size_t size)
 			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a, a + sizeof(alloc_t));
 			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
 			memory_used += size + 0x10 + sizeof(alloc_t);
-			return (void *)(mem + sizeof(alloc_t));
+			*ret = (void *)(mem + sizeof(alloc_t));
+			return KERRNO_SUCCESSES;
 		}
 
 		mem += a->size;
@@ -163,8 +163,7 @@ void *kmalloc(size_t size)
 		{
 			if (alloc_new_page() != KERRNO_SUCCESSES)
 			{
-				KERRNO_NO_RETURN(KERRNO_OOM, "Out of memory");
-				return NULL;
+				KERRNO_RETURN(KERRNO_OOM, "Out of memory");
 			}
 		}
 	}
@@ -175,8 +174,7 @@ void *kmalloc(size_t size)
 		{
 			if (alloc_new_page() != KERRNO_SUCCESSES)
 			{
-				KERRNO_NO_RETURN(KERRNO_OOM, "Out of memory");
-				return NULL;
+				KERRNO_RETURN(KERRNO_OOM, "Out of memory");
 			}
 		}
 		// KERNEL_PANIC(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
@@ -195,50 +193,74 @@ void *kmalloc(size_t size)
 	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
 
 	memory_used += size + 0x10 + sizeof(alloc_t);
-	return (char *)((vaddr_t)alloc + sizeof(alloc_t));
+	*ret = (char *)((vaddr_t)alloc + sizeof(alloc_t));
+	return KERRNO_SUCCESSES;
 }
 
-void *kcalloc(size_t num, size_t size)
+INTERNAL_INLINE status_t allocator_calloc(size_t num, size_t size, void **out_ret)
 {
 	size_t total_size = num * size;
-	void *ptr = kmalloc(total_size);
-	if (ptr)
+	void *ptr;
+	status_t ret = allocator_malloc(total_size, &ptr);
+	if (ret == KERRNO_SUCCESSES)
 	{
 		memset(ptr, 0, total_size);
-		return ptr;
+		*out_ret = ptr;
+		return KERRNO_SUCCESSES;
 	}
-	return NULL;
+	return ret;
 }
-void *krealloc(void *ptr, size_t size)
+INTERNAL_INLINE status_t allocator_realloc(void *ptr, size_t size, void **out_ret)
 {
-	void *new_ptr = kmalloc(size);
-	if (new_ptr)
+	void *new_ptr;
+	status_t ret = allocator_malloc(size, &new_ptr);
+	if (ret == KERRNO_SUCCESSES)
 	{
 		alloc_t *old = (alloc_t *)((vaddr_t)ptr - sizeof(alloc_t));
 		memcpy(new_ptr, ptr, old->size < size ? old->size : size);
-		kfree(ptr);
+		ret = kfree(ptr);
+		if (ret != KERRNO_SUCCESSES)
+		{
+			return ret;
+		}
 	}
-	return new_ptr;
-}
-
-void* malloc(size_t size)
-{
-    return kmalloc(size);
-}
-int free(void* ptr)
-{
-	if (ptr == NULL)
+	else
 	{
-		KERRNO_RETURN(KERRNO_BAD_VALUE, "ptr was null");
+		return ret;
 	}
-    return kfree(ptr);
-}
-void* calloc(size_t num, size_t size)
-{
-    return kcalloc(num, size);
-}
-void* realloc(void* ptr, size_t size)
-{
-    return krealloc(ptr, size);
+	*out_ret = new_ptr;
+	return KERRNO_SUCCESSES;
 }
 
+void* kmalloc(size_t size)
+{
+    void *ret;
+    status_t status = allocator_malloc(size, &ret);
+    if (status != KERRNO_SUCCESSES)
+    {
+        return NULL;
+    }
+    return ret;
+}
+
+void* kcalloc(size_t num, size_t size)
+{
+    void *ret;
+    status_t status = allocator_calloc(num, size, &ret);
+    if (status != KERRNO_SUCCESSES)
+    {
+        return NULL;
+    }
+    return ret;
+}
+
+void* krealloc(void* ptr, size_t size)
+{
+    void *ret;
+    status_t status = allocator_realloc(ptr, size, &ret);
+    if (status != KERRNO_SUCCESSES)
+    {
+        return NULL;
+    }
+    return ret;
+}
