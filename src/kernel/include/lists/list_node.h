@@ -14,8 +14,23 @@
 
 #include "sync/spinlock.h"
 
-#define container_of(ptr, type, member) \
+#define LIST_ENTRY_NAME   this_node
+
+#define LIST_ENTRY_THIS() list_node_t LIST_ENTRY_NAME
+
+#define container_of(ptr, type, member)                \
     ((type *)((char *)(ptr) - offsetof(type, member)))
+
+#define NODE_TO_TYPE_DEF(type, member)                   \
+    ALWAYS_INLINE type *to_##type(void *node)            \
+    {                                                    \
+        return (type *)container_of(node, type, member); \
+    }
+#define THIS_TO_TYPE_DEF(type)                                                      \
+    ALWAYS_INLINE type *to_##type(type *node)                                       \
+    {                                                                               \
+        return (type *)container_of(&node->LIST_ENTRY_NAME, type, LIST_ENTRY_NAME); \
+    }
 
 typedef struct list_node
 {
