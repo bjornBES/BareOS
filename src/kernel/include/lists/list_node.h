@@ -22,14 +22,14 @@
     ((type *)((char *)(ptr) - offsetof(type, member)))
 
 #define NODE_TO_TYPE_DEF(type, member)                   \
-    ALWAYS_INLINE type *to_##type(void *node)            \
+    ALWAYS_INLINE type *to_##type(list_node_t *node)     \
     {                                                    \
         return (type *)container_of(node, type, member); \
     }
-#define THIS_TO_TYPE_DEF(type)                                                      \
-    ALWAYS_INLINE type *to_##type(type *node)                                       \
-    {                                                                               \
-        return (type *)container_of(&node->LIST_ENTRY_NAME, type, LIST_ENTRY_NAME); \
+#define THIS_TO_TYPE_DEF(type)                                    \
+    ALWAYS_INLINE type *to_##type(list_node_t *node)              \
+    {                                                             \
+        return (type *)container_of(node, type, LIST_ENTRY_NAME); \
     }
 
 typedef struct list_node
@@ -45,5 +45,5 @@ typedef struct
     spinlock_t list_lock;
     list_node_t *head;
     list_node_t *tail;
-    uint32_t count;
+    size_t count;
 } list_t;

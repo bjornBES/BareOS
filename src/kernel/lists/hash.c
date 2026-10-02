@@ -21,7 +21,7 @@
 
 #define MODULE "hash"
 
-status_t hash_map_crate(hash_map_t **out_mp, int max_capacity)
+status_t hash_map_create(hash_map_t **out_mp, int max_capacity)
 {
     hash_map_t *mp = kmalloc(sizeof(hash_map_t));
     mp->capacity = max_capacity;
@@ -36,7 +36,7 @@ status_t hash_map_crate(hash_map_t **out_mp, int max_capacity)
 #define FNV_OFFSET 14695981039346656037ul
 #define FNV_PRIME  1099511628211ul
 
-INTERNAL_INLINE uint64_t hash_key(hash_map_t *mp, const char *key)
+uint64_t hash_key(hash_map_t *mp, const char *key)
 {
     uint64_t hash = FNV_OFFSET;
     for (const char *p = key; *p; p++)
@@ -48,8 +48,17 @@ INTERNAL_INLINE uint64_t hash_key(hash_map_t *mp, const char *key)
     return index;
 }
 
-status_t insert(hash_map_t *mp, char *key, void *value)
+status_t hash_insert(hash_map_t *mp, char *key, void *value)
 {
+    ENTER_FUNC("%p, %s, %p", mp, key, value);
+    if (mp == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "hash map has not been initialized");
+    }
+    if (mp->arr == NULL)
+    {
+        KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "hash map has not been initialized");
+    }
     uint64_t bucket_index = hash_key(mp, key);
     hash_node_t *new_node = (hash_node_t *)kmalloc(sizeof(hash_node_t));
 
@@ -63,14 +72,23 @@ status_t insert(hash_map_t *mp, char *key, void *value)
     }
     else
     {
+        // KERRNO_RETURN(KERRNO_NAME_IN_USE, "key is already in use");
         new_node->next = mp->arr[bucket_index];
         mp->arr[bucket_index] = new_node;
     }
     return KERRNO_SUCCESSES;
 }
 
-status_t delete(hash_map_t *mp, char *key)
+status_t hash_delete(hash_map_t *mp, char *key)
 {
+    if (mp == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "hash map has not been initialized");
+    }
+    if (mp->arr == NULL)
+    {
+        KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "hash map has not been initialized");
+    }
     uint64_t bucket_index = hash_key(mp, key);
 
     hash_node_t *prev_node = NULL;
@@ -98,8 +116,16 @@ status_t delete(hash_map_t *mp, char *key)
     return KERRNO_SUCCESSES;
 }
 
-status_t search(hash_map_t *mp, char *key, hash_node_t **out)
+status_t hash_search(hash_map_t *mp, char *key, hash_node_t *out)
 {
+    if (mp == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "hash map has not been initialized");
+    }
+    if (mp->arr == NULL)
+    {
+        KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "hash map has not been initialized");
+    }
     uint64_t bucket_index = hash_key(mp, key);
 
     hash_node_t *bucket_head = mp->arr[bucket_index];
@@ -107,7 +133,10 @@ status_t search(hash_map_t *mp, char *key, hash_node_t **out)
     {
         if (bucket_head->key == key)
         {
-            out = bucket_head->value;
+            if (out != NULL)
+            {
+                out = bucket_head->value;
+            }
             return KERRNO_SUCCESSES;
         }
         bucket_head = bucket_head->next;
