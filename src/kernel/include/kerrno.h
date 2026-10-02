@@ -99,7 +99,7 @@
 #define KERRNO_BAD_DATA                          (KERRNO_GENERAL_ERROR_BASE + 18) /* Data is malformed or invalid */
 #define KERRNO_DONT_DO_THAT                      (KERRNO_GENERAL_ERROR_BASE + 19) /* Operation is explicitly unsupported */
 #define KERRNO_DEBUG                             (KERRNO_GENERAL_ERROR_BASE + 20) /* Only for debug builds */
-#define KERRNO_PROBE_DEFER                      (KERRNO_GENERAL_ERROR_BASE + 21) /* Driver requests probe retry */
+#define KERRNO_PROBE_DEFER                       (KERRNO_GENERAL_ERROR_BASE + 21) /* Driver requests probe retry */
 
 #define KERRNO_UNSUCCESS                         ((int)~0)
 #define KERRNO_SUCCESSES                         ((int)0)

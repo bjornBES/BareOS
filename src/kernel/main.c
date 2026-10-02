@@ -63,6 +63,11 @@ __init void kernel_early_main(boot_params_t *boot_params)
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_DEVICE);
 
+    while (true)
+    {
+    }
+    
+
     smp_init(main_boot_params);
 
     fadt_parse();

@@ -52,7 +52,11 @@ typedef void (*exitcall_t)();
 
 #define EARLY_INITCALL(fn)           DEFINE_INITCALL(fn, INITCALL_LVL_EARLY)
 #define ARCH_INITCALL(fn)            DEFINE_INITCALL(fn, INITCALL_LVL_ARCH)
+
+// After paging has been initialized
 #define CORE_INITCALL(fn)            DEFINE_INITCALL(fn, INITCALL_LVL_CORE)
+
+// After rsdt parsing and after moving the boot params
 #define POSTCORE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_POSTCORE)
 #define SUBSYS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_SUBSYS)
 #define FS_INITCALL(fn)              DEFINE_INITCALL(fn, INITCALL_LVL_FS)
