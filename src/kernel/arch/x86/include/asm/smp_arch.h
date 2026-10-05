@@ -22,4 +22,6 @@ status_t smp_arch_send_ipi(uint32_t id, interrupt_vector_t vector);
 status_t smp_arch_send_ipi_all(interrupt_vector_t vector);    // broadcast
 status_t smp_arch_send_ipi_others(interrupt_vector_t vector); // all except self
 
+status_t smp_arch_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg);
+
 void smp_arch_idle_thread();
