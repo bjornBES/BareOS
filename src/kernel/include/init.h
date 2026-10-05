@@ -27,11 +27,12 @@ typedef void (*exitcall_t)();
 #define INITCALL_LVL_ARCH       1
 #define INITCALL_LVL_CORE       2
 #define INITCALL_LVL_POSTCORE   3
-#define INITCALL_LVL_SUBSYS     4
-#define INITCALL_LVL_FS         5
+#define INITCALL_LVL_ARCHDONE   4
+#define INITCALL_LVL_SUBSYS     5
+#define INITCALL_LVL_FS         6
 #define INITCALL_LVL_ROOTFS     rootfs
-#define INITCALL_LVL_DEVICE     6
-#define INITCALL_LVL_PREUSER    7
+#define INITCALL_LVL_DEVICE     7
+#define INITCALL_LVL_PREUSER    8
 
 #define _CALL_INITCALL_FUNCTIONS(_name_)                                                   \
     {                                                                                      \
@@ -58,6 +59,7 @@ typedef void (*exitcall_t)();
 
 // After rsdt parsing and after moving the boot params
 #define POSTCORE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_POSTCORE)
+#define ARCHDONE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_ARCHDONE)
 #define SUBSYS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_SUBSYS)
 #define FS_INITCALL(fn)              DEFINE_INITCALL(fn, INITCALL_LVL_FS)
 #define ROOTFS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_ROOTFS)

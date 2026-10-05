@@ -42,7 +42,7 @@ NORETURN void kernel_main()
     pci_initialize();
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
-    
+
     for (;;)
     {
         ;
@@ -55,6 +55,10 @@ __init void kernel_early_main(boot_params_t *boot_params)
 {
     main_boot_params = boot_params;
 
+    CALL_INITCALL_FUNCTIONS(INITCALL_LVL_ARCHDONE);
+
+    smp_init(main_boot_params);
+
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_SUBSYS);
 
     vfs_initialize();
@@ -63,12 +67,9 @@ __init void kernel_early_main(boot_params_t *boot_params)
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_DEVICE);
 
-    while (true)
-    {
-    }
-    
-
-    smp_init(main_boot_params);
+    /*     while (true)
+        {
+        } */
 
     fadt_parse();
 

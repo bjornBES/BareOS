@@ -184,45 +184,45 @@ __init void arch_setup(boot_params_t *boot_params)
     rsdt_parse(bp_arch);
     
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_POSTCORE);
-
+    
     resource_dump(&mem_space.root);
-
+    
     // check CPUID.0x01:EDX[25] SSE
     // check CPUID.0x01:EDX[26] SSE2
-
+    
     // check CPUID.0x01:EDX[2] DE
-
+    
     // check CPUID.0x01:EDX[7] MCE
-
+    
     // check CPUID.0x01:ECX[21] x2APIC
     // check CPUID.0x01:EBX[23:16] APIC_ID_SPACE
     // check CPUID.0x01:EBX[31:24] INITIAL_APIC_ID
-
+    
     // check CPUID.0x01:ECX[24] FXSR (FXSAVE/FXRSTOR)
     // check CPUID.0x01:ECX[26] XSAVE
     // check CPUID.0x01:ECX[27] OSXSAVE
-
+    
     // check CPUID.0x07.0x00:EBX[0] FSGSBASE
-
+    
     // check CPUID.0x07.0x00:EBX[7] SMEP (Supervisor-Mode Execution Prevention)
     // check CPUID.0x07.0x00:EBX[9] ENH_REP_MOVSB_STOSB (Enhanced REP MOVSB/STOSB)
-
+    
     // check CPUID.0x07.0x00:EDX[29] ARCH_CAPABILITIES (IA32_ARCH_CAPABILITIES MSR)
     // check CPUID.0x07.0x00:EDX[30] CORE_CAPABILITIES (IA32_CORE_CAPABILITIES MSR)
-
+    
     // check CPUID.0x07.0x01:EAX[2:0] SHA512, SM3, SM4 instructions
     // check CPUID.0x07.0x01:EAX[12:10] REP MOVSB STOSB CMPSB instructions
-
+    
     // check CPUID.0x01:EDX[11] support the SYSENTER and SYSEXIT Instructions
     // check CPUID.0x80000001:EDX[11] syscall fast path
     // check CPUID.0x07.0x01:EAX[17] FRED
-
+    
     // check CPUID.0x07.0x01:EAX[20] NMI_SRC
-
+    
     // check CPUID.0x0D Processor Extended State
-
+    
     // check CPUID.0x14 Processor Trace
-
+    
     // check CPUID.0x16 Processor Frequency Information
 
     kernel_early_main(bp_arch);

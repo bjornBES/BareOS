@@ -11,7 +11,7 @@
 #pragma once
 
 #define BIT(x)                      (1ull << (x))
-#define BIT_RANGE(end, start)       (1ull << ((high) - (low) + 1) - 1)
+#define BIT_RANGE(high, low)        ((1ull << ((high) - (low) + 1)) - 1)
 
 #define BIT_SET(x, bit)             (x) |= (1 << (bit))
 #define BIT_UNSET(x, bit)           (x) &= ~(1 << (bit))

@@ -17,7 +17,7 @@
 #define KERRNO_NO_RETURN(number, ...)                                   \
     {                                                                   \
         log_err(MODULE, "%s:%u", __FILE__, __LINE__);                   \
-        log_err(MODULE, "func %s outputting %s", __FUNCTION__, number); \
+        log_err(MODULE, "func %s outputting %s", __FUNCTION__, #number); \
         logfl(MODULE, LVL_INFO, __VA_ARGS__);                           \
     }
 

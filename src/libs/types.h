@@ -36,9 +36,10 @@ typedef uint32_t gid_t;
 typedef uint32_t id_t;
 
 typedef int32_64 nlink_t;
-typedef uint16_t cpu_logical_id_t;
+typedef uint32_t cpu_logical_id_t;
 
 /// @brief the default return type of functions
 typedef int32_t status_t;
 
 typedef uint32_t gsi_t;
+typedef uint32_t kernel_irq_t;

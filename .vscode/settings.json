@@ -3,6 +3,7 @@
         "acpi",
         "ahci",
         "APIC",
+        "ARCHDONE",
         "ARGI",
         "ASMCALL",
         "bootable",

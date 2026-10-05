@@ -53,12 +53,12 @@ SECTIONS
         KEEP(*(.initcall5.init))
         QUAD(0x0)
 
-        initcallrootfs_start = .;
-        KEEP(*(.initcallrootfs.init))
-        QUAD(0x0)
-
         initcall6_start = .;
         KEEP(*(.initcall6.init))
+        QUAD(0x0)
+
+        initcallrootfs_start = .;
+        KEEP(*(.initcallrootfs.init))
         QUAD(0x0)
 
         initcall7_start = .;
@@ -67,6 +67,10 @@ SECTIONS
 
         initcall8_start = .;
         KEEP(*(.initcall8.init))
+        QUAD(0x0)
+
+        initcall9_start = .;
+        KEEP(*(.initcall9.init))
         QUAD(0x0)
 
         __initcall_end = .;

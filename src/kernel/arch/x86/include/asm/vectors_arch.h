@@ -22,22 +22,17 @@
 #define IRQ0                     0x20
 #define IRQ23                    0x37
 
-#define SCHED_SCHEDULE           0x7F
 #define EXC_SYSCALL              0x80
 
-#define KERNEL_VECTOR_START      0x90
-
-#define IPI_START                0x90
-#define IPI_CALL_FUNCTION_VECTOR 0x90
-#define IPI_CPUS_IDLE_VECTOR     0x91
-#define IPI_END_PRINTABLE        0xA0
-#define IPI_RESCHEDULE_VECTOR    0xA1
-#define IPI_END                  0xB0
-#define CPU_TIMER_VECTOR         0xC0
-
-#define PIC_MSI_VEC1             0xE0
-#define PIC_MSI_VEC2             0xE1
-#define PIC_MSI_VEC3             0xE2
-#define PIC_MSI_VEC4             0xE3
+#define MAX_IRQ_VECTORS          0xCF
+#define KERNEL_VECTOR_START      0xD0
+#define SCHED_SCHEDULE           0xD1
+#define IPI_START                0xD2
+#define IPI_CALL_FUNCTION_VECTOR 0xD2
+#define IPI_CPUS_IDLE_VECTOR     0xD3
+#define IPI_END_PRINTABLE        0xE0
+#define IPI_RESCHEDULE_VECTOR    0xE1
+#define IPI_END                  0xEE
+#define CPU_TIMER_VECTOR         0xEF
 
 #define MAX_VECTOR               255

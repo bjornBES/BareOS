@@ -11,52 +11,56 @@
 #include "irq/irq.h"
 #include "ivt/ivt.h"
 
+#include "cpu/cpu.h"
+
+#include "asm/cpu_arch.h"
+#include "asm/irq_arch.h"
+
 #include "asm/vectors_arch.h"
 
 #include "resource/resource.h"
 
+#include "memory.h"
 #include "kerrno.h"
 #include "panic.h"
 
+#include <array.h>
+
 #define MODULE "irq"
 
-typedef struct irq_handler
-{
-    uint8_t state;
-    irq_handler_func_t handler;
-    void *ctx;
-} irq_handler_t;
-
-irq_handler_t irq_handlers[MAX_VECTOR - IRQ_BASE];
+irq_descriptor_t irq_descriptors[MAX_IRQ_VECTORS - IRQ_BASE];
 
 irq_controller_t *current;
 
 int irq_handler(intr_frame_t *regs)
 {
-    gsi_t gsi = regs->interrupt - IRQ_BASE;
+    interrupt_vector_t vector = regs->interrupt;
 
-    if (irq_is_masked(gsi))
+    irq_handler_t *handler = irq_arch_get_handler(vector);
+
+    if (irq_is_masked(vector))
     {
-        irq_eoi(gsi);
+        irq_eoi(vector);
         return KERRNO_SUCCESSES;
     }
 
-    if (FLAG_IS_SET(irq_handlers[gsi].state, HANDLER_IN_USE))
+    if (FLAG_IS_SET(handler->state, HANDLER_IN_USE))
     {
-        irq_handlers[gsi].handler(regs, irq_handlers[gsi].ctx);
+        handler->handler(regs, handler->ctx);
     }
     else
     {
-        log_err(MODULE, "Unhandled IRQ %d base was %u", gsi, regs->interrupt);
+        log_err(MODULE, "Unhandled IRQ %d base was %u", vector, regs->interrupt);
         return KERRNO_SUCCESSES;
     }
 
-    irq_eoi(gsi);
+    irq_eoi(vector);
     return KERRNO_SUCCESSES;
 }
 
 status_t irq_initialize(irq_controller_t *(*get_ops)())
 {
+    ENTER_FUNC("%p", get_ops);
     irq_controller_t *controller = get_ops();
     if (controller->probe() != KERRNO_SUCCESSES)
     {
@@ -70,8 +74,17 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "%s failed initialize", controller->name);
     }
 
+    memset(irq_descriptors, 0, sizeof(irq_descriptors));
+    for (size_t i = 0; i < ARRAY_SIZE(irq_descriptors); i++)
+    {
+        irq_descriptors[i].cpu = ANY_CPU;
+        irq_descriptors[i].flags |= HANDLER_SHARED;
+    }
+
+    irq_descriptors[EXC_SYSCALL - IRQ_BASE].flags = HANDLER_IN_USE;
+
     resource_t *irqs = resource_create();
-    resource_request(&irq_space.root, irqs, IRQ_BASE, MAX_VECTOR - IRQ_BASE, "Kernel IRQ", RES_TYPE_RAM, RES_FLAG_NONE);
+    resource_request(&irq_space.root, irqs, IRQ_BASE, MAX_IRQ_VECTORS, "Kernel IRQ", RES_TYPE_RAM, RES_FLAG_NONE);
     resource_dump(&irq_space.root);
 
     current = get_ops();
@@ -79,69 +92,72 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
     return KERRNO_SUCCESSES;
 }
 
-status_t irq_register_handler(gsi_t gsi, irq_handler_func_t handler, void *ctx, irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target)
+status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler_func_t handler, void *ctx, irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target)
 {
-    interrupt_vector_t vector = gsi + IRQ_BASE;
-    trace_info(MODULE, "Registering IRQ handler (%p) on gsi %u/vector %d", handler, gsi, vector);
-    status_t status = ivt_set_handler(vector, irq_handler);
-    if (status != KERRNO_SUCCESSES)
+    ENTER_FUNC("0x%x, %u, %p, %p, %u, %u, 0x%x", irq, source, handler, ctx, trigger, polarity, target);
+    irq_descriptor_t *descriptor = &irq_descriptors[irq];
+    if (source == IRQ_SOURCE_MSI)
+    {
+        FLAG_SET(descriptor->flags, HANDLER_MSI);
+    }
+    FLAG_SET(descriptor->flags, HANDLER_IN_USE);
+    descriptor->id = irq;
+    descriptor->polarity = polarity;
+    descriptor->trigger = trigger;
+
+    status_t ret = irq_arch_register(descriptor, current, source, handler, ctx, target);
+
+    if (ret != KERRNO_SUCCESSES)
     {
         KERRNO_RETURN(KERRNO_PERMISSION_DENIED, "ivt entry already in use");
     }
-    irq_handlers[gsi].handler = handler;
-    irq_handlers[gsi].state = 0;
-    FLAG_SET(irq_handlers[gsi].state, HANDLER_IN_USE);
-    irq_handlers[gsi].ctx = ctx;
+
+    trace_info(MODULE, "Registering IRQ handler (%p) on irq %u/vector %d in cpu%u", handler, irq, descriptor->vector, descriptor->cpu);
+
+    ret = ivt_set_handler(descriptor->vector, irq_handler);
+
+    if (ret != KERRNO_SUCCESSES)
+    {
+        KERRNO_RETURN(KERRNO_PERMISSION_DENIED, "ivt entry already in use");
+    }
 
     return KERRNO_SUCCESSES;
 }
 
-status_t irq_unregister_handler(gsi_t gsi)
+status_t irq_unregister_handler(kernel_irq_t irq)
 {
 
     return KERRNO_SUCCESSES;
 }
 
-void irq_mask(gsi_t gsi)
+status_t irq_mask(kernel_irq_t irq)
 {
+    return KERRNO_SUCCESSES;
 }
 
-void irq_unmask(gsi_t gsi)
+status_t irq_unmask(kernel_irq_t irq)
 {
+    return KERRNO_SUCCESSES;
 }
 
-bool irq_is_masked(gsi_t gsi)
+bool irq_is_masked(kernel_irq_t irq)
 {
     return false;
 }
 
-void irq_eoi(gsi_t gsi)
+status_t irq_eoi(kernel_irq_t irq)
 {
+    return KERRNO_SUCCESSES;
 }
 
-gsi_t irq_pick_free_gsi(gsi_t allowed_mask)
+status_t irq_pick_free_entry(kernel_irq_t allowed_mask, irq_source_t source, kernel_irq_t *out)
 {
-    ENTER_FUNC("0x%x", allowed_mask);
+    ENTER_FUNC("0x%x, %u, %p", allowed_mask, source, out);
+    return irq_arch_pick_free_entry(allowed_mask, source, ANY_CPU, out);
+}
 
-    for (uint32_t irq = 0; irq < MAX_VECTOR - IRQ_BASE; irq++)
-    {
-        // skip if not in allowed set
-        if (!(allowed_mask & (1u << irq)))
-        {
-            continue;
-        }
-
-        // skip legacy IRQs that are already taken
-        if (FLAG_IS_SET(irq_handlers[irq].state, HANDLER_IN_USE))
-        {
-            continue;
-        }
-
-        trace_debug(MODULE, "irq%u is free to take", irq);
-        return irq;
-    }
-
-    // no free IRQ found — should not happen on sane hardware
-    KERNEL_PANIC(MODULE, "pick_free_irq: no free IRQ in allowed set 0x%X", allowed_mask);
-    return 0xFF;
+status_t irq_pick_free_entry_cpu(kernel_irq_t allowed_mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
+{
+    ENTER_FUNC("0x%x, %u, 0x%x, %p", allowed_mask, source, target, out);
+    return irq_arch_pick_free_entry(allowed_mask, source, target, out);
 }
