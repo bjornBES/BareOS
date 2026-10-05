@@ -13,6 +13,9 @@
 #include <types.h>
 #include "entry/desc/gdt/gdt.h"
 #include "entry/desc/tss/tss.h"
+#include "irq/irqt.h"
+
+#include "asm/vectors_arch.h"
 
 #include "sync/spinlock.h"
 
@@ -35,6 +38,7 @@ typedef struct arch_cpu_info
 
     cpu_logical_id_t logical_id; // sequential index 0..n
     uint32_t arch_id;
+    uint32_t irq_count;
 
     uint8_t online : 1; // has this AP finished init
     uint8_t need_resched : 1;
@@ -52,6 +56,9 @@ typedef struct arch_cpu_info
     // calling functions using IPI
     void (*func_pending)(uintptr_t);
     uintptr_t func_arg_pending;
+
+    // IRQ
+    irq_handler_t irq_handlers[MAX_IRQ_VECTORS - 32];
 
     // per-core TSS (needed so rsp0 is independent per core)
     tss_entry_t tss;

@@ -36,9 +36,7 @@ extern vaddr_t hpet_base;
 
 uint64_t hpet_arch_read(uint32_t reg)
 {
-    uint32_t l = *(volatile uint32_t *)(hpet_base + reg);
-    uint32_t h = *(volatile uint32_t *)(hpet_base + reg + 4);
-    return (uint64_t)h << 32 | l;
+    return *(volatile uint64_t *)(hpet_base + reg);
 }
 
 void hpet_arch_write(uint32_t reg, uint64_t value)

@@ -58,7 +58,7 @@ status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
         }
     }
 
-    if (hash_search(volume_hash, volume_id, NULL) == KERRNO_SUCCESSES)
+    if (hash_search(volume_hash, (char *)volume_id, NULL) == KERRNO_SUCCESSES)
     {
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "volume id \"%s\" is already in use", volume_id);
     }
@@ -77,7 +77,7 @@ status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
     }
 
     log_debug(MODULE, "insert volume");
-    ADD_THIS_TO_LIST((*volume_list), vol);
+    ADD_THIS_TO_LIST(*volume_registry, vol);
 
     *out = vol;
     return KERRNO_SUCCESSES;

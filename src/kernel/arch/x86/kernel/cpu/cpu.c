@@ -9,6 +9,8 @@
  */
 
 #include "asm/cpu_arch.h"
+#include "asm/irq_arch.h"
+#include "asm/mmu_arch.h"
 
 #include "kernel/cpu/cpu.h"
 #include "kernel/cpuid/cpuid.h"
@@ -19,6 +21,7 @@
 
 #include "mm/allocator/kstack_allocator.h"
 
+#include "ivt/ivt.h"
 #include "debug/debug.h"
 
 #include "memory.h"
@@ -197,6 +200,8 @@ status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu)
 
     cpu->kernel_stack = kstack_per_cpu_alloc(NULL);
 
+    mmu_arch_load_table(&kernel_page);
+
     cpu->self = cpu;
     cpu_set_gsbase(cpu);
 
@@ -212,6 +217,7 @@ status_t cpu_create(cpu_entry_t *entry)
     {
         memset(cpu, 0, sizeof(cpu_t));
     }
+    cpu->irq_handlers[EXC_SYSCALL - IRQ_BASE].state = HANDLER_IN_USE;
     cpu->arch_id = entry->arch_id;
     cpu->logical_id = entry->logical_id;
     entry->cpu = cpu;
@@ -220,6 +226,14 @@ status_t cpu_create(cpu_entry_t *entry)
         bsp_cpu = cpu;
     }
     return KERRNO_SUCCESSES;
+}
+
+void cpu_registered(cpu_logical_id_t id)
+{
+    if (id < CONFIG_MAX_CPUS)
+    {
+        cpus[id].irq_count++;
+    }
 }
 
 cpu_t *cpu_arch_get_bsp()

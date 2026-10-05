@@ -18,6 +18,8 @@
 
 #include "irq/irq.h"
 
+#include "string.h"
+
 #define MODULE "x86-apic"
 
 bool enabled_x2apic = false;
@@ -61,14 +63,32 @@ status_t apic_initialize()
     return KERRNO_SUCCESSES;
 }
 
-int apic_route(gsi_t gsi, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity)
+status_t apic_route(gsi_t gsi, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity)
 {
-    ENTER_FUNC("%u, %u, %u, %u, %u", gsi, vector, target, trigger, polarity);
+    ENTER_FUNC("%u, 0x%x, %u, %u, %u", gsi, vector, target, trigger, polarity);
     cpu_entry_t *cpu = cpu_get_entry(target);
     uint8_t ioapic_id = ioapic_get_id(gsi);
+    ioapic_entry_t *entry = ioapic_get_entry(ioapic_id);
+    trace_debug(MODULE, "IRQ %u -> GSI %u vector 0x%x is locked %s", entry->redir_entries[gsi].pin, entry->redir_entries[gsi].gsi, entry->redir_entries[gsi].vector, entry->redir_entries[gsi].locked BOOL_TO_STRING);
+    if (entry->redir_entries[gsi].dont_use)
+    {
+        return KERRNO_UNSUCCESS;
+    }
+    if (entry->redir_entries[gsi].locked)
+    {
+        if (entry->redir_entries[gsi].vector != vector || entry->redir_entries[gsi].pin != vector - IRQ_BASE)
+        {
+            trace_debug(MODULE, "vector: 0x%x == 0x%x, gsi: %u == %u, pin: %u == %u",
+                        entry->redir_entries[gsi].vector, vector, entry->redir_entries[gsi].gsi, gsi, entry->redir_entries[gsi].pin, vector - IRQ_BASE);
+            return KERRNO_UNSUCCESS;
+        }
+    }
+    entry->redir_entries[gsi].vector = vector;
+    entry->redir_entries[gsi].lapic_target = target;
+    ioapic_set_entry(entry->ioapic_id, gsi, vector, (polarity << 1) | (trigger << 3), entry->redir_entries[gsi].lapic_target);
     trace_debug(MODULE, "ioapic_id = %u", ioapic_id);
-    FUNC_NOT_IMPLEMENTED();
-    return 0;
+    // FUNC_NOT_IMPLEMENTED();
+    return KERRNO_SUCCESSES;
 }
 
 void apic_disable()

@@ -22,8 +22,11 @@ typedef struct iso_entry
 {
     interrupt_vector_t vector;
     gsi_t gsi;
+    uint8_t pin;
     uint16_t flags;
     uint32_t lapic_target;
+    bool locked;
+    bool dont_use;
 } iso_entry_t;
 
 typedef struct ioapic_entry
@@ -55,4 +58,5 @@ uint8_t ioapic_get_id(gsi_t gsi);
 void ioapic_unmask(uint8_t ioapic_id, uint32_t irq);
 void ioapic_mask(uint8_t ioapic_id, uint32_t irq);
 uint32_t ioapic_is_mask(uint8_t ioapic_id, uint32_t irq);
+void ioapic_set_overwrite(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint32_t dest_apic_id);
 void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint32_t dest_apic_id);

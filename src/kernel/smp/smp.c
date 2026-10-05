@@ -45,6 +45,7 @@ status_t smp_ipi_call_function_handler(intr_frame_t *frame)
 
 status_t smp_init(boot_params_t *bp)
 {
+    ENTER_FUNC("%p", bp);
     vaddr_t trampoline = bp->smp.trampoline_phys_address;
     mmu_map_region(&kernel_page, trampoline, trampoline, bp->smp.trampoline_size, kernel_text_flags);
 
@@ -71,12 +72,16 @@ status_t smp_init(boot_params_t *bp)
     return KERRNO_SUCCESSES;
 }
 
-status_t smp_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg)
+status_t smp_arch_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg)
 {
     cpu_entry_t *entry = cpu_get_entry(id);
     cpu_t *cpu = entry->cpu;
 
     cpu->func_pending = func;
     cpu->func_arg_pending = arg;
-    return smp_arch_send_ipi(entry->arch_id, IPI_CALL_FUNCTION_VECTOR);
+    status_t ret = smp_arch_send_ipi(entry->arch_id, IPI_CALL_FUNCTION_VECTOR);
+    while (cpu->func_pending != NULL)
+    {
+    }
+    return ret;
 }

@@ -20,3 +20,5 @@
 status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu);
 
 cpu_t *cpu_arch_get(cpu_logical_id_t id);
+
+void cpu_registered(cpu_logical_id_t id);

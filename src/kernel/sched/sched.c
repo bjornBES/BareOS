@@ -530,7 +530,7 @@ status_t sched_init(thread_t *main_thread)
         }
         else
         {
-            smp_call_function(i, timer_set_device_periodic_wrapper, (uintptr_t)args);
+            smp_arch_call_function(i, timer_set_device_periodic_wrapper, (uintptr_t)args);
         }
 
         while (other_cpu->func_pending != NULL)

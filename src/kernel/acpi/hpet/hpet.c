@@ -14,6 +14,7 @@
 #include "asm/hpet_arch.h"
 
 #include "irq/irq.h"
+#include "cpu/cpu.h"
 
 #include "debug/debug.h"
 #include "dev/device.h"
@@ -295,20 +296,25 @@ status_t hpet_parse()
         uint32_t irq_mask = BIT_GET_RANGE(timer_cfg, 32, 63);
 
         trace_debug(MODULE, "comparator has mask 0x%x", irq_mask);
-        gsi_t gsi = irq_pick_free_gsi(irq_mask);
-        trace_debug(MODULE, "comparator %u got gsi%u", i, gsi);
+        kernel_irq_t irq;
+        status_t ret = irq_pick_free_entry_cpu(irq_mask, IRQ_SOURCE_IRQ, 0, &irq);
+        if (ret != KERRNO_SUCCESSES)
+        {
+            trace_crit(MODULE, "irq_pick_free_entry returned 0x%x", ret);
+        }
+        trace_debug(MODULE, "comparator %u got irq%u", i, irq);
 
         comparators[i].index = i;
-        comparators[i].irq = gsi;
+        comparators[i].irq = irq;
         comparators[i].in_use = false;
 
         // route comparator to IRQ
-        uint64_t expected_value = hpet_arch_read(HPET_TIMER_CONFIG(i)) | (gsi << 9);
+        uint64_t expected_value = hpet_arch_read(HPET_TIMER_CONFIG(i)) | (irq << 9);
         hpet_arch_write(HPET_TIMER_CONFIG(i), expected_value);
 
-        trace_debug(MODULE, "%x == %x", BIT_GET_RANGE(hpet_arch_read(HPET_TIMER_CONFIG(i)), 9, 13), gsi);
+        trace_debug(MODULE, "%x == %x", BIT_GET_RANGE(hpet_arch_read(HPET_TIMER_CONFIG(i)), 9, 13), irq);
 
-        irq_register_handler(gsi, hpet_irq_handler, &comparators[i], IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
+        irq_register_handler(irq, IRQ_SOURCE_IRQ, hpet_irq_handler, &comparators[i], IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
 
         if (BIT_GET(timer_cfg, 5) == 1)
         {
@@ -320,7 +326,7 @@ status_t hpet_parse()
     return hpet_register();
 }
 
-POSTCORE_INITCALL(hpet_parse)
+ARCHDONE_INITCALL(hpet_parse)
 
 status_t hpet_intcall_device()
 {

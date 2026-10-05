@@ -51,14 +51,17 @@ status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi
     ioapic_table[ioapic_count].ioapic_max_redir = BIT_GET_RANGE(version, 16, 23);
     ioapic_table[ioapic_count].gsi_end = gsi_base + ioapic_table[ioapic_id].ioapic_max_redir;
     trace_debug(MODULE, "IOAPIC %u = {base: %p, gsi range: %u-%u, redir limit: %u}", ioapic_count, ioapic_table[ioapic_count].io_apic_base, ioapic_table[ioapic_count].gsi_base, ioapic_table[ioapic_count].gsi_end, ioapic_table[ioapic_count].ioapic_max_redir);
+    ioapic_table[ioapic_id].redir_entries[2].dont_use = true;
     for (uint32_t i = gsi_base; i < ioapic_table[ioapic_count].ioapic_max_redir + 1; i++)
     {
         ioapic_table[ioapic_count].redir_entries[i].flags = 0;
         ioapic_table[ioapic_count].redir_entries[i].gsi = i;
         ioapic_table[ioapic_count].redir_entries[i].vector = i + IRQ_BASE;
+        ioapic_table[ioapic_count].redir_entries[i].lapic_target = 0;
+        ioapic_table[ioapic_count].redir_entries[i].pin = i;
     }
     ioapic_count++;
-    
+
     return KERRNO_SUCCESSES;
 }
 
@@ -86,15 +89,28 @@ uint8_t ioapic_get_id(gsi_t target_gsi)
     return 0xFF;
 }
 
-void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t vector, uint16_t flags, uint32_t dest_apic_id)
+void ioapic_set_overwrite(uint8_t ioapic_id, gsi_t gsi, uint8_t irq, uint16_t flags, uint32_t dest_apic_id)
+{
+    ioapic_table[ioapic_id].redir_entries[irq].flags = flags;
+    ioapic_table[ioapic_id].redir_entries[irq].gsi = gsi;
+    ioapic_table[ioapic_id].redir_entries[irq].lapic_target = dest_apic_id;
+    ioapic_table[ioapic_id].redir_entries[irq].vector = irq + IRQ_BASE;
+    ioapic_table[ioapic_id].redir_entries[irq].pin = irq;
+    ioapic_table[ioapic_id].redir_entries[irq].locked = true;
+
+    ioapic_set_entry(ioapic_id, gsi, irq, flags, dest_apic_id);
+}
+
+void ioapic_set_entry(uint8_t ioapic_id, gsi_t gsi, uint8_t irq, uint16_t flags, uint32_t dest_apic_id)
 {
     // ENTER_FUNC("%u, %u, %u, 0x%x, 0x%x", ioapic_id, gsi, vector, flags, dest_apic_id);
-    uint32_t low = vector;
+    uint32_t low = (irq + IRQ_BASE);
 
-    ioapic_table[ioapic_id].redir_entries[vector].flags = flags;
-    ioapic_table[ioapic_id].redir_entries[vector].gsi = gsi;
-    ioapic_table[ioapic_id].redir_entries[vector].lapic_target = dest_apic_id;
-    ioapic_table[ioapic_id].redir_entries[vector].vector = vector + IRQ_BASE;
+    ioapic_table[ioapic_id].redir_entries[irq].flags = flags;
+    ioapic_table[ioapic_id].redir_entries[irq].gsi = gsi;
+    ioapic_table[ioapic_id].redir_entries[irq].lapic_target = dest_apic_id;
+    ioapic_table[ioapic_id].redir_entries[irq].vector = irq + IRQ_BASE;
+    ioapic_table[ioapic_id].redir_entries[irq].pin = irq;
 
     // polarity — bit 1 of flags, 1 = active low
     if (flags & 0x2)

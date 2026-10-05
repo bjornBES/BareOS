@@ -144,7 +144,7 @@ status_t madt_arch_parse(madt_t *madt)
                     trace_info(MODULE, "IOAPIC ID %u ISO IRQ %u -> GSI %u flags=0x%x", iso->bus, iso->source, iso->global_system_interrupt, iso->flags);
 
                     // irq_arch_register_override(iso->global_system_interrupt, iso->source, iso->flags);
-                    ioapic_set_entry(iso->bus, iso->global_system_interrupt, iso->source, iso->flags, 0);
+                    ioapic_set_overwrite(iso->bus, iso->global_system_interrupt, iso->source, iso->flags, 0);
                     break;
                 }
             case 4 : // interrupt source override

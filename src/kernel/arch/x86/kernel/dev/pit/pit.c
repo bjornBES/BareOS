@@ -166,8 +166,16 @@ status_t pit_init()
     pit_timer->ticks_to_ns = pit_ticks_to_ns;
     timer_register(pit_timer);
 
-    irq_register_handler(0, pit_irq_handler, NULL, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
+/*     kernel_irq_t irq;
+    status_t ret = irq_pick_free_entry(~(0), IRQ_SOURCE_IRQ, &irq);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        trace_crit(MODULE, "irq_pick_free_entry returned 0x%x", ret);
+    }
+    trace_debug(MODULE, "PIT got irq%u", irq); */
+
+    irq_register_handler(0, IRQ_SOURCE_IRQ, pit_irq_handler, NULL, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
     return KERRNO_SUCCESSES;
 }
 
-POSTCORE_INITCALL(pit_init);
+ARCHDONE_INITCALL(pit_init);
