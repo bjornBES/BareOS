@@ -42,4 +42,6 @@ typedef uint32_t cpu_logical_id_t;
 typedef int32_t status_t;
 
 typedef uint32_t gsi_t;
+
+#define KERNEL_IRQ_NONE (kernel_irq_t)(~0)
 typedef uint32_t kernel_irq_t;

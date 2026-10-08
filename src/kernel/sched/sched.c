@@ -33,7 +33,7 @@
 
 #include <config.h>
 
-#define MODULE "sched"
+#define MODULE            "sched"
 
 #define SCHEDULER_TICK_NS 5000000ull // 5ms
 
@@ -79,8 +79,9 @@ void scheduler_tick(void *_)
     {
         return;
     }
-    /* // fprintf(VFS_FD_DEBUG, "scheduler_tick\n");
-    scheduler_wakeup_check();
+    // trace_debug(MODULE, "scheduler_tick");
+    // trace_debug(MODULE, "THISCPU @ %p", THISCPU());
+    // scheduler_wakeup_check();
 
     if (current_thread == NULL)
     {
@@ -109,7 +110,7 @@ void scheduler_tick(void *_)
             sched_yield();
             return;
         }
-    } */
+    }
 }
 
 INTERNAL_INLINE cpu_t *pick_steal_victim(cpu_t *me)
@@ -140,6 +141,7 @@ INTERNAL_INLINE cpu_t *pick_steal_victim(cpu_t *me)
     }
     return (max_count > 1) ? busiest : NULL; // don't steal down to 0, leave victim something
 }
+
 INTERNAL_INLINE thread_t *sched_next()
 {
     cpu_t *me = cpu_arch_get_current();
@@ -195,8 +197,9 @@ INTERNAL_INLINE thread_t *sched_next()
 
 extern void hexdump(void *ptr, size_t len, size_t size);
 
-INTERNAL NORETURN void schedule_switch(thread_t *next)
+INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
 {
+    ENTER_FUNC("%p", next);
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
@@ -216,7 +219,14 @@ INTERNAL NORETURN void schedule_switch(thread_t *next)
         // irq_arch_disable();
         // frame_arch_dump_frame(current_thread->ctx.regs);
     }
-    irq_eoi(0);
+    if (frame != NULL)
+    {
+        irq_eoi(frame->interrupt);
+    }
+    else
+    {
+        irq_eoi(0);
+    }
     context_arch_switch(current_thread->ctx.sp);
 
     log_debug(MODULE, "something is wrong");
@@ -235,8 +245,15 @@ status_t schedule(intr_frame_t *regs)
     if (sched_init_done == 0)
     {
         // spinlock_release(&schedule_lock);
+        if (regs != NULL)
+        {
+            irq_eoi(regs->interrupt);
+        }
+        else
+        {
+            irq_eoi(0);
+        }
         irq_arch_enable();
-        irq_eoi(regs->interrupt);
         return KERRNO_SUCCESSES;
     }
     if (current_thread != NULL && !current_thread->is_idle_thread)
@@ -317,15 +334,15 @@ try_again:
         // goto try_again;
     }
 
-/*     if (next->proc && next->proc->state == PROC_STATE_SUSPENDED)
-    {
-        fprintf(VFS_FD_DEBUG, "========== proc is suspended ==========\n");
-        irq_arch_disable();
-        current_thread->timeslice = current_thread->timeslice_reset; // reload
-        irq_eoi(0);
-        // spinlock_release(&schedule_lock);
-        return RETURN_GOOD;
-    } */
+    /*     if (next->proc && next->proc->state == PROC_STATE_SUSPENDED)
+        {
+            fprintf(VFS_FD_DEBUG, "========== proc is suspended ==========\n");
+            irq_arch_disable();
+            current_thread->timeslice = current_thread->timeslice_reset; // reload
+            irq_eoi(0);
+            // spinlock_release(&schedule_lock);
+            return RETURN_GOOD;
+        } */
     if (current_thread && current_thread->state == THREAD_REMAINS)
     {
         trace_debug(MODULE, "thread (%u) is gonna die soon", current_thread->tid);
@@ -340,28 +357,28 @@ try_again:
         }
     }
 
-/*     if (current_thread != NULL)
-    {
-        if (next->proc != current_thread->proc)
+    /*     if (current_thread != NULL)
         {
-            if (next->tid == 0 || next->proc == NULL)
+            if (next->proc != current_thread->proc)
             {
-                // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
-                mmu_arch_load_table(&kernel_page);
+                if (next->tid == 0 || next->proc == NULL)
+                {
+                    // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
+                    mmu_arch_load_table(&kernel_page);
+                }
+                else
+                {
+                    // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
+                    mmu_arch_map_kernel(next->proc->page_dir);
+                    mmu_arch_load_table(next->proc->page_dir);
+                }
+                // trace_debug(MODULE, "here3");
             }
-            else
-            {
-                // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
-                mmu_arch_map_kernel(next->proc->page_dir);
-                mmu_arch_load_table(next->proc->page_dir);
-            }
-            // trace_debug(MODULE, "here3");
-        }
-        current_thread->last_cpu = cpu;
-    } */
+            current_thread->last_cpu = cpu;
+        } */
 
     // spinlock_release(&schedule_lock);
-    schedule_switch(next);
+    schedule_switch(next, regs);
     return KERRNO_SUCCESSES;
 }
 
@@ -499,9 +516,9 @@ status_t sched_init(thread_t *main_thread)
 
     memcpy(main_thread->name, "MAIN\0", 4);
     trace_info(MODULE, "setting T%u (%s) as the main thread", main_thread->tid, main_thread->name);
-    
+
     thread_set_priority(main_thread, PRIORITY_LOW);
-    
+
     cpu_t *cpu = cpu_arch_get_current();
     main_thread->state = THREAD_READY;
     main_thread->cpu_affinity = cpu;

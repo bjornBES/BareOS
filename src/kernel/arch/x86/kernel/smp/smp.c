@@ -32,7 +32,7 @@
 
 int total_cores_init = 0;
 
-void ap_startup()
+NORETURN void ap_startup()
 {
     inline_asm("cli" : : : "memory");
     cpuid_regs regs_leaf;
@@ -144,13 +144,13 @@ void smp_arch_idle_thread()
     trace_debug(MODULE, "cpu %u is going idle", cpu->arch_id);
     while (true)
     {
-        __asm__ volatile("cli");
+        /* __asm__ volatile("cli");
         if (sched_has_work(cpu) == KERRNO_SUCCESSES)
         {
             trace_debug(MODULE, "cpu %u found work", cpu->arch_id);
             __asm__ volatile("sti");
             sched_yield();
-        }
+        } */
         __asm__ volatile("sti");
         __asm__ volatile("hlt");
     }

@@ -12,7 +12,10 @@
 
 #include "asm/frame_arch.h"
 
+#include "irq_controller.h"
+
 #include <types.h>
+#include <config.h>
 
 typedef status_t (*irq_handler_func_t)(intr_frame_t* frame, void *ctx);
 
@@ -25,44 +28,36 @@ typedef struct irq_handler
 
 typedef enum
 {
-    IRQ_TRIGGER_EDGE,
-    IRQ_TRIGGER_LEVEL
-} irq_trigger_t;
-
-typedef enum
-{
-    IRQ_POLARITY_HIGH,
-    IRQ_POLARITY_LOW
-} irq_polarity_t;
-
-typedef struct irq_controller
-{
-    const char *name;
-    status_t (*probe)();
-    status_t (*initialize)();
-    int (*route)(gsi_t gsi, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity);
-    void (*disable)();
-    void (*send_eoi)(gsi_t gsi);
-    void (*mask)(gsi_t gsi);
-    void (*unmask)(gsi_t gsi);
-    bool (*is_masked)(gsi_t gsi);
-} irq_controller_t;
-
-typedef enum
-{
     IRQ_SOURCE_MSI,
     IRQ_SOURCE_IRQ,
+    IRQ_SOURCE_GSI,
 } irq_source_t;
 
 typedef struct irq_descriptor
 {
     kernel_irq_t id;
     uint32_t flags;
-    irq_polarity_t polarity;
-    irq_trigger_t trigger;
+    // irq_polarity_t polarity;
+    // irq_trigger_t trigger;
 
-    irq_handler_t handler;
-
-    cpu_logical_id_t cpu;
-    interrupt_vector_t vector;
+    interrupt_vector_t vectors[CONFIG_MAX_CPUS];
 } irq_descriptor_t;
+
+typedef struct irq_range
+{
+    kernel_irq_t first;
+    kernel_irq_t last;
+} irq_range_t;
+typedef struct irq_pick_reg
+{
+    bool use_bit_mask;
+    const irq_mask_t *allowed;
+
+    bool use_range;
+    irq_range_t range;
+    
+    size_t count;
+    size_t align;
+    irq_source_t source;
+    cpu_logical_id_t target;
+} irq_pick_reg_t;

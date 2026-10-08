@@ -28,5 +28,6 @@ bool irq_is_masked(kernel_irq_t irq);
 
 status_t irq_eoi(kernel_irq_t irq);
 
-status_t irq_pick_free_entry(kernel_irq_t mask, irq_source_t source, kernel_irq_t *out);
-status_t irq_pick_free_entry_cpu(kernel_irq_t mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out);
+status_t irq_pick_free_gsi(uint32_t allowed_pins, kernel_irq_t *irq_out, gsi_t *out);
+status_t irq_pick_free_entry(kernel_irq_t mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out);
+status_t irq_pick_free_range_size(irq_range_t range, size_t count, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out);

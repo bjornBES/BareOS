@@ -35,6 +35,12 @@ typedef struct __kernel_sigset_t
     uint32_64 __bits[_SIGSET_NWORDS];
 } kernel_sigset_t;
 
+#define IRQ_MAX 222
+typedef struct irq_mask
+{
+    uint64_t bits[(IRQ_MAX / sizeof(uint64_t)) + 1];
+} irq_mask_t;
+
 typedef uint32_64 sigset_t;
 
 typedef int32_64 suseconds_t;

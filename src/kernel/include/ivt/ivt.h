@@ -17,9 +17,11 @@
 
 #define HANDLER_IN_USE    BIT(0)
 #define HANDLER_IS_ACTIVE BIT(1)
-#define HANDLER_SHARED    BIT(2)
+#define HANDLER_SHAREABLE BIT(2)
 #define HANDLER_MSI       BIT(3)
-#define HANDLER_RESERVED  BIT(4)
+#define HANDLER_GSI       BIT(4)
+#define HANDLER_RESERVED  BIT(5)
+#define HANDLER_FULL      BIT(6)
 
 typedef status_t (*interrupt_handler)(intr_frame_t *regs);
 

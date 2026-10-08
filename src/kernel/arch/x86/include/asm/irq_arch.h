@@ -22,7 +22,7 @@
 void irq_arch_enable();
 void irq_arch_disable();
 
-status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, irq_source_t source, irq_handler_func_t handler, void *ctx, cpu_logical_id_t target);
+status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, irq_source_t source, irq_handler_func_t handler, void *ctx, irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target, cpu_logical_id_t *out_target);
 irq_handler_t *irq_arch_get_handler(interrupt_vector_t vector);
 
 status_t irq_arch_pick_free_entry(kernel_irq_t allowed_mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *output);

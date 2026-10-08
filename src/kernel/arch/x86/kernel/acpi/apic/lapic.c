@@ -316,10 +316,10 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     }
     
     // set divide config to 16
-    lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
-    lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
+    // lapic_write(LAPIC_REG_TIMER_DIVIDE, 0x3);
+    // lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
     // set timer to periodic mode
-    lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
+    // lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
 
     return KERRNO_SUCCESSES;
 }

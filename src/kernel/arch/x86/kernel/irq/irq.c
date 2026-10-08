@@ -10,11 +10,14 @@
 
 #include "asm/irq_arch.h"
 #include "asm/cpu_arch.h"
+#include "asm/msi_arch.h"
 #include "asm/smp_arch.h"
 
 #include "kernel/irq/irq.h"
 #include "kernel/cpu/cpu.h"
 #include "kernel/acpi/apic/apic.h"
+
+#include "pci/msi/msi.h"
 
 #include "ivt/ivt.h"
 #include "irq/irq.h"
@@ -105,15 +108,6 @@ INTERNAL interrupt_vector_t irq_arch_alloc_vector(cpu_t *cpu, interrupt_vector_t
     return KERRNO_UNSUCCESS;
 }
 
-void cpu_inc_register_int(uintptr_t _)
-{
-    ENTER_FUNC("%p", _);
-    irq_descriptor_t *desc = (irq_descriptor_t *)_;
-    cpu_t *cpu = THISCPU();
-    memcpy(&cpu->irq_handlers[desc->vector], &desc->handler, sizeof(irq_handler_t));
-    cpu->irq_count++;
-}
-
 INTERNAL status_t irq_arch_get_vector(cpu_logical_id_t target, interrupt_vector_t offset, interrupt_vector_t *vector_out, cpu_entry_t **entry_out)
 {
     cpu_entry_t *entry = NULL;
@@ -156,7 +150,8 @@ INTERNAL status_t irq_arch_get_vector(cpu_logical_id_t target, interrupt_vector_
     return KERRNO_SUCCESSES;
 }
 
-status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, irq_source_t source, irq_handler_func_t handler, void *ctx, cpu_logical_id_t target)
+status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, irq_source_t source, irq_handler_func_t handler, void *ctx,
+                           irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target, cpu_logical_id_t *out_target)
 {
     interrupt_vector_t vector;
     cpu_entry_t *entry;
@@ -172,14 +167,16 @@ status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, ir
         }
         cpu = entry->cpu;
 
-        if (source == IRQ_SOURCE_IRQ)
+        if (source == IRQ_SOURCE_IRQ || source == IRQ_SOURCE_GSI)
         {
-            ret = current->route(vector - IRQ_BASE, vector, cpu->logical_id, desc->trigger, desc->polarity);
+            ret = current->route(desc->id, vector, cpu->logical_id, trigger, polarity);
         }
         else
         {
-            FUNC_NOT_IMPLEMENTED();
+            msi_disable(ctx);
+            ret = msi_arch_set_vector(ctx, vector, entry->logical_id, trigger, polarity);
         }
+
         if (ret != KERRNO_SUCCESSES)
         {
             if (offset == 0)
@@ -191,25 +188,34 @@ status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, ir
         }
     } while (ret != KERRNO_SUCCESSES);
 
-    desc->vector = vector;
-    desc->cpu = cpu->logical_id;
-    desc->handler.ctx = ctx;
-    desc->handler.handler = handler;
-    desc->handler.state = HANDLER_IN_USE;
+    *out_target = entry->logical_id;
+
+    uint8_t handler_index = vector - IRQ_BASE;
+    desc->vectors[cpu->logical_id] = handler_index;
+
+    cpu->irq_handlers[handler_index].ctx = ctx;
+    cpu->irq_handlers[handler_index].handler = handler;
+    cpu->irq_handlers[handler_index].state = HANDLER_IN_USE;
+
     if (source == IRQ_SOURCE_MSI)
     {
-        FLAG_SET(desc->handler.state, HANDLER_MSI);
+        FLAG_SET(cpu->irq_handlers[handler_index].state, HANDLER_MSI);
+        FLAG_SET(desc->flags, HANDLER_MSI);
+    }
+    FLAG_SET(desc->flags, HANDLER_IN_USE);
+
+    cpu->irq_count++;
+
+    if (source != IRQ_SOURCE_MSI)
+    {
+        current->unmask(current->irq_to_gsi(desc->id));
     }
 
-    trace_debug(MODULE, "cpu @ %p THISCPU() @ %p", cpu, THISCPU());
-    if (THISCPU() == NULL || cpu == THISCPU())
+    if (source == IRQ_SOURCE_MSI)
     {
-        cpu->irq_count++;
-        memcpy(&cpu->irq_handlers[desc->vector], &desc->handler, sizeof(irq_handler_t));
-    }
-    else
-    {
-        smp_arch_call_function(cpu->logical_id, cpu_inc_register_int, (uintptr_t)desc);
+        pci_device_t *dev = ctx;
+        dev->irq = vector;
+        msi_enable(ctx);
     }
 
     return KERRNO_SUCCESSES;
@@ -236,7 +242,7 @@ INTERNAL status_t irq_internal_pick_free(kernel_irq_t allowed_mask, irq_source_t
             continue;
         }
 
-        if (FLAG_IS_SET(cpu->irq_handlers[irq].state, HANDLER_IN_USE) && source == IRQ_SOURCE_MSI && !FLAG_GET(cpu->irq_handlers[irq].state, HANDLER_MSI))
+        if (source == IRQ_SOURCE_MSI && !FLAG_GET(cpu->irq_handlers[irq].state, HANDLER_MSI))
         {
             continue;
         }

@@ -14,7 +14,7 @@
 
 NORETURN void scheduler_arch_yield()
 {
-    inline_asm("int 0x7F");
+    inline_asm("int 0xD1");
     while (true)
     {
         ;

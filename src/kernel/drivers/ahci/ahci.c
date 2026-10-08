@@ -13,23 +13,169 @@
 #include "drivers/driver.h"
 #include "pci/pci.h"
 
+#include "irq/irq.h"
+#include "cpu/cpu.h"
+
 #include "kerrno.h"
 
+#include "memory.h"
 #include "string.h"
 
-#define MODULE            "ahci-driver"
+#define MODULE               "ahci-driver"
 
-#define DRV_NAME          "ahci"
+#define DRV_NAME             "ahci"
 
-#define DEFAULT_BAR_INDEX 5
+#define DEFAULT_BAR_INDEX    5
+
+#define SATA_SIG_ATA         0x00000101 // SATA drive
+#define SATA_SIG_ATAPI       0xEB140101 // SATAPI drive
+#define SATA_SIG_SEMB        0xC33C0101 // Enclosure management bridge
+#define SATA_SIG_PM          0x96690101 // Port multiplier
+
+#define AHCI_DEV_NULL        0
+#define AHCI_DEV_SATA        1
+#define AHCI_DEV_SEMB        2
+#define AHCI_DEV_PM          3
+#define AHCI_DEV_SATAPI      4
+
+#define HBA_PORT_IPM_ACTIVE  1
+#define HBA_PORT_DET_PRESENT 3
+
+int ahci_check_type(hba_port_t *port)
+{
+    uint32_t ssts = port->ssts;
+    uint8_t ipm = (ssts >> 8) & 0x0F;
+    uint8_t det = ssts & 0x0F;
+
+    if (det != HBA_PORT_DET_PRESENT) // Check drive status
+    {
+        return AHCI_DEV_NULL;
+    }
+    if (ipm != HBA_PORT_IPM_ACTIVE)
+    {
+        return AHCI_DEV_NULL;
+    }
+    switch (port->sig)
+    {
+        case SATA_SIG_ATAPI :
+            return AHCI_DEV_SATAPI;
+        case SATA_SIG_SEMB :
+            return AHCI_DEV_SEMB;
+        case SATA_SIG_PM :
+            return AHCI_DEV_PM;
+        default :
+            return AHCI_DEV_SATA;
+    }
+}
+
+status_t ahci_init_abar(pci_device_t *dev, hba_mem_t *abar)
+{
+    ENTER_FUNC("%p, %p", dev, abar);
+
+    if (dev->msi_cap != 0)
+    {
+    }
+
+    uint32_t pi = abar->pi;
+    // log_debug(MODULE, "pi = 0b%b", pi);
+    uint8_t num_ports = (abar->cap & 0x1F) + 1;
+    // log_debug(MODULE, "np = %d", num_ports);
+    abar->ghc |= HBA_GHC_INTERRUPT_ENABLE;
+
+    for (size_t i = 0; i < num_ports; i++)
+    {
+        if (pi & 1)
+        {
+            int dt = ahci_check_type(&abar->ports[i]);
+            if (dt == AHCI_DEV_SATA)
+            {
+                /*
+                sata_identify_packet *info_virt = kmalloc(sizeof(sata_identify_packet));
+
+                hba_port_t *port = &abar->ports[i];
+                ports[ahci_devices_count].abar = abar;
+                ports[ahci_devices_count].port = port;
+                ahci_indexes[i] = ahci_devices_count;
+                ahci_port_t *aport = &ports[ahci_devices_count];
+                ahci_initialize_port(aport);
+                ahci_identify_device(aport, (vaddr_t)info_virt);
+
+                device_t *dev = (device_t *)malloc(sizeof(device_t));
+                sata_private_data *priv = (sata_private_data *)malloc(sizeof(sata_private_data));
+                priv->drive = ahci_devices_count;
+
+                char *name = (char *)malloc(41);
+                memset(name, 0, 41);
+                for (int i = 0; i < 40; i += 2)
+                {
+                    name[i] = info_virt->model[i + 1];
+                    name[i + 1] = info_virt->model[i];
+                }
+
+                dev->priv = priv;
+                dev->device_name = name;
+                dev->type = DEVICE_BLOCK;
+                dev->read = ahci_read;
+                dev->write = ahci_write;
+                dev->class_name = "sata";
+                dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
+                device_register(dev);
+
+                partition_block_device_register(dev);
+
+                uint64_t total_sectors = info_virt->lba28_sectors;
+                if (info_virt->cmd_set_en1 & (1 << 10))
+                {
+                    total_sectors = info_virt->lba48_sectors;
+                }
+
+                // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
+                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
+                ahci_devices_count++;
+
+                free(info_virt);
+                */
+            }
+        }
+    }
+    return KERRNO_SUCCESSES;
+}
+
+status_t ahci_init_irq(pci_device_t *dev, ahci_host_priv_t *host_priv)
+{
+    size_t nvec = 0;
+    status_t ret = 0;
+    if (dev->no_msi == 1)
+    {
+        trace_crit(MODULE, "intx path");
+        FUNC_NOT_IMPLEMENTED();
+        // INTX path
+    }
+
+    ret = pci_init_irq(dev, host_priv->nports, SIZE_MAX, PCI_IRQ_MSI);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+    return KERRNO_SUCCESSES;
+}
+
+status_t ahci_handler(pci_device_t *dev)
+{
+    return KERRNO_SUCCESSES;
+}
 
 status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
 {
     ENTER_FUNC("%p, %p", dev, id);
 
+    ahci_host_priv_t *host_priv = kmalloc(sizeof(ahci_host_priv_t));
+    dev->priv = host_priv;
+
     status_t ret = 0;
 
-    ret = pci_set_command_flags(dev, PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER);
+    ret = pci_set_bus_master(dev, 1);
+    ret |= pci_set_command_flags(dev, PCI_COMMAND_MEMORY);
     ret |= pci_clear_command_flags(dev, PCI_COMMAND_INTX_DISABLE);
 
     if (ret != KERRNO_SUCCESSES)
@@ -51,18 +197,29 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
 
     if (!ahci_bar.is_mmio)
     {
+        trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", ahci_bar.base, ahci_bar.is_64bit BOOL_TO_STRING, ahci_bar.is_mmio BOOL_TO_STRING, ahci_bar.prefetchable BOOL_TO_STRING, ahci_bar.size);
         KERRNO_RETURN(KERRNO_DONT_DO_THAT, "bar%u is I/O", bar_index);
     }
 
-    ahci_mem_t *abar = NULL;
-    ret = pci_map_bar(dev, bar_index, abar);
+    ret = pci_map_bar(dev, bar_index, (void *)&host_priv->abar);
     if (ret != KERRNO_SUCCESSES)
     {
         return KERRNO_UNSUCCESS;
     }
+    trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", host_priv->abar, ahci_bar.is_64bit BOOL_TO_STRING, ahci_bar.is_mmio BOOL_TO_STRING, ahci_bar.prefetchable BOOL_TO_STRING, ahci_bar.size);
+
+    uint32_t pi = host_priv->abar->pi;
+    host_priv->nports = (host_priv->abar->cap & 0x1F) + 1;
 
     dev->dev.class = DEVICE_BLOCK;
     dev->dev.init_name = "AHCI";
+
+    ahci_init_irq(dev, host_priv);
+
+    interrupt_vector_t vector;
+    kernel_irq_t irq;
+    ret = pci_get_irq(dev, &vector, &irq);
+    dev->handler = ahci_handler;
 
     return KERRNO_SUCCESSES;
 }

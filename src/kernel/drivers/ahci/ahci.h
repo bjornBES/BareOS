@@ -12,8 +12,9 @@
 
 #include <types.h>
 #include <defs.h>
+#include <binary.h>
 
-typedef struct HBA_PORT
+typedef struct hba_port
 {
     uint32_t clb;       // 0x00, command list base address, 1K-byte aligned
     uint32_t clbu;
@@ -34,7 +35,7 @@ typedef struct HBA_PORT
     uint32_t fbs;       // 0x40, FIS-based switch control
     uint32_t rsv1[11];  // 0x44 ~ 0x6F, Reserved
     uint32_t vendor[4]; // 0x70 ~ 0x7F, vendor specific
-} PACKED ahci_port_t;
+} PACKED hba_port_t;
 
 typedef struct hba_mem
 {
@@ -58,5 +59,22 @@ typedef struct hba_mem
     uint8_t vendor[0x100 - 0xA0];
 
     // 0x100 - 0x10FF, Port control registers
-    ahci_port_t ports[32]; // 0 ~ 31
-} PACKED ahci_mem_t;
+    hba_port_t ports[32]; // 0 ~ 31
+} PACKED hba_mem_t;
+
+typedef struct ahci_host_priv
+{
+    hba_mem_t *abar;
+    uint32_t nports; /* Number of ports */
+    gsi_t irq;    /* interrupt line */
+} ahci_host_priv_t;
+
+typedef struct ahci_port_priv
+{
+    hba_port_t *aport;
+} ahci_port_priv_t;
+
+typedef enum hba_ghc
+{
+    HBA_GHC_INTERRUPT_ENABLE = BIT(1)
+} hba_ghc_t;
