@@ -39,7 +39,7 @@ typedef uint8_t priority_t;
 #define PRIORITY_LOW           PRIORITY_L0
 
 #define PRIORITY_MIN_TIMESLICE 5
-#define PRIORITY_MAX_TIMESLICE 50
+#define PRIORITY_MAX_TIMESLICE 100
 
 static inline uint32_t priority_to_timeslice(uint8_t priority)
 {

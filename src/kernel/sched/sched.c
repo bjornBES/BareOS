@@ -200,6 +200,7 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
 {
     ENTER_FUNC("%p", next);
+    trace_debug(MODULE, "current_thread = %p", current_thread);
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
@@ -215,9 +216,9 @@ INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
     cpu_arch_set_kernel_stack(cpu_arch_get_current(), (vaddr_t)current_thread->kstack);
     if (!current_thread->is_idle_thread)
     {
-        // log(MODULE, "switching to tid %u 0x%lx\n", current_thread->tid, current_thread->kernel_stack);
-        // irq_arch_disable();
-        // frame_arch_dump_frame(current_thread->ctx.regs);
+        trace_debug(MODULE, "switching to tid %u %p\n", current_thread->tid, current_thread->kstack);
+        frame_arch_dump_frame(current_thread->ctx.regs);
+        frame_arch_dump_frame((intr_frame_t *)current_thread->ctx.sp);
     }
     if (frame != NULL)
     {

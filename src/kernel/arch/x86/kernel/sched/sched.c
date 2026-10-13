@@ -10,10 +10,15 @@
 
 #include "asm/sched_arch.h"
 
+#include "debug/debug.h"
+
 #include <defs.h>
+
+#define MODULE "x86-sched"
 
 NORETURN void scheduler_arch_yield()
 {
+    ENTER_FUNC("", 0);
     inline_asm("int 0xD1");
     while (true)
     {
