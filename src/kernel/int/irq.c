@@ -83,7 +83,7 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
         {
             irq_descriptors[i].vectors[c] = (~0);
         }
-        }
+    }
 
     irq_descriptors[EXC_SYSCALL - IRQ_BASE].flags = HANDLER_IN_USE | HANDLER_FULL;
 
@@ -280,7 +280,7 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
     trace_debug(MODULE, "target_cpu = %u", target_cpu);
     trace_info(MODULE, "Registering IRQ handler (%p) on irq %u/vector %d in cpu%u", handler, irq, descriptor->vectors[target_cpu] + IRQ_BASE, target_cpu);
 
-    ret = ivt_set_handler(descriptor->vectors[target_cpu], irq_handler);
+    ret = ivt_set_handler(descriptor->vectors[target_cpu] + IRQ_BASE, irq_handler);
 
     if (ret != KERRNO_SUCCESSES)
     {
@@ -335,6 +335,7 @@ status_t irq_pick_free_entry(kernel_irq_t allowed_mask, irq_source_t source, cpu
     return irq_pick_core(&r, out);
     // return irq_arch_pick_free_entry(allowed_mask, source, target, out);
 }
+
 status_t irq_pick_free_range_size(irq_range_t range, size_t count, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
 {
     irq_pick_reg_t r = {

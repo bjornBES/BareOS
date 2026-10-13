@@ -124,7 +124,8 @@ INTERNAL status_t irq_arch_get_vector(cpu_logical_id_t target, interrupt_vector_
             }
         }
     }
-    entry = cpu_get_entry(target);
+    // TODO make core specific IDT's
+    entry = cpu_get_entry(0);
     cpu_t *cpu = entry->cpu;
 
     interrupt_vector_t vector = irq_arch_alloc_vector(cpu, offset);

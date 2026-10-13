@@ -10,6 +10,7 @@
 
 #include "ivt/ivt.h"
 #include "asm/ivt_arch.h"
+#include "asm/vectors_arch.h"
 
 #include "entry/desc/idt/idt.h"
 
@@ -34,6 +35,10 @@ ivt_handler_t handlers[256];
 
 status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
 {
+    if ((frame->interrupt >= 0 && frame->interrupt < IPI_END_PRINTABLE) || (frame->interrupt > CPU_TIMER_VECTOR && frame->interrupt <= MAX_VECTOR))
+    {
+        ENTER_FUNC("%u, %p, handler: %p", vector, frame, handlers[vector].handler);
+    }
     if (!FLAG_IS_SET(handlers[vector].state, HANDLER_IN_USE))
     {
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Vector %u's handler has not been set", vector);
@@ -106,5 +111,4 @@ interrupt_vector_t ivt_find_free_vector(interrupt_vector_t mask)
     FUNC_NOT_IMPLEMENTED();
     return 0;
 }
-
 

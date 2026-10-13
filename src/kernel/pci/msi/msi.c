@@ -63,9 +63,9 @@ status_t pci_msi_register_irq(pci_device_t *dev, interrupt_vector_t *out_line, k
 
 status_t pci_msi_set_enable(pci_device_t *dev, uint8_t enable)
 {
-    uint16_t control;
+    uint32_t control;
 
-    status_t ret = msi_pci_read16(dev, PCI_MSI_FLAGS, &control);
+    status_t ret = msi_pci_read32(dev, 0, &control);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
@@ -75,7 +75,7 @@ status_t pci_msi_set_enable(pci_device_t *dev, uint8_t enable)
     {
         control |= PCI_MSI_FLAGS_ENABLE;
     }
-    ret = msi_pci_write16(dev, PCI_MSI_FLAGS, control);
+    ret = msi_pci_write32(dev, 0, control);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
