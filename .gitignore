@@ -18,3 +18,4 @@ compile_commands.json
 scripts/python/__pycache__/
 documentation/*.txt
 documentation_test
+hide/*

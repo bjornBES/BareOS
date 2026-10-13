@@ -13,6 +13,10 @@
 #include "asm/mmu_arch.h"
 
 #include "drivers/driver.h"
+
+#include "sync/mutex.h"
+#include "sync/semaphore.h"
+
 #include "pci/pci.h"
 
 #include "irq/irq.h"

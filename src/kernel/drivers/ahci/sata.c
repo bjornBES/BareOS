@@ -240,12 +240,15 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
     memset(name, 0, 41);
     for (int i = 0; i < 40; i += 2)
     {
+        if (info_virt->model[i] == ' ' && info_virt->model[i + 1] == ' ')
+        {
+            break;
+        }
         name[i] = info_virt->model[i + 1];
         name[i + 1] = info_virt->model[i];
     }
 
     dev->drv_data = aport;
-    dev->device_name = name;
     dev->class = DEVICE_BLOCK;
     // dev->read = ahci_read;
     // dev->write = ahci_write;
