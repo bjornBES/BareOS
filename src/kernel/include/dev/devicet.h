@@ -55,6 +55,7 @@ struct device_ops;
 
 typedef struct device
 {
+    LIST_ENTRY_THIS();
     char name[DEVICE_NAME_MAX]; // built on register
     char *device_name;          // the devices name
     const char *init_name;      // set by driver
@@ -73,11 +74,11 @@ typedef struct device
     dev_type_t class;
     uint32_t flags;
 
-    struct device *siblings;
-
-    // struct list_node  children;
-    // struct list_node  siblings;
+    list_t children;
+    list_node_t *siblings;
 } device_t;
+
+THIS_TO_TYPE_DEF(device_t);
 
 #define CREATE_DEV_FLAG_ACCESSORS(accessor_name, flag_name)                  \
     ALWAYS_INLINE bool dev_##accessor_name(device_t *dev)                    \

@@ -29,4 +29,5 @@ uint32_t device_id_get_id(device_t *dev);
 
 
 status_t device_register(device_t *dev);
+status_t device_register_child(device_t *dev, device_t *parent);
 void device_debug();
