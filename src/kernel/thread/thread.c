@@ -73,3 +73,11 @@ thread_t *thread_create(thread_func_t entry, uintptr_t arg, uint32_t flags)
     thread_set_priority(t, PRIORITY_NORMAL_SHORT);
     return t;
 }
+
+status_t thread_reap(thread_t *t)
+{
+    t->state = THREAD_DEAD;
+    t->tid = INVALID_TID;
+    kstack_free(t->kernel_stack.stack_top);
+    return kfree(t);
+}

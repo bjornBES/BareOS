@@ -37,3 +37,5 @@
 
 void thread_set_priority(thread_t *t, int priority);
 thread_t *thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flags);
+
+status_t thread_reap(thread_t *t);

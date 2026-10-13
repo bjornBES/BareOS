@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "block_queue.h"
+
 #include "thread/threadt.h"
 
 #include "asm/cput_arch.h"
@@ -20,6 +22,9 @@ status_t sched_init(thread_t *main_thread);
 
 status_t schedule(intr_frame_t *regs);
 
+status_t sched_thread_reap(thread_t *t);
+
+status_t sched_remove(thread_t *t);
 status_t sched_add(thread_t *t);
 
 status_t sched_yield();

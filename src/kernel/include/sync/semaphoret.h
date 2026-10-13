@@ -13,12 +13,14 @@
 #include "spinlock.h"
 #include "lists/list_node.h"
 
+#include "sched/block_queue.h"
+
 #include <types.h>
 
 typedef struct
 {
     spinlock_t lock;
     int count;
-    // block_queue_t waiters;
+    block_queue_t waiters;
     list_t queue_list;
 } semaphore_t;

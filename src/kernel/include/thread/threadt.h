@@ -23,6 +23,8 @@
 
 typedef uintptr_t (*thread_func_t)(uintptr_t arg);
 
+#define INVALID_TID -1
+
 typedef enum
 {
     THREAD_READY = 1,

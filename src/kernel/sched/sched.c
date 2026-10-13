@@ -49,7 +49,6 @@ typedef struct
     spinlock_t lock;
     sched_class_t *sched_class;
     void *threads; // intrusive list_node_t, same pattern as your other lists
-    // int count;     // cheap "is it worth checking" hint before taking the lock
 } global_runq_t;
 
 typedef struct
@@ -72,6 +71,22 @@ static thread_t *blocked_queue[CONFIG_SCHED_MAX_THREADS] = {0};
 static uint32_t blocked_queue_size = 0;
 
 // static uint32_t queue_head = 0;
+
+status_t sched_thread_reap(thread_t *t)
+{
+    if (t->cpu_affinity != NULL)
+    {
+        smp_arch_send_ipi(t->cpu_affinity->arch_id, IPI_RESCHEDULE_VECTOR);
+    }
+
+    if (current_thread == t)
+    {
+        t->state = THREAD_DEAD;
+        return KERRNO_SUCCESSES;
+    }
+
+    return thread_reap(t);
+}
 
 void scheduler_tick(void *_)
 {

@@ -101,8 +101,7 @@ void kstack_free(vaddr_t stack_top)
     paddr_t pa;
     for (vaddr_t va = stack_bottom; va < top; va += PAGE_SIZE)
     {
-        // pa = (paddr_t)mmu_arch_virt_to_phys(&kernel_page, va);
-        // mmu_arch_unmap(&kernel_page, va);
-        // pmm_free_frame(pa);
+        pa = mmu_arch_unmap(&kernel_page, va);
+        pmm_free_frame(pa);
     }
 }

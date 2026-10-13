@@ -16,8 +16,8 @@
 typedef struct stack_info
 {
     mmu_flags_t mapping_flags;
-    paddr_t stack_top;
-    paddr_t stack_bottom;
+    vaddr_t stack_top;
+    vaddr_t stack_bottom;
     size_t stack_size;
     uint8_t has_guard_page : 1;
     uint8_t resv : 7;
