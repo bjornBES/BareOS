@@ -21,17 +21,18 @@ spinlock_arch_acquire:
     push rbx
     pushfq
     cli
-    xor eax, eax
-    mov ebx, 1
+    mov eax, 1
+    ; mov ebx, 1
 .retry:
     ; Compare EAX with [rdi]. If equal, ZF is set and ebx is loaded into [rdi]. Else, clear ZF and load [rdi] into EAX.
-    cmpxchg dword [rdi], ebx
+    xchg eax, dword [rdi]
+    test eax, eax
     jz .done
 .spin:
     pause
-    cmp dword [rdi], ebx
-    je .spin
-    xor eax, eax
+    cmp dword [rdi], 0
+    jnz .spin
+    mov eax, 1
     jmp .retry
 .done:
     pop [rdi + 4]

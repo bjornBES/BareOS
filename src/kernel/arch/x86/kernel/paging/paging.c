@@ -185,6 +185,12 @@ paddr_t mmu_arch_unmap(page_table_t *table, vaddr_t virt)
     return addr;
 }
 
+paddr_t mmu_arch_virt_to_phys(page_table_t *table, vaddr_t virt)
+{
+    // paging_print_tree(table);
+    return paging_get_physical(table, virt);
+}
+
 void mmu_arch_flush_page(vaddr_t virt)
 {
     inline_asm("invlpg [%0]" ::"r"((uintptr_t)(virt)) : "memory");

@@ -26,3 +26,5 @@ int paging_clean_up(page_table_t *page_table, vaddr_t virtAddr);
 paddr_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr);
 size_t allocate_leaf(page_table_t *page_table, vaddr_t start_virt, paddr_t start_phys, mmu_flags_t flags);
 void paging_print_tree(page_table_t *page_dir);
+
+paddr_t paging_get_physical(page_table_t *page_table, vaddr_t virt);
