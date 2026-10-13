@@ -43,6 +43,8 @@ NORETURN void kernel_main()
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
 
+    device_debug();
+
     for (;;)
     {
         ;

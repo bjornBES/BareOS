@@ -10,6 +10,8 @@
 
 #include "drivers/ahci/ahci.h"
 
+#include "asm/mmu_arch.h"
+
 #include "drivers/driver.h"
 #include "pci/pci.h"
 
@@ -21,25 +23,303 @@
 #include "memory.h"
 #include "string.h"
 
-#define MODULE               "ahci-driver"
+#include "sata.h"
 
-#define DRV_NAME             "ahci"
+#define MODULE                 "ahci-driver"
 
-#define DEFAULT_BAR_INDEX    5
+#define DRV_NAME               "ahci"
 
-#define SATA_SIG_ATA         0x00000101 // SATA drive
-#define SATA_SIG_ATAPI       0xEB140101 // SATAPI drive
-#define SATA_SIG_SEMB        0xC33C0101 // Enclosure management bridge
-#define SATA_SIG_PM          0x96690101 // Port multiplier
+#define DEFAULT_BAR_INDEX      5
 
-#define AHCI_DEV_NULL        0
-#define AHCI_DEV_SATA        1
-#define AHCI_DEV_SEMB        2
-#define AHCI_DEV_PM          3
-#define AHCI_DEV_SATAPI      4
+#define SATA_SIG_ATA           0x00000101 // SATA drive
+#define SATA_SIG_ATAPI         0xEB140101 // SATAPI drive
+#define SATA_SIG_SEMB          0xC33C0101 // Enclosure management bridge
+#define SATA_SIG_PM            0x96690101 // Port multiplier
 
-#define HBA_PORT_IPM_ACTIVE  1
-#define HBA_PORT_DET_PRESENT 3
+#define AHCI_DEV_NULL          0
+#define AHCI_DEV_SATA          1
+#define AHCI_DEV_SEMB          2
+#define AHCI_DEV_PM            3
+#define AHCI_DEV_SATAPI        4
+
+#define HBA_PORT_IPM_ACTIVE    1
+#define HBA_PORT_DET_PRESENT   3
+
+#define HBA_DET_PRESENT        3
+#define HBA_IPM_ACTIVE         1
+#define HBA_CMD_CR             (1 << 15)
+#define HBA_CMD_FR             (1 << 14)
+#define HBA_CMD_FRE            (1 << 4)
+#define HBA_CMD_SUD            (1 << 1)
+#define HBA_CMD_ST             (1)
+
+#define HBA_PxCMD_ST           0x0001
+#define HBA_PxCMD_FRE          0x0010
+#define HBA_PxCMD_FR           0x4000
+#define HBA_PxCMD_CR           0x8000
+
+#define PORT_IRQ_COLD_PRES     BIT(31) /* cold presence detect */
+#define PORT_IRQ_TF_ERR        BIT(30) /* task file error */
+#define PORT_IRQ_HBUS_ERR      BIT(29) /* host bus fatal error */
+#define PORT_IRQ_HBUS_DATA_ERR BIT(28) /* host bus data error */
+#define PORT_IRQ_IF_ERR        BIT(27) /* interface fatal error */
+#define PORT_IRQ_IF_NONFATAL   BIT(26) /* interface non-fatal error */
+#define PORT_IRQ_OVERFLOW      BIT(24) /* xfer exhausted available S/G */
+#define PORT_IRQ_BAD_PMP       BIT(23) /* incorrect port multiplier */
+
+#define PORT_IRQ_PHYRDY        BIT(22) /* PhyRdy changed */
+#define PORT_IRQ_DMPS          BIT(7)  /* mechanical presence status */
+#define PORT_IRQ_CONNECT       BIT(6)  /* port connect change status */
+#define PORT_IRQ_SG_DONE       BIT(5)  /* descriptor processed */
+#define PORT_IRQ_UNK_FIS       BIT(4)  /* unknown FIS rx'd */
+#define PORT_IRQ_SDB_FIS       BIT(3)  /* Set Device Bits FIS rx'd */
+#define PORT_IRQ_DMAS_FIS      BIT(2)  /* DMA Setup FIS rx'd */
+#define PORT_IRQ_PIOS_FIS      BIT(1)  /* PIO Setup FIS rx'd */
+#define PORT_IRQ_D2H_REG_FIS   BIT(0)  /* D2H Register FIS rx'd */
+
+#define PORT_IRQ_FREEZE        (PORT_IRQ_HBUS_ERR | PORT_IRQ_IF_ERR | PORT_IRQ_CONNECT | PORT_IRQ_PHYRDY | PORT_IRQ_UNK_FIS | PORT_IRQ_BAD_PMP)
+#define PORT_IRQ_ERROR         (PORT_IRQ_FREEZE | PORT_IRQ_TF_ERR | PORT_IRQ_HBUS_DATA_ERR)
+#define DEF_PORT_IRQ           (PORT_IRQ_ERROR | PORT_IRQ_SG_DONE | PORT_IRQ_SDB_FIS | PORT_IRQ_DMAS_FIS | PORT_IRQ_PIOS_FIS | PORT_IRQ_D2H_REG_FIS)
+
+void ahci_start_cmd(hba_port_t *port)
+{
+    while (port->cmd & HBA_PxCMD_CR);
+
+    port->cmd |= HBA_PxCMD_FRE;
+    port->cmd |= HBA_PxCMD_ST;
+}
+
+void ahci_stop_cmd(hba_port_t *port)
+{
+    port->cmd &= ~HBA_PxCMD_ST;
+
+    port->cmd &= ~HBA_PxCMD_FRE;
+
+    while ((port->cmd & HBA_CMD_FR) || (port->cmd & HBA_CMD_CR));
+}
+
+void ahci_initialize_aport(ahci_port_priv_t *aport)
+{
+    hba_port_t *port = aport->port;
+
+#if CONFIG_MUTEX == 1
+    mutex_init(&aport->slot_lock);
+#endif
+#if CONFIG_SEMAPHORE == 1
+    sem_init(&aport->slots_free, 32);
+#endif
+
+    aport->slot_bitmap = 0;
+#if CONFIG_DMA == 1
+    for (int i = 0; i < 32; i++)
+    {
+        #if CONFIG_SEMAPHORE == 1
+        sem_init(&aport->cmds[i].done, 0); // 0 = nothing completed yet
+        #endif
+        aport->cmds[i].dma = dma_allocate(MAX_TRANSFER_SIZE);
+        if (aport->cmds[i].dma == NULL)
+        {
+            KERNEL_PANIC(MODULE, "OMM");
+        }
+    }
+#endif
+
+    port->ie = BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(22) | BIT(23) | BIT(24) | BIT(26) | BIT(27) | BIT(28) | BIT(29) | BIT(30);
+
+    ahci_stop_cmd(port);
+
+    void *mapped_clb_virt;
+    void *mapped_clb = kmalloc_phys(4096, &mapped_clb_virt);
+    port->clb = (uint32_t)((uint32_64)mapped_clb & 0xFFFFFFFF);
+#ifdef __x86_64__
+    port->clbu = (uint32_t)((uint32_64)mapped_clb >> 32);
+#else
+    port->clbu = 0;
+#endif
+    aport->clb = mapped_clb_virt;
+
+    void *mapped_fb_virt;
+    void *mapped_fb = kmalloc_phys(4096, &mapped_fb_virt);
+    port->fb = (uint32_t)((uint32_64)mapped_fb & 0xFFFFFFFF);
+#ifdef __x86_64__
+    port->clbu = (uint32_t)((uint32_64)mapped_fb >> 32);
+#else
+    port->clbu = 0;
+#endif
+    aport->fb = mapped_fb_virt;
+
+    ahci_cmd_header_t *cmd_header = (ahci_cmd_header_t *)mapped_clb_virt;
+
+    void *ctba_pool_virt;
+    void *ctba_pool = kcalloc_phys(1, 32 * CTBA_SLOT_SIZE, &ctba_pool_virt);
+
+    for (uint8_t i = 0; i < 32; i++)
+    {
+        void *ctba_buf = (void *)((uintptr_t)ctba_pool + i * CTBA_SLOT_SIZE);
+        void *ctba_buf_virt = (void *)((uintptr_t)ctba_pool_virt + i * CTBA_SLOT_SIZE);
+        cmd_header[i].prdtl = 1;
+        aport->ctba[i] = ctba_buf_virt;
+        cmd_header[i].ctba = (uint32_64)ctba_buf & 0xFFFFFFFF;
+#ifdef __x86_64__
+        cmd_header[i].ctbau = ((uint32_64)ctba_buf >> 32);
+#else
+        cmd_header[i].ctbau = 0;
+#endif
+    }
+
+    ahci_start_cmd(port);
+}
+
+status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_cmd_request_t *req)
+{
+    ENTER_FUNC("%p, %u, %p", aport, slot, req);
+    hba_port_t *port = aport->port;
+    port->is = (uint32_t)-1; // Clear pending interrupt bits
+
+#if CONFIG_DMA == 1
+    if (req->is_write == true)
+    {
+        dma_copy_from(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size);
+    }
+#endif
+
+    ahci_cmd_header_t *cmd_header = (ahci_cmd_header_t *)aport->clb;
+    cmd_header += slot;
+    cmd_header->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);
+    cmd_header->w = req->is_write;
+    cmd_header->prdtl = (uint16_t)((req->sector_count - 1) >> 4) + 1;
+
+    HBA_CMD_TBL *cmd_table = (HBA_CMD_TBL *)aport->ctba[slot];
+    memset(cmd_table, 0, sizeof(HBA_CMD_TBL) + (cmd_header->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
+
+#if CONFIG_DMA == 1
+    if (req->buffer_size >= aport->cmds[slot].dma->size)
+    {
+        log_crit(MODULE, "can't read more then the allocated size");
+        KERNEL_PANIC(MODULE, "TODO"); // TODO
+    }
+
+    paddr_t dba_phys = aport->cmds[slot].dma->phys;
+#else
+    paddr_t dba_phys = mmu_arch_virt_to_phys(&kernel_page, req->buffer);
+    trace_debug(MODULE, "dba_phys @ %p", dba_phys);
+    // paging_print_tree(&kernel_page);
+#endif
+    size_t count = req->sector_count;
+    int i;
+    for (i = 0; i < cmd_header->prdtl - 1; i++)
+    {
+        cmd_table->prdt_entry[i].dba = dba_phys & 0xFFFFFFFF;
+#ifdef __x86_64__
+        cmd_table->prdt_entry[i].dbau = (dba_phys >> 32);
+#else
+        cmd_table->prdt_entry[i].dbau = 0;
+#endif
+        cmd_table->prdt_entry[i].dbc = 8 * 1024 - 1;
+        cmd_table->prdt_entry[i].i = 1;
+        dba_phys += 8 * 1024;
+        count -= 16;
+    }
+
+    cmd_table->prdt_entry[i].dba = dba_phys & 0xFFFFFFFF;
+#ifdef __x86_64__
+    cmd_table->prdt_entry[i].dbau = (dba_phys >> 32);
+#else
+    cmd_table->prdt_entry[i].dbau = 0;
+#endif
+    cmd_table->prdt_entry[i].dbc = (count << 9) - 1;
+    cmd_table->prdt_entry[i].i = 1;
+
+    FIS_REG_H2D *cmd_fis = (FIS_REG_H2D *)(&cmd_table->cfis);
+    cmd_fis->fis_type = FIS_TYPE_REG_H2D; // Host to device
+    cmd_fis->c = 1;
+    cmd_fis->command = req->command;
+
+    cmd_fis->lba0 = (uint8_t)(req->lba & 0xFF);
+    cmd_fis->lba1 = (uint8_t)((req->lba >> 8) & 0xFF);
+    cmd_fis->lba2 = (uint8_t)((req->lba >> 16) & 0xFF);
+    cmd_fis->device = 1 << 6;
+
+    cmd_fis->lba3 = (uint8_t)((req->lba >> 24) & 0xFF);
+    cmd_fis->lba4 = (uint8_t)((req->lba >> 32) & 0xFF);
+    cmd_fis->lba5 = (uint8_t)((req->lba >> 40) & 0xFF);
+
+    cmd_fis->countl = (req->sector_count & 0xFF);
+    cmd_fis->counth = (req->sector_count >> 8);
+
+    // ENTER_FUNC(MODULE, "%p, %u", aport, slot);
+    // PxCI (Command Issue) register — set the bit for this slot
+
+    aport->outstanding_mask |= BIT(slot);
+    // trace_debug(MODULE, "slot = %u", slot);
+    // trace_debug(MODULE, "read back high: %u low: %u", cmd_fis->counth, cmd_fis->countl);
+    aport->port->ci |= BIT(slot);
+
+#if CONFIG_SEMAPHORE == 1
+    sem_wait(&aport->cmds[slot].done); // blocks here until the ISR posts it
+#endif
+
+#if CONFIG_DMA == 1
+    if (req->is_write == false)
+    {
+        dma_copy_to(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size);
+    }
+#endif
+    return KERRNO_SUCCESSES;
+}
+
+status_t ahci_submit(ahci_port_priv_t *aport, ahci_cmd_request_t *req)
+{
+    ENTER_FUNC("%p, %p", aport, req);
+#if CONFIG_SEMAPHORE == 1
+    sem_wait(&aport->slots_free); // blocks if all slots are busy — this is the backpressure
+#endif
+
+#if CONFIG_MUTEX == 1
+    mutex_lock(&aport->slot_lock);
+#endif
+
+    uint32_t slot = (~0);
+    {
+        for (uint32_t i = 0; i < sizeof(uint32_t) * 8; i++)
+        {
+            if ((((aport->slot_bitmap) >> (i)) & 1) == 0)
+            {
+                slot = i;
+                break;
+            }
+        }
+    }
+    if (slot == -1)
+    {
+        if (aport->port_type == AHCI_DEV_SATA)
+        {
+            slot = sata_find_cmdslot(aport);
+        }
+    }
+    aport->slot_bitmap |= BIT(slot);
+
+#if CONFIG_MUTEX == 1
+    mutex_unlock(&aport->slot_lock);
+#endif
+
+    ahci_program_command_slot(aport, slot, req); // your existing register-poking code
+    status_t status = aport->cmds[slot].status;
+
+#if CONFIG_MUTEX == 1
+    mutex_lock(&aport->slot_lock);
+#endif
+    aport->slot_bitmap &= ~(1 << slot);
+#if CONFIG_MUTEX == 1
+    mutex_unlock(&aport->slot_lock);
+#endif
+
+#if CONFIG_SEMAPHORE == 1
+    sem_post(&aport->slots_free); // free the slot back to the pool
+#endif
+
+    return status;
+}
 
 int ahci_check_type(hba_port_t *port)
 {
@@ -68,73 +348,31 @@ int ahci_check_type(hba_port_t *port)
     }
 }
 
-status_t ahci_init_abar(pci_device_t *dev, hba_mem_t *abar)
+status_t ahci_init_abar(pci_device_t *dev, ahci_host_priv_t *host)
 {
-    ENTER_FUNC("%p, %p", dev, abar);
+    ENTER_FUNC("%p, %p", dev, host);
 
     if (dev->msi_cap != 0)
     {
     }
 
-    uint32_t pi = abar->pi;
-    // log_debug(MODULE, "pi = 0b%b", pi);
-    uint8_t num_ports = (abar->cap & 0x1F) + 1;
-    // log_debug(MODULE, "np = %d", num_ports);
-    abar->ghc |= HBA_GHC_INTERRUPT_ENABLE;
+    uint32_t pi = host->abar->pi;
+    host->abar->ghc |= HBA_GHC_INTERRUPT_ENABLE;
 
-    for (size_t i = 0; i < num_ports; i++)
+    for (size_t i = 0; i < host->nports; i++)
     {
         if (pi & 1)
         {
-            int dt = ahci_check_type(&abar->ports[i]);
+            int dt = ahci_check_type(&host->abar->ports[i]);
             if (dt == AHCI_DEV_SATA)
             {
-                /*
-                sata_identify_packet *info_virt = kmalloc(sizeof(sata_identify_packet));
-
-                hba_port_t *port = &abar->ports[i];
-                ports[ahci_devices_count].abar = abar;
-                ports[ahci_devices_count].port = port;
-                ahci_indexes[i] = ahci_devices_count;
-                ahci_port_t *aport = &ports[ahci_devices_count];
-                ahci_initialize_port(aport);
-                ahci_identify_device(aport, (vaddr_t)info_virt);
-
-                device_t *dev = (device_t *)malloc(sizeof(device_t));
-                sata_private_data *priv = (sata_private_data *)malloc(sizeof(sata_private_data));
-                priv->drive = ahci_devices_count;
-
-                char *name = (char *)malloc(41);
-                memset(name, 0, 41);
-                for (int i = 0; i < 40; i += 2)
-                {
-                    name[i] = info_virt->model[i + 1];
-                    name[i + 1] = info_virt->model[i];
-                }
-
-                dev->priv = priv;
-                dev->device_name = name;
-                dev->type = DEVICE_BLOCK;
-                dev->read = ahci_read;
-                dev->write = ahci_write;
-                dev->class_name = "sata";
-                dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
-                device_register(dev);
-
-                partition_block_device_register(dev);
-
-                uint64_t total_sectors = info_virt->lba28_sectors;
-                if (info_virt->cmd_set_en1 & (1 << 10))
-                {
-                    total_sectors = info_virt->lba48_sectors;
-                }
-
-                // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
-                log_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
-                ahci_devices_count++;
-
-                free(info_virt);
-                */
+                host->aports[host->ahci_devices_count].port_type = dt;
+                host->aports[host->ahci_devices_count].host_priv = host;
+                host->aports[host->ahci_devices_count].port = &host->abar->ports[i];
+                host->aports[host->ahci_devices_count].ahci_index = i;
+                device_t *port_dev;
+                host->ahci_devices_count++;
+                sata_init_port(dev, host, &host->aports[host->ahci_devices_count - 1], &port_dev);
             }
         }
     }
@@ -160,8 +398,78 @@ status_t ahci_init_irq(pci_device_t *dev, ahci_host_priv_t *host_priv)
     return KERRNO_SUCCESSES;
 }
 
+uint32_t ahci_read_completed_mask(ahci_port_priv_t *aport)
+{
+    uint32_t ci_now = aport->port->ci;
+    uint32_t completed = aport->outstanding_mask & ~ci_now; // was outstanding, no longer in PxCI
+    aport->outstanding_mask &= ~completed;                  // remove them from tracking
+    return completed;
+}
+
+status_t ahci_read_slot_status(ahci_port_priv_t *aport, int slot)
+{
+    uint32_t is = aport->port->is;
+
+    if (is & PORT_IRQ_TF_ERR)
+    {
+        uint8_t err = (aport->port->tfd >> 8) & 0xFF;
+        return err;
+    }
+
+    return KERRNO_SUCCESSES; // success
+}
+
+void ahci_isr_port_handler(ahci_port_priv_t *aport)
+{
+    uint32_t completed = ahci_read_completed_mask(aport); // which slots finished, from port regs
+    trace_debug(MODULE, "completed = 0x%x", completed);
+    for (int slot = 0; slot < 32; slot++)
+    {
+        if ((completed & (BIT(slot))) == 0)
+        {
+            continue;
+        }
+
+        trace_debug(MODULE, "slot = %u", slot);
+
+        aport->cmds[slot].status = ahci_read_slot_status(aport, slot);
+#if CONFIG_SEMAPHORE == 1
+        sem_post(&aport->cmds[slot].done);
+#endif
+    }
+}
+
 status_t ahci_handler(pci_device_t *dev)
 {
+    ENTER_FUNC("%p", dev);
+    ahci_host_priv_t *host_priv = dev->priv;
+
+    uint32_t is = host_priv->abar->is;
+    // log_debug(MODULE, "is = 0b%b", is);
+    uint8_t num_ports = (host_priv->abar->cap & 0x1F) + 1;
+    for (size_t i = 0; i < host_priv->ahci_devices_count; i++)
+    {
+        ahci_port_priv_t *aport = &host_priv->aports[i];
+        trace_debug(MODULE, "aport @ %p", aport);
+        if (BIT_GET(is, aport->ahci_index) == 0)
+        {
+            continue;
+        }
+        if (aport->port == NULL)
+        {
+            trace_err(MODULE, "port %u isn't ready", aport->ahci_index);
+            continue;
+        }
+        uint32_t port_is = aport->port->is;
+        if ((port_is & PORT_IRQ_ERROR) != 0)
+        {
+            trace_err(MODULE, "port %u @ %p has errors", i, aport);
+            continue;
+            // ahci_handle_port_error(port);
+        }
+        ahci_isr_port_handler(aport);
+    }
+
     return KERRNO_SUCCESSES;
 }
 
@@ -221,7 +529,7 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
     ret = pci_get_irq(dev, &vector, &irq);
     dev->handler = ahci_handler;
 
-    return KERRNO_SUCCESSES;
+    return ahci_init_abar(dev, host_priv);
 }
 
 void ahci_remove_one(pci_device_t *dev)
