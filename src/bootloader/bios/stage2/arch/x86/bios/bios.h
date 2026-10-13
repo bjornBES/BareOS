@@ -14,31 +14,31 @@
 #include <stdint.h>
 #include <defs.h>
 
-INLINE SECTION("arch_text") uint16_t bios_get_ds()
+ALWAYS_INLINE SECTION("arch_text") uint16_t bios_get_ds()
 {
     uint16_t seg;
     __asm__("mov %0,ds" : "=r"(seg));
     return seg;
 }
 
-INLINE SECTION("arch_text") void bios_set_fs(uint16_t seg)
+ALWAYS_INLINE SECTION("arch_text") void bios_set_fs(uint16_t seg)
 {
     __asm__("mov fs,%0" : : "r"(seg));
 }
 
-INLINE SECTION("arch_text") uint16_t bios_get_fs()
+ALWAYS_INLINE SECTION("arch_text") uint16_t bios_get_fs()
 {
     uint16_t seg;
     __asm__("mov %0,fs" : "=r"(seg));
     return seg;
 }
 
-INLINE SECTION("arch_text") void bios_set_gs(uint16_t seg)
+ALWAYS_INLINE SECTION("arch_text") void bios_set_gs(uint16_t seg)
 {
     __asm__("mov gs,%0" : : "r"(seg));
 }
 
-INLINE SECTION("arch_text") uint16_t bios_get_gs()
+ALWAYS_INLINE SECTION("arch_text") uint16_t bios_get_gs()
 {
     uint16_t seg;
     __asm__("mov %0,gs" : "=r"(seg));
