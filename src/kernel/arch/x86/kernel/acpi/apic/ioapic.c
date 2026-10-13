@@ -73,7 +73,7 @@ status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi
         iso_entry->polarity = IRQ_POLARITY_HIGH;
         iso_entry->irq = KERNEL_IRQ_NONE;
         iso_entry->gsi = i;
-        iso_entry->vector = i + IRQ_BASE;
+        iso_entry->vector = entry->ioapic_max_redir + IRQ_BASE;
         iso_entry->lapic_target = 0;
         iso_entry->pin = i;
         ioapic_print_entry(ioapic_count, i);
