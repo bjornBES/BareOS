@@ -50,8 +50,11 @@ status_t msi_pci_write32(pci_device_t *dev, uint16_t offset, uint32_t val)
 
 status_t msi_handler(intr_frame_t *frame, void *ctx)
 {
+    ENTER_FUNC("%p, %p", frame, ctx);
     pci_device_t *dev = ctx;
-    return dev->handler(dev);
+    status_t ret = dev->handler(dev);
+    irq_eoi(frame->interrupt);
+    return ret;
 }
 
 status_t pci_msi_register_irq(pci_device_t *dev, interrupt_vector_t *out_line, kernel_irq_t *out_pin)

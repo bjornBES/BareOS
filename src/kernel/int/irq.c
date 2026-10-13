@@ -34,7 +34,7 @@ irq_controller_t *current;
 
 int irq_handler(intr_frame_t *regs)
 {
-    interrupt_vector_t vector = regs->interrupt;
+    interrupt_vector_t vector = regs->interrupt - IRQ_BASE;
 
     irq_handler_t *handler = irq_arch_get_handler(vector);
 

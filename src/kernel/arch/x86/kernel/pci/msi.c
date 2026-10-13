@@ -28,7 +28,7 @@ status_t msi_arch_set_vector(pci_device_t *dev, interrupt_vector_t vector, cpu_l
     uint32_t message_data = (trigger << 15) | (polarity << 14) | (DELI_FIXED << 8) | vector;
     // if (dev->msi_addr_mask == BIT_RANGE(31, 0))
     {
-        msi_pci_write32(dev, PCI_MSI_DATA_32, message_data);
+        msi_pci_write32(dev, PCI_MSI_MASK_32, message_data);
     }
     // else
     // {
