@@ -339,21 +339,21 @@ typedef enum pci_status_bits
 
 /* Message Signaled Interrupt registers */
 
-#define PCI_MSI_FLAGS                             0x02   /* Message Control */
-#define PCI_MSI_FLAGS_ENABLE                      0x0001 /* MSI feature enabled */
-#define PCI_MSI_FLAGS_QMASK                       0x000E /* Maximum queue size available */
-#define PCI_MSI_FLAGS_QSIZE                       0x0070 /* Message queue size configured */
-#define PCI_MSI_FLAGS_64BIT                       0x0080 /* 64-bit addresses allowed */
-#define PCI_MSI_FLAGS_MASKBIT                     0x0100 /* Per-vector masking capable */
-#define PCI_MSI_RFU                               3      /* Rest of capability flags */
-#define PCI_MSI_ADDRESS_LO                        0x04   /* Lower 32 bits */
-#define PCI_MSI_ADDRESS_HI                        0x08   /* Upper 32 bits (if PCI_MSI_FLAGS_64BIT set) */
-#define PCI_MSI_DATA_32                           0x08   /* 16 bits of data for 32-bit devices */
-#define PCI_MSI_MASK_32                           0x0C   /* Mask bits register for 32-bit devices */
-#define PCI_MSI_PENDING_32                        0x10   /* Pending intrs for 32-bit devices */
-#define PCI_MSI_DATA_64                           0x0C   /* 16 bits of data for 64-bit devices */
-#define PCI_MSI_MASK_64                           0x10   /* Mask bits register for 64-bit devices */
-#define PCI_MSI_PENDING_64                        0x14   /* Pending intrs for 64-bit devices */
+#define PCI_MSI_FLAGS                             0x02       /* Message Control */
+#define PCI_MSI_FLAGS_ENABLE                      0x00010000 /* MSI feature enabled */
+#define PCI_MSI_FLAGS_QMASK                       0x000E0000 /* Maximum queue size available */
+#define PCI_MSI_FLAGS_QSIZE                       0x00700000 /* Message queue size configured */
+#define PCI_MSI_FLAGS_64BIT                       0x00800000 /* 64-bit addresses allowed */
+#define PCI_MSI_FLAGS_MASKBIT                     0x01000000 /* Per-vector masking capable */
+#define PCI_MSI_RFU                               3          /* Rest of capability flags */
+#define PCI_MSI_ADDRESS_LO                        0x04       /* Lower 32 bits */
+#define PCI_MSI_ADDRESS_HI                        0x08       /* Upper 32 bits (if PCI_MSI_FLAGS_64BIT set) */
+#define PCI_MSI_DATA_32                           0x08       /* 16 bits of data for 32-bit devices */
+#define PCI_MSI_MASK_32                           0x0C       /* Mask bits register for 32-bit devices */
+#define PCI_MSI_PENDING_32                        0x10       /* Pending intrs for 32-bit devices */
+#define PCI_MSI_DATA_64                           0x0C       /* 16 bits of data for 64-bit devices */
+#define PCI_MSI_MASK_64                           0x10       /* Mask bits register for 64-bit devices */
+#define PCI_MSI_PENDING_64                        0x14       /* Pending intrs for 64-bit devices */
 
 /* MSI-X registers (in MSI-X capability) */
 #define PCI_MSIX_FLAGS                            2                /* Message Control */
