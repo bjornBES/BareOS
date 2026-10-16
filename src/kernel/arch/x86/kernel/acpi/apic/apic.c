@@ -76,7 +76,7 @@ gsi_t apic_pick_free_gsi(uint32_t allowed_pins)
         for (uint8_t irq_index = entry->gsi_base; irq_index < entry->ioapic_max_redir + 1; irq_index++)
         {
             iso_entry_t *iso_entry = &entry->redir_entries[irq_index - entry->gsi_base];
-            ioapic_print_entry(i, irq_index);
+            // ioapic_print_entry(i, irq_index);
             if (!(allowed_pins & (1ull << irq_index)))
             {
                 continue;
@@ -141,7 +141,7 @@ status_t apic_route(kernel_irq_t irq, interrupt_vector_t vector, cpu_logical_id_
 
         for (uint8_t irq_index = entry->gsi_base; irq_index < entry->ioapic_max_redir + 1; irq_index++)
         {
-            ioapic_print_entry(ioapic_id, irq_index);
+            // ioapic_print_entry(ioapic_id, irq_index);
             iso_entry_t *iso_entry = &entry->redir_entries[irq_index - entry->gsi_base];
             if (iso_entry->irq == irq)
             {

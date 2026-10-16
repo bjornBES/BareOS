@@ -232,8 +232,8 @@ INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
     if (!current_thread->is_idle_thread)
     {
         trace_debug(MODULE, "switching to tid %u %p\n", current_thread->tid, current_thread->kstack);
-        frame_arch_dump_frame(current_thread->ctx.regs);
-        frame_arch_dump_frame((intr_frame_t *)current_thread->ctx.sp);
+        // frame_arch_dump_frame(current_thread->ctx.regs);
+        // frame_arch_dump_frame((intr_frame_t *)current_thread->ctx.sp);
     }
     if (frame != NULL)
     {

@@ -274,8 +274,8 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
         KERRNO_RETURN(KERRNO_PERMISSION_DENIED, "ivt entry already in use");
     }
 
-    trace_debug(MODULE, "current @ %p, current->debug @ %p", current, current->debug);
-    current->debug();
+    // trace_debug(MODULE, "current @ %p, current->debug @ %p", current, current->debug);
+    // current->debug();
 
     trace_debug(MODULE, "target_cpu = %u", target_cpu);
     trace_info(MODULE, "Registering IRQ handler (%p) on irq %u/vector %d in cpu%u", handler, irq, descriptor->vectors[target_cpu] + IRQ_BASE, target_cpu);
