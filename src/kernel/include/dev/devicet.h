@@ -14,26 +14,13 @@
 #include "drivers/drivert.h"
 #include "drivers/bust.h"
 
+#include "class/classt.h"
+
 #include <types.h>
 #include <defs.h>
 #include <binary.h>
 
 #define DEVICE_NAME_MAX 32
-
-typedef enum dev_type
-{
-    DEVICE_UNKNOWN = 0,
-    DEVICE_CHAR,   // keyboards, serial, mice — byte stream
-    DEVICE_SERIAL,
-    DEVICE_BLOCK,  // disks, partitions — random access blocks
-    DEVICE_TTY,    // TTY devices
-    DEVICE_NET,    // network interfaces
-    DEVICE_VIDEO,  // framebuffer
-    DEVICE_TIMER,
-    DEVICE_PSEUDO, // /dev/null, /dev/zero, /dev/random
-    DEVICE_VIRTUAL,
-    DEVICE_TYPE_MAX,
-} dev_type_t;
 
 typedef enum device_flags
 {
@@ -47,6 +34,7 @@ typedef enum device_flags
     // DEV_FLAG_OF_NODE_REUSED = 7,
     // DEV_FLAG_OFFLINE_DISABLED = 8,
     DEV_FLAG_OFFLINE = 9,
+    DEV_FLAG_NO_DRIVER = 10,
 
     DEV_FLAG_COUNT
 } device_flags_t;
@@ -71,7 +59,10 @@ typedef struct device
 
     driver_t *driver; // bound driver, if any
     void *drv_data;   // driver-private state, opaque to generic code
-    dev_type_t class;
+
+    dev_class_t *class;
+    void *class_data;
+
     uint32_t flags;
 
     list_t children;
@@ -83,26 +74,27 @@ THIS_TO_TYPE_DEF(device_t);
 #define CREATE_DEV_FLAG_ACCESSORS(accessor_name, flag_name)                  \
     ALWAYS_INLINE bool dev_##accessor_name(device_t *dev)                    \
     {                                                                        \
-        return FLAG_GET(dev->flags, flag_name) == flag_name;                 \
+        return BIT_GET(dev->flags, flag_name) == 1;                          \
     }                                                                        \
     ALWAYS_INLINE void dev_set_##accessor_name(device_t *dev)                \
     {                                                                        \
-        FLAG_SET(dev->flags, flag_name);                                     \
+        BIT_SET(dev->flags, flag_name);                                      \
     }                                                                        \
     ALWAYS_INLINE void dev_clear_##accessor_name(device_t *dev)              \
     {                                                                        \
-        FLAG_UNSET(dev->flags, flag_name);                                   \
+        BIT_UNSET(dev->flags, flag_name);                                    \
     }                                                                        \
     ALWAYS_INLINE void dev_assign_##accessor_name(device_t *dev, bool value) \
     {                                                                        \
-        FLAG_ASSIGN(dev->flags, flag_name, value);                           \
+        BIT_ASSIGN(dev->flags, flag_name, value);                            \
     }                                                                        \
     ALWAYS_INLINE bool dev_test_and_set_##accessor_name(device_t *dev)       \
     {                                                                        \
-        return FLAG_TEST_AND_SET(dev->flags, DEV_FLAG_READY_TO_PROBE);       \
+        return BIT_TEST_AND_SET(dev->flags, flag_name);                      \
     }
 
 CREATE_DEV_FLAG_ACCESSORS(ready_to_probe, DEV_FLAG_READY_TO_PROBE);
+CREATE_DEV_FLAG_ACCESSORS(no_driver, DEV_FLAG_NO_DRIVER);
 
 #undef CREATE_DEV_FLAG_ACCESSORS
 

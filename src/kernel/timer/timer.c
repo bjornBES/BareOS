@@ -9,12 +9,15 @@
  */
 
 #include "timer/timer.h"
+#include "class/class.h"
 
 #include "kerrno.h"
 
 #include "memory.h"
 
 #include "math.h"
+
+#include "init.h"
 
 #include <defs.h>
 
@@ -30,11 +33,6 @@ uint32_t timer_count = 0;
 timer_source_t *cached_tick_source = NULL;
 timer_source_t *cached_deadline_source = NULL;
 timer_source_t *cached_counter_source = NULL;
-
-timer_source_t *timer_create()
-{
-    return kmalloc(sizeof(timer_source_t));
-}
 
 INTERNAL timer_role_t timer_caps_to_role(timer_caps_t *caps)
 {
@@ -195,6 +193,39 @@ status_t timer_register(timer_source_t *src)
     return KERRNO_SUCCESSES;
 }
 
+status_t timer_class_added(device_t *dev)
+{
+    timer_source_t *src = dev->class_data;
+    return timer_register(src);
+}
+
+static dev_class_t timer_class = {
+    .name = "timer",
+    .type = DEVICE_TIMER,
+    .device_added = timer_class_added,
+};
+
+status_t timer_init()
+{
+    class_register(&timer_class);
+    return KERRNO_SUCCESSES;
+}
+
+ARCHDONE_INITCALL(timer_init);
+
+timer_source_t *timer_create()
+{
+    return kmalloc(sizeof(timer_source_t));
+}
+
+device_t *timer_create_device()
+{
+    device_t *dev = kmalloc(sizeof(device_t));
+    dev->class = &timer_class;
+    dev_set_no_driver(dev);
+    return dev;
+}
+
 uint64_t timer_now_ns()
 {
     if (cached_counter_source == NULL)
@@ -214,7 +245,8 @@ uint64_t timer_now_sec()
     uint64_t ticks = cached_counter_source->read_counter(cached_counter_source);
     return ticks / cached_counter_source->caps.freq_hz;
 }
-/* 
+
+/*
 uint64_t timer_get_boot_time()
 {
 
@@ -226,11 +258,10 @@ uint64_t timer_now_ticks()
     return cached_counter_source->read_counter(cached_counter_source);
 }
 
-
 void timer_set_device_periodic_wrapper(uintptr_t _args)
 {
     ENTER_FUNC("%p", _args);
-    periodic_function_args_t *args = (periodic_function_args_t*)_args;
+    periodic_function_args_t *args = (periodic_function_args_t *)_args;
     trace_debug(MODULE, "source = %p", args->source);
     trace_debug(MODULE, "source->name = %s", args->source->name);
     trace_debug(MODULE, "source->arm_periodic = %p", args->source->arm_periodic);

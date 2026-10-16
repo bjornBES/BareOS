@@ -147,15 +147,12 @@ status_t pit_irq_handler(intr_frame_t *frame, void *ctx)
 
 status_t pit_init()
 {
-    device_t *pit = device_create();
+    device_t *pit = timer_create_device();
     pit->init_name = "pit";
-    pit->class = DEVICE_TIMER;
-    device_register(pit);
-
+    
     timer_source_t *pit_timer = timer_create();
-
+    
     pit_timer->name = "pit";
-    pit_timer->dev = pit->devt.id;
     pit_timer->caps.freq_hz = PIT_BASE_FREQ;
     pit_timer->caps.interrupt_capable = 1;
     pit_timer->caps.invariant = 1;
@@ -164,7 +161,12 @@ status_t pit_init()
     pit_timer->caps.max_interval_ns = UINT16_MAX / PIT_BASE_FREQ;
     pit_timer->read_counter = pit_read_count;
     pit_timer->ticks_to_ns = pit_ticks_to_ns;
-    timer_register(pit_timer);
+    
+    pit->class_data = pit_timer;
+    
+    device_register(pit);
+    pit_timer->dev = pit->devt.id;
+    // timer_register(pit_timer);
 
     kernel_irq_t irq;
     irq_pick_free_entry(~0, IRQ_SOURCE_IRQ, 0, &irq);

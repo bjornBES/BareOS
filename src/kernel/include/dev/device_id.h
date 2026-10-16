@@ -20,6 +20,7 @@ typedef union device_id
 {
     struct
     {
+        // todo think about changing to 8 to 9 bits for major
         uint64_t major : 16;  // driver class
         uint64_t device : 24; // physical device instance
         uint64_t minor : 24;  // sub-resource (partition, channel, etc.)

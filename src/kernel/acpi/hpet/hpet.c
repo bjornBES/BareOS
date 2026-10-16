@@ -182,15 +182,10 @@ status_t hpet_irq_handler(intr_frame_t *regs, void *ctx)
 
 status_t hpet_register()
 {
-    device_t *hpet_dev = device_create();
+    device_t *hpet_dev = timer_create_device();
     hpet_dev->init_name = "hpet";
-    hpet_dev->class = DEVICE_TIMER;
-    // hpet->hpet_timer = hpet_timer;
-    device_register(hpet_dev);
-
+    
     timer_source_t *hpet_timer = timer_create();
-    timer_source_t *hpet_main_timer = timer_create();
-
     hpet_timer->name = "hpet";
     hpet_timer->caps.interrupt_capable = 1;
     hpet_timer->caps.supports_oneshot = 1;
@@ -199,28 +194,38 @@ status_t hpet_register()
     hpet_timer->caps.freq_hz = hpet_freq;
     hpet_timer->caps.min_interval_ns = 1;
     hpet_timer->caps.max_interval_ns = UINT32_MAX / hpet_freq;
-
+    
     hpet_timer->arm_oneshot = hpet_set_oneshot;
     hpet_timer->arm_periodic = hpet_set_periodic;
     hpet_timer->cancel = hpet_cancel;
+    hpet_dev->class_data = hpet_timer;
+    
+    device_register(hpet_dev);
     hpet_timer->dev = hpet_dev->devt.id;
-
+    
+    device_t *hpet_main_dev = timer_create_device();
+    hpet_main_dev->init_name = "hpet-main";
+    
+    timer_source_t *hpet_main_timer = timer_create();
     hpet_main_timer->name = "hpet-main";
     hpet_main_timer->caps.invariant = 1;
     hpet_main_timer->caps.read_cost_ns = 100000;
     hpet_main_timer->caps.freq_hz = hpet_freq;
     hpet_main_timer->caps.min_interval_ns = 1;
     hpet_main_timer->caps.max_interval_ns = UINT64_MAX / hpet_freq;
-
+    
     hpet_main_timer->read_counter = hpet_read_counter;
     hpet_main_timer->ticks_to_ns = hpet_ticks_to_ns;
-    hpet_main_timer->dev = hpet_dev->devt.id;
+    hpet_main_dev->class_data = hpet_main_timer;
+    
+    device_register(hpet_main_dev);
+    hpet_main_timer->dev = hpet_main_dev->devt.id;
 
     hpet_arch_write(HPET_REG_CONFIG, hpet_arch_read(HPET_REG_CONFIG) | HPET_CONFIG_ENABLE);
     hpet_arch_write(HPET_REG_COUNTER, 0);
 
-    timer_register(hpet_timer);
-    timer_register(hpet_main_timer);
+    // timer_register(hpet_timer);
+    // timer_register(hpet_main_timer);
 
     return KERRNO_SUCCESSES;
 }

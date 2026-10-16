@@ -14,7 +14,7 @@
 
 #include "list_node.h"
 
-#define ADD_THIS_TO_LIST(list, n) list_push_tail(&list, &n->LIST_ENTRY_NAME);
+#define ADD_THIS_TO_LIST(list, n) list_push_tail(&(list), &(n)->LIST_ENTRY_NAME);
 
 void list_initialize(list_t *list);
 status_t list_push_head(list_t *list, list_node_t *node);

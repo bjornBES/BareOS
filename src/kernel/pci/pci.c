@@ -17,6 +17,8 @@
 
 #include "asm/arch_pci.h"
 
+#include "class/class.h"
+
 #include "drivers/bust.h"
 #include "drivers/bus.h"
 
@@ -277,7 +279,7 @@ INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, pci_bar_t *
         abar.size = (~size) + 1;
         pci_config_write32(dev, offset, bar);
     }
-    
+
     pci_config_write32(dev, offset, bar);
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", abar.base, abar.is_64bit BOOL_TO_STRING, abar.is_mmio BOOL_TO_STRING, abar.prefetchable BOOL_TO_STRING, abar.size);
     memcpy(out_abar, &abar, sizeof(pci_bar_t));
@@ -362,6 +364,17 @@ bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_t *pdev
 
 extern bus_type_t pci_bus_type;
 
+status_t pci_device_added(device_t *dev)
+{
+    return KERRNO_SUCCESSES;
+}
+
+static dev_class_t pcibus_class = {
+    .name = "pci_bus",
+    .type = DEVICE_PCI,
+    .device_added = pci_device_added,
+};
+
 void pci_check_buses()
 {
     for (uint32_t bus = 0; bus < 256; bus++)
@@ -386,6 +399,8 @@ void pci_check_buses()
                 // trace_debug(MODULE, "pci_devices[%u] = %p", pci_device_count, &pdev);
                 device_t *dev = &pdev->dev;
                 memset(dev, 0, sizeof(*dev));
+                dev_set_ready_to_probe(dev);
+                dev->class = &pcibus_class;
                 pci_device_id_t *id = &pdev->id;
                 id->vendor = pdev->vendor_id;
                 id->device = pdev->device_id;
@@ -450,6 +465,7 @@ status_t pci_unregister_driver()
 
 status_t pci_initialize()
 {
+    class_register(&pcibus_class);
     pci_device_count = 0;
     pci_capacity = 16;
     pci_devices = (pci_device_t **)kmalloc(sizeof(pci_device_t *) * 16);

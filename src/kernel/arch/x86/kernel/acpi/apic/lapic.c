@@ -285,10 +285,10 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
 {
     uint64_t lapic_freq = lapic_timer_get_freq();
 
-    cpu_t *cpu = cpu_arch_get(logical_id);
+    cpu_entry_t *entry = cpu_get_entry(logical_id);
+    cpu_t *cpu = entry->cpu;
 
     timer_source_t *lapic_timer = timer_create();
-    cpu->cpu_timer_dev = lapic_timer;
     lapic_timer->name = "lapic";
     lapic_timer->caps.per_cpu = 1;
     lapic_timer->caps.interrupt_capable = 1;
@@ -298,20 +298,22 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     lapic_timer->caps.freq_hz = lapic_freq;
     lapic_timer->caps.min_interval_ns = 1;
     lapic_timer->caps.max_interval_ns = UINT32_MAX / lapic_freq;
-
+    
     lapic_timer->arm_oneshot = lapic_timer_set_oneshot;
     lapic_timer->arm_periodic = lapic_timer_set_periodic;
     lapic_timer->cancel = lapic_timer_cancel;
-
+    
     lapic_timer->priv = kmalloc(sizeof(lapic_timer_priv_t));
+    
+    cpu->cpu_timer_dev = lapic_timer;
 
-    if (lapic_id == cpu_arch_get_bsp()->arch_id)
+    if (entry->is_bsp)
     {
-        device_t *lapic = device_create();
+        device_t *lapic = timer_create_device();
         lapic->init_name = "lapic";
-        lapic->class = DEVICE_TIMER;
+        lapic->class_data = lapic_timer;
         device_register(lapic);
-        timer_register(lapic_timer);
+        // timer_register(lapic_timer);
         ivt_set_handler(CPU_TIMER_VECTOR, lapic_timer_isr);
     }
     

@@ -128,7 +128,7 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
     }
 #endif
 
-    port->ie = BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(22) | BIT(23) | BIT(24) | BIT(26) | BIT(27) | BIT(28) | BIT(29) | BIT(30);
+    port->ie.ie = BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(22) | BIT(23) | BIT(24) | BIT(26) | BIT(27) | BIT(28) | BIT(29) | BIT(30);
 
     ahci_stop_cmd(port);
 
@@ -178,7 +178,7 @@ status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_
 {
     ENTER_FUNC("%p, %u, %p", aport, slot, req);
     hba_port_t *port = aport->port;
-    port->is = (uint32_t)-1; // Clear pending interrupt bits
+    port->is.is = (uint32_t)-1; // Clear pending interrupt bits
 
 #if CONFIG_DMA == 1
     if (req->is_write == true)
@@ -361,7 +361,9 @@ status_t ahci_init_abar(pci_device_t *dev, ahci_host_priv_t *host)
     }
 
     uint32_t pi = host->abar->pi;
-    host->abar->ghc |= HBA_GHC_INTERRUPT_ENABLE;
+    host->abar->ghc.IE = 1;
+
+    trace_debug(MODULE, "nports = %u", host->nports);
 
     for (size_t i = 0; i < host->nports; i++)
     {
@@ -377,6 +379,8 @@ status_t ahci_init_abar(pci_device_t *dev, ahci_host_priv_t *host)
                 device_t *port_dev;
                 host->ahci_devices_count++;
                 sata_init_port(dev, host, &host->aports[host->ahci_devices_count - 1], &port_dev);
+                
+                device_add(port_dev);
             }
         }
     }
@@ -412,7 +416,7 @@ uint32_t ahci_read_completed_mask(ahci_port_priv_t *aport)
 
 status_t ahci_read_slot_status(ahci_port_priv_t *aport, int slot)
 {
-    uint32_t is = aport->port->is;
+    uint32_t is = aport->port->is.is;
 
     if (is & PORT_IRQ_TF_ERR)
     {
@@ -450,7 +454,7 @@ status_t ahci_handler(pci_device_t *dev)
 
     uint32_t is = host_priv->abar->is;
     // log_debug(MODULE, "is = 0b%b", is);
-    uint8_t num_ports = (host_priv->abar->cap & 0x1F) + 1;
+    uint8_t num_ports = host_priv->abar->cap.NCS + 1;
     for (size_t i = 0; i < host_priv->ahci_devices_count; i++)
     {
         ahci_port_priv_t *aport = &host_priv->aports[i];
@@ -464,7 +468,7 @@ status_t ahci_handler(pci_device_t *dev)
             trace_err(MODULE, "port %u isn't ready", aport->ahci_index);
             continue;
         }
-        uint32_t port_is = aport->port->is;
+        uint32_t port_is = aport->port->is.is;
         if ((port_is & PORT_IRQ_ERROR) != 0)
         {
             trace_err(MODULE, "port %u @ %p has errors", i, aport);
@@ -499,6 +503,9 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
 
     // TODO check vendor/device fields some change the bar index
 
+    trace_debug(MODULE, "", sizeof(hba_mem_t), sizeof(hba_port_t));
+    // 0x1100
+
     pci_bar_t ahci_bar;
     ret = pci_get_bar(dev, bar_index, &ahci_bar);
 
@@ -521,10 +528,11 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", host_priv->abar, ahci_bar.is_64bit BOOL_TO_STRING, ahci_bar.is_mmio BOOL_TO_STRING, ahci_bar.prefetchable BOOL_TO_STRING, ahci_bar.size);
 
     uint32_t pi = host_priv->abar->pi;
-    host_priv->nports = (host_priv->abar->cap & 0x1F) + 1;
+    host_priv->nports = host_priv->abar->cap.NP + 1;
 
-    dev->dev.class = DEVICE_BLOCK;
+    // dev->dev.class = DEVICE_BLOCK;
     dev->dev.init_name = "AHCI";
+    device_add(&dev->dev);
 
     ahci_init_irq(dev, host_priv);
 

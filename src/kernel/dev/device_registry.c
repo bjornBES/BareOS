@@ -11,6 +11,8 @@
 #include "dev/device.h"
 #include "dev/device_id.h"
 
+#include "class/class.h"
+
 #include "drivers/driver.h"
 #include "drivers/bus.h"
 
@@ -80,48 +82,11 @@ int device_register_under_dev_id(device_t *dev, dev_t device_id)
     return KERRNO_SUCCESSES;
 }
 
-status_t device_register_child(device_t *dev, device_t *parent)
+INTERNAL status_t device_internal_add(device_t *dev, list_t *list)
 {
-    ENTER_FUNC("%p, %p", dev, parent);
-    if (dev == NULL)
-    {
-        log_crit(MODULE, "Device is null try again");
-        return -EINVAL;
-    }
-    if (parent == NULL)
-    {
-        log_crit(MODULE, "Parent device is null");
-        return -EINVAL;
-    }
+    ENTER_FUNC("%p, %p", dev, list);
 
-    if (parent->id == (~0))
-    {
-        parent->id = device_id_get_id(parent);
-        parent->devt.device = parent->id;
-    }
-
-    if (dev->init_name != NULL)
-    {
-        uint32_t class_id = device_id_get_next_class_id(dev->init_name);
-        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
-    }
-    else
-    {
-        log_err(MODULE, "class name is NULL for type %u", dev->class);
-        return KERRNO_UNSUCCESS;
-    }
-
-    if (!parent->children.has_initialize)
-    {
-        list_initialize(&parent->children);
-    }
-    ADD_THIS_TO_LIST(parent->children, dev);
-
-    dev->id = parent->id;
-    dev->devt.device = dev->id;
-    dev->devt.major = dev->class;
-    dev->devt.minor = parent->children.count;
-    dev->devt.id = MKDEV_KERNEL(dev->class, dev->id, parent->children.count);
+    status_t ret = class_add_device(dev);
 
     uint64_t major = dev->devt.major;
     uint64_t device = dev->devt.device;
@@ -143,21 +108,115 @@ status_t device_register_child(device_t *dev, device_t *parent)
                 break; // not everything needs a /dev/ entry
         } */
 
+    return ret;
+}
+
+status_t device_add(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
+
+    if (dev->init_name != NULL)
+    {
+        uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
+    }
+    else
+    {
+        log_err(MODULE, "class name is NULL for type %u", dev->class);
+        return KERRNO_UNSUCCESS;
+    }
+
+    if (dev->id == (~0))
+    {
+        dev->id = device_id_get_id(dev);
+        dev->devt.minor = dev->id;
+    }
+
+    dev->devt.major = dev->class->type;
+    dev->devt.device = 0;
+    dev->devt.id = MKDEV_KERNEL(dev->class->type, 0, dev->id);
+
+    device_internal_add(dev, NULL);
+
+    if (!dev->children.has_initialize)
+    {
+        list_initialize(&dev->children);
+    }
+
     return KERRNO_SUCCESSES;
 }
 
-status_t device_register(device_t *dev)
+status_t device_register_child(device_t *dev, device_t *parent)
 {
+    ENTER_FUNC("%p, %p", dev, parent);
     if (dev == NULL)
     {
         log_crit(MODULE, "Device is null try again");
         return -EINVAL;
     }
+    if (parent == NULL)
+    {
+        log_crit(MODULE, "Parent device is null");
+        return -EINVAL;
+    }
+    if (dev->class == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "device '%s' doesn't have a class", dev->init_name);
+    }
+
+    if (parent->id == (~0))
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "parent device '%s' has not been added", parent->init_name);
+    }
+
+    if (dev->init_name != NULL)
+    {
+        uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
+    }
+    else
+    {
+        log_err(MODULE, "class name is NULL for type %u", dev->class);
+        return KERRNO_UNSUCCESS;
+    }
+
+    dev->id = parent->id;
+    dev->devt.major = dev->class->type;
+    dev->devt.minor = parent->devt.minor;
+    dev->devt.device = parent->children.count;
+    dev->devt.id = MKDEV_KERNEL(dev->class, dev->id, parent->children.count);
+
+    status_t ret = ADD_THIS_TO_LIST(parent->children, dev);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
+    device_internal_add(dev, &parent->children);
+
+    return KERRNO_SUCCESSES;
+}
+
+status_t device_register(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
+    if (dev == NULL)
+    {
+        log_crit(MODULE, "Device is null try again");
+        return -EINVAL;
+    }
+    if (dev->class == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "device '%s' doesn't have a class", dev->init_name);
+    }
     dev->id = (~0);
 
-    if (dev->driver == NULL)
+    if (dev_no_driver(dev) == false)
     {
-        bus_probe_device(dev);
+        if (dev->driver == NULL)
+        {
+            return bus_probe_device(dev);
+        }
     }
 
     if (dev->init_name != NULL)
@@ -177,31 +236,11 @@ status_t device_register(device_t *dev)
         dev->devt.device = dev->id;
     }
 
-    dev->devt.major = dev->class;
+    dev->devt.major = dev->class->type;
     dev->devt.minor = 0;
-    dev->devt.id = MKDEV_KERNEL(dev->class, dev->id, 0);
+    dev->devt.id = MKDEV_KERNEL(dev->class->type, dev->id, 0);
 
-    ADD_THIS_TO_LIST(device_lists[dev->class], dev);
-
-    uint64_t major = dev->devt.major;
-    uint64_t device = dev->devt.device;
-    uint64_t minor = dev->devt.minor;
-    trace_info(MODULE, "registered %s (type=%d id=%d dev_id=%u:%u:%u/0x%016x)", dev->name, dev->class, dev->id, major, device, minor, dev->devt.id);
-    dev_count++;
-
-    /*     switch (dev->class)
-        {
-            case DEVICE_TTY :
-            case DEVICE_CHAR : // DEVICE_SERIAL?
-                devfs_create_entry(dev, DT_CHR);
-                break;
-            case DEVICE_BLOCK :
-                get_next_class_id(dev->name);
-                devfs_create_entry(dev, DT_CHR);
-                break;
-            default :
-                break; // not everything needs a /dev/ entry
-        } */
+    device_internal_add(dev, NULL);
 
     return KERRNO_SUCCESSES;
 }
@@ -214,7 +253,7 @@ void device_unregister(device_t *dev)
         return;
     }
 
-    list_node_t *curr = device_lists[dev->class].tail;
+    list_node_t *curr = dev->class->devices.tail;
     while (curr && curr != &THIS_NODE(dev))
     {
         if (curr == &THIS_NODE(dev))
@@ -225,7 +264,7 @@ void device_unregister(device_t *dev)
     }
     if (curr == &THIS_NODE(dev))
     {
-        list_remove(&device_lists[dev->class], curr);
+        list_remove(&dev->class->devices, curr);
         kfree(dev);
     }
 }
@@ -233,18 +272,6 @@ void device_unregister(device_t *dev)
 void device_debug_dev(device_t *parent_dev)
 {
     // trace_info(MODULE, "device count: %u", dev->children.count);
-    char *DEVICE_TYPE_STRING[DEVICE_TYPE_MAX] = {
-        [DEVICE_UNKNOWN] = "UNKNOWN",
-        [DEVICE_SERIAL] = "SERIAL",
-        [DEVICE_BLOCK] = "BLOCK",
-        [DEVICE_CHAR] = "CHAR",
-        [DEVICE_TTY] = "TTY",
-        [DEVICE_NET] = "NET",
-        [DEVICE_VIDEO] = "VIDEO",
-        [DEVICE_TIMER] = "TIMER",
-        [DEVICE_PSEUDO] = "PSEUDO",
-        [DEVICE_VIRTUAL] = "VIRTUAL",
-    };
     int i = 0;
     {
         list_node_t *dev_node = parent_dev->children.tail;
@@ -262,7 +289,7 @@ void device_debug_dev(device_t *parent_dev)
             uint64_t device = dev->devt.device;
             uint64_t minor = dev->devt.minor;
 
-            trace_info(MODULE, "\tdevice: %u.%u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", parent_dev->devt.device, i, dev->id, major, device, minor, DEVICE_TYPE_STRING[dev->class], dev->class, dev->name, dev->ops, dev->driver);
+            trace_info(MODULE, "\tdevice: %u.%u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", parent_dev->devt.device, i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->ops, dev->driver);
             dev_node = dev_node->prev;
             i++;
         }
@@ -272,19 +299,8 @@ void device_debug_dev(device_t *parent_dev)
 void device_debug()
 {
     trace_info(MODULE, "device count: %u", dev_count);
-    char *DEVICE_TYPE_STRING[DEVICE_TYPE_MAX] = {
-        [DEVICE_UNKNOWN] = "UNKNOWN",
-        [DEVICE_SERIAL] = "SERIAL",
-        [DEVICE_BLOCK] = "BLOCK",
-        [DEVICE_CHAR] = "CHAR",
-        [DEVICE_TTY] = "TTY",
-        [DEVICE_NET] = "NET",
-        [DEVICE_VIDEO] = "VIDEO",
-        [DEVICE_TIMER] = "TIMER",
-        [DEVICE_PSEUDO] = "PSEUDO",
-        [DEVICE_VIRTUAL] = "VIRTUAL",
-    };
-    for (size_t i = 0; i < DEVICE_TYPE_MAX; i++)
+    class_list_devices();
+    /* for (size_t i = 0; i < DEVICE_TYPE_MAX; i++)
     {
         list_node_t *dev_node = device_lists[i].tail;
         while (dev_node)
@@ -301,12 +317,12 @@ void device_debug()
             uint64_t device = dev->devt.device;
             uint64_t minor = dev->devt.minor;
 
-            trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, DEVICE_TYPE_STRING[dev->class], dev->class, dev->name, dev->ops, dev->driver);
+            trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->ops, dev->driver);
             if (dev->children.has_initialize)
             {
                 device_debug_dev(dev);
             }
             dev_node = dev_node->prev;
         }
-    }
+    } */
 }

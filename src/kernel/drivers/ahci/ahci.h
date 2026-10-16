@@ -24,12 +24,67 @@
 
 typedef struct hba_port
 {
-    uint32_t clb;       // 0x00, command list base address, 1K-byte aligned
+    uint32_t clb; // 0x00, command list base address, 1K-byte aligned
     uint32_t clbu;
-    uint32_t fb;        // 0x08, FIS base address, 256-byte aligned
+    uint32_t fb;  // 0x08, FIS base address, 256-byte aligned
     uint32_t fbu;
-    uint32_t is;        // 0x10, interrupt status
-    uint32_t ie;        // 0x14, interrupt enable
+
+    union
+    {
+        struct
+        {
+            uint32_t CPDS : 1;
+            uint32_t TFES : 1;
+            uint32_t HBFS : 1;
+            uint32_t HBDS : 1;
+            uint32_t IFS : 1;
+            uint32_t INFS : 1;
+            uint32_t reserved1 : 1;
+            uint32_t OFS : 1;
+            uint32_t IPMS : 1;
+            uint32_t PRCS : 1;
+            uint32_t reserved2 : 14;
+            uint32_t DMPS : 1;
+            uint32_t PCS : 1;
+            uint32_t DPS : 1;
+            uint32_t UFS : 1;
+            uint32_t SDBS : 1;
+            uint32_t DSS : 1;
+            uint32_t PSS : 1;
+            uint32_t DHRS : 1;
+        };
+
+        uint32_t is; // 0x10, interrupt status
+    } PACKED is;
+
+    union
+    {
+        struct
+        {
+            uint32_t CPDE : 1;
+            uint32_t TFEE : 1;
+            uint32_t HBFE : 1;
+            uint32_t HBDE : 1;
+            uint32_t IFE : 1;
+            uint32_t INFE : 1;
+            uint32_t reserved1 : 1;
+            uint32_t OFE : 1;
+            uint32_t IPME : 1;
+            uint32_t PRCE : 1;
+            uint32_t reserved2 : 14;
+            uint32_t DMPE : 1;
+            uint32_t PCE : 1;
+            uint32_t DPE : 1;
+            uint32_t UFE : 1;
+            uint32_t SDBE : 1;
+            uint32_t DSE : 1;
+            uint32_t PSE : 1;
+            uint32_t DHRE : 1;
+        };
+
+        uint32_t ie; // 0x14, interrupt enable
+    } PACKED ie;
+
     uint32_t cmd;       // 0x18, command and status
     uint32_t rsv0;      // 0x1C, Reserved
     uint32_t tfd;       // 0x20, task file data
@@ -48,17 +103,100 @@ typedef struct hba_port
 typedef struct hba_mem
 {
     // 0x00 - 0x2B, Generic Host Control
-    uint32_t cap;     // 0x00, Host capability
-    uint32_t ghc;     // 0x04, Global host control
-    uint32_t is;      // 0x08, Interrupt status
-    uint32_t pi;      // 0x0C, Port implemented
-    uint32_t vs;      // 0x10, Version
-    uint32_t ccc_ctl; // 0x14, Command completion coalescing control
+    union
+    {
+        struct
+        {
+            uint32_t S64A : 1;     // 31
+            uint32_t SNCQ : 1;     // 30
+            uint32_t SSNTF : 1;    // 29
+            uint32_t SMPS : 1;     // 28
+            uint32_t SSS : 1;      // 27
+            uint32_t SALP : 1;     // 26
+            uint32_t SAL : 1;      // 25
+            uint32_t SCLO : 1;     // 24
+            uint32_t ISS : 4;      // 23-20
+            uint32_t reserved : 1; // 19
+            uint32_t SAM : 1;      // 18
+            uint32_t SPM : 1;      // 17
+            uint32_t FBSS : 1;     // 16
+            uint32_t PMD : 1;      // 15
+            uint32_t SSC : 1;      // 14
+            uint32_t PSC : 1;      // 13
+            uint32_t NCS : 5;      // 12-8
+            uint32_t CCCS : 1;     // 7
+            uint32_t EMS : 1;      // 6
+            uint32_t SXS : 1;      // 5
+            uint32_t NP : 5;       // 4-0
+        };
+
+        uint32_t cap; // 0x00, Host capability
+    } PACKED cap;
+
+    union
+    {
+        struct
+        {
+            uint32_t AE : 1;
+            uint32_t reserved : 28;
+            uint32_t MESM : 1;
+            uint32_t IE : 1;
+            uint32_t HR : 1;
+        };
+    } PACKED ghc;       // 0x04, Global host control
+
+    uint32_t is; // 0x08, Interrupt status
+    uint32_t pi; // 0x0C, Port implemented
+    uint32_t vs; // 0x10, Version
+
+    union
+    {
+        struct
+        {
+            uint32_t TV : 16;
+            uint32_t CC : 8;
+            uint32_t INT : 5;
+            uint32_t reserved : 2;
+            uint32_t EN : 1;
+        };
+
+        uint32_t ccc_ctl; // 0x14, Command completion coalescing control
+    } PACKED ccc_ctl;
+
     uint32_t ccc_pts; // 0x18, Command completion coalescing ports
     uint32_t em_loc;  // 0x1C, Enclosure management location
     uint32_t em_ctl;  // 0x20, Enclosure management control
-    uint32_t cap2;    // 0x24, Host capabilities extended
-    uint32_t bohc;    // 0x28, BIOS/OS handoff control and status
+
+    union
+    {
+        struct
+        {
+            uint32_t reserved : 26;
+            uint32_t DESO : 1;
+            uint32_t SADM : 1;
+            uint32_t SDS : 1;
+            uint32_t APST : 1;
+            uint32_t NVMP : 1;
+            uint32_t BOH : 1;
+        };
+
+        uint32_t cap2; // 0x24, Host capabilities extended
+    } PACKED cap2;
+
+    union
+    {
+        struct
+        {
+            uint32_t reserved : 27;
+            uint32_t BB : 1;
+            uint32_t OOC : 1;
+            uint32_t SOOE : 1;
+            uint32_t OOS : 1;
+            uint32_t BOS : 1;
+        };
+
+        uint32_t bohc; // 0x28, BIOS/OS handoff control and status
+    } PACKED bohc;
 
     // 0x2C - 0x9F, Reserved
     uint8_t rsv[0xA0 - 0x2C];
@@ -76,6 +214,84 @@ typedef struct
     status_t status;
     // dma_alloc_t *dma;
 } ahci_cmd_ctx_t;
+
+typedef struct
+{
+    uint16_t general_config;         // 0:  General configuration
+    uint16_t num_cylinders;          // 1:  Number of cylinders (obsolete)
+    uint16_t specific_config;        // 2:  Specific configuration
+    uint16_t num_heads;              // 3:  Number of heads (obsolete)
+    uint16_t rsv0[2];                // 4-5: Retired
+    uint16_t num_sectors_per_track;  // 6:  Sectors per track (obsolete)
+    uint16_t vendor0[3];             // 7-9: Vendor specific
+    char serial[20];                 // 10-19: Serial number (ASCII, space-padded)
+    uint16_t rsv1[2];                // 20-21: Retired
+    uint16_t rsv2;                   // 22: Obsolete
+    char firmware[8];                // 23-26: Firmware revision (ASCII, space-padded)
+    char model[40];                  // 27-46: Model number (ASCII, space-padded)
+    uint16_t max_sectors_per_drq;    // 47: Max sectors per DRQ (bits 7:0)
+    uint16_t rsv3;                   // 48: Trusted computing / reserved
+    uint16_t capabilities0;          // 49: Capabilities (DMA, LBA support)
+    uint16_t capabilities1;          // 50: Capabilities extended
+    uint16_t rsv4[2];                // 51-52: Obsolete
+    uint16_t field_validity;         // 53: Field validity flags
+    uint16_t rsv5[5];                // 54-58: Obsolete
+    uint16_t multi_sector_setting;   // 59: Multiple sector setting
+    uint32_t lba28_sectors;          // 60-61: Total LBA28 addressable sectors
+    uint16_t rsv6;                   // 62: Obsolete
+    uint16_t dma_multiword;          // 63: Multiword DMA modes
+    uint16_t pio_modes;              // 64: PIO modes supported
+    uint16_t min_dma_cycle_time;     // 65: Min multiword DMA cycle time (ns)
+    uint16_t rec_dma_cycle_time;     // 66: Recommended multiword DMA cycle time
+    uint16_t min_pio_cycle_time;     // 67: Min PIO cycle time without flow control
+    uint16_t min_pio_iordy_time;     // 68: Min PIO cycle time with IORDY
+    uint16_t rsv7[6];                // 69-74: Reserved
+    uint16_t queue_depth;            // 75: Queue depth (bits 4:0)
+    uint16_t sata_capabilities;      // 76: SATA capabilities
+    uint16_t sata_capabilities2;     // 77: SATA additional capabilities
+    uint16_t sata_features_supp;     // 78: SATA features supported
+    uint16_t sata_features_en;       // 79: SATA features enabled
+    uint16_t major_version;          // 80: ATA major version
+    uint16_t minor_version;          // 81: ATA minor version
+    uint16_t cmd_set0;               // 82: Command set supported 0
+    uint16_t cmd_set1;               // 83: Command set supported 1
+    uint16_t cmd_set2;               // 84: Command set supported 2
+    uint16_t cmd_set_en0;            // 85: Command set enabled 0
+    uint16_t cmd_set_en1;            // 86: Command set enabled 1
+    uint16_t cmd_set_en2;            // 87: Command set enabled 2
+    uint16_t dma_ultra;              // 88: Ultra DMA modes
+    uint16_t rsv8[4];                // 89-92: Reserved / erase times
+    uint16_t hw_reset_result;        // 93: Hardware reset result
+    uint16_t acoustic;               // 94: Acoustic management
+    uint16_t rsv9[5];                // 95-99: Reserved
+    uint64_t lba48_sectors;          // 100-103: Total LBA48 addressable sectors
+    uint16_t rsv10[2];               // 104-105: Reserved
+    uint16_t physical_logical;       // 106: Physical/logical sector size
+    uint16_t rsv11[9];               // 107-115: Reserved
+    uint16_t logical_sector_size[2]; // 116-117: Logical sector size (words)
+    uint16_t rsv12[8];               // 118-125: Reserved
+    uint16_t last_lun;               // 126: Reserved
+    uint16_t rsv13;                  // 127: Reserved
+    uint16_t security_status;        // 128: Security status
+    uint16_t vendor1[31];            // 129-159: Vendor specific
+    uint16_t cfa_power;              // 160: CFA power mode
+    uint16_t rsv14[7];               // 161-167: Reserved
+    uint16_t form_factor;            // 168: Device form factor
+    uint16_t rsv15[3];               // 169-171: Reserved
+    char media_serial[60];           // 172-191: Current media serial (ASCII)
+    uint16_t sct_cmd_transport;      // 206: SCT command transport
+    uint16_t rsv16[5];               // 207-211: Reserved
+    uint16_t alignment;              // 209: Alignment of logical in physical
+    uint16_t rsv17[6];               // 210-215: Reserved
+    uint16_t nv_cache_caps;          // 214: NV cache capabilities
+    uint32_t nv_cache_size;          // 215-216: NV cache size (logical blocks)
+    uint16_t nv_cache_opts;          // 217: NV cache options
+    uint16_t rsv18[3];               // 218-220: Reserved
+    uint16_t transport_major;        // 221: Transport major version
+    uint16_t transport_minor;        // 222: Transport minor version
+    uint16_t rsv19[31];              // 223-253: Reserved
+    uint16_t integrity;              // 255: Integrity word (checksum)
+} PACKED ata_identify_packet_t;
 
 typedef struct ahci_port_priv
 {
@@ -96,6 +312,8 @@ typedef struct ahci_port_priv
     void *ctba[32];
 
     ahci_cmd_ctx_t cmds[32];
+
+    ata_identify_packet_t *identify;
 } ahci_port_priv_t;
 
 typedef struct ahci_host_priv

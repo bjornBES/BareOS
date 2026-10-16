@@ -26,7 +26,17 @@ typedef int32_64 ssize_t;
 typedef int32_64 clock_t;
 
 typedef int32_64 blksize_t;
-typedef int32_64 blkcnt_t;
+typedef uint64_t sector_t;
+typedef uint64_t blkcnt_t;
+
+/* generic data direction definitions */
+#define READ  0
+#define WRITE 1
+
+/*
+ * The type of an index into the pagecache.
+ */
+typedef uint32_64 pgoff_t;
 
 typedef int32_t pid_t;
 

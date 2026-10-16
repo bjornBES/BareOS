@@ -18,16 +18,10 @@
 
 typedef struct device device_t;
 
-typedef struct dev_class
-{
-
-} dev_class_t;
-
 
 typedef struct driver
 {
     const char *name;
-    // dev_class_t class; // what kind of device this driver handles
 
     bus_type_t *bus;
     size_t match_count;

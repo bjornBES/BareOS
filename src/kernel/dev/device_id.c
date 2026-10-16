@@ -30,9 +30,7 @@ uint32_t device_id_counters[DEVICE_TYPE_MAX] = {0};
 
 uint32_t device_id_get_id(device_t *dev)
 {
-    uint32_t result = device_id_counters[dev->class];
-    device_id_counters[dev->class]++;
-    return result;
+    return dev->class->devices.count;
 }
 
 uint32_t device_id_get_next_class_id(const char *class_name)

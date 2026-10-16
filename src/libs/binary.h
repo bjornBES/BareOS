@@ -19,7 +19,8 @@
 #define BIT_GET_RANGE(x, low, high) (((x) >> (low)) & (BIT((high) - (low) + 1) - 1))
 #define BIT_IS_SET(x, bit)          ((((x) >> (bit)) & 1) == 1)
 
-#define BIT_ASSIGN(x, bit, value)   ((value == 1) ? BIT_SET((x), (bit)) : BIT_UNSET((x), (bit)))
+#define BIT_ASSIGN(x, bit, value)   x = (((value == 1) ? (x) | BIT(bit) : (x) & (~BIT(bit))))
+#define BIT_TEST_AND_SET(x, bit)    ((x) = BIT_IS_SET(x, bit) ? (x) | (bit) : (x) & ~(bit))
 
 #define BITS_PER_BYTE               8
 #define BITS_PER_TYPE(type)         (sizeof(type) * BITS_PER_BYTE)

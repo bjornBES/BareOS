@@ -12,6 +12,8 @@
 
 #include "dev/device_id.h"
 
+#include "dev/devicet.h"
+
 #include <types.h>
 
 #define SEC_TO_NANOSEC(sec)        (sec * 1000000000ull)
@@ -98,6 +100,7 @@ typedef struct periodic_function_args
 } periodic_function_args_t;
 
 timer_source_t *timer_create();
+device_t *timer_create_device();
 
 status_t timer_register(timer_source_t *src);
 

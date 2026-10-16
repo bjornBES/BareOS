@@ -142,5 +142,5 @@ status_t hash_search(hash_map_t *mp, char *key, hash_node_t *out)
         bucket_head = bucket_head->next;
     }
 
-    KERRNO_RETURN(ENOENT, "entry not found");
+    KERRNO_RETURN(ENOENT, "entry not found from key \"%s\"", key);
 }
