@@ -60,6 +60,24 @@ uint32_t sata_find_cmdslot(ahci_port_priv_t *aport)
     return 0xFFFFFFFF;
 }
 
+status_t sata_read_sectors(device_t *dev, void *buf, size_t count, off_t sector, ssize_t *size_out)
+{
+    // log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
+    // log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
+    ahci_port_priv_t *aport = dev->drv_data;
+
+    ahci_cmd_request_t req = {
+        .command = SATA_READ_DMA_EX,
+        .lba = sector,
+        .is_write = false,
+        .buffer = (vaddr_t)buf,
+        .sector_count = count,
+        .buffer_size = (count * 512),
+    };
+    *size_out = count;
+    return ahci_submit(aport, &req);
+}
+
 int sata_identify_aport(sata_port_t *aport, ahci_port_priv_t *ahci_port, vaddr_t buf_virt)
 {
     ENTER_FUNC("%p, %p", aport, buf_virt);
@@ -146,8 +164,7 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
     sata_aport->ahci_port = aport;
     aport->port_priv = sata_aport;
 
-    aport->identify = kmalloc(sizeof(ata_identify_packet_t));
-    memset(aport->identify, 0, sizeof(ata_identify_packet_t));
+    aport->identify = kzmalloc(sizeof(ata_identify_packet_t));
 
     ahci_initialize_aport(aport);
     sata_identify_aport(sata_aport, aport, (vaddr_t)aport->identify);
@@ -157,11 +174,12 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
     dev_set_no_driver(dev);
     *out_dev = dev;
 
+    dev->ops.read = sata_read_sectors;
+
     aport->drive = host->ahci_devices_count;
 
     trace_debug(MODULE, "getting name");
-    char *name = (char *)kmalloc(41);
-    memset(name, 0, 41);
+    char *name = (char *)kzmalloc(41);
     for (int i = 0; i < 40; i += 2)
     {
         if (aport->identify->model[i] == ' ' && aport->identify->model[i + 1] == ' ')

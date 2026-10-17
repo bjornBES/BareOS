@@ -14,11 +14,11 @@
 
 // Design from https://github.com/haiku/haiku/blob/master/headers/os/support/Errors.h
 
-#define KERRNO_NO_RETURN(number, ...)                                   \
-    {                                                                   \
-        log_err(MODULE, "%s:%u", __FILE__, __LINE__);                   \
+#define KERRNO_NO_RETURN(number, ...)                                    \
+    {                                                                    \
+        log_err(MODULE, "%s:%u", __FILE__, __LINE__);                    \
         log_err(MODULE, "func %s outputting %s", __FUNCTION__, #number); \
-        logfl(MODULE, LVL_INFO, __VA_ARGS__);                           \
+        logfl(MODULE, LVL_INFO, __VA_ARGS__);                            \
     }
 
 #define KERRNO_RETURN(number, ...)             \
@@ -38,6 +38,13 @@
     {                                                                                                \
         trace_info(NO_MODULE, "Debugging \"%s\" becurse it returned \"%s\"", __FUNCTION__, #number); \
         KERRNO_RETURN_TYPE(number, type, __VA_ARGS__);                                               \
+    }
+#define KERRNO_CHECK_RETURN(number)                                                                \
+    {                                                                                              \
+        if (number != KERRNO_SUCCESSES)                                                            \
+        {                                                                                          \
+            trace_warn(MODULE, "In %s at %s:%u got %u", __FUNCTION__, __FILE__, __LINE__, number); \
+        }                                                                                          \
     }
 #else
 #define KERRNO_RETURN_DEBUG(number, type, ...)         \

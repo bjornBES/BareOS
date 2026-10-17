@@ -19,7 +19,7 @@
 int partition_detect(partition_t *part, disk_t *disk, void *partition_data, int boot_partition_idx)
 {
     mbr_entry_t **entries = (mbr_entry_t **)&partition_data;
-    if ((entries[0]->attributes & 0x80) == 0x00 && entries[0]->partitionType == 0xEE)
+    if ((entries[0]->attributes & 0x80) == 0x00 && entries[0]->partition_type == 0xEE)
     {
         return gpt_detect_partition(part, disk, entries[0], boot_partition_idx);
     }
@@ -45,9 +45,9 @@ int partition_detect(partition_t *part, disk_t *disk, void *partition_data, int 
         }
         printf("Got partition %u @ 0x%p\n", i, entry);
         printf("      attributes 0x%x\n", entry->attributes);
-        printf("       chs start 0x%x%x%x\n", entry->chsStart[2], entry->chsStart[1], entry->chsStart[0]);
-        printf("  partition type 0x%x\n", entry->partitionType);
-        printf("         chs end 0x%x%x%x\n", entry->chsEnd[2], entry->chsEnd[1], entry->chsEnd[0]);
+        printf("       chs start 0x%x%x%x\n", entry->chs_start[2], entry->chs_start[1], entry->chs_start[0]);
+        printf("  partition type 0x%x\n", entry->partition_type);
+        printf("         chs end 0x%x%x%x\n", entry->chs_end[2], entry->chs_end[1], entry->chs_end[0]);
         printf("       lba start 0x%x\n", entry->lbaStart);
         printf("            size 0x%x\n", entry->size);
     }

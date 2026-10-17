@@ -52,12 +52,15 @@ status_t class_add_device(device_t *dev)
     // }
     dev_class_t *class = dev->class;
     status_t ret = ADD_THIS_TO_LIST(class->devices, dev);
+    KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
     {
         // TODO
         return ret;
     }
-    return class->device_added(dev);
+    ret = class->device_added(dev);
+    KERRNO_CHECK_RETURN(ret);
+    return ret;
 }
 
 INTERNAL status_t class_list_class(dev_class_t *class)
@@ -72,7 +75,7 @@ INTERNAL status_t class_list_class(dev_class_t *class)
         uint64_t major = dev->devt.major;
         uint64_t device = dev->devt.device;
         uint64_t minor = dev->devt.minor;
-        trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->ops, dev->driver);
+        trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
         node = node->next;
         i++;
     }

@@ -25,7 +25,11 @@ status_t vfs_initialize()
     return KERRNO_SUCCESSES;
 }
 
-status_t vfs_mount(const char *label, device_t *dev, int flags)
+status_t vfs_mount_label(const char *label, device_t *dev, int flags)
+{
+    return KERRNO_UNSUCCESS;    
+}
+status_t vfs_mount(device_t *dev, int flags)
 {
     return KERRNO_UNSUCCESS;    
 }

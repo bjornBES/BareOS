@@ -243,6 +243,18 @@ void* kmalloc(size_t size)
     return ret;
 }
 
+void* kzmalloc(size_t size)
+{
+    void *ret;
+    status_t status = allocator_malloc(size, &ret);
+    if (status != KERRNO_SUCCESSES)
+    {
+        return NULL;
+    }
+	memset(ret, 0, size);
+    return ret;
+}
+
 void* kcalloc(size_t num, size_t size)
 {
     void *ret;

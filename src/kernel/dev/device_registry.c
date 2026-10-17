@@ -87,7 +87,9 @@ INTERNAL status_t device_internal_add(device_t *dev, list_t *list)
     ENTER_FUNC("%p, %p", dev, list);
 
     status_t ret = class_add_device(dev);
+    KERRNO_CHECK_RETURN(ret);
 
+    dev->id = dev_count;
     uint64_t major = dev->devt.major;
     uint64_t device = dev->devt.device;
     uint64_t minor = dev->devt.minor;
@@ -128,20 +130,20 @@ status_t device_add(device_t *dev)
 
     if (dev->id == (~0))
     {
-        dev->id = device_id_get_id(dev);
-        dev->devt.minor = dev->id;
+        dev->devt.minor = device_id_get_id(dev);
     }
 
     dev->devt.major = dev->class->type;
     dev->devt.device = 0;
-    dev->devt.id = MKDEV_KERNEL(dev->class->type, 0, dev->id);
-
-    device_internal_add(dev, NULL);
-
+    // dev->devt.id = MKDEV_KERNEL(dev->class->type, 0, dev->id);
+    
     if (!dev->children.has_initialize)
     {
         list_initialize(&dev->children);
     }
+
+    status_t ret = device_internal_add(dev, NULL);
+    KERRNO_CHECK_RETURN(ret);
 
     return KERRNO_SUCCESSES;
 }
@@ -169,9 +171,10 @@ status_t device_register_child(device_t *dev, device_t *parent)
         KERRNO_RETURN(KERRNO_BAD_VALUE, "parent device '%s' has not been added", parent->init_name);
     }
 
+    uint32_t class_id = 0;
     if (dev->init_name != NULL)
     {
-        uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+        class_id = device_id_get_next_class_id(dev->init_name);
         snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
     }
     else
@@ -179,20 +182,22 @@ status_t device_register_child(device_t *dev, device_t *parent)
         log_err(MODULE, "class name is NULL for type %u", dev->class);
         return KERRNO_UNSUCCESS;
     }
-
-    dev->id = parent->id;
+    
     dev->devt.major = dev->class->type;
-    dev->devt.minor = parent->devt.minor;
-    dev->devt.device = parent->children.count;
-    dev->devt.id = MKDEV_KERNEL(dev->class, dev->id, parent->children.count);
+    dev->devt.minor = class_id + 1;
+    dev->devt.device = parent->devt.device;
+    dev->parent = parent;
+    // dev->devt.id = MKDEV_KERNEL(dev->class, dev->id, parent->children.count);
 
     status_t ret = ADD_THIS_TO_LIST(parent->children, dev);
+    KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
     }
 
-    device_internal_add(dev, &parent->children);
+    ret = device_internal_add(dev, &parent->children);
+    KERRNO_CHECK_RETURN(ret);
 
     return KERRNO_SUCCESSES;
 }
@@ -232,13 +237,12 @@ status_t device_register(device_t *dev)
 
     if (dev->id == (~0))
     {
-        dev->id = device_id_get_id(dev);
-        dev->devt.device = dev->id;
+        dev->devt.device = device_id_get_id(dev);
     }
 
     dev->devt.major = dev->class->type;
     dev->devt.minor = 0;
-    dev->devt.id = MKDEV_KERNEL(dev->class->type, dev->id, 0);
+    // dev->devt.id = MKDEV_KERNEL(dev->class->type, dev->id, 0);
 
     device_internal_add(dev, NULL);
 
@@ -289,7 +293,7 @@ void device_debug_dev(device_t *parent_dev)
             uint64_t device = dev->devt.device;
             uint64_t minor = dev->devt.minor;
 
-            trace_info(MODULE, "\tdevice: %u.%u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", parent_dev->devt.device, i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->ops, dev->driver);
+            trace_info(MODULE, "\tdevice: %u.%u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p", parent_dev->devt.device, i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver);
             dev_node = dev_node->prev;
             i++;
         }
@@ -317,7 +321,7 @@ void device_debug()
             uint64_t device = dev->devt.device;
             uint64_t minor = dev->devt.minor;
 
-            trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, ops:%p, driver:%p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->ops, dev->driver);
+            trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver);
             if (dev->children.has_initialize)
             {
                 device_debug_dev(dev);

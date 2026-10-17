@@ -39,8 +39,23 @@ typedef enum device_flags
     DEV_FLAG_COUNT
 } device_flags_t;
 
-struct device_ops;
+typedef struct device device_t;
 
+typedef struct device_ops
+{
+    status_t (*read)(device_t *dev, void *buf, size_t len, off_t off, ssize_t *size_out);
+    status_t (*write)(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out);
+    status_t (*ioctl)(device_t *dev, unsigned long cmd, void *arg);
+    // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
+
+    status_t (*open)(device_t *dev);
+    status_t (*close)(device_t *dev);
+
+    void (*destroy)(device_t *dev); // cleanup
+    // void (*tty_ops)(device_t *dev, tty_dev_ops_t *out);
+
+    status_t (*irq_handler)(device_t *dev); // called by generic IRQ dispatch, not by arch code directly
+} device_ops_t;
 typedef struct device
 {
     LIST_ENTRY_THIS();
@@ -53,7 +68,7 @@ typedef struct device
     uint32_t id;
     device_id_t devt;       // opaque, generic-assigned
     struct device *parent;
-    struct device_ops *ops; // vtable: probe, read, write, ioctl, remove...
+    device_ops_t ops; // vtable: probe, read, write, ioctl, remove...
 
     bus_type_t *bus;
 
@@ -97,19 +112,3 @@ CREATE_DEV_FLAG_ACCESSORS(ready_to_probe, DEV_FLAG_READY_TO_PROBE);
 CREATE_DEV_FLAG_ACCESSORS(no_driver, DEV_FLAG_NO_DRIVER);
 
 #undef CREATE_DEV_FLAG_ACCESSORS
-
-struct device_ops
-{
-    ssize_t (*read)(device_t *dev, void *buf, size_t len, off_t off);
-    ssize_t (*write)(device_t *dev, const void *buf, size_t len, off_t off);
-    status_t (*ioctl)(device_t *dev, unsigned long cmd, void *arg);
-    // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
-
-    status_t (*open)(device_t *dev);
-    status_t (*close)(device_t *dev);
-
-    void (*destroy)(device_t *dev); // cleanup
-    // void (*tty_ops)(device_t *dev, tty_dev_ops_t *out);
-
-    status_t (*irq_handler)(device_t *dev); // called by generic IRQ dispatch, not by arch code directly
-};

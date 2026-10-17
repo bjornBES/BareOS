@@ -114,19 +114,19 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
 #endif
 
     aport->slot_bitmap = 0;
-#if CONFIG_DMA == 1
     for (int i = 0; i < 32; i++)
     {
         #if CONFIG_SEMAPHORE == 1
         sem_init(&aport->cmds[i].done, 0); // 0 = nothing completed yet
         #endif
+        #if CONFIG_DMA == 1
         aport->cmds[i].dma = dma_allocate(MAX_TRANSFER_SIZE);
         if (aport->cmds[i].dma == NULL)
         {
             KERNEL_PANIC(MODULE, "OMM");
         }
+        #endif
     }
-#endif
 
     port->ie.ie = BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(22) | BIT(23) | BIT(24) | BIT(26) | BIT(27) | BIT(28) | BIT(29) | BIT(30);
 
@@ -303,6 +303,7 @@ status_t ahci_submit(ahci_port_priv_t *aport, ahci_cmd_request_t *req)
     }
     aport->slot_bitmap |= BIT(slot);
 
+    trace_debug(MODULE, "got slot %u", slot);
 #if CONFIG_MUTEX == 1
     mutex_unlock(&aport->slot_lock);
 #endif

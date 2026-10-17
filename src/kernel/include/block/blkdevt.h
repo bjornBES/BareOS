@@ -34,4 +34,7 @@ typedef struct blkdev
     device_t *dev;
 } blkdev_t;
 
-#define BLOCK_READ_ONLY BIT(0) // read-only policy
+#define BLOCK_READ_ONLY    BIT(0) // read-only policy
+#define BLOCK_IS_PARTITION BIT(1)
+
+status_t block_register(blkdev_t *block_dev, device_t *parent);
