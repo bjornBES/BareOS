@@ -57,9 +57,16 @@ void mutex_unlock(mutex_t *m)
     #if CONFIG_MUTEX == 1
     spinlock_acquire(&m->lock);
     m->locked = false;
+    list_node_t *n;
+    if (m->waiters.count == 0)
+    {
+        n = &m->owner->node;
+    }
     m->owner = NULL;
-    
-    list_node_t *n = list_pop_head(&m->waiters);
+    if (m->waiters.count != 0)
+    {
+        n = list_pop_head(&m->waiters);
+    }
     spinlock_release(&m->lock);
     
     if (n == (void *)-KERRNO_NOT_ALLOWED)

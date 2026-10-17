@@ -22,6 +22,7 @@
 
 void sem_init(semaphore_t *s, int initial)
 {
+    ENTER_FUNC("%p, %u", s, initial);
     #if CONFIG_SEMAPHORE == 1
     s->count = initial;
     list_initialize(&s->queue_list);
@@ -31,6 +32,7 @@ void sem_init(semaphore_t *s, int initial)
 
 void sem_wait(semaphore_t *s)
 {
+    ENTER_FUNC("%p", s);
     #if CONFIG_SEMAPHORE == 1
     thread_t *self = THISCPU()->current;
 
