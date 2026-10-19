@@ -286,6 +286,10 @@ INTERNAL int fat_find_file(partition_t *part, fat_file_t *file, const char *name
 
     while (fat_read_entry(part, file, &entry))
     {
+        if (entry.attributes == FAT_ATTRIBUTE_VOLUME_ID)
+        {
+            continue;
+        }
         if (entry.attributes == FAT_ATTRIBUTE_LFN)
         {
             fat_long_file_entry_t *lfn_entry = (fat_long_file_entry_t *)&entry;

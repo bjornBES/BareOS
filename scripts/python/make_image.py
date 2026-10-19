@@ -91,7 +91,7 @@ def create_filesystem(partition : disk_partition_spec, disk : disk_spec, target:
         result = subprocess.run([
             "mkfs.fat",
             "-F", fat_type,
-            "-n", "BARE-OS",
+            "-n", partition.name,
             "-s", "2",
             "-R", str(reserved_sectors),
             target,
@@ -107,7 +107,7 @@ def create_filesystem(partition : disk_partition_spec, disk : disk_spec, target:
         result = subprocess.run([
             f"mkfs.{filesystem}",
             "-E", f"offset={offset * disk.sector_size}",
-            "-L", "BARE-OS",
+            "-L", partition.name,
             target,
             f"{partition.partition_size_bytes // 1024}k"
         ])
