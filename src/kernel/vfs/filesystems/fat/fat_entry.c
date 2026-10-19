@@ -34,7 +34,7 @@ int fat_entries_match(fat_entry_t *entry, fat_directory_t *directory, int entry_
     char entry_name[13] = {0};
     if (fat_83_to_name(entry->entry.name, entry_name) != KERRNO_SUCCESSES)
     {
-        log_err(MODULE, "entry name %s is not the right format", entry->entry.name);
+        trace_err(MODULE, "entry name %s is not the right format", entry->entry.name);
         return KERRNO_UNSUCCESS;
     }
 
@@ -47,7 +47,6 @@ int fat_entries_match(fat_entry_t *entry, fat_directory_t *directory, int entry_
 
 int fat_read_directory(fat_inode_t *directory, fat_directory_t *out, int entry_count, device_t *dev, mountpoint_t *mnt, fat_priv_data_t *sb)
 {
-    log_debug(MODULE, "fat_read_directory(%p, %p, %u, %p, %p, %p)", directory, out, entry_count, dev, mnt, sb);
     if (directory->base.type != DT_DIR)
     {
         return KERRNO_UNSUCCESS;
@@ -58,8 +57,8 @@ int fat_read_directory(fat_inode_t *directory, fat_directory_t *out, int entry_c
         // it is not the root dir
         if (byte_count > directory->base.size)
         {
-            log_warn(MODULE, "reading more then directory size");
-            log_debug(MODULE, "reading %u bytes instead of %u", byte_count, directory->base.size);
+            trace_warn(MODULE, "reading more then directory size");
+            trace_debug(MODULE, "reading %u bytes instead of %u", byte_count, directory->base.size);
         }
     }
     cluster_t cluster_count = byte_count / sb->bytes_per_cluster;
@@ -70,7 +69,7 @@ int fat_read_directory(fat_inode_t *directory, fat_directory_t *out, int entry_c
         return ret;
     }
     // hexdump(out->entries, bytes_read);
-    log_debug(MODULE, "read %i bytes", bytes_read);
+    trace_debug(MODULE, "read %i bytes", bytes_read);
     int entry_count_read = bytes_read / sizeof(fat_directory_entry_t);
     return entry_count_read;
 }

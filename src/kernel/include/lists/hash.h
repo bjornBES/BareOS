@@ -21,4 +21,4 @@ void hash_map_destroy(hash_map_t* mp);
 
 status_t hash_insert(hash_map_t *mp, char *key, void *value);
 status_t hash_delete(hash_map_t *mp, char *key);
-status_t hash_search(hash_map_t *mp, char *key, hash_node_t *out);
+status_t hash_search(hash_map_t *mp, char *key, hash_node_t **out);

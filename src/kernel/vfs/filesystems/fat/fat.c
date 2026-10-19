@@ -243,6 +243,102 @@ status_t fat_lookup(inode_t *parent, const char *name, inode_t *out, device_t *d
     return KERRNO_SUCCESSES;
 }
 
+cluster_t fat_next_cluster(cluster_t current_cluster, device_t *dev, fat_priv_data_t *sb)
+{
+    ENTER_FUNC("%u, %p, %p", current_cluster, dev, sb);
+    if (sb->type == FAT12)
+    {
+        // fat_index = current_cluster * 3 / 2;
+    }
+    else if (sb->type == FAT16)
+    {
+        // fat_index = current_cluster * 2;
+    }
+    else if (sb->type == FAT32)
+    {
+        return fat32_next_cluster(current_cluster, dev, sb);
+    }
+
+    return FAT_CACHE_INVALID;
+}
+
+ssize_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, device_t *dev, mountpoint_t *mnt)
+{
+    ENTER_FUNC("%p, %p, %u, %u, %p, %p", node, buffer, offset, size, dev, mnt);
+    
+    if (!buffer && offset != 0 && size != 0)
+    {
+        return 0;
+    }
+
+    volume_t *vol = mnt->volume;
+    fat_priv_data_t *sb = (fat_priv_data_t *)vol->sb;
+
+    fat_inode_t *fat_ino = (fat_inode_t *)node->inode;
+    
+    trace_debug(MODULE, "fat_ino = %p, sb = %p, vol = %p", fat_ino, sb, vol);
+    
+    cluster_t cluster_start = fat_ino->first_cluster;
+    cluster_t offset_cluster = offset / sb->bytes_per_cluster;
+    if (offset_cluster != 0)
+    {
+        for (size_t i = 0; i < offset_cluster; i++)
+        {
+            cluster_start = fat_next_cluster(cluster_start, dev, sb);
+            if (cluster_start >= FAT_CACHE_INVALID)
+            {
+                return 0;
+            }
+        }
+    }
+
+    if (!buffer)
+    {
+        return 0;
+    }
+
+    ssize_t bytes_read = 0;
+    uint32_t intra = offset % sb->bytes_per_cluster;
+    trace_debug(MODULE, "cluster_start = %u", cluster_start);
+    while (size > 0 && cluster_start < FAT_CACHE_INVALID)
+    {
+        uint8_t tmp[sb->bytes_per_cluster];
+        ssize_t read_bytes = 0;
+        fat_read_clusters(tmp, cluster_start, 1, dev, sb, &read_bytes);
+
+        uint32_t available = sb->bytes_per_cluster - intra;
+        uint32_t to_copy = size < available ? size : available;
+        if (!buffer)
+        {
+            trace_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
+            memcpy(buffer + bytes_read, tmp + intra, to_copy);
+            trace_debug(MODULE, "memcpy(%p, %p, %u)", buffer + bytes_read, tmp + intra, to_copy);
+        }
+
+        bytes_read += to_copy;
+        size -= to_copy;
+        intra = 0;
+
+        cluster_start = fat_next_cluster(cluster_start, dev, sb);
+    }
+    node->offset += bytes_read;
+    return bytes_read;
+}
+
+status_t fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
+{
+    if (!node)
+    {
+        return KERRNO_UNSUCCESS;
+    }
+
+    // fat_inode_t *fat_ino = (fat_inode_t*)node->inode;
+
+    // get the cluster number and size
+    fat_read_file(node, NULL, 0, 0, dev, mnt);
+    return KERRNO_SUCCESSES;
+}
+
 status_t fat_alloc_inode(volume_t *vol, inode_t **out)
 {
     fat_inode_t *ino = kzmalloc(sizeof(fat_inode_t));
@@ -255,9 +351,15 @@ status_t fat_alloc_inode(volume_t *vol, inode_t **out)
 static filesystem_t fat_fs = {
     .name = "FAT",
     .probe = fat_probe,
+    
     .ident_fs = fat_ident_fs,
+
     .mount = fat_mount,
+    
     .lookup = fat_lookup,
+    
+    .open = fat_open,
+
     .alloc_inode = fat_alloc_inode,
 };
 

@@ -32,6 +32,8 @@
 
 boot_params_t *main_boot_params;
 
+extern void hexdump(void *ptr, size_t len, size_t size);
+
 NORETURN void kernel_main()
 {
     ENTER_FUNC("", 0);
@@ -44,6 +46,11 @@ NORETURN void kernel_main()
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
 
     device_debug();
+
+    vfs_node_t *node;
+    vfs_open("/@BOOT!/test.txt", 0, 0, &node);
+    trace_debug(MODULE, "node = %p", node);
+    hexdump(node, sizeof(vfs_node_t), 16);
 
     for (;;)
     {

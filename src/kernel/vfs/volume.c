@@ -102,13 +102,13 @@ status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
 
 status_t volume_unregister(const char *volume_id)
 {
-    hash_node_t node;
+    hash_node_t *node;
     if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESSES)
     {
         KERRNO_RETURN(KERRNO_NAME_NOT_FOUND, "volume id \"%s\" is already in use", volume_id);
     }
 
-    volume_t *vol = node.value;
+    volume_t *vol = node->value;
 
     status_t ret = list_remove(volume_registry, &THIS_NODE(vol));
     KERRNO_CHECK_RETURN(ret);
@@ -133,13 +133,14 @@ status_t volume_unregister(const char *volume_id)
 
 status_t volume_find(const char *volume_id, volume_t **out)
 {
-    hash_node_t node;
+    ENTER_FUNC("%p, %p", volume_id, out);
+    hash_node_t *node;
     if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESSES)
     {
+        KERRNO_RETURN(KERRNO_NAME_NOT_FOUND, "volume id \"%s\" is not in use", volume_id);
         return KERRNO_NAME_NOT_FOUND;
-        // KERRNO_RETURN(KERRNO_NAME_NOT_FOUND, "volume id \"%s\" is not in use", volume_id);
     }
-    volume_t *vol = node.value;
+    volume_t *vol = node->value;
     *out = vol;
     return KERRNO_SUCCESSES;
 }

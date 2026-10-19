@@ -52,7 +52,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
     path_split_prefix(path, NULL, &mount_path);
 
     // check not already mounted at this path
-    if (mount_find(path, NULL) == KERRNO_SUCCESSES)
+    if (mount_find_for_volume(path, vol, NULL) == KERRNO_SUCCESSES)
     {
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "path '%s' already has a mountpoint", path);
     }
@@ -196,35 +196,24 @@ status_t mount_destroy(mountpoint_t *mnt)
     return kfree(mnt);
 }
 
-// longest prefix match in mount tree
-status_t mount_find(const char *path, mountpoint_t **out)
+INTERNAL status_t mount_int_find(const char *mount_path, volume_t *volume, mountpoint_t **out)
 {
-    if (path == NULL)
+    if (mount_path == NULL)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
     }
 
-    char volume_path[CONFIG_MAX_VOLUME_LENGTH];
-    const char *mount_path;
-    path_split_prefix(path, volume_path, &mount_path);
-    // log_debug(MODULE, "path = %s { volume_path = %s, mount_path = %s}", path, volume_path, mount_path);
-    volume_t *volume;
-    status_t ret = volume_find(volume_path, &volume);
-    // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
-    {
-        return KERRNO_UNSUCCESS;
-    }
-
     mountpoint_t *best = NULL;
     size_t best_length = 0;
-    size_t path_length = strlen(path);
+    size_t path_length = strlen(mount_path);
 
     list_node_t *node = volume->mountpoints.tail;
     while (node)
     {
         mountpoint_t *mnt = container_of(node, mountpoint_t, LIST_ENTRY_NAME);
-        size_t length = max(path_length, strlen(mnt->path));
+        size_t length = strlen(mnt->path); // max(path_length, strlen(mnt->path));
+
+        trace_debug(MODULE, "mnt->path = \"%s\", mount_path = \"%s\" length = %u", mnt->path, mount_path, length);
 
         if (strncmp(mnt->path, mount_path, length) == 0 && length > best_length)
         {
@@ -244,6 +233,38 @@ status_t mount_find(const char *path, mountpoint_t **out)
         *out = best;
     }
     return KERRNO_SUCCESSES;
+}
+
+status_t mount_find(const char *path, mountpoint_t **out)
+{
+    if (path == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
+    }
+
+    char volume_path[CONFIG_MAX_VOLUME_LENGTH];
+    const char *mount_path;
+    path_split_prefix(path, volume_path, &mount_path);
+    // log_debug(MODULE, "path = %s { volume_path = %s, mount_path = %s}", path, volume_path, mount_path);
+    volume_t *volume;
+    status_t ret = volume_find(volume_path, &volume);
+    // KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return KERRNO_UNSUCCESS;
+    }
+
+    return mount_int_find(mount_path, volume, out);
+}
+
+status_t mount_find_for_volume(const char *path, volume_t *vol, mountpoint_t **out)
+{
+    if (path == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
+    }
+
+    return mount_int_find(path, vol, out);
 }
 
 // return root dentry of this mountpoint

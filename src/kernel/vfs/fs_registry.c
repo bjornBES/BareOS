@@ -56,13 +56,13 @@ status_t vfs_fs_register(filesystem_t *fs)
 
 status_t vfs_fs_find(const char *name, filesystem_t **out_fs)
 {
-    hash_node_t hash_node;
+    hash_node_t *hash_node;
     status_t ret = hash_search(hash, (char *)name, &hash_node);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
     }
-    *out_fs = hash_node.value;
+    *out_fs = hash_node->value;
     return KERRNO_SUCCESSES;
 }
 

@@ -209,4 +209,6 @@ status_t fat_83_to_name(const char raw83[11], char out[13]);
 status_t fat_name_to_83(const char *name, uint8_t out83[11]);
 status_t fat_name_eq(char name1[13], char name2[13]);
 
+cluster_t fat32_next_cluster(cluster_t current_cluster, device_t *dev, fat_priv_data_t *sb);
+
 status_t fat_entry_find(fat_inode_t *parent, const char *entry_name, inode_t *entry_out, device_t *dev, mountpoint_t *mnt, fat_priv_data_t *sb);

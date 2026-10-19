@@ -62,7 +62,7 @@ status_t hash_insert(hash_map_t *mp, char *key, void *value)
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "hash map has not been initialized");
     }
     uint64_t bucket_index = hash_key(mp, key);
-    hash_node_t *new_node = (hash_node_t *)kmalloc(sizeof(hash_node_t));
+    hash_node_t *new_node = (hash_node_t *)kzmalloc(sizeof(hash_node_t));
     trace_info(MODULE, "bucket_index = %x, new_node = %p", bucket_index, new_node);
     
     new_node->key = key;
@@ -119,7 +119,7 @@ status_t hash_delete(hash_map_t *mp, char *key)
     return KERRNO_SUCCESSES;
 }
 
-status_t hash_search(hash_map_t *mp, char *key, hash_node_t *out)
+status_t hash_search(hash_map_t *mp, char *key, hash_node_t **out)
 {
     if (mp == NULL)
     {
@@ -130,15 +130,17 @@ status_t hash_search(hash_map_t *mp, char *key, hash_node_t *out)
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "hash map has not been initialized");
     }
     uint64_t bucket_index = hash_key(mp, key);
+    trace_info(MODULE, "bucket_index = 0x%x", bucket_index);
 
     hash_node_t *bucket_head = mp->arr[bucket_index];
     while (bucket_head != NULL)
     {
-        if (bucket_head->key == key)
+        if (!strcmp(bucket_head->key, key))
         {
+            trace_debug(MODULE, "bucket_head->key = %s, key = %s, out = %p", bucket_head->key, key, out);
             if (out != NULL)
             {
-                out = bucket_head->value;
+                *out = bucket_head;
             }
             return KERRNO_SUCCESSES;
         }

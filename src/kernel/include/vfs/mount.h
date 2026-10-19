@@ -24,7 +24,7 @@ status_t mount_destroy(mountpoint_t *mnt);
 // longest prefix match in mount tree
 status_t mount_find(const char *path, mountpoint_t **out);
 
-status_t mount_find_for_volume(volume_t *vol, mountpoint_t **out);
+status_t mount_find_for_volume(const char *path, volume_t *vol, mountpoint_t **out);
 
 // return root dentry of this mountpoint
 status_t mount_get_root(mountpoint_t *mnt, dentry_t **out);

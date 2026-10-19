@@ -48,8 +48,24 @@ INTERNAL status_t vfs_do_mount(const char *path, device_t *dev, volume_t *volume
     return KERRNO_SUCCESSES;
 }
 
-status_t vfs_mount_label(const char *label, device_t *dev, int flags)
+status_t vfs_mount_label(const char *path, device_t *dev, int flags)
 {
+    char volume_path[CONFIG_MAX_VOLUME_LENGTH];
+    path_split_prefix(path, volume_path, NULL);
+    volume_t *vol = NULL;
+    status_t ret = volume_register(volume_path, dev, &vol);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
+    ret = vfs_do_mount(path, dev, vol, flags);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
     return KERRNO_UNSUCCESS;
 }
 
@@ -90,7 +106,7 @@ status_t vfs_mount(device_t *dev, int flags)
     char path[255];
     size_t path_count = 0;
 #if CONFIG_VOLUME_POSTFIX != 0 && CONFIG_VOLUME_PREFIX != 0
-    sprintf(path, "%c%c%s%c%c", )
+    path_count = sprintf(path, "%c%c%s%c%c", CONFIG_PATH_DIR_SEPARATOR, CONFIG_VOLUME_PREFIX, block_dev->fs_ident.label, CONFIG_VOLUME_POSTFIX, CONFIG_PATH_DIR_SEPARATOR);
 #elif CONFIG_VOLUME_POSTFIX != 0
     sprintf(path, "%c%c%s%c%c", )
 #elif CONFIG_VOLUME_PREFIX != 0
@@ -109,4 +125,41 @@ status_t vfs_mount(device_t *dev, int flags)
     }
 
     return KERRNO_SUCCESSES;
+}
+
+status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **out_node)
+{
+    ENTER_FUNC("%s, 0x%x, 0x%x, %p", path, flags, mode, out_node);
+    vfs_node_t *node = NULL;
+    status_t ret = path_lookup(path, &node);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        trace_err(MODULE, "returned %i", ret);
+        return ret;
+    }
+
+    volume_t *vol = node->mountpoint->volume;
+    mountpoint_t *mnt = node->mountpoint;
+
+    trace_debug(MODULE, "vol->fs->open @ %p", vol->fs->open);
+    ret = vol->fs->open(node, vol->device, mnt);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
+    trace_debug(MODULE, "node = %p", node);
+
+    node->flags = flags;
+    node->opened = true;
+
+    *out_node = node;
+    return KERRNO_SUCCESSES;
+}
+
+status_t vfs_open(const char *path, int flags, int mode, vfs_node_t **out_node)
+{
+    ENTER_FUNC("%s, 0x%x, 0x%x, %p", path, flags, mode, out_node);
+    return vfs_open_internal(path, flags, mode, out_node);
 }
