@@ -365,7 +365,7 @@ status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *
         buddy_bit_set(global_buddy, found_order, buddy_block_index(global_buddy, split, found_order));
     }
 
-    trace_debug(MODULE, "got addr=%p order=%d", addr, order);
+    // trace_debug(MODULE, "got addr=%p order=%d", addr, order);
     *phys_out = addr;
     return KERRNO_SUCCESSES;
 }

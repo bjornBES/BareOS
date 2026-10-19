@@ -90,7 +90,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
     {
         return KERRNO_UNSUCCESS;
     }
-    log_debug(MODULE, "resource_do_insert");
+    ENTER_FUNC("%p, %p", parent, new);
 
     // find insertion point — list is sorted by start
     resource_t *cur = parent;
@@ -115,7 +115,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
 
     if (new->start > cur->start && new->start < cur->end)
     {
-        trace_crit(MODULE, "insert as child");
+        // trace_crit(MODULE, "insert as child");
         new->parent = cur;
         cur->child = new;
         return KERRNO_SUCCESSES;
@@ -124,7 +124,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
     // insert before head
     if (cur->start > new->start)
     {
-        trace_crit(MODULE, "insert before head");
+        // trace_crit(MODULE, "insert before head");
         new->parent = cur;
         cur->child = new;
     }

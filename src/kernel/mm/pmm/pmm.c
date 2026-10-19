@@ -204,7 +204,7 @@ paddr_t pmm_alloc_frame()
     paddr_t phys;
     if (!pmm_ready)
     {
-        trace_debug(MODULE, "Allocating from bump %p/%p, %p", bump_current, bump_end, &pmm_ready);
+        // trace_debug(MODULE, "Allocating from bump %p/%p, %p", bump_current, bump_end, &pmm_ready);
         phys = bump_alloc();
     }
     else
@@ -212,7 +212,7 @@ paddr_t pmm_alloc_frame()
         int state = info.allocator->ops.alloc(info.allocator, 1, &phys);
         if (state != 0)
         {
-            trace_debug(MODULE, "OOM");
+            KERRNO_RETURN(KERRNO_OOM, "Out of memory");
             return 0;
         }
         if (phys)
@@ -220,7 +220,7 @@ paddr_t pmm_alloc_frame()
             pmm_refcounts[pmm_frame_idx(phys)] = 1;
         }
     }
-    trace_debug(MODULE, "got addr=%p", phys);
+    // trace_debug(MODULE, "got addr=%p", phys);
     return phys;
 }
 

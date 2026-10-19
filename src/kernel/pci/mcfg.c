@@ -32,8 +32,8 @@ status_t mcfg_parse()
     mcfg = (mcfg_t *)table_get_table(0x4746434D);
     if (!mcfg)
     {
-        log_crit(MODULE, "no mcfg found");
-        return 1;
+        // trace_err(MODULE, "no mcfg found");
+        return KERRNO_UNSUCCESS;
     }
 
     hexdump(mcfg, mcfg->h.length, 16);

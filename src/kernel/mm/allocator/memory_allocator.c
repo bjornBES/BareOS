@@ -34,7 +34,7 @@ size_t heap_size;
 
 status_t alloc_new_page()
 {
-	ENTER_FUNC("", 0);
+	// ENTER_FUNC("", 0);
     paddr_t phys = pmm_alloc_frame();
     vaddr_t virt = heap_end;  // next virtual page after current end
 	// mmu_arch_enable_prints();
@@ -44,10 +44,10 @@ status_t alloc_new_page()
 	{
 		return size_mapped;
 	}
-	trace_debug(MODULE, "mapped %p..%p for %u page(s)", virt, phys, PAGE_COUNT(size_mapped));
+	// trace_debug(MODULE, "mapped %p..%p for %u page(s)", virt, phys, PAGE_COUNT(size_mapped));
 	
     heap_size++;
-	trace_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, size_mapped, heap_begin + (heap_size * size_mapped));
+	// trace_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, size_mapped, heap_begin + (heap_size * size_mapped));
     heap_end = heap_begin + (heap_size * size_mapped);
 	memset((void*)virt, 0, size_mapped);
 	return KERRNO_SUCCESSES;
