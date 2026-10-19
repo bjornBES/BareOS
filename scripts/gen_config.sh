@@ -18,23 +18,22 @@
 #     String values emit %define CONFIG_X (no value) so %ifdef still works,
 #     since NASM %if cannot evaluate string literals the way C's #if can't either.
 
-
 set -eu
- 
+
 IN="${1:-config/config.env}"
 OUT="${2:-src/kernel/include/kernel/config.h}"
 OUT_ASM="${3:-}"
- 
+
 if [ ! -f "$IN" ]; then
     echo "gen_config.sh: input file '$IN' not found" >&2
     exit 1
 fi
- 
+
 OUT_DIR=$(dirname "$OUT")
 mkdir -p "$OUT_DIR"
- 
+
 TMP=$(mktemp)
- 
+
 {
     echo "/* AUTO-GENERATED FILE - DO NOT EDIT BY HAND"
     echo " * Generated from $IN by scripts/gen_config.sh"
@@ -42,7 +41,7 @@ TMP=$(mktemp)
     echo "#pragma once"
     echo
 } > "$TMP"
- 
+
 TMP_ASM=""
 if [ -n "$OUT_ASM" ]; then
     ASM_OUT_DIR=$(dirname "$OUT_ASM")
@@ -54,50 +53,91 @@ if [ -n "$OUT_ASM" ]; then
         echo
     } > "$TMP_ASM"
 fi
- 
+
 while IFS= read -r raw_line || [ -n "$raw_line" ]; do
     line="$raw_line"
- 
+
     # Strip a full-line comment (line starts with # after trimming leading spaces)
     trimmed_check=$(printf '%s' "$line" | sed 's/^[[:space:]]*//')
     case "$trimmed_check" in
         '#'*|'') continue ;;
     esac
- 
+
     # Must contain '='
     case "$line" in
         *=*) : ;;
         *) continue ;;
     esac
- 
+
     key=$(printf '%s' "$line" | cut -d'=' -f1)
     val=$(printf '%s' "$line" | cut -d'=' -f2-)
- 
+
     # Strip inline comment from value (anything after #)
     val=$(printf '%s' "$val" | sed 's/#.*//')
- 
+
     # Trim leading/trailing whitespace from key and val
     key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     val=$(printf '%s' "$val" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
- 
+
     [ -z "$key" ] && continue
- 
+
     if [ "$key" = "config" ]; then
         continue
     fi
- 
+
     # Keys ending in _raw are emitted unquoted (raw token), suffix stripped from macro name
+    # Keys ending in _char are emitted as a character constant, suffix stripped too
     is_raw=0
+    is_char=0
     case "$key" in
         *_raw)
             is_raw=1
             key=${key%_raw}
             ;;
+        *_char)
+            is_char=1
+            key=${key%_char}
+            ;;
     esac
- 
+
     # Uppercase the key, replace any non-alnum with underscore
     key_upper=$(printf '%s' "$key" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9_]/_/g')
- 
+
+    # Character constants: C gets 'c', NASM gets the numeric code (usable in %if / db)
+    # Accepted values: a single character, \n \t \r \0 \\ \' or \xNN
+    # (values are whitespace-trimmed and '#' starts a comment, so use \x20 for a space, \x23 for '#')
+    if [ "$is_char" = "1" ]; then
+        case "$val" in
+            '\n') c_lit="'\\n'";  c_num=10 ;;
+            '\t') c_lit="'\\t'";  c_num=9 ;;
+            '\r') c_lit="'\\r'";  c_num=13 ;;
+            '\0') c_lit="'\\0'";  c_num=0 ;;
+            '\\') c_lit="'\\\\'"; c_num=92 ;;
+            "\\'") c_lit="'\\''"; c_num=39 ;;
+            '\x'[0-9A-Fa-f][0-9A-Fa-f])
+                c_lit="'${val}'"
+                c_num=$((0x${val#'\x'}))
+                ;;
+            ?)
+                if [ "$val" = "'" ]; then
+                    c_lit="'\\''"
+                else
+                    c_lit="'${val}'"
+                fi
+                c_num=$(printf '%d' "'$val")
+                ;;
+            *)
+                printf '%s\n' "gen_config.sh: bad char value '$val' for key '${key}_char' (use one character, or one of: \\n \\t \\r \\0 \\\\ \\' \\xNN)" >&2
+                exit 1
+                ;;
+        esac
+        printf '%s\n' "#define CONFIG_${key_upper} ${c_lit}" >> "$TMP"
+        if [ -n "$TMP_ASM" ]; then
+            printf '%s\n' "%define CONFIG_${key_upper} ${c_num}" >> "$TMP_ASM"
+        fi
+        continue
+    fi
+
     # Classify the value as one of: decimal | hex | long | string
     # decimal: [0-9]+           e.g. 0, 1, 250
     # hex:     0x[0-9A-Fa-f]*   e.g. 0xFF, 0x1000
@@ -134,7 +174,7 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
                 ;;
         esac
     fi
- 
+
     case "$kind" in
         decimal|hex)
             echo "#define CONFIG_${key_upper} ${val}" >> "$TMP"
@@ -166,10 +206,10 @@ while IFS= read -r raw_line || [ -n "$raw_line" ]; do
             ;;
     esac
 done < "$IN"
- 
+
 mv "$TMP" "$OUT"
 echo "gen_config.sh: wrote $OUT"
- 
+
 if [ -n "$OUT_ASM" ]; then
     mv "$TMP_ASM" "$OUT_ASM"
     echo "gen_config.sh: wrote $OUT_ASM"

@@ -16,4 +16,6 @@
 
 #include <types.h>
 
+status_t block_register(blkdev_t *block_dev, device_t *parent);
+
 status_t block_device_create(device_t **out_dev);

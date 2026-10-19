@@ -21,16 +21,11 @@
 #define MODULE "vfs-fs"
 
 hash_map_t *hash;
-list_t *list;
+list_t fs_list;
 
 status_t vfs_fs_init()
 {
-    list = kmalloc(sizeof(list_t));
-    if (list == NULL)
-    {
-        KERRNO_RETURN(KERRNO_OOM, "kmalloc returned null");
-    }
-    list_initialize(list);
+    list_initialize(&fs_list);
     status_t ret = hash_map_create(&hash, CONFIG_INITIAL_FS_SIZE);
     if (ret != KERRNO_SUCCESSES)
     {
@@ -50,7 +45,7 @@ status_t vfs_fs_register(filesystem_t *fs)
         return ret;
     }
     trace_debug(MODULE, "hash add returned %u", ret);
-    ret = ADD_THIS_TO_LIST(*list, fs);
+    ret = ADD_THIS_TO_LIST(fs_list, fs);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
@@ -73,18 +68,20 @@ status_t vfs_fs_find(const char *name, filesystem_t **out_fs)
 
 status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
 {
-    if (list->has_initialize)
+    ENTER_FUNC("%p, %p", dev, out_fs);
+    if (!fs_list.has_initialize)
     {
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "list has not been initialized");
     }
 
-    list_node_t *node = list->tail;
-    while (!node)
+    list_node_t *node = fs_list.tail;
+    while (node)
     {
         filesystem_t *fs = to_filesystem_t(node);
         if (fs->probe == NULL)
         {
             trace_err(MODULE, "%s doesn't have probe set", fs->name);
+            node = node->prev;
             continue;
         }
         
@@ -93,6 +90,8 @@ status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
             *out_fs = fs;
             return KERRNO_SUCCESSES;
         }
+        node = node->prev;
     }
-    KERRNO_RETURN(KERRNO_UNSUCCESS, "Didn't find any file systems that could do that");
+    return KERRNO_ENTRY_NOT_FOUND;
+    // KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "Didn't find any file systems that could do that");
 }

@@ -17,6 +17,22 @@
 #include <config.h>
 #include <types.h>
 
+// Regular File
+#define DT_REG 0x0001
+
+// Directory
+#define DT_DIR 0x0002
+
+// Symbolic Link
+#define DT_LNK 0x0004
+
+// Block Special File
+#define DT_BLK 0x0008
+
+// Character Special File
+#define DT_CHR 0x0010
+
+
 typedef struct volume volume_t;
 typedef struct filesystem filesystem_t;
 typedef struct mountpoint mountpoint_t;
@@ -62,13 +78,13 @@ typedef struct dentry
 typedef struct mountpoint
 {
     LIST_ENTRY_THIS();
-    char label[CONFIG_MAX_MOUNTPOINT_LENGTH]; // "/", "/system", "/dev"
-    volume_t *volume;                         // what's mounted here
-    dentry_t *dentry;                         // the dentry this mount covers
-    dentry_t *root_dentry;                    // root dentry of the mounted volume
-    uint32_t flags;                           // inherited or override mount flags
-    mountpoint_t *parent;                     // mount this is mounted on top of
-    mountpoint_t *next;                       // linked list
+    char path[CONFIG_MAX_MOUNTPOINT_LENGTH]; // "/", "/system", "/dev"
+    volume_t *volume;                        // what's mounted here
+    dentry_t *dentry;                        // the dentry this mount covers
+    dentry_t *root_dentry;                   // root dentry of the mounted volume
+    uint32_t flags;                          // inherited or override mount flags
+    mountpoint_t *parent;                    // mount this is mounted on top of
+    mountpoint_t *next;                      // linked list
 } mountpoint_t;
 
 typedef struct vfs_node

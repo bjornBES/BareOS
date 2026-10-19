@@ -32,24 +32,28 @@ typedef struct volume
     void *sb;
     uint32_t flags;
     uint32_t refcount;
+    list_t mountpoints;
     mountpoint_t *mountpoint;
 } volume_t;
 
 THIS_TO_TYPE_DEF(volume_t);
 
-// probe fs drivers, alloc + insert volume
+/// @brief
+/// @param volume_id 
+/// @param dev 
+/// @param fs 
+/// @param out 
+/// @return 
+status_t volume_do_register(const char *volume_id, device_t *dev, filesystem_t *fs, volume_t **out);
+
 status_t volume_register(const char *volume_id, device_t *dev, volume_t **out);
 
 status_t volume_create_synthetic(const char *volume_id, const char *fs_name, device_t *dev, volume_t **out);
 
-// remove from registry, free
 status_t volume_unregister(const char *volume_id);
 
-// lookup by id string
 status_t volume_find(const char *volume_id, volume_t **out);
 
-// parse "vol_id/" prefix, return volume
 status_t volume_from_prefix(const char *path, volume_t **out);
 
-// return all registered volumes
 status_t volume_list(volume_t **buf, size_t buf_size, size_t *out_size);

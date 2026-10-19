@@ -98,7 +98,7 @@ status_t class_list_devices()
 status_t class_init()
 {
     list_initialize(&class_list);
-    return hash_map_create(&classes, 10);
+    return hash_map_create(&classes, 50);
 }
 
 POSTCORE_INITCALL(class_init);

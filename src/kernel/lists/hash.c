@@ -39,10 +39,12 @@ status_t hash_map_create(hash_map_t **out_mp, int max_capacity)
 uint64_t hash_key(hash_map_t *mp, const char *key)
 {
     uint64_t hash = FNV_OFFSET;
-    for (const char *p = key; *p; p++)
+    while (*key)
     {
-        hash ^= (uint64_t)(unsigned char)(*p);
+        trace_debug(MODULE, "hash = %x p = %c", hash, *key);
+        hash ^= (uint64_t)(unsigned char)(*key);
         hash *= FNV_PRIME;
+        key++;
     }
     uint64_t index = hash % mp->capacity;
     return index;
@@ -61,18 +63,19 @@ status_t hash_insert(hash_map_t *mp, char *key, void *value)
     }
     uint64_t bucket_index = hash_key(mp, key);
     hash_node_t *new_node = (hash_node_t *)kmalloc(sizeof(hash_node_t));
-
+    trace_info(MODULE, "bucket_index = %x, new_node = %p", bucket_index, new_node);
+    
     new_node->key = key;
     new_node->value = value;
     new_node->next = NULL;
-
+    
     if (mp->arr[bucket_index] == NULL)
     {
         mp->arr[bucket_index] = new_node;
     }
     else
     {
-        // KERRNO_RETURN(KERRNO_NAME_IN_USE, "key is already in use");
+        KERRNO_RETURN(KERRNO_NAME_IN_USE, "key '%s' is already in use", key);
         new_node->next = mp->arr[bucket_index];
         mp->arr[bucket_index] = new_node;
     }

@@ -13,6 +13,8 @@
 #include "vfs/vfs_internals.h"
 #include "dev/devicet.h"
 
+#include "block/blkdevt.h"
+
 #include "init.h"
 
 #include <types.h>
@@ -24,6 +26,8 @@ typedef struct filesystem
     int (*kill_fs)();
 
     status_t (*probe)(device_t *dev);
+
+    status_t (*ident_fs)(device_t *dev, fs_ident_t *ident);
 
     status_t (*mount)(device_t *dev, mountpoint_t *mnt);
     status_t (*umount)(device_t *dev, mountpoint_t *mnt);

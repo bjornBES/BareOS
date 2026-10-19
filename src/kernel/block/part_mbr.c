@@ -16,6 +16,8 @@
 
 #include "stdio.h"
 
+#include "vfs/vfs.h"
+
 #include <array.h>
 #include <types.h>
 #include <defs.h>
@@ -77,7 +79,22 @@ status_t mbr_detect(device_t *dev, void *mbr)
 
         part_dev->init_name = dev->name;
 
-        block_register(block, dev);
+        status_t ret = block_register(block, dev);
+        KERRNO_CHECK_RETURN(ret);
+        if (ret != KERRNO_SUCCESSES)
+        {
+            return ret;
+        }
+        ret = vfs_mount(part_dev, 0);
+        if (ret == KERRNO_ENTRY_NOT_FOUND)
+        {
+            continue;
+        }
+        KERRNO_CHECK_RETURN(ret);
+        if (ret != KERRNO_SUCCESSES)
+        {
+            return ret;
+        }
     }
     return KERRNO_SUCCESSES;
 }
