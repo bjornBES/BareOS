@@ -13,11 +13,14 @@
 #include "vfs/fs_registry.h"
 #include "vfs/volume.h"
 #include "vfs/path.h"
+#include "vfs/inode.h"
 #include "vfs/mount.h"
 
 #include "stdio.h"
 
 #include "kerrno.h"
+
+#include "memory.h"
 
 #include "init.h"
 
@@ -115,7 +118,7 @@ status_t vfs_mount(device_t *dev, int flags)
 #error "both CONFIG_VOLUME_PREFIX and CONFIG_VOLUME_POSTFIX are 0"
 #endif
 
-        path[path_count] = '\0';
+    path[path_count] = '\0';
 
     ret = vfs_do_mount(path, dev, vol, flags);
     KERRNO_CHECK_RETURN(ret);
@@ -162,4 +165,42 @@ status_t vfs_open(const char *path, int flags, int mode, vfs_node_t **out_node)
 {
     ENTER_FUNC("%s, 0x%x, 0x%x, %p", path, flags, mode, out_node);
     return vfs_open_internal(path, flags, mode, out_node);
+}
+
+status_t vfs_close(vfs_node_t *node)
+{
+    status_t ret = 0;
+    
+    ret = inode_put(node->inode);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
+    ret = node->fs->close(node, node->mountpoint->volume->device, node->mountpoint);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
+    ret = kfree(node);
+    KERRNO_CHECK_RETURN(ret);
+    return ret;
+}
+
+status_t vfs_read(vfs_node_t *node, void *buf, size_t len, ssize_t *out_read)
+{
+    mountpoint_t *mount = node->mountpoint;
+    trace_debug(MODULE, "mount = %p", mount);
+    volume_t *volume = mount->volume;
+    trace_debug(MODULE, "volume = %p", volume);
+    device_t *dev = volume->device;
+    trace_debug(MODULE, "dev = %p", dev);
+    if (node->fs->read == NULL)
+    {
+        return KERRNO_UNSUCCESS;
+    }
+    return node->fs->read(node, buf, node->offset, len, out_read, dev, mount);
 }

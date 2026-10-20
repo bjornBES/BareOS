@@ -36,7 +36,7 @@ typedef struct filesystem
 
     status_t (*open)(vfs_node_t *node, device_t *dev, mountpoint_t *mnt);
     status_t (*close)(vfs_node_t *node, device_t *dev, mountpoint_t *mnt);
-    status_t (*read)(vfs_node_t *node, void *buf, off_t offset, size_t len, ssize_t **len_out, device_t *dev, mountpoint_t *mnt);
+    status_t (*read)(vfs_node_t *node, void *buf, off_t offset, size_t len, ssize_t *len_out, device_t *dev, mountpoint_t *mnt);
     status_t (*write)(vfs_node_t *node, const void *buf, off_t offset, size_t len, ssize_t **len_out, device_t *dev, mountpoint_t *mnt);
     status_t (*read_dir)(vfs_node_t *dir, uint32_t index, vfs_dirent_t *out, device_t *dev, mountpoint_t *mnt);
 

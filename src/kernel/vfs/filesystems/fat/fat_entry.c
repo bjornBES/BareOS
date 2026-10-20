@@ -76,7 +76,7 @@ int fat_read_directory(fat_inode_t *directory, fat_directory_t *out, int entry_c
 
 status_t fat_entry_find(fat_inode_t *parent, const char *entry_name, inode_t *entry_out, device_t *dev, mountpoint_t *mnt, fat_priv_data_t *sb)
 {
-    ENTER_FUNC(MODULE, "%p, %s, %p, %p, %p, %p", parent, entry_name, entry_out, dev, mnt, sb);
+    ENTER_FUNC("%p, %s, %p, %p, %p, %p", parent, entry_name, entry_out, dev, mnt, sb);
     if (parent->base.type != DT_DIR)
     {
         trace_warn(MODULE, "parent is not a directory");
@@ -105,7 +105,7 @@ status_t fat_entry_find(fat_inode_t *parent, const char *entry_name, inode_t *en
         trace_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
         if (fat_entries_match(&entries[i], &directory, i, entry_name) == KERRNO_SUCCESSES)
         {
-            trace_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
+            trace_info(MODULE, "> entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
             fat_ino->first_cluster = COMBINE_CLUSTERS(*entry);
             fat_ino->base.size = entry->size;
             fat_ino->created_time_tenths = entry->created_time_tenths;

@@ -54,7 +54,7 @@ status_t inode_alloc(volume_t *vol, inode_t **out)
 
     ino->volume = vol;
     ino->fs = vol->fs;
-    ino->refcount = 1;
+    ino->refcount = 0;
     ino->hash_next = NULL;
 
     *out = ino;

@@ -211,3 +211,25 @@ void trace_with_id(fd_t file, trace_level_t level, const char *module, char *fmt
     va_end(args);
     spinlock_release(&trace_lock);
 }
+
+void hexdump(void *ptr, size_t len, size_t size)
+{
+    char id_log[20];
+    get_ids(id_log);
+
+    spinlock_acquire(&trace_lock);
+    logf("HEX", LogLevelDebugLevel[LVL2], "========= HEXDUMP =========\n");
+    logf("HEX", LogLevelDebugLevel[LVL2], "[%s] hexdump at %p length %u", id_log, ptr, len);
+
+    unsigned char *p = (unsigned char *)ptr;
+    for (size_t i = 0; i < len; ++i)
+    {
+        if ((i % size) == 0)
+        {
+            logf(NO_MODULE, LogLevelDebugLevel[LVL2], "\n%04x: ", i);
+        }
+        logf(NO_MODULE, LogLevelDebugLevel[LVL2], "%02x", p[i]);
+    }
+    logf(NO_MODULE, LogLevelDebugLevel[LVL2], "\n");
+    spinlock_release(&trace_lock);
+}

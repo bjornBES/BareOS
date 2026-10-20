@@ -47,6 +47,8 @@ void logf(const char *module, debug_level_t level, const char *fmt, ...);
 void logf_args(const char *module, debug_level_t level, const char *fmt, va_list args);
 void debug_enter_func(const char *module, const char *function, const char *fmt, ...);
 
+void hexdump(void *ptr, size_t len, size_t size);
+
 // from VFS/vfs.h/c
 // extern bool vfs_init_is_done;
 

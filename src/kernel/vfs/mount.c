@@ -259,6 +259,7 @@ status_t mount_find(const char *path, mountpoint_t **out)
 
 status_t mount_find_for_volume(const char *path, volume_t *vol, mountpoint_t **out)
 {
+    ENTER_FUNC("%s, %p, %p", path, vol, out);
     if (path == NULL)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
