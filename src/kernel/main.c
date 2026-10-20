@@ -12,6 +12,8 @@
 
 #include "acpi/fadt/fadt.h"
 
+#include "resource/resource.h"
+
 #include "dev/device.h"
 #include "timer/timer.h"
 
@@ -47,49 +49,9 @@ NORETURN void kernel_main()
 
     device_debug();
 
-    vfs_node_t *node;
-    vfs_open("/@BOOT/dir/sub/file.txt", 0, 0, &node);
-    hexdump(node->inode, sizeof(inode_t), 16);
-    trace_debug(MODULE, "node = %p", node);
-    char buf1[512];
-    ssize_t bytes_read1 = 0;
-    status_t ret1 = vfs_read(node, buf1, 512, &bytes_read1);
-    // hexdump(node, sizeof(vfs_node_t), 16);
-    hexdump(node->inode, sizeof(inode_t), 16);
-    vfs_node_t *user_node;
-    vfs_open("/@BOOT/dir/sub/file.txt", 0, 0, &user_node);
-    // hexdump(node, sizeof(vfs_node_t), 16);
-    // hexdump(user_node, sizeof(vfs_node_t), 16);
-
-    hexdump(node->inode, sizeof(inode_t), 16);
-    hexdump(user_node->inode, sizeof(inode_t), 16);
-    vfs_close(node);
-    hexdump(user_node->inode, sizeof(inode_t), 16);
-    
-    vfs_open("/@BOOT/dir/sub/file.txt", 0, 0, &node);
-    ret1 = vfs_read(node, buf1, 512, &bytes_read1);
-    hexdump(user_node->inode, sizeof(inode_t), 16);
-    
-    char buf2[512];
-    ssize_t bytes_read2 = 0;
-    status_t ret2 = vfs_read(user_node, buf2, 512, &bytes_read2);
-    hexdump(user_node->inode, sizeof(inode_t), 16);
-    vfs_close(user_node);
-    hexdump(node->inode, sizeof(inode_t), 16);
-    vfs_close(node);
-
-    if (ret1 == KERRNO_SUCCESSES)
-    {
-        buf1[bytes_read1] = 0;
-        trace_debug(MODULE, "buf = \"%s\"", buf1);
-        // hexdump(buf, bytes_read, 16);
-    }
-    if (ret2 == KERRNO_SUCCESSES)
-    {
-        buf2[bytes_read2] = 0;
-        trace_debug(MODULE, "buf = \"%s\"", buf2);
-        // hexdump(buf, bytes_read, 16);
-    }
+    resource_dump(&mem_space.root);
+    resource_dump(&io_space.root);
+    resource_dump(&irq_space.root);
 
     for (;;)
     {

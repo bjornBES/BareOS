@@ -29,9 +29,10 @@ typedef struct pci_dynid
 INTERNAL_INLINE pci_device_id_t *pci_match_one_id(pci_device_id_t *id, pci_device_id_t *dev_id)
 {
     if ((id->vendor == PCI_ANY_ID || id->vendor == dev_id->vendor) &&
-        (id->device == PCI_ANY_ID || id->device == dev_id->device) &&
-        !((id->class ^ dev_id->class_mask) & id->class_mask))
+    (id->device == PCI_ANY_ID || id->device == dev_id->device) &&
+    !((id->class ^ dev_id->class_mask) & id->class_mask))
     {
+        // ENTER_FUNC("%p { %04x:%04x, %06x, %06x }, %p { %04x:%04x, %06x, %06x }", id, id->vendor, id->device, id->class, id->class_mask, dev_id, dev_id->vendor, dev_id->device, dev_id->class, dev_id->class_mask);
         return id;
     }
     return NULL;
@@ -39,6 +40,7 @@ INTERNAL_INLINE pci_device_id_t *pci_match_one_id(pci_device_id_t *id, pci_devic
 
 pci_device_id_t *pci_do_match_id(pci_device_id_t *ids, pci_device_id_t *dev_id)
 {
+    ENTER_FUNC("%p, %p", ids, dev_id);
     int index = 0;
     while (ids != NULL)
     {
@@ -82,11 +84,11 @@ status_t pci_bus_match(device_t *dev, driver_t *drv)
     pci_driver_t *pci_drv = to_pci_driver(drv);
     pci_device_id_t *found_id = pci_do_match_id(pci_drv->id_table, &pci_dev->id);
 
-    if (found_id)
+    if (found_id == NULL)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_UNSUCCESS;
     }
-    return KERRNO_UNSUCCESS;
+    return KERRNO_SUCCESSES;
 }
 
 status_t pci_call_probe(pci_driver_t *pci_drv, pci_device_t *pci_dev, pci_device_id_t *id)

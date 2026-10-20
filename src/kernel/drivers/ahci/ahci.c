@@ -14,6 +14,8 @@
 
 #include "drivers/driver.h"
 
+#include "resource/resource.h"
+
 #include "sync/mutex.h"
 #include "sync/semaphore.h"
 
@@ -504,7 +506,7 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
 
     // TODO check vendor/device fields some change the bar index
 
-    trace_debug(MODULE, "", sizeof(hba_mem_t), sizeof(hba_port_t));
+    // trace_debug(MODULE, "", sizeof(hba_mem_t), sizeof(hba_port_t));
     // 0x1100
 
     pci_bar_t ahci_bar;
@@ -528,10 +530,11 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
     }
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", host_priv->abar, ahci_bar.is_64bit BOOL_TO_STRING, ahci_bar.is_mmio BOOL_TO_STRING, ahci_bar.prefetchable BOOL_TO_STRING, ahci_bar.size);
 
+    resource_request(&mem_space.root, &dev->driver_exclusive_resource, ahci_bar.base, ahci_bar.base + ahci_bar.size, "ahci bar", dev->resource[bar_index].type, dev->resource[bar_index].flags);
+
     uint32_t pi = host_priv->abar->pi;
     host_priv->nports = host_priv->abar->cap.NP + 1;
 
-    // dev->dev.class = DEVICE_BLOCK;
     dev->dev.init_name = "AHCI";
     device_add(&dev->dev);
 

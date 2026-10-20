@@ -34,6 +34,7 @@ status_t resource_space_init(resource_space_t *rs, res_space_t space, resource_s
 
     memset(&rs->root, 0, sizeof(resource_t));
 
+    rs->root.space = space;
     rs->root.start = start;
     rs->root.end = end;
     return KERRNO_SUCCESSES;
@@ -41,7 +42,7 @@ status_t resource_space_init(resource_space_t *rs, res_space_t space, resource_s
 
 resource_t *resource_create()
 {
-    return kmalloc(sizeof(resource_t));
+    return kzmalloc(sizeof(resource_t));
 }
 
 INTERNAL bool resource_assert_no_overlap(resource_t *parent, resource_t *new)
@@ -71,10 +72,10 @@ INTERNAL bool resource_assert_no_overlap(resource_t *parent, resource_t *new)
         {
             cur = cur->sibling;
         }
-/*         else if (cur->child && new->start >= cur->child->start && new->end < cur->child->end)
-        {
-            cur = cur->child;
-        } */
+        /*         else if (cur->child && new->start >= cur->child->start && new->end < cur->child->end)
+                {
+                    cur = cur->child;
+                } */
         else
         {
             return true;
@@ -86,6 +87,7 @@ INTERNAL bool resource_assert_no_overlap(resource_t *parent, resource_t *new)
 // insert sorted by start
 status_t resource_do_insert(resource_t *parent, resource_t *new)
 {
+    new->space = parent->space;
     if (resource_assert_no_overlap(parent, new) == false)
     {
         return KERRNO_UNSUCCESS;
@@ -94,17 +96,24 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
 
     // find insertion point — list is sorted by start
     resource_t *cur = parent;
-    while (cur->child && cur->child->start < new->start)
+    while (cur->child && cur->child->start <= new->start)
     {
         cur = cur->child;
     }
     trace_debug(MODULE, "found child at %p", cur);
 
-    while (cur->sibling && cur->sibling->start < new->start)
+    while (cur->sibling && cur->sibling->start <= new->start)
     {
         cur = cur->sibling;
     }
     trace_debug(MODULE, "found sibling at %p", cur);
+
+    if (new->start == cur->start && new->end == cur->end)
+    {
+        new->parent = cur;
+        cur->child = new;
+        return KERRNO_SUCCESSES;
+    }
 
     if (parent->parent == NULL && parent->child == NULL && parent->name == NULL)
     {
@@ -115,16 +124,38 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
 
     if (new->start > cur->start && new->start < cur->end)
     {
-        // trace_crit(MODULE, "insert as child");
-        new->parent = cur;
-        cur->child = new;
+        trace_warn(MODULE, "insert as child");
+        if (cur->child)
+        {
+            // insert before head
+            if (cur->child->start >= new->start)
+            {
+                trace_warn(MODULE, "insert before %s", cur->child->name);
+                new->parent = cur;
+                new->sibling = cur->child;
+                cur->child = new;
+            }
+            // insert after cur
+            else
+            {
+                trace_warn(MODULE, "insert after %s", cur->child->name);
+                new->parent = cur;
+                new->sibling = cur->child->sibling;
+                cur->child->sibling = new;
+            }
+        }
+        else
+        {
+            new->parent = cur;
+            cur->child = new;
+        }
         return KERRNO_SUCCESSES;
     }
 
     // insert before head
-    if (cur->start > new->start)
+    if (cur->start >= new->start)
     {
-        // trace_crit(MODULE, "insert before head");
+        trace_warn(MODULE, "insert before head");
         new->parent = cur;
         cur->child = new;
     }
@@ -144,7 +175,7 @@ status_t resource_request(resource_t *parent, resource_t *out, resource_size_t s
 
     out->start = start;
     out->end = end;
-    out->name = name;
+    out->name = (char *)name;
     out->type = type;
     out->flags = flags;
     out->child = NULL;

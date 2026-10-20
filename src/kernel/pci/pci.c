@@ -24,14 +24,19 @@
 
 #include "mm/ioremap.h"
 
+#include "resource/resource.h"
+
 #include "irq/irq.h"
 
 #include "memory.h"
 #include "string.h"
+#include "math.h"
 
 #include "kerrno.h"
 
 #include "stdio.h"
+
+#include "align.h"
 
 #include <binary.h>
 
@@ -117,12 +122,12 @@ status_t pci_init_capabilities(pci_device_t *dev)
     return KERRNO_SUCCESSES;
 }
 
-INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, pci_bar_t *out_abar);
+INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, int bar_index, pci_bar_t *out_abar);
 
 status_t pci_get_bar(pci_device_t *dev, uint8_t bar_index, pci_bar_t *out)
 {
     ENTER_FUNC("%p, %u, %p", dev, bar_index, out);
-    // pci_int_decode_bar(dev, bar_index * 4 + 0x10, &dev->bars[bar_index]);
+    pci_int_decode_bar(dev, bar_index * 4 + 0x10, bar_index, &dev->bars[bar_index]);
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", dev->bars[bar_index].base, dev->bars[bar_index].is_64bit BOOL_TO_STRING, dev->bars[bar_index].is_mmio BOOL_TO_STRING, dev->bars[bar_index].prefetchable BOOL_TO_STRING, dev->bars[bar_index].size);
     memcpy(out, &dev->bars[bar_index], sizeof(pci_bar_t));
     return KERRNO_SUCCESSES;
@@ -130,6 +135,11 @@ status_t pci_get_bar(pci_device_t *dev, uint8_t bar_index, pci_bar_t *out)
 
 status_t pci_map_bar(pci_device_t *dev, uint8_t bar_index, vaddr_t *out_vaddr)
 {
+    resource_t *res = &dev->resource[bar_index];
+    if (res->space != RES_SPACE_MEM)
+    {
+        KERRNO_RETURN(KERRNO_DONT_DO_THAT, "can only map memory");
+    }
     *out_vaddr = ioremap(dev->bars[bar_index].base, dev->bars[bar_index].size);
     return KERRNO_SUCCESSES;
 }
@@ -237,9 +247,11 @@ status_t pci_clear_command_flags(pci_device_t *dev, pci_command_bits_t flags)
     return KERRNO_SUCCESSES;
 }
 
-INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, pci_bar_t *out_abar)
+INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, int bar_index, pci_bar_t *out_abar)
 {
     ENTER_FUNC("%p, 0x%x, %p", dev, offset, out_abar);
+    resource_t *bar_res = &dev->resource[bar_index];
+    res_flags_t flags = 0;
     uint32_t bar;
     pci_config_read32(dev, offset, &bar);
 
@@ -249,6 +261,10 @@ INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, pci_bar_t *
     if (abar.is_mmio)
     {
         abar.prefetchable = FLAG_IS_SET(bar, PCI_BASE_ADDRESS_MEM_PREFETCH);
+        if (abar.prefetchable)
+        {
+            flags |= RES_FLAG_PREFETCH;
+        }
         uint32_t type = bar & PCI_BASE_ADDRESS_MEM_TYPE_MASK;
         paddr_t base;
         switch (type)
@@ -272,16 +288,30 @@ INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *dev, int offset, pci_bar_t *
                 break;
         }
         abar.base = base;
-        uint32_t size = ~0;
-        pci_config_write32(dev, offset, size);
+        uint32_t size = 0;
+        pci_config_write32(dev, offset, (uint32_t)PCI_BASE_ADDRESS_MEM_MASK);
         pci_config_read32(dev, offset, &size);
 
-        abar.size = (~size) + 1;
+        abar.size = PAGE_ALIGN_UP(((~size) + 1));
+        pci_config_write32(dev, offset, bar);
+    }
+    else
+    {
+        paddr_t base = bar & PCI_BASE_ADDRESS_IO_MASK;
+        abar.base = base;
+        uint32_t size = 0;
+        pci_config_write32(dev, offset, (uint32_t)PCI_BASE_ADDRESS_IO_MASK);
+        pci_config_read32(dev, offset, &size);
+
+        abar.size = PAGE_ALIGN_UP(((~size) + 1));
         pci_config_write32(dev, offset, bar);
     }
 
     pci_config_write32(dev, offset, bar);
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", abar.base, abar.is_64bit BOOL_TO_STRING, abar.is_mmio BOOL_TO_STRING, abar.prefetchable BOOL_TO_STRING, abar.size);
+    // char *res_name = kzmalloc(PCI_MAX_NAME);
+    // size_t length = sprintf(res_name, "%04x:%04x.%02x.%02x.%x.%x", dev->vendor_id, dev->device_id, dev->bdf.bus, dev->bdf.device, dev->bdf.function, bar_index);
+    // res_name[length] = '\0';
     memcpy(out_abar, &abar, sizeof(pci_bar_t));
     return abar;
 }
@@ -320,6 +350,18 @@ bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_t *pdev
         pdev->cache_line_size = (reg3Data) & 0xFF;
     }
 
+    char *res_name = kzmalloc(PCI_MAX_NAME);
+    size_t length = sprintf(res_name, "%04x:%04x.%02x.%02x.%x", pdev->vendor_id, pdev->device_id, bus, slot, func);
+    res_name[length] = '\0';
+    resource_t *dev_slot_mem = resource_create();
+    dev_slot_mem->name = res_name;
+    dev_slot_mem->type = RES_TYPE_PCI_BAR;
+    dev_slot_mem->start = ~0;
+    resource_t *dev_slot_io = resource_create();
+    dev_slot_io->name = res_name;
+    dev_slot_io->type = RES_TYPE_PCI_BAR;
+    dev_slot_io->start = ~0;
+
     pdev->multi_function = (pdev->header_type & PCI_HEADER_TYPE_MFD) == PCI_HEADER_TYPE_MFD;
     pdev->header_type &= PCI_HEADER_TYPE_MASK;
 
@@ -337,19 +379,82 @@ bool pci_check_bus(uint32_t bus, uint32_t slot, uint8_t func, pci_device_t *pdev
 
         if (pdev->header_type == PCI_HEADER_TYPE_NORMAL)
         {
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_0, &pdev->bars[0]);
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_1, &pdev->bars[1]);
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_2, &pdev->bars[2]);
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_3, &pdev->bars[3]);
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_4, &pdev->bars[4]);
-            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_5, &pdev->bars[5]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_0, 0, &pdev->bars[0]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_1, 1, &pdev->bars[1]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_2, 2, &pdev->bars[2]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_3, 3, &pdev->bars[3]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_4, 4, &pdev->bars[4]);
+            pci_int_decode_bar(pdev, PCI_HEADER_BASE_ADDRESS_5, 5, &pdev->bars[5]);
+            for (size_t i = 0; i < 6; i++)
+            {
+                pci_bar_t *abar = &pdev->bars[i];
+                if (abar->size != 0)
+                {
+                    if (abar->is_mmio)
+                    {
+                        if (abar->prefetchable)
+                        {
+                            dev_slot_mem->flags |= RES_FLAG_PREFETCH;
+                        }
+                        dev_slot_mem->start = min(dev_slot_mem->start, abar->base);
+                        dev_slot_mem->end = max(dev_slot_mem->end, abar->base + abar->size);
+                    }
+                    else
+                    {
+                        dev_slot_io->start = min(dev_slot_io->start, abar->base);
+                        dev_slot_io->end = max(dev_slot_io->end, abar->base + abar->size);
+                    }
+                }
+            }
+            if (dev_slot_mem->start != ~0)
+            {
+                resource_insert(&mem_space.root, dev_slot_mem);
+            }
+            else
+            {
+                kfree(dev_slot_mem);
+            }
+            if (dev_slot_io->start != ~0)
+            {
+                resource_insert(&io_space.root, dev_slot_io);
+            }
+            else
+            {
+                kfree(dev_slot_io);
+            }
+
+            pci_config_read16(pdev, PCI_HEADER_SUBSYSTEM_VENDOR_ID, (uint16_t *)&pdev->id.sub_vendor);
+            pci_config_read16(pdev, PCI_HEADER_SUBSYSTEM_ID, (uint16_t *)&pdev->id.sub_device);
+
+            uint32_t reg3Data = 0;
+            pci_config_read32(pdev, PCI_HEADER_INTERRUPT_LINE, &reg3Data);
+            pdev->irq_pin = (reg3Data >> 8) & 0xFF;
+            pdev->irq_line = (reg3Data) & 0xFF;
+            uint32_t rom;
+            pci_config_read32(pdev, 0x30, &rom);
+            if (rom & PCI_ROM_ADDRESS_ENABLE)
+            {
+                resource_t *rom_res = resource_create();
+                uint32_t size = PCI_ROM_ADDRESS_MASK;
+                pci_config_write32(pdev, PCI_HEADER_ROM_ADDRESS, size);
+                pci_config_read32(pdev, PCI_HEADER_ROM_ADDRESS, &size);
+
+                pdev->romlen = (~size) + 1;
+                pci_config_write32(pdev, PCI_HEADER_ROM_ADDRESS, rom);
+                pdev->rom = rom & PCI_ROM_ADDRESS_MASK;
+
+                rom_res->type = RES_TYPE_PCI_BUS;
+                rom_res->flags = RES_FLAG_READONLY;
+                rom_res->start = pdev->rom;
+                rom_res->end = pdev->rom + pdev->romlen;
+                rom_res->name = kzmalloc(PCI_MAX_NAME);
+                size_t length = sprintf(rom_res->name, "%04x:%04x.%02x.%02x.%x", pdev->vendor_id, pdev->device_id, pdev->bdf.bus, pdev->bdf.device, pdev->bdf.function);
+                rom_res->name[length] = '\0';
+                resource_insert(&mem_space.root, rom_res);
+            }
 
             /*             pdev->header.header0.card_bus_cis = pci_config_read_dword(bus, slot, func, 0x28);
-                        pdev->header.header0.subsystem_id = pci_config_read_word(bus, slot, func, 0x2C);
-                        pdev->header.header0.subsystem_vendor_id = pci_config_read_word(bus, slot, func, 0x2E);
-                        pdev->header.header0.rom_base_address = pci_config_read_dword(bus, slot, func, 0x30);
                         pdev->header.header0.capabilities_ptr = pci_config_read_dword(bus, slot, func, 0x34) & 0xFF;
-                        uint32_t reg3Data = pci_config_read_dword(bus, slot, func, 0x3C);
                         pdev->header.header0.max_latency = (reg3Data >> 24) & 0xFF;
                         pdev->header.header0.min_grant = (reg3Data >> 16) & 0xFF;
                         pdev->header.header0.interrupt_pin = (reg3Data >> 8) & 0xFF;
@@ -394,6 +499,7 @@ void pci_check_buses()
                 memcpy(pci_devices[pci_device_count], &pdev, sizeof(pci_device_t));
             }
             {
+                log_debug(NO_MODULE, "");
                 pci_device_t *pdev = pci_devices[pci_device_count];
 
                 // trace_debug(MODULE, "pci_devices[%u] = %p", pci_device_count, &pdev);
@@ -407,16 +513,15 @@ void pci_check_buses()
                 id->class = (pdev->class_code << 16) | (pdev->sub_class << 8) | pdev->prog_if;
                 dev->bus = &pci_bus_type;
                 trace_debug(MODULE, "pdev @ %p, dev @ %p", pdev, dev);
-                device_register(dev);
-                pci_device_count++;
-
                 // trace_debug(MODULE, "vendor: 0x%x device: 0x%x", pdev->vendor_id, pdev->device_id);
                 trace_debug(MODULE, "bus: 0x%x, slot: 0x%x, function: 0x%x", pdev->bdf.bus, pdev->bdf.device, pdev->bdf.function);
                 trace_debug(MODULE, "device_id: 0x%x, vendor: 0x%x", pdev->device_id, pdev->vendor_id);
                 trace_debug(MODULE, "status: 0x%x, command: 0x%x", pdev->status, pdev->command);
                 trace_debug(MODULE, "class_code: 0x%x, sub_class: 0x%x, prog_if: 0x%x, revision: 0x%x", pdev->class_code, pdev->sub_class, pdev->prog_if, pdev->revision);
                 trace_debug(MODULE, "bist: 0x%x, header_type: 0x%x, latency_timer: 0x%x, cache_line_size: 0x%x", pdev->bist, pdev->header_type, pdev->latency_timer, pdev->cache_line_size);
-                log_debug(NO_MODULE, "");
+                device_register(dev);
+                pci_device_count++;
+
                 if (pdev->multi_function)
                 {
                     function = 1;

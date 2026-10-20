@@ -62,18 +62,11 @@ typedef struct resource
 {
     resource_size_t start;
     resource_size_t end;
-    const char *name; /**< Owner tag, e.g. "0000:06:00.0" or "System RAM" */
+    char *name; /**< Owner tag, e.g. "0000:06:00.0" or "System RAM" */
     res_type_t type;
     res_flags_t flags;
 
-    /* PCI-specific identity, only meaningful when type == RES_TYPE_PCI_BAR
-       or RES_TYPE_PCI_BUS. Kept inline rather than a union to avoid an
-       extra indirection on the hot lookup path; revisit if this struct
-       grows more per-type payloads. */
-    uint8_t pci_bus;
-    uint8_t pci_dev;
-    uint8_t pci_func;
-    uint8_t pci_bar_index; /**< 0-5; ignored for RES_TYPE_PCI_BUS */
+    res_space_t space;
 
     struct resource *parent;
     struct resource *sibling; /**< Next sibling under the same parent */

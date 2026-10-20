@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "asm/page_arch.h"
+
 #define ALIGN_DOWN(x, a)     ((x) - ((x) % (a)))
 #define ALIGN_UP(x, a)       (((x) + (a) - 1) / (a) * (a))
 #define ALIGN_2_DOWN(x, a)   ((x) & ~((a) - 1))

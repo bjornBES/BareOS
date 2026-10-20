@@ -15,6 +15,8 @@
 
 #include "irq/irqt.h"
 
+#include "resource/resourcet.h"
+
 #include "dev/devicet.h"
 
 #include <types.h>
@@ -40,6 +42,36 @@ typedef union pci_bdf
     uint32_t bdf;
 } pci_bdf_t;
 
+enum
+{
+    PCI_STD_RESOURCES,
+    PCI_STD_RESOURCE_END = PCI_STD_RESOURCES + PCI_STD_NUM_BARS - 1,
+
+    PCI_ROM_RESOURCE,
+
+#define PCI_BRIDGE_IO_WINDOW        (PCI_BRIDGE_RESOURCES + 0)
+#define PCI_BRIDGE_MEM_WINDOW       (PCI_BRIDGE_RESOURCES + 1)
+#define PCI_BRIDGE_PREF_MEM_WINDOW  (PCI_BRIDGE_RESOURCES + 2)
+
+#define PCI_CB_BRIDGE_IO_0_WINDOW   (PCI_BRIDGE_RESOURCES + 0)
+#define PCI_CB_BRIDGE_IO_1_WINDOW   (PCI_BRIDGE_RESOURCES + 1)
+#define PCI_CB_BRIDGE_MEM_0_WINDOW  (PCI_BRIDGE_RESOURCES + 2)
+#define PCI_CB_BRIDGE_MEM_1_WINDOW  (PCI_BRIDGE_RESOURCES + 3)
+
+#define PCI_P2P_BRIDGE_RESOURCE_NUM 3
+#define PCI_BRIDGE_RESOURCE_NUM     4
+
+    PCI_BRIDGE_RESOURCES,
+    PCI_BRIDGE_RESOURCE_END = PCI_BRIDGE_RESOURCES +
+        PCI_BRIDGE_RESOURCE_NUM - 1,
+
+    /* Total resources associated with a PCI device */
+    PCI_NUM_RESOURCES,
+
+    /* Preserve this for compatibility */
+    DEVICE_COUNT_RESOURCE = PCI_NUM_RESOURCES,
+};
+
 typedef struct pci_driver pci_driver_t;
 
 typedef struct pci_device
@@ -58,7 +90,8 @@ typedef struct pci_device
     uint8_t latency_timer;
     uint8_t bist;
 
-    uint8_t pin;
+    uint8_t irq_pin;
+    uint8_t irq_line;
 
     uint8_t header_type;
 
@@ -85,6 +118,8 @@ typedef struct pci_device
     uint64_t res : 64 - 5;
 
     pci_bar_t bars[PCI_STD_NUM_BARS];
+    resource_t resource[DEVICE_COUNT_RESOURCE];
+    resource_t driver_exclusive_resource;
 
     size_t conf_size;
 
@@ -99,6 +134,9 @@ typedef struct pci_device
     uint32_t saved_config_space[16];
 
     void *priv;
+
+    paddr_t rom;
+    size_t romlen;
 } pci_device_t;
 
 #define to_pci_dev(n) container_of(n, pci_device_t, dev)

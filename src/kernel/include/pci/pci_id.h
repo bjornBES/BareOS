@@ -34,6 +34,8 @@ typedef struct pci_device_id
 {
     uint32_t vendor;
     uint32_t device;
+    uint32_t sub_vendor;
+    uint32_t sub_device;
     uint32_t class;
     uint32_t class_mask;
 } pci_device_id_t;
