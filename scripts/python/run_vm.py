@@ -87,10 +87,12 @@ else:
     qemu_args.extend(["-device", "ahci,id=ahci"])
     qemu_args.extend(["-device", "ide-hd,drive=disk"])
     
-qemu_args.extend(["-device", "vmware-svga"])
+# qemu_args.extend(["-device", "vmware-svga"])
 qemu_args.extend(["-device", "e1000"])
 
 qemu_args.extend(["-device", "sb16"])
+
+qemu_args.extend(["-vga", "std"])
 
 bash_args = ["bash", active_cmd, kernel_elf]
 bash_args.extend(qemu_args)

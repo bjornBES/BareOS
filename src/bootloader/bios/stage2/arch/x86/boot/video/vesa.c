@@ -80,14 +80,14 @@ void mm_arch_detect_video(boot_params_t *bt)
     regs.di = memory.offset;
     regs.flags = 0;
     memset(&block, 0, sizeof(vbe_info_block_t));
-    bios_arch_intcall(0x15, &regs, &out_regs);
+    bios_arch_intcall(0x10, &regs, &out_regs);
     bios_arch_dump_frame(&out_regs);
-    if (out_regs.ah != 0x4F)
+    if (out_regs.al != 0x4F)
     {
-        printf("VESA is some how not supported... HOW? Got code 0x%x", out_regs.al);
+        printf("VESA is some how not supported... HOW? Got code 0x%x\n", out_regs.al);
         return;
     }
-    
+
     bios_arch_init_regs(&out_regs);
     vesa_mode_info_t mode;
     memset(&mode, 0, sizeof(vesa_mode_info_t));
@@ -98,10 +98,10 @@ void mm_arch_detect_video(boot_params_t *bt)
     regs.di = memory.offset;
     regs.cx = 0x2000 | 0x115;
     regs.flags = 0;
-    bios_arch_intcall(0x15, &regs, &out_regs);
-    if (out_regs.ah != 0x4F)
+    bios_arch_intcall(0x10, &regs, &out_regs);
+    if (out_regs.al != 0x4F)
     {
-        printf("VESA is some how not supported... HOW? Got code 0x%x", out_regs.al);
+        printf("VESA get mode is some how not supported... HOW? Got code 0x%x", out_regs.al);
         return;
     }
     bt->video.count = 1;
@@ -115,4 +115,17 @@ void mm_arch_detect_video(boot_params_t *bt)
     bt->video.entries[0].green_shift = mode.green_position;
     bt->video.entries[0].blue_shift = mode.blue_position;
     bt->video.entries[0].fmt = FB_PIXEL_RGB;
+
+    regs.ax = 0x4F02;
+    // memory = mem_linear_to_segoff(&mode);
+    // regs.es = memory.segment;
+    // regs.di = memory.offset;
+    // regs.cx = 0x2000 | 0x115;
+    regs.flags = 0;
+    bios_arch_intcall(0x10, &regs, &out_regs);
+    if (out_regs.al != 0x4F)
+    {
+        printf("VESA set mode is some how not supported... HOW? Got code 0x%x", out_regs.al);
+        return;
+    }
 }
