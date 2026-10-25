@@ -40,6 +40,7 @@ typedef void (*exitcall_t)();
         initcall_t *funcs = (initcall_t *)&_name_;                                         \
         while (*funcs != NULL)                                                             \
         {                                                                                  \
+            trace_debug("initcall", "running function %p", *funcs);                        \
             status_t ret = (*funcs)();                                                     \
             if (ret != KERRNO_SUCCESSES)                                                   \
             {                                                                              \
@@ -59,9 +60,17 @@ typedef void (*exitcall_t)();
 
 // After rsdt parsing and after moving the boot params
 #define POSTCORE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_POSTCORE)
+
+// called right after main_boot_params has been set
 #define ARCHDONE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_ARCHDONE)
+
+// called right after smp has been setup
 #define SUBSYS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_SUBSYS)
+
+// called at the end of vfs_initialize
 #define FS_INITCALL(fn)              DEFINE_INITCALL(fn, INITCALL_LVL_FS)
+
+// called right after vfs_initialize
 #define ROOTFS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_ROOTFS)
 #define DEVICE_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_DEVICE)
 #define PREUSER_INITCALL(fn)         DEFINE_INITCALL(fn, INITCALL_LVL_PREUSER)

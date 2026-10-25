@@ -14,6 +14,8 @@
 
 #include "resource/resource.h"
 
+#include "drivers/video/console/fbcon.h"
+
 #include "dev/device.h"
 #include "timer/timer.h"
 
@@ -52,6 +54,13 @@ NORETURN void kernel_main()
     resource_dump(&mem_space.root);
     resource_dump(&io_space.root);
     resource_dump(&irq_space.root);
+
+    fbcon_write("Hello world!", 12);
+    fbcon_size_t size;
+    fbcon_get_size(&size);
+    fbcon_set_cursor(size.cols - 1, size.rows - 1);
+    fbcon_putc('A');
+    fbcon_redraw();
 
     for (;;)
     {

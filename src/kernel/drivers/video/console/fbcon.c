@@ -1,0 +1,156 @@
+/*
+ * File: fbcon.c
+ * File Created: 25 Oct 2026
+ * Author: BjornBEs
+ * -----
+ * Last Modified: 25 Oct 2026
+ * Modified By: BjornBEs
+ * -----
+ */
+
+#include "drivers/video/console/fbcon.h"
+#include "drivers/video/console/font_psf.h"
+
+#include "drivers/video/display.h"
+
+#include "init.h"
+
+#include "memory.h"
+
+#include "kerrno.h"
+
+#define MODULE "fbcon"
+
+const font_t *active_font;
+const video_framebuffer_t *active_fb;
+
+fbcon_cell_t *text_buffer;
+
+int screen_x;
+int screen_y;
+fbcon_size_t size;
+
+// copies the overlap
+INTERNAL status_t fbcon_resize_grid(uint32_t cols, uint32_t rows)
+{
+    if (size.cols == cols && size.rows == rows && text_buffer != NULL)
+    {
+        return KERRNO_SUCCESSES;
+    }
+
+    if (text_buffer == NULL)
+    {
+        text_buffer = kzmalloc((cols * rows) * sizeof(fbcon_cell_t));
+    }
+    else
+    {
+        text_buffer = krealloc(text_buffer, (cols * rows) * sizeof(fbcon_cell_t));
+    }
+
+    size.cols = cols;
+    size.rows = rows;
+    return KERRNO_SUCCESSES;
+}
+
+// recompute cols/rows
+INTERNAL status_t fbcon_bind_surface(const video_framebuffer_t *fb)
+{
+    active_fb = fb;
+    return fbcon_resize_grid(fb->width / active_font->width, fb->height / active_font->height);
+}
+
+// display_listener_t: primary changed or its mode changed.
+INTERNAL status_t fbcon_on_display_change(display_device_t *primary, void *ctx)
+{
+    ENTER_FUNC("%p, %p", primary, ctx);
+    video_framebuffer_t *fb = &primary->frame_buffer;
+    return fbcon_bind_surface(fb);
+    // return fbcon_redraw();
+}
+
+// Load the font, allocate the character grid, register the display listener
+// and the kernel log sink, and bind to the current primary (if any).
+// With no primary yet it starts buffer-only and draws once one registers.
+
+status_t fbcon_init()
+{
+    display_add_listener(fbcon_on_display_change, NULL);
+    active_font = psf_font_builtin();
+    screen_x = 0;
+    screen_y = 0;
+    size.cols = 0;
+    size.rows = 0;
+    return KERRNO_SUCCESSES;
+}
+
+SUBSYS_INITCALL(fbcon_init);
+
+INTERNAL status_t fbcon_draw_cell(uint32_t col, uint32_t row)
+{
+    fbcon_cell_t *call = &text_buffer[row * size.cols + col];
+    uint8_t *glyph = NULL;
+    font_get_glyph(active_font, call->cp, &glyph);
+    return display_draw_blit_mono(active_fb, col * active_font->width, row * active_font->height, glyph, active_font->width, active_font->height, call->fg, call->bg);
+}
+
+INTERNAL status_t fbcon_newline();              // advances and scrolls at the bottom
+INTERNAL status_t fbcon_scroll(uint32_t lines); // moves grid rows, then redraws
+
+// handles \n \r \t \b and wrapping
+status_t fbcon_putc(uint32_t cp)
+{
+    ENTER_FUNC("0x%x", cp);
+    uint8_t *glyph = NULL;
+    fbcon_cell_t *call = &text_buffer[screen_y * size.cols + screen_x];
+    font_glyph_index(active_font, cp, &call->cp);
+    call->fg = 0x00FFFFFF;
+    call->bg = 0;
+    // fbcon_draw_cell(screen_x, screen_y);
+    screen_x++;
+    return KERRNO_SUCCESSES;
+}
+
+status_t fbcon_write(const char *s, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        fbcon_putc(s[i]);
+    }
+    // fbcon_redraw();
+    return KERRNO_SUCCESSES;
+}
+
+status_t fbcon_clear();                           // clears grid and screen, cursor to 0,0
+
+status_t fbcon_set_color(color_t fg, color_t bg); // applies to following output
+status_t fbcon_get_size(fbcon_size_t *out)
+{
+    *out = size;
+    return KERRNO_SUCCESSES;
+}
+status_t fbcon_set_cursor(uint32_t col, uint32_t row)
+{
+    screen_x = col;
+    screen_y = row;
+    return KERRNO_SUCCESSES;
+}
+status_t fbcon_get_cursor(uint32_t *col, uint32_t *row);
+status_t fbcon_show_cursor(int visible);
+
+// whole grid onto the current surface
+status_t fbcon_redraw()
+{
+    for (size_t row = 0; row < size.rows; row++)
+    {
+        for (size_t col = 0; col < size.cols; col++)
+        {
+            fbcon_cell_t *call = &text_buffer[row * size.cols + col];
+            uint8_t *glyph = NULL;
+            font_get_glyph(active_font, call->cp, &glyph);
+            display_draw_blit_mono(active_fb, col * active_font->width, row * active_font->height, glyph, active_font->width, active_font->height, call->fg, call->bg);
+        }
+    }
+    return KERRNO_SUCCESSES;
+}
+
+status_t fbcon_redraw_region(uint32_t col, uint32_t row, uint32_t cols, uint32_t rows);
