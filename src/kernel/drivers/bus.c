@@ -54,7 +54,8 @@ status_t bus_for_each_driver(bus_type_t *bus, driver_t *curr, void *data, status
             break;
         }
         state = func(curr, data);
-    }  while (state != KERRNO_SUCCESSES);
+        trace_debug(MODULE, "state = %u", state);
+    }  while (state == KERRNO_SUCCESSES);
     return state;
 }
 
