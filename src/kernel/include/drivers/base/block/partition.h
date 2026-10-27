@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "block/blkdevt.h"
+#include "drivers/base/block/blkdevt.h"
 
 #include <types.h>
 

@@ -8,9 +8,9 @@
  * -----
  */
 
-#include "block/partition.h"
+#include "drivers/base/block/partition.h"
 
-#include "block/blkdev.h"
+#include "drivers/base/block/blkdev.h"
 
 #include "kerrno.h"
 

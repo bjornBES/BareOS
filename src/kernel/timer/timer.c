@@ -9,7 +9,7 @@
  */
 
 #include "timer/timer.h"
-#include "class/class.h"
+#include "drivers/base/class.h"
 
 #include "kerrno.h"
 

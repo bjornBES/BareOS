@@ -16,8 +16,8 @@
 #include "mm/pmm/pmm.h"
 #include "mm/ioremap.h"
 
-#include "drivers/driver.h"
-#include "drivers/bus.h"
+#include "drivers/base/driver.h"
+#include "drivers/base/bus.h"
 
 #include "ivt/ivt.h"
 

@@ -11,7 +11,7 @@
 #pragma once
 
 #include <types.h>
-#include "drivers/driver.h"
+#include "drivers/base/driver.h"
 #include "dev/device.h"
 
 #include "pci_id.h"

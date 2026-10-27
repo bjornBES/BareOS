@@ -11,10 +11,10 @@
 #include "dev/device.h"
 #include "dev/device_id.h"
 
-#include "class/class.h"
+#include "drivers/base/class.h"
 
-#include "drivers/driver.h"
-#include "drivers/bus.h"
+#include "drivers/base/driver.h"
+#include "drivers/base/bus.h"
 
 #include "lists/list.h"
 

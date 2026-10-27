@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "class/class.h"
+#include "drivers/base/class.h"
 
 #include "dev/devicet.h"
 

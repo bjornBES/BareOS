@@ -10,7 +10,7 @@
 
 #include "drivers/pci/pci.h"
 
-#include "drivers/bus.h"
+#include "drivers/base/bus.h"
 
 #include "kerrno.h"
 

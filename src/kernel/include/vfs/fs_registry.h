@@ -13,7 +13,7 @@
 #include "vfs/vfs_internals.h"
 #include "dev/devicet.h"
 
-#include "block/blkdevt.h"
+#include "drivers/base/block/blkdevt.h"
 
 #include "init.h"
 

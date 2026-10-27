@@ -11,10 +11,10 @@
 #pragma once
 
 #include "device_id.h"
-#include "drivers/drivert.h"
-#include "drivers/bust.h"
 
-#include "class/classt.h"
+#include "drivers/base/drivert.h"
+#include "drivers/base/bust.h"
+#include "drivers/base/classt.h"
 
 #include <types.h>
 #include <defs.h>

@@ -8,10 +8,10 @@
  * -----
  */
 
-#include "block/blkdev.h"
-#include "block/partition.h"
+#include "drivers/base/block/blkdev.h"
+#include "drivers/base/block/partition.h"
 
-#include "class/class.h"
+#include "drivers/base/class.h"
 
 #include "dev/device.h"
 

@@ -11,7 +11,7 @@
 #include "drivers/video/display.h"
 
 #include "dev/device.h"
-#include "class/class.h"
+#include "drivers/base/class.h"
 
 #include "lists/list.h"
 

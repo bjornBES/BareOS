@@ -8,9 +8,9 @@
  * -----
  */
 
-#include "drivers/dd.h"
-#include "drivers/bus.h"
-#include "drivers/driver.h"
+#include "drivers/base/dd.h"
+#include "drivers/base/bus.h"
+#include "drivers/base/driver.h"
 
 #include "dev/device.h"
 

@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "drivers/drivert.h"
+#include "drivers/base/drivert.h"
 #include "module.h"
 
 #define MODULE_DRIVER(__driver, __register, __unregister, ...) \

@@ -11,7 +11,7 @@
 #include "sata.h"
 #include "ahci.h"
 
-#include "block/blkdev.h"
+#include "drivers/base/block/blkdev.h"
 
 #include "asm/mmu_arch.h"
 

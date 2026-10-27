@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "block/blkdev.h"
+#include "drivers/base/block/blkdev.h"
 
 #include "dev/device.h"
 

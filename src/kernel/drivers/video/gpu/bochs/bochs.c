@@ -8,7 +8,8 @@
  * -----
  */
 
-#include "drivers/driver.h"
+#include "drivers/base/driver.h"
+
 #include "drivers/pci/pci.h"
 
 #include "drivers/video/display.h"

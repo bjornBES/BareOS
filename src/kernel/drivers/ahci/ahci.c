@@ -12,7 +12,7 @@
 
 #include "asm/mmu_arch.h"
 
-#include "drivers/driver.h"
+#include "drivers/base/driver.h"
 
 #include "resource/resource.h"
 

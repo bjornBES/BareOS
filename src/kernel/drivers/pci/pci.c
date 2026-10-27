@@ -17,10 +17,9 @@
 
 #include "asm/arch_pci.h"
 
-#include "class/class.h"
-
-#include "drivers/bust.h"
-#include "drivers/bus.h"
+#include "drivers/base/class.h"
+#include "drivers/base/bust.h"
+#include "drivers/base/bus.h"
 
 #include "mm/ioremap.h"
 

@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "drivers/driver.h"
+#include "drivers/base/driver.h"
 
 #include "lists/list.h"
 
