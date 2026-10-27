@@ -51,8 +51,6 @@ driver_t *driver_get(bus_type_t *bus)
     while (node != NULL)
     {
         driver_t *dri = (driver_t *)container_of(node, driver_t, node);
-        trace_debug(MODULE, "dri = %p", dri);
-        trace_debug(MODULE, "dri->bus = %p", dri->bus);
         if (dri->bus == bus)
         {
             spinlock_release(&driver_registry.list_lock);

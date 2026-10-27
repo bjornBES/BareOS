@@ -16,6 +16,8 @@
 
 #include "bust.h"
 
+#include "module.h"
+
 typedef struct device device_t;
 
 
@@ -33,3 +35,16 @@ typedef struct driver
 
     list_node_t node; // linkage into the global driver registry
 } driver_t;
+
+#define MODULE_DRIVER(__driver, __register, __unregister, ...) \
+    static status_t __init __driver##_init()                   \
+    {                                                          \
+        return __register(&(__driver));                        \
+    }                                                          \
+    MODULE_INIT(__driver##_init)
+
+// static void __exit __driver##_exit()
+// {
+// __unregister(&(__driver) , ##__VA_ARGS__);
+// }
+// module_exit(__driver##_exit);

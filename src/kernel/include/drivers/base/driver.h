@@ -11,20 +11,6 @@
 #pragma once
 
 #include "drivers/base/drivert.h"
-#include "module.h"
-
-#define MODULE_DRIVER(__driver, __register, __unregister, ...) \
-    static status_t __init __driver##_init()                   \
-    {                                                          \
-        return __register(&(__driver));                        \
-    }                                                          \
-    MODULE_INIT(__driver##_init)
-
-// static void __exit __driver##_exit()
-// {
-// __unregister(&(__driver) , ##__VA_ARGS__);
-// }
-// module_exit(__driver##_exit);
 
 status_t drivers_initialize();
 

@@ -136,7 +136,7 @@ status_t device_add(device_t *dev)
     dev->devt.major = dev->class->type;
     dev->devt.device = 0;
     // dev->devt.id = MKDEV_KERNEL(dev->class->type, 0, dev->id);
-    
+
     if (!dev->children.has_initialize)
     {
         list_initialize(&dev->children);
@@ -182,7 +182,7 @@ status_t device_register_child(device_t *dev, device_t *parent)
         log_err(MODULE, "class name is NULL for type %u", dev->class);
         return KERRNO_UNSUCCESS;
     }
-    
+
     dev->devt.major = dev->class->type;
     dev->devt.minor = class_id + 1;
     dev->devt.device = parent->devt.device;
@@ -210,10 +210,7 @@ status_t device_register(device_t *dev)
         log_crit(MODULE, "Device is null try again");
         return -EINVAL;
     }
-    if (dev->class == NULL)
-    {
-        KERRNO_RETURN(KERRNO_BAD_VALUE, "device '%s' doesn't have a class", dev->init_name);
-    }
+
     dev->id = (~0);
 
     if (dev_no_driver(dev) == false)
@@ -222,6 +219,11 @@ status_t device_register(device_t *dev)
         {
             return bus_probe_device(dev);
         }
+    }
+
+    if (dev->class == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "device '%s' doesn't have a class", dev->init_name);
     }
 
     if (dev->init_name != NULL)
