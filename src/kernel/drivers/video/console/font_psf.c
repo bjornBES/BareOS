@@ -70,7 +70,7 @@ status_t map_insert(font_unicode_map_t *m, uint32_t cp, uint32_t glyph)
 
 status_t map_lookup(const font_unicode_map_t *m, uint32_t cp, uint32_t *cp_out)
 {
-    ENTER_FUNC("%p, 0x%x, %p", m, cp, cp_out);
+    // ENTER_FUNC("%p, 0x%x, %p", m, cp, cp_out);
     size_t lo = 0;
     size_t hi = m->count;
     while (lo < hi)
@@ -88,6 +88,7 @@ status_t map_lookup(const font_unicode_map_t *m, uint32_t cp, uint32_t *cp_out)
     *cp_out = (lo < m->count && m->e[lo].cp == cp) ? m->e[lo].glyph : FONT_NO_GLYPH;
     if (*cp_out == FONT_NO_GLYPH)
     {
+        return KERRNO_ENTRY_NOT_FOUND;
         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
     }
     return KERRNO_SUCCESSES;

@@ -59,8 +59,33 @@ NORETURN void kernel_main()
     fbcon_size_t size;
     fbcon_get_size(&size);
     fbcon_set_cursor(size.cols - 1, size.rows - 1);
-    fbcon_putc('A');
+    // fbcon_putc('A');
+    fbcon_set_cursor(0, 1);
+    int y = 0;
+    for (size_t i = 0; i < 256; i++)
+    {
+        if ((i % 32) == 0)
+        {
+            fbcon_set_cursor(0, 1 + y);
+            y++;
+        }
+        fbcon_putc(i);
+    }
+    
+    fbcon_set_cursor(0, 2 + y);
+    fbcon_putc(0x266B);
+    fbcon_putc(0x266C);
+    fbcon_putc(0x250C);
+    fbcon_putc(0x2500);
+    fbcon_putc(0x2510);
     fbcon_redraw();
+    
+    
+    // fbcon_set_cursor(0, size.rows);
+    // fbcon_write("Hello world!", 12);
+    // fbcon_redraw();
+    // fbcon_write("H\ne\nl\nl\no\n w\no\nr\nl\nd\n!\n", 24);
+    // fbcon_redraw();
 
     for (;;)
     {
