@@ -9,7 +9,7 @@
  */
 
 #include "drivers/driver.h"
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include "drivers/video/display.h"
 

@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include <types.h>
 

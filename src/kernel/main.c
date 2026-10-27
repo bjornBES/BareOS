@@ -23,7 +23,7 @@
 
 #include "debug/debug.h"
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include "vfs/vfs.h"
 

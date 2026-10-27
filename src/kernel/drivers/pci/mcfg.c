@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "pci/mcfg.h"
+#include "drivers/pci/mcfg.h"
 
 #include "debug/debug.h"
 
@@ -17,7 +17,7 @@
 #include "asm/mmu_arch.h"
 #include "mm/mmu.h"
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include "kerrno.h"
 

@@ -17,7 +17,7 @@
 #include "kernel/cpu/cpu.h"
 #include "kernel/acpi/apic/apic.h"
 
-#include "pci/msi/msi.h"
+#include "drivers/pci/msi/msi.h"
 
 #include "ivt/ivt.h"
 #include "irq/irq.h"

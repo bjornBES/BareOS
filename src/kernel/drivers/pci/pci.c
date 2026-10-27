@@ -8,10 +8,10 @@
  * -----
  */
 
-#include "pci/msi/pcidev_msi.h"
-#include "pci/pci.h"
-#include "pci/pci_regs.h"
-#include "pci/mcfg.h"
+#include "drivers/pci/msi/pcidev_msi.h"
+#include "drivers/pci/pci.h"
+#include "drivers/pci/pci_regs.h"
+#include "drivers/pci/mcfg.h"
 
 #include "dev/device.h"
 

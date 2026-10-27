@@ -8,8 +8,8 @@
  * -----
  */
 
-#include "pci/msi/msi.h"
-#include "pci/pci.h"
+#include "drivers/pci/msi/msi.h"
+#include "drivers/pci/pci.h"
 
 #include "cpu/cpu.h"
 #include "irq/irq.h"

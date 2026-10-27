@@ -19,7 +19,7 @@
 #include "sync/mutex.h"
 #include "sync/semaphore.h"
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include "irq/irq.h"
 #include "cpu/cpu.h"

@@ -8,8 +8,8 @@
  * -----
  */
 
-#include "pci/pci.h"
-#include "pci/msi/msi.h"
+#include "drivers/pci/pci.h"
+#include "drivers/pci/msi/msi.h"
 
 #include "kerrno.h"
 

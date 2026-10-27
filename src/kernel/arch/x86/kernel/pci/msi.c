@@ -14,8 +14,8 @@
 
 #include "cpu/cpu.h"
 
-#include "pci/pci_regs.h"
-#include "pci/msi/msi.h"
+#include "drivers/pci/pci_regs.h"
+#include "drivers/pci/msi/msi.h"
 
 #include "kerrno.h"
 

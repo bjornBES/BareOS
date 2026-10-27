@@ -14,7 +14,7 @@
 
 #include "dev/devicet.h"
 
-#include "pci/pci_dev.h"
+#include "drivers/pci/pci_dev.h"
 
 #include <types.h>
 

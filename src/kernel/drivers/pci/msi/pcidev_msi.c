@@ -8,8 +8,8 @@
  * -----
  */
 
-#include "pci/msi/pcidev_msi.h"
-#include "pci/pci.h"
+#include "drivers/pci/msi/pcidev_msi.h"
+#include "drivers/pci/pci.h"
 #include "kerrno.h"
 
 #define MODULE "pci-msi"

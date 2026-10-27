@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 status_t msi_pci_read8(pci_device_t *dev, uint16_t offset, uint8_t *out);
 status_t msi_pci_read16(pci_device_t *dev, uint16_t offset, uint16_t *out);

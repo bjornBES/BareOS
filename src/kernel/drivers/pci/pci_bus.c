@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "pci/pci.h"
+#include "drivers/pci/pci.h"
 
 #include "drivers/bus.h"
 
