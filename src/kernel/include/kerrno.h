@@ -51,6 +51,7 @@
     {                                                  \
         KERRNO_RETURN_TYPE(number, type, __VA_ARGS__); \
     }
+#define KERRNO_CHECK_RETURN(number)
 #endif
 
 #if DEBUG == 1

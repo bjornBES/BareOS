@@ -120,7 +120,15 @@ status_t device_add(device_t *dev)
     if (dev->init_name != NULL)
     {
         uint32_t class_id = device_id_get_next_class_id(dev->init_name);
-        snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
+        if (dev_same_name(dev) == false)
+        {
+            snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
+        }
+        else
+        {
+            snprintf(dev->name, DEVICE_NAME_MAX, "%s", dev->init_name);
+        }
+        
     }
     else
     {

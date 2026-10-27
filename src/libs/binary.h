@@ -10,6 +10,21 @@
 
 #pragma once
 
+#include <config.h>
+
+#ifdef CONFIG_64BIT
+#define BITS_PER_LONG 64
+#else
+#define BITS_PER_LONG 32
+#endif
+
+#define BIT_MASK(nr)                (1UL << ((nr) % BITS_PER_LONG))
+#define BIT_WORD(nr)                ((nr) / BITS_PER_LONG)
+#define BIT_ULL_MASK(nr)            (1ULL << ((nr) % BITS_PER_LONG_LONG))
+#define BIT_ULL_WORD(nr)            ((nr) / BITS_PER_LONG_LONG)
+#define BITS_PER_BYTE               8
+#define BITS_PER_TYPE(type)         (sizeof(type) * BITS_PER_BYTE)
+
 #define BIT(x)                      (1ull << (x))
 #define BIT_RANGE(high, low)        ((1ull << ((high) - (low) + 1)) - 1)
 
@@ -44,3 +59,19 @@
             }                                   \
         }                                       \
     }
+
+#define KERNEL_DIV_ROUND_UP(n, d)  (((n) + (d) - 1) / (d))
+
+#define BITS_TO_LONGS(nr)          KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(long))
+#define BITS_TO_U64(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(u64))
+#define BITS_TO_U32(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(u32))
+#define BITS_TO_BYTES(nr)          KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(char))
+
+#define BYTES_TO_BITS(nb)          ((nb) * BITS_PER_BYTE)
+
+#define SET_BIT(nr, addr)          *((addr) + BIT_WORD((nr))) |= BIT_MASK((nr))
+#define CLEAR_BIT(nr, addr)        *((addr) + BIT_WORD((nr))) &= ~BIT_MASK((nr))
+#define CHANGE_BIT(nr, addr)       *((addr) + BIT_WORD((nr))) ^= BIT_MASK((nr))
+
+#define TEST_BIT(nr, addr)         (1ul & (addr[BIT_WORD(nr)] >> (nr & (BITS_PER_LONG - 1))))
+// #define TEST_BIT_ACQUIRE(nr, addr) bitop(_test_bit_acquire, nr, addr)

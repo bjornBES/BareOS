@@ -18,11 +18,11 @@
 #include "sync/spinlock.h"
 #include <types.h>
 
-#if DEBUG
+// #if DEBUG
 #define MIN_LOG_LEVEL LVL_DEBUG
-#else
-#define MIN_LOG_LEVEL LVL_INFO
-#endif
+// #else
+// #define MIN_LOG_LEVEL LVL_INFO
+// #endif
 
 #define NO_MODULE "\0"
 

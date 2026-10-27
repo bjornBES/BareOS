@@ -32,6 +32,11 @@ irq_descriptor_t irq_descriptors[MAX_IRQ_VECTORS - IRQ_BASE];
 
 irq_controller_t *current;
 
+void irq_debug()
+{
+    current->debug();
+}
+
 int irq_handler(intr_frame_t *regs)
 {
     interrupt_vector_t vector = regs->interrupt - IRQ_BASE;
@@ -108,6 +113,7 @@ status_t irq_release_reserved(kernel_irq_t irq, size_t count)
 
 void irq_print_descriptor(irq_descriptor_t *descriptor)
 {
+    trace_debug(MODULE, "desc @ %p = {}", descriptor);
     trace_debug(MODULE, "desc @ %p = {id: %u, flags 0x%x}", descriptor, descriptor->id, descriptor->flags);
 }
 
@@ -140,8 +146,9 @@ INTERNAL status_t irq_pick_core(irq_pick_reg_t *r, kernel_irq_t *out)
         {
             if (r->allowed != NULL)
             {
-                if ((r->allowed->bits[i / sizeof(*r->allowed)] & (1ull << (i % sizeof(*r->allowed)))) == 0)
+                if (TEST_BIT(i, r->allowed->bits) == 0)
                 {
+                    // trace_debug(MODULE, "[%u] = %x, %u != %u", i, TEST_BIT(i, r->allowed->bits), count, r->count);
                     if (count != r->count)
                     {
                         irq_release_reserved(first, count);
@@ -153,6 +160,8 @@ INTERNAL status_t irq_pick_core(irq_pick_reg_t *r, kernel_irq_t *out)
             }
         }
         irq_descriptor_t *entry = &irq_descriptors[i];
+
+        irq_print_descriptor(entry);
 
         if (FLAG_GET(entry->flags, HANDLER_RESERVED))
         {
@@ -317,13 +326,13 @@ status_t irq_eoi(kernel_irq_t irq)
     return KERRNO_SUCCESSES;
 }
 
-status_t irq_pick_free_entry(kernel_irq_t allowed_mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
+status_t irq_pick_free_entry(irq_mask_t *allowed_mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
 {
-    ENTER_FUNC("0x%x, %u, 0x%x, %p", allowed_mask, source, target, out);
+    ENTER_FUNC("%p, %u, 0x%x, %p", allowed_mask, source, target, out);
     irq_pick_reg_t r = {
         .align = 1,
         .count = 1,
-        .allowed = NULL,
+        .allowed = allowed_mask,
         .range = {
             .first = 0,
             .last = (~0)},

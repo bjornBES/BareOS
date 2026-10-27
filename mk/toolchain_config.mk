@@ -42,6 +42,16 @@ else
 $(error unknown config '$(config)' - must be debug or release)
 endif
 
+ifeq ($(target),64)
+export OPT_FLAGS := -DCONFIG_64BIT
+else ifeq ($(target),32)
+export OPT_FLAGS := -DCONFIG_32BIT
+else ifeq ($(target),16)
+export OPT_FLAGS := -DCONFIG_16BIT
+else
+$(error unknown config '$(target)' - must be 16, 32 or 64)
+endif
+
 export ASFLAGS_DEFINE := -D__i686__=0 -D__x86_64__=0 -D__$(arch)__=1 -D__$(SRCARCH)__=1
 export CFLAGS_DEFINE := -D__$(arch)__=1 -D__$(SRCARCH)__=1 -Werror
 export COMMON_INCLUDE := -I./ -I./include \

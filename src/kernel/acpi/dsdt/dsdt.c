@@ -154,7 +154,7 @@ void dsdt_init(paddr_t dsdt_phys)
         }
         else if ((byte >= 0x41 && byte <= 0x5A) || (byte >= 0x2E && byte <= 0x39) || (byte >= 0x5C && byte <= 0x6E))
         {
-            char ident[255];
+            /* char ident[255];
             int ident_index = 0;
             for (; i < dsdt->header.length; i++)
             {
@@ -169,7 +169,7 @@ void dsdt_init(paddr_t dsdt_phys)
                 break;
             }
             ident[ident_index] = 0;
-            log_debug(NO_MODULE, "ident = \"%s\"", ident);
+            log_debug(NO_MODULE, "ident = \"%s\"", ident); */
         }
     }
 }

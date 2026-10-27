@@ -169,7 +169,7 @@ status_t pit_init()
     // timer_register(pit_timer);
 
     kernel_irq_t irq;
-    irq_pick_free_entry(~0, IRQ_SOURCE_IRQ, 0, &irq);
+    irq_pick_free_entry(NULL, IRQ_SOURCE_IRQ, 0, &irq);
 
     irq_register_handler(irq, IRQ_SOURCE_IRQ, pit_irq_handler, NULL, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
     return KERRNO_SUCCESSES;

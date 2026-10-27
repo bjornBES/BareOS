@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+#include <binary.h>
+
 #define __BYTE_ORDER 1234
 
 
@@ -38,7 +40,7 @@ typedef struct __kernel_sigset_t
 #define IRQ_MAX 222
 typedef struct irq_mask
 {
-    uint64_t bits[(IRQ_MAX / sizeof(uint64_t)) + 1];
+    long bits[BITS_TO_LONGS(IRQ_MAX)];
 } irq_mask_t;
 
 typedef uint32_64 sigset_t;
