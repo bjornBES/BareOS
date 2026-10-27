@@ -30,6 +30,10 @@
 #include "thread/thread.h"
 #include "sched/sched.h"
 
+#include "drivers/platform/platform.h"
+
+#include "memory.h"
+
 #include <boot/params.h>
 
 #define MODULE "main"
@@ -46,6 +50,10 @@ NORETURN void kernel_main()
     trace_info(NO_MODULE, "timer_now_ns()    = %lld", timer_now_ns());
 
     pci_initialize();
+
+    platform_device_t *i8042_dev = kzmalloc(sizeof(platform_device_t));
+    i8042_dev->name = "i8042";
+    platform_device_register(i8042_dev);
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
 
