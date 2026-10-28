@@ -14,8 +14,6 @@
 
 #include "dev/devicet.h"
 
-#include "ringbuf/ringbuft.h"
-
 #include <types.h>
 #include <binary.h>
 
@@ -64,8 +62,6 @@ typedef struct input_dev
     status_t (*event)(input_dev_t *dev, input_event_type_t type, unsigned int code, int value);
 
     status_t (*irq_handler)(input_dev_t *dev);
-
-    ringbuf_t *event_buffer;
 
     device_t dev;
 } input_dev_t;

@@ -347,6 +347,7 @@ status_t i8042_kbd_probe(i8042_port_t *port)
     irq_pick_free_range_size(range, 1, IRQ_SOURCE_IRQ, ANY_CPU, &input_dev->irq);
 
     port->dev = &input_dev->dev;
+    dev_set_no_driver(port->dev);
     port->dev->drv_data = port;
     port->dev->init_name = "i8042-kbd";
     return device_register(port->dev);

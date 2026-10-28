@@ -13,6 +13,8 @@
 
 #include "drivers/base/class.h"
 
+#include "drivers/tty/tty.h"
+
 #include "ringbuf/ringbuf.h"
 
 #include "irq/irq.h"
@@ -33,8 +35,6 @@ status_t input_device_added(device_t *dev)
 
     input_dev_t *input_dev = to_input_dev(dev);
 
-    ringbuf_init(sizeof(key_event_t), 32, &input_dev->event_buffer);
-
     irq_register_handler(input_dev->irq, IRQ_SOURCE_IRQ, input_handler, input_dev, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, ANY_CPU);
 
     return KERRNO_SUCCESSES;
@@ -46,7 +46,7 @@ static dev_class_t input_class = {
     .device_added = input_device_added,
 };
 
-void update_mods(key_event_t *event, input_dev_t *dev)
+key_modifiers_t update_mods(key_event_t *event, input_dev_t *dev)
 {
     key_modifiers_t bit = MOD_NONE;
     switch (event->key)
@@ -73,7 +73,7 @@ void update_mods(key_event_t *event, input_dev_t *dev)
             bit = MOD_CAPS;
             break;
         default :
-            return;
+            return dev->mods;
     }
     {
         if (event->action == KEY_PRESSED)
@@ -92,7 +92,7 @@ void update_mods(key_event_t *event, input_dev_t *dev)
             }
             else
             {
-                dev->mods &= ~bit;
+                dev->mods |= bit;
             }
         }
         else
@@ -113,12 +113,15 @@ void update_mods(key_event_t *event, input_dev_t *dev)
     //         dev->mods &= ~MOD_LSHIFT; // they cancel
     //     }
     // }
+
+    return dev->mods;
 }
 
 status_t input_report_key(input_dev_t *dev, key_event_t *key)
 {
-    update_mods(key, dev);
-    return ringbuf_write(dev->event_buffer, key);
+    key->mods = update_mods(key, dev);
+    trace_debug(MODULE, "%p = { 0x%x, 0x%x, 0x%x }", key, key->key, key->action, key->mods);
+    return tty_receive_key(active_tty, key, dev->dev.devt);
 }
 
 status_t input_class_register()

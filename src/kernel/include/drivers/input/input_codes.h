@@ -48,7 +48,7 @@ typedef enum
     KEY_LEFTBRACE,
     KEY_RIGHTBRACE,
     KEY_ENTER,
-    KEY_LEFTCTRL,
+    KEY_LEFTCTRL = 29,
     KEY_A,
     KEY_S,
     KEY_D,
