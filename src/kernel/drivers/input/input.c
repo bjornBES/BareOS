@@ -118,7 +118,7 @@ void update_mods(key_event_t *event, input_dev_t *dev)
 status_t input_report_key(input_dev_t *dev, key_event_t *key)
 {
     update_mods(key, dev);
-    ringbuf_write(dev->event_buffer, key);
+    return ringbuf_write(dev->event_buffer, key);
 }
 
 status_t input_class_register()

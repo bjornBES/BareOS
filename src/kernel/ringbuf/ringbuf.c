@@ -17,7 +17,7 @@
 status_t ringbuf_init(size_t size, uint32_t count, ringbuf_t **buf_out)
 {
     ringbuf_t *rbuf = kzmalloc(sizeof(ringbuf_t));
-    rbuf->buffer = calloc(count, size);
+    rbuf->buffer = kcalloc(count, size);
     rbuf->object_size = size;
     *buf_out = rbuf;
     return KERRNO_SUCCESSES;
@@ -61,4 +61,5 @@ status_t ringbuf_write(ringbuf_t *ring_buffer, void *buf)
     off_t write_offset = ring_buffer->write_ptr * ring_buffer->object_size;
     ring_buffer->write_ptr++;
     memcpy(&ring_buffer->buffer[write_offset], buf, ring_buffer->object_size);
+    return KERRNO_SUCCESSES;
 }
