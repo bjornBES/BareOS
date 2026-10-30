@@ -18,34 +18,34 @@ spinlock_t mode_lock = {0};
 
 static display_mode_t cur_mode = {.w = 1280, .h = 720, .bpp = 32};
 
-INTERNAL status_t apply_mode(display_device_t *dev, const display_mode_t *m)
+INTERNAL status_t apply_mode(display_device_t *display_dev, const display_mode_t *m)
 {
-    if (!dev->driver->set_mode)
+    if (!display_dev->driver->set_mode)
     {
         // firmware fb: keeps its native mode, not an error
         return KERRNO_SUCCESSES;
     }
-    return dev->driver->set_mode(dev, m);
+    return display_dev->driver->set_mode(display_dev, m);
 }
 
-status_t display_set_mode(display_device_t *dev, const display_mode_t *m)
+status_t display_set_mode(display_device_t *display_dev, const display_mode_t *m)
 {
     spinlock_acquire(&mode_lock);
     display_mode_t old = cur_mode; // copy before touching anything
     cur_mode = *m;
-    status_t r = apply_mode(dev, &cur_mode);
+    status_t r = apply_mode(display_dev, &cur_mode);
     if (r != KERRNO_SUCCESSES)
     {
         cur_mode = old;
-        r = apply_mode(dev, &old); // best effort: put the hardware back too
+        r = apply_mode(display_dev, &old); // best effort: put the hardware back too
         spinlock_release(&mode_lock);
         return r;
     }
     spinlock_release(&mode_lock);
-    return display_notify_listeners(dev);
+    return display_notify_listeners(display_dev);
 }
 
-status_t display_set_default_mode(display_device_t *dev)
+status_t display_set_default_mode(display_device_t *display_dev)
 {
-    return display_set_mode(dev, &cur_mode);
+    return display_set_mode(display_dev, &cur_mode);
 }

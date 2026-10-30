@@ -21,7 +21,7 @@ cluster_t fat32_next_cluster(cluster_t current_cluster, device_t *dev, fat_priv_
     if (fat_index_sector < sb->fat_cache_position || fat_index_sector >= sb->fat_cache_position + FAT_CACHE_SIZE)
     {
         ssize_t _;
-        dev->ops.read(dev, sb->fat_cache, FAT_CACHE_SIZE, sb->fat_start_lba + fat_index_sector, &_);
+        fat_read_sectors(sb->fat_cache, sb->fat_start_lba + fat_index_sector, FAT_CACHE_SIZE, dev, sb, &_);
         sb->fat_cache_position = fat_index_sector;
     }
 

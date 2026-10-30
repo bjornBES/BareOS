@@ -170,9 +170,9 @@ bool i8042_process_byte(uint8_t byte, key_event_t *out)
     return false;
 }
 
-status_t i8042_kbd_handler(input_dev_t *dev)
+status_t i8042_kbd_handler(input_dev_t *input_dev)
 {
-    i8042_port_t *port = dev->dev.drv_data;
+    i8042_port_t *port = input_dev->dev.drv_data;
     if (!port->driver_bound)
     {
         KERRNO_RETURN(KERRNO_DEV_NOT_READY, "");
@@ -191,17 +191,17 @@ status_t i8042_kbd_handler(input_dev_t *dev)
     memset(&ev, 0, sizeof(key_event_t));
     if (i8042_process_byte(raw, &ev))
     {
-        input_report_key(dev, &ev);
+        input_report_key(input_dev, &ev);
     }
     return KERRNO_SUCCESSES;
 }
 
-status_t i8042_kbd_set_leds(input_dev_t *dev)
+status_t i8042_kbd_set_leds(input_dev_t *input_dev)
 {
-    uint8_t led_status = TEST_BIT(LED_SCROLL_LOCK, dev->ledbit) ? BIT(0) : 0;
-    led_status |= TEST_BIT(LED_NUM_LOCK, dev->ledbit) ? BIT(1) : 0;
-    led_status |= TEST_BIT(LED_CAPS_LOCK, dev->ledbit) ? BIT(2) : 0;
-    led_status |= TEST_BIT(LED_KANA, dev->ledbit) ? BIT(4) : 0;
+    uint8_t led_status = TEST_BIT(LED_SCROLL_LOCK, input_dev->ledbit) ? BIT(0) : 0;
+    led_status |= TEST_BIT(LED_NUM_LOCK, input_dev->ledbit) ? BIT(1) : 0;
+    led_status |= TEST_BIT(LED_CAPS_LOCK, input_dev->ledbit) ? BIT(2) : 0;
+    led_status |= TEST_BIT(LED_KANA, input_dev->ledbit) ? BIT(4) : 0;
 
     i8042_write_cmd(0xED);
     i8042_write(I8042_DATA_REG, led_status);
@@ -341,7 +341,7 @@ status_t i8042_kbd_probe(i8042_port_t *port)
     i8042_write_controller_conf(conf);
 
     input_dev_t *input_dev = input_create_device();
-    input_dev->irq_handler = i8042_kbd_handler;
+    input_dev->ops.irq_handler = i8042_kbd_handler;
 
     irq_range_t range = { .first = 4, .last = 16 };
     irq_pick_free_range_size(range, 1, IRQ_SOURCE_IRQ, ANY_CPU, &input_dev->irq);

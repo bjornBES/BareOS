@@ -32,7 +32,7 @@ typedef enum device_flags
     // DEV_FLAG_STATE_SYNCED = 5,
     // DEV_FLAG_DMA_COHERENT = 6,
     // DEV_FLAG_OF_NODE_REUSED = 7,
-    // DEV_FLAG_OFFLINE_DISABLED = 8,
+    DEV_FLAG_OFFLINE_DISABLED = 8,
     DEV_FLAG_OFFLINE = 9,
     DEV_FLAG_NO_DRIVER = 10,
     DEV_FLAG_SAME_NAME = 11,
@@ -46,22 +46,17 @@ typedef struct device_ops
 {
     status_t (*read)(device_t *dev, void *buf, size_t len, off_t off, ssize_t *size_out);
     status_t (*write)(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out);
-    status_t (*ioctl)(device_t *dev, unsigned long cmd, void *arg);
+    /// @brief TODO
+    status_t (*poll)(device_t *dev);
     // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
 
-    status_t (*open)(device_t *dev);
-    status_t (*close)(device_t *dev);
-
-    void (*destroy)(device_t *dev); // cleanup
+    status_t (*destroy)(device_t *dev); // cleanup
     // void (*tty_ops)(device_t *dev, tty_dev_ops_t *out);
-
-    status_t (*irq_handler)(device_t *dev); // called by generic IRQ dispatch, not by arch code directly
 } device_ops_t;
 typedef struct device
 {
     LIST_ENTRY_THIS();
     char name[DEVICE_NAME_MAX]; // built on register
-    char *device_name;          // the devices name
     const char *init_name;      // set by driver
 
     void *bus_id;
@@ -69,7 +64,7 @@ typedef struct device
     uint32_t id;
     device_id_t devt;       // opaque, generic-assigned
     struct device *parent;
-    device_ops_t ops; // vtable: probe, read, write, ioctl, remove...
+    device_ops_t ops;
 
     bus_type_t *bus;
 
@@ -110,6 +105,8 @@ THIS_TO_TYPE_DEF(device_t);
     }
 
 CREATE_DEV_FLAG_ACCESSORS(ready_to_probe, DEV_FLAG_READY_TO_PROBE);
+CREATE_DEV_FLAG_ACCESSORS(offline_disabled, DEV_FLAG_OFFLINE_DISABLED);
+CREATE_DEV_FLAG_ACCESSORS(offline, DEV_FLAG_OFFLINE);
 CREATE_DEV_FLAG_ACCESSORS(no_driver, DEV_FLAG_NO_DRIVER);
 CREATE_DEV_FLAG_ACCESSORS(same_name, DEV_FLAG_SAME_NAME);
 

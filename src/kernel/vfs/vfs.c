@@ -88,17 +88,22 @@ status_t vfs_mount(device_t *dev, int flags)
         KERRNO_RETURN(KERRNO_UNSUCCESS, "%s dose not have ident_fs set", fs->name);
     }
 
-    blkdev_t *block_dev = dev->class_data;
+    if (dev->class->type != DEVICE_BLOCK)
+    {
+        FUNC_NOT_IMPLEMENTED();
+    }
 
-    if (fs->ident_fs(dev, &block_dev->fs_ident) != KERRNO_SUCCESSES)
+    blkdev_t *blk_dev = to_blkdev(dev);
+
+    if (fs->ident_fs(dev, &blk_dev->fs_ident) != KERRNO_SUCCESSES)
     {
         KERRNO_RETURN(KERRNO_UNSUCCESS, "%s did not identify itself", fs->name);
     }
 
-    hexdump(&block_dev->fs_ident, sizeof(fs_ident_t), 16);
+    hexdump(&blk_dev->fs_ident, sizeof(fs_ident_t), 16);
 
     volume_t *vol = NULL;
-    ret = volume_do_register(block_dev->fs_ident.label, dev, fs, &vol);
+    ret = volume_do_register(blk_dev->fs_ident.label, dev, fs, &vol);
     KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
     {
@@ -113,7 +118,7 @@ status_t vfs_mount(device_t *dev, int flags)
 #elif CONFIG_VOLUME_POSTFIX != 0
     sprintf(path, "%c%c%s%c%c", )
 #elif CONFIG_VOLUME_PREFIX != 0
-    path_count = sprintf(path, "%c%c%s%c", CONFIG_PATH_DIR_SEPARATOR, CONFIG_VOLUME_PREFIX, block_dev->fs_ident.label, CONFIG_PATH_DIR_SEPARATOR);
+    path_count = sprintf(path, "%c%c%s%c", CONFIG_PATH_DIR_SEPARATOR, CONFIG_VOLUME_PREFIX, blk_dev->fs_ident.label, CONFIG_PATH_DIR_SEPARATOR);
 #else
 #error "both CONFIG_VOLUME_PREFIX and CONFIG_VOLUME_POSTFIX are 0"
 #endif

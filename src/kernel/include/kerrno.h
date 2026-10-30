@@ -47,6 +47,7 @@
         }                                                                                          \
     }
 #else
+#error "DEBUG is disabled"
 #define KERRNO_RETURN_DEBUG(number, type, ...)         \
     {                                                  \
         KERRNO_RETURN_TYPE(number, type, __VA_ARGS__); \
@@ -68,7 +69,8 @@
     }
 #endif
 
-// most (if not all) of the comments in this file are made by an AI, this will be changed in later versions of the kernel.
+// most (if not all) of the comments in this file are made by an AI,
+// this will be changed in later versions of the kernel.
 
 /* Error baselines */
 #define KERRNO_GENERAL_ERROR_BASE                0                                   /* General errors */

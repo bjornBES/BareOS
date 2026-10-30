@@ -20,11 +20,11 @@
 
 extern bus_type_t platform_bus_type;
 
-status_t platform_device_register(platform_device_t *dev)
+status_t platform_device_register(platform_device_t *platform_dev)
 {
-    dev->dev.bus = &platform_bus_type;
-    dev_set_ready_to_probe(&dev->dev);
-    return device_register(&dev->dev);
+    platform_dev->dev.bus = &platform_bus_type;
+    dev_set_ready_to_probe(&platform_dev->dev);
+    return device_register(&platform_dev->dev);
 }
 
 status_t platform_register_driver(platform_driver_t *driver)

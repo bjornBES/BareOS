@@ -43,11 +43,11 @@ $(error unknown config '$(config)' - must be debug or release)
 endif
 
 ifeq ($(target),64)
-export OPT_FLAGS := -DCONFIG_64BIT
+export OPT_FLAGS += -DCONFIG_64BIT
 else ifeq ($(target),32)
-export OPT_FLAGS := -DCONFIG_32BIT
+export OPT_FLAGS += -DCONFIG_32BIT
 else ifeq ($(target),16)
-export OPT_FLAGS := -DCONFIG_16BIT
+export OPT_FLAGS += -DCONFIG_16BIT
 else
 $(error unknown config '$(target)' - must be 16, 32 or 64)
 endif

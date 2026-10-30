@@ -241,20 +241,25 @@ static const tty_action_raw_t action_map[] = {
 wchar_t tty_layout_resolve(key_code_t key, key_modifiers_t mods)
 {
     ENTER_FUNC("0x%x, 0x%x", key, mods);
-    if (mods & (MOD_CTRL | MOD_SHIFT | MOD_ALT))
+    if ((mods & (MOD_CTRL | MOD_SHIFT | MOD_ALT)) == (MOD_CTRL | MOD_SHIFT | MOD_ALT))
     {
+        FUNC_NOT_IMPLEMENTED();
     }
-    else if (mods & (MOD_CTRL | MOD_SHIFT))
+    else if ((mods & (MOD_CTRL | MOD_SHIFT)) == (MOD_CTRL | MOD_SHIFT))
     {
+        FUNC_NOT_IMPLEMENTED();
     }
-    else if (mods & (MOD_CTRL | MOD_ALT))
+    else if ((mods & (MOD_CTRL | MOD_ALT)) == (MOD_CTRL | MOD_ALT))
     {
+        FUNC_NOT_IMPLEMENTED();
     }
-    else if (mods & (MOD_SHIFT | MOD_ALT))
+    else if ((mods & (MOD_SHIFT | MOD_ALT)) == (MOD_SHIFT | MOD_ALT))
     {
+        FUNC_NOT_IMPLEMENTED();
     }
     else if (mods & MOD_ALT)
     {
+        FUNC_NOT_IMPLEMENTED();
     }
     else if (mods & MOD_CTRL)
     {

@@ -26,7 +26,7 @@
 status_t input_handler(intr_frame_t *frame, void *ctx)
 {
     input_dev_t *input_dev = ctx;
-    return input_dev->irq_handler(input_dev);
+    return input_dev->ops.irq_handler(input_dev);
 }
 
 status_t input_device_added(device_t *dev)
@@ -46,7 +46,7 @@ static dev_class_t input_class = {
     .device_added = input_device_added,
 };
 
-key_modifiers_t update_mods(key_event_t *event, input_dev_t *dev)
+key_modifiers_t update_mods(key_event_t *event, input_dev_t *input_dev)
 {
     key_modifiers_t bit = MOD_NONE;
     switch (event->key)
@@ -73,55 +73,55 @@ key_modifiers_t update_mods(key_event_t *event, input_dev_t *dev)
             bit = MOD_CAPS;
             break;
         default :
-            return dev->mods;
+            return input_dev->mods;
     }
     {
         if (event->action == KEY_PRESSED)
         {
             if (bit == MOD_CAPS)
             {
-                key_modifiers_t caps = dev->mods & MOD_CAPS;
+                key_modifiers_t caps = input_dev->mods & MOD_CAPS;
                 if (caps == 0)
                 {
-                    dev->mods |= bit;
+                    input_dev->mods |= bit;
                 }
                 else
                 {
-                    dev->mods |= bit;
+                    input_dev->mods |= bit;
                 }
             }
             else
             {
-                dev->mods |= bit;
+                input_dev->mods |= bit;
             }
         }
         else
         {
-            dev->mods &= ~bit;
+            input_dev->mods &= ~bit;
         }
     }
 
     // {
-    //     key_modifiers_t caps = dev->mods & MOD_CAPS;
-    //     key_modifiers_t shift = dev->mods & MOD_SHIFT;
+    //     key_modifiers_t caps = input_dev->mods & MOD_CAPS;
+    //     key_modifiers_t shift = input_dev->mods & MOD_SHIFT;
     //     if (caps && !(shift))
     //     {
-    //         dev->mods |= MOD_LSHIFT;
+    //         input_dev->mods |= MOD_LSHIFT;
     //     }
     //     else if (caps && shift)
     //     {
-    //         dev->mods &= ~MOD_LSHIFT; // they cancel
+    //         input_dev->mods &= ~MOD_LSHIFT; // they cancel
     //     }
     // }
 
-    return dev->mods;
+    return input_dev->mods;
 }
 
-status_t input_report_key(input_dev_t *dev, key_event_t *key)
+status_t input_report_key(input_dev_t *input_dev, key_event_t *key)
 {
-    key->mods = update_mods(key, dev);
+    key->mods = update_mods(key, input_dev);
     trace_debug(MODULE, "%p = { 0x%x, 0x%x, 0x%x }", key, key->key, key->action, key->mods);
-    return tty_receive_key(active_tty, key, dev->dev.devt);
+    return tty_receive_key(active_tty, key, input_dev->dev.devt);
 }
 
 status_t input_class_register()
@@ -134,8 +134,8 @@ ARCHDONE_INITCALL(input_class_register);
 input_dev_t *input_create_device()
 {
     ENTER_FUNC("", 0);
-    input_dev_t *dev = kzmalloc(sizeof(input_dev_t));
-    dev->dev.class = &input_class;
-    dev_set_no_driver(&dev->dev);
-    return dev;
+    input_dev_t *input_dev = kzmalloc(sizeof(input_dev_t));
+    input_dev->dev.class = &input_class;
+    dev_set_no_driver(&input_dev->dev);
+    return input_dev;
 }

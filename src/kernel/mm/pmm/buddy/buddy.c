@@ -70,7 +70,7 @@ int buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t order, pad
 
 int buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order);
 
-INTERNAL_INLINE void list_push(buddy_order_t *o, buddy_free_node_t *node)
+INTERNAL ALWAYS_INLINE void buddy_list_push(buddy_order_t *o, buddy_free_node_t *node)
 {
     node->prev = NULL;
     node->next = o->free_list;
@@ -82,7 +82,7 @@ INTERNAL_INLINE void list_push(buddy_order_t *o, buddy_free_node_t *node)
     o->count++;
 }
 
-INTERNAL_INLINE void list_remove(buddy_order_t *o, buddy_free_node_t *node)
+INTERNAL ALWAYS_INLINE void buddy_list_remove(buddy_order_t *o, buddy_free_node_t *node)
 {
     if (node->prev)
     {
@@ -99,35 +99,44 @@ INTERNAL_INLINE void list_remove(buddy_order_t *o, buddy_free_node_t *node)
     o->count--;
 }
 
-INTERNAL_INLINE buddy_free_node_t *list_pop(buddy_order_t *o)
+INTERNAL ALWAYS_INLINE buddy_free_node_t *buddy_list_pop(buddy_order_t *o)
 {
     buddy_free_node_t *node = o->free_list;
     if (node)
     {
-        list_remove(o, node);
+        buddy_list_remove(o, node);
     }
     return node;
 }
 
-INTERNAL_INLINE size_t buddy_block_index(buddy_t *global_buddy, paddr_t addr, size_t order)
+INTERNAL ALWAYS_INLINE size_t buddy_block_index(buddy_t *global_buddy, paddr_t addr, size_t order)
 {
     return ((addr - global_buddy->start) / PAGE_SIZE) >> order;
 }
 
-INTERNAL_INLINE bool buddy_bit_test(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL ALWAYS_INLINE bool buddy_bit_test(buddy_t *global_buddy, size_t order, size_t index)
 {
     size_t bit = global_buddy->order_bit_offset[order] + index;
     return (global_buddy->free_bitmap[bit / 8] >> (bit % 8)) & 1;
 }
 
-INTERNAL_INLINE void buddy_bit_set(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL ALWAYS_INLINE void buddy_bit_set(buddy_t *global_buddy, size_t order, size_t index)
 {
     size_t bit = global_buddy->order_bit_offset[order] + index;
     global_buddy->free_bitmap[bit / 8] |= (1 << (bit % 8));
 }
 
-INTERNAL_INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
+INTERNAL ALWAYS_INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
 {
+    // this is... quantum physics i uncomment the 2 trace lines... and it doesn't fail but if i comment them it fails?
+    // - BjornBEs 29.10.2026 17:11
+    // trace_debug(MODULE, "global_buddy->order_bit_offset = %p", global_buddy->order_bit_offset);
+    // trace_debug(MODULE, "global_buddy->free_bitmap = %p", global_buddy->free_bitmap);
+    
+    // and now it works? - BjornBEs 29.10.2026 17:13
+    // trace_debug(MODULE, "");
+
+    // just uncommented that... i don't understand GCC sometimes. - BjornBEs 29.10.2026 17:17
     size_t bit = global_buddy->order_bit_offset[order] + index;
     global_buddy->free_bitmap[bit / 8] &= ~(1 << (bit % 8));
 }
@@ -298,7 +307,7 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
 
         buddy_free_node_t *buddy_node = (buddy_free_node_t *)phys_to_virt_auto(buddy_addr);
         // trace_debug(MODULE, "buddy_node = %p", buddy_node);
-        list_remove(&global_buddy->orders[order], buddy_node);
+        buddy_list_remove(&global_buddy->orders[order], buddy_node);
         buddy_bit_clear(global_buddy, order, buddy_idx);
 
         addr = (addr < buddy_addr) ? addr : buddy_addr;
@@ -309,7 +318,7 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
     // trace_debug(MODULE, "idx = %u", idx);
     buddy_free_node_t *node = (buddy_free_node_t *)phys_to_virt_auto(addr);
     // trace_debug(MODULE, "node = %p", node);
-    list_push(&global_buddy->orders[order], node);
+    buddy_list_push(&global_buddy->orders[order], node);
     buddy_bit_set(global_buddy, order, idx);
     return KERRNO_SUCCESSES;
 }
@@ -352,7 +361,7 @@ status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *
         KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "Out of memory");
     }
 
-    buddy_free_node_t *node = list_pop(&global_buddy->orders[found_order]);
+    buddy_free_node_t *node = buddy_list_pop(&global_buddy->orders[found_order]);
     paddr_t addr = virt_to_phys_auto((vaddr_t)node);
     buddy_bit_clear(global_buddy, found_order, buddy_block_index(global_buddy, addr, found_order));
 
@@ -361,7 +370,7 @@ status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *
         found_order--;
         paddr_t split = addr + BUDDY_BLOCK_SIZE(found_order);
         buddy_free_node_t *split_node = (buddy_free_node_t *)phys_to_virt_auto(split);
-        list_push(&global_buddy->orders[found_order], split_node);
+        buddy_list_push(&global_buddy->orders[found_order], split_node);
         buddy_bit_set(global_buddy, found_order, buddy_block_index(global_buddy, split, found_order));
     }
 
@@ -415,7 +424,7 @@ static status_t buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr
         if (buddy_bit_test(global_buddy, order, idx))
         {
             buddy_free_node_t *node = (buddy_free_node_t *)phys_to_virt_auto(block_base);
-            list_remove(&global_buddy->orders[order], node);
+            buddy_list_remove(&global_buddy->orders[order], node);
             buddy_bit_clear(global_buddy, order, idx);
 
             while (order > 0)

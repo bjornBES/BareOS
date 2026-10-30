@@ -214,8 +214,8 @@ status_t irq_arch_register(irq_descriptor_t *desc, irq_controller_t *current, ir
 
     if (source == IRQ_SOURCE_MSI)
     {
-        pci_device_t *dev = ctx;
-        dev->irq = vector;
+        pci_device_t *pci_dev = ctx;
+        pci_dev->irq = vector;
         msi_enable(ctx);
     }
 

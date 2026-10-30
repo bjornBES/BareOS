@@ -46,19 +46,19 @@ status_t i8042_class_register()
 
 ARCHDONE_INITCALL(i8042_class_register);
 
-status_t i8042_probe(platform_device_t *dev)
+status_t i8042_probe(platform_device_t *platform_dev)
 {
-    ENTER_FUNC("%p", dev);
+    ENTER_FUNC("%p", platform_dev);
 
-    dev->dev.class = &i8042_class;
-    dev->dev.init_name = "i8042";
-    dev_set_same_name(&dev->dev);
+    platform_dev->dev.class = &i8042_class;
+    platform_dev->dev.init_name = "i8042";
+    dev_set_same_name(&platform_dev->dev);
 
     i8042_port_t *port = &i8042_ports[I8042_KBD_PORT_NO];
     status_t ret = i8042_kbd_probe(port);
     KERRNO_CHECK_RETURN(ret);
 
-    device_add(&dev->dev);
+    device_add(&platform_dev->dev);
 
     // FUNC_NOT_IMPLEMENTED();
     return KERRNO_SUCCESSES;

@@ -46,7 +46,7 @@ typedef struct mbr_entry
 
 } PACKED mbr_entry_t;
 
-status_t mbr_detect(device_t *dev, void *mbr)
+status_t mbr_detect(blkdev_t *blk_dev, void *mbr)
 {
     mbr_entry_t *partitions = mbr + 0x1BE;
 
@@ -66,26 +66,26 @@ status_t mbr_detect(device_t *dev, void *mbr)
         trace_info(MODULE, "            size 0x%x", entry->size);
         if (entry->partition_type == 0xEE)
         {
-            KERNEL_PANIC(MODULE, "disk has a GPT table");
+            KERNEL_PANIC(MODULE, "disk has a GPT table that is not supportted yet");
         }
 
-        device_t *part_dev;
-        block_device_create(&part_dev);
-        blkdev_t *block = part_dev->class_data;
-        block->flags |= BLOCK_IS_PARTITION;
-        block->partition_count = 0;
-        block->sector_start = entry->lba_start;
-        block->sectors_count = entry->size;
+        blkdev_t *part_blk_dev;
+        block_device_create(&part_blk_dev);
+        part_blk_dev->flags |= BLOCK_IS_PARTITION;
+        part_blk_dev->partition_count = 0;
+        part_blk_dev->sector_size = blk_dev->sector_size;
+        part_blk_dev->sector_start = entry->lba_start;
+        part_blk_dev->sectors_count = entry->size;
 
-        part_dev->init_name = dev->name;
+        part_blk_dev->dev.init_name = blk_dev->dev.name;
 
-        status_t ret = block_register(block, dev);
+        status_t ret = block_register(part_blk_dev, &blk_dev->dev);
         KERRNO_CHECK_RETURN(ret);
         if (ret != KERRNO_SUCCESSES)
         {
             return ret;
         }
-        ret = vfs_mount(part_dev, 0);
+        ret = vfs_mount(&part_blk_dev->dev, 0);
         if (ret == KERRNO_ENTRY_NOT_FOUND)
         {
             continue;

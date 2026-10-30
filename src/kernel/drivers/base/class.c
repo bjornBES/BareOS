@@ -26,7 +26,7 @@ list_t class_list;
 status_t class_register(dev_class_t *class)
 {
     ENTER_FUNC("%p", class);
-    if (!class->device_added)
+    if (!class->device_added || !class->device_removed)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "'%s' class isn't set correctly", class->name);
     }
@@ -51,6 +51,7 @@ status_t class_add_device(device_t *dev)
     //     return KERRNO_UNSUCCESS;
     // }
     dev_class_t *class = dev->class;
+    trace_debug(MODULE, "class = %p, class->devices = %p", class, &class->devices);
     status_t ret = ADD_THIS_TO_LIST(class->devices, dev);
     KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
@@ -60,6 +61,32 @@ status_t class_add_device(device_t *dev)
     }
     ret = class->device_added(dev);
     KERRNO_CHECK_RETURN(ret);
+    return ret;
+}
+
+status_t class_remove_device(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
+    dev_class_t *class = dev->class;
+    trace_debug(MODULE, "class = %p, class->devices = %p", class, &class->devices);
+    status_t ret = 0;
+
+    ret = list_remove(&class->devices, &THIS_NODE(dev));
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        // TODO
+        return ret;
+    }
+
+    ret = class->device_removed(dev);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        // TODO
+        return ret;
+    }
+
     return ret;
 }
 
@@ -75,7 +102,7 @@ INTERNAL status_t class_list_class(dev_class_t *class)
         uint64_t major = dev->devt.major;
         uint64_t device = dev->devt.device;
         uint64_t minor = dev->devt.minor;
-        trace_info(MODULE, "device: %u, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", i, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
+        trace_info(MODULE, "device: %u (%p), id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", i, dev, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
         node = node->next;
         i++;
     }

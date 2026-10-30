@@ -21,11 +21,11 @@ typedef struct platform_driver platform_driver_t;
 
 typedef struct platform_dev
 {
+    device_t dev;
+
     const char *name;
 
     interrupt_vector_t irq;
-
-    device_t dev;
 
     uint32_t num_resources;
     resource_t **resource;

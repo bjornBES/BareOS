@@ -19,3 +19,4 @@ status_t bus_for_each_driver(bus_type_t *bus, driver_t *start, void *data, statu
 status_t bus_register(bus_type_t *bus);
 
 status_t bus_probe_device(device_t *dev);
+status_t bus_remove_device(device_t *dev);

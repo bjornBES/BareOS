@@ -40,7 +40,7 @@ status_t call_driver_probe(device_t *dev, driver_t *drv)
     {
         case KERRNO_SUCCESSES :
             break;
-        case -KERRNO_PROBE_DEFER :
+        case KERRNO_PROBE_DEFER :
             /* Driver requested deferred probing */
             // dev_dbg(dev, "Driver %s requests probe deferral\n", drv->name);
             trace_err(MODULE, "Driver %s requests probe deferral", drv->name);
@@ -70,7 +70,13 @@ status_t driver_probe_device(driver_t *drv, device_t *dev)
 
     dev->driver = drv;
 
-    return call_driver_probe(dev, drv);
+    status_t ret = call_driver_probe(dev, drv);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        dev->driver = NULL;
+        return ret;
+    }
+    return ret;
 }
 
 status_t device_try_attach_driver(driver_t *drv, void *_data)
@@ -98,9 +104,13 @@ status_t device_attach(device_t *dev)
     };
 
     driver_t *drv = NULL;
-    bus_for_each_driver(dev->bus, drv, &data, device_try_attach_driver);
+    status_t ret = bus_for_each_driver(dev->bus, drv, &data, device_try_attach_driver);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "couldn't find a driver for %p", dev);
+    }
 
-    return KERRNO_SUCCESSES;
+    return ret;
 }
 
 status_t device_initial_probe(device_t *dev)

@@ -76,6 +76,8 @@ typedef struct pci_driver pci_driver_t;
 
 typedef struct pci_device
 {
+    device_t dev;
+
     pci_bdf_t bdf;
     uint16_t vendor_id;
     uint16_t device_id;
@@ -123,13 +125,16 @@ typedef struct pci_device
 
     size_t conf_size;
 
-    status_t (*handler)(struct pci_device *dev);
+    struct
+    {
+        status_t (*handler)(struct pci_device *pci_dev);
+    } ops;
+    
 
     pci_device_id_t id;
 
     pci_driver_t *driver;
 
-    device_t dev;
 
     uint32_t saved_config_space[16];
 

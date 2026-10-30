@@ -15,14 +15,14 @@
 
 #define MODULE "pci-api"
 
-status_t pci_init_irq(pci_device_t *dev, size_t min_vecs, size_t max_vecs, uint32_t flags)
+status_t pci_init_irq(pci_device_t *pci_dev, size_t min_vecs, size_t max_vecs, uint32_t flags)
 {
-    ENTER_FUNC("%p, 0x%x", dev, flags);
+    ENTER_FUNC("%p, 0x%x", pci_dev, flags);
     status_t ret = 0;
 
 /*     if (flags & PCI_IRQ_MSIX)
     {
-        nvecs = __pci_enable_msix_range(dev, NULL, min_vecs, max_vecs, flags);
+        nvecs = __pci_enable_msix_range(pci_dev, NULL, min_vecs, max_vecs, flags);
         if (nvecs > 0)
         {
             return nvecs;
@@ -31,7 +31,7 @@ status_t pci_init_irq(pci_device_t *dev, size_t min_vecs, size_t max_vecs, uint3
 
     if ((flags & PCI_IRQ_MSI) == PCI_IRQ_MSI)
     {
-        ret = pci_enable_msi_range(dev, min_vecs, max_vecs);
+        ret = pci_enable_msi_range(pci_dev, min_vecs, max_vecs);
         if (ret != KERRNO_SUCCESSES)
         {
             return ret;
@@ -42,9 +42,9 @@ status_t pci_init_irq(pci_device_t *dev, size_t min_vecs, size_t max_vecs, uint3
     /* use INTx IRQ if allowed */
 /*     if (flags & PCI_IRQ_INTX)
     {
-        if (min_vecs == 1 && dev->irq)
+        if (min_vecs == 1 && pci_dev->irq)
         {
-            pci_intx(dev, 1);
+            pci_intx(pci_dev, 1);
             return 1;
         }
     } */

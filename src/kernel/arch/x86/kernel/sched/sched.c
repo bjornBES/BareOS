@@ -19,7 +19,8 @@
 NORETURN void scheduler_arch_yield()
 {
     ENTER_FUNC("", 0);
-    inline_asm("int 0xD1");
+    inline_asm("int 0xd1");
+    trace_crit(MODULE, "something is wrong");
     while (true)
     {
         ;

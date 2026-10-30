@@ -34,12 +34,14 @@ typedef struct device device_t;
 
 typedef struct dev_class
 {
+    LIST_ENTRY_THIS(); // link in the class registry
+    
+    list_t devices;    // every device in this class
+    
     const char *name;  // "block", "timer"
     dev_type_t type;   // keep the old enum here, so major = class->type
-    list_t devices;    // every device in this class
-    LIST_ENTRY_THIS(); // link in the class registry
 
     // hooks the registry calls
     status_t (*device_added)(device_t *dev);
-    void (*device_removed)(device_t *dev);
+    status_t (*device_removed)(device_t *dev);
 } dev_class_t;

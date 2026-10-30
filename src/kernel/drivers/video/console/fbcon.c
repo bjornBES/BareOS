@@ -63,10 +63,10 @@ INTERNAL status_t fbcon_bind_surface(const video_framebuffer_t *fb)
 }
 
 // display_listener_t: primary changed or its mode changed.
-INTERNAL status_t fbcon_on_display_change(display_device_t *primary, void *ctx)
+INTERNAL status_t fbcon_on_display_change(display_device_t *primary_display_dev, void *ctx)
 {
-    ENTER_FUNC("%p, %p", primary, ctx);
-    video_framebuffer_t *fb = &primary->frame_buffer;
+    ENTER_FUNC("%p, %p", primary_display_dev, ctx);
+    video_framebuffer_t *fb = &primary_display_dev->frame_buffer;
     return fbcon_bind_surface(fb);
     // return fbcon_redraw();
 }
@@ -141,6 +141,7 @@ INTERNAL status_t fbcon_newline()
 
 void fbcon_put_char(uint32_t cp)
 {
+    status_t ret = 0;
     // ENTER_FUNC("%x ('%c')", cp, cp);
     switch (cp)
     {
@@ -151,14 +152,22 @@ void fbcon_put_char(uint32_t cp)
         case '\t' :
             {
                 uint32_t out_cp;
-                font_glyph_index(active_font, ' ', &out_cp);
-                for (int i = 0; i < 4 - (screen_x % 4); i++)
+                ret = font_glyph_index(active_font, ' ', &out_cp);
+                // KERRNO_CHECK_RETURN(ret);
+                if (ret == KERRNO_SUCCESSES || ret == KERRNO_BAD_INDEX)
                 {
-                    fbcon_cell_t *call = &text_buffer[screen_y * size.cols + screen_x];
-                    call->cp = out_cp;
-                    call->fg = fg_color;
-                    call->bg = bg_color;
-                    screen_x++;
+                    for (int i = 0; i < 4 - (screen_x % 4); i++)
+                    {
+                        fbcon_cell_t *call = &text_buffer[screen_y * size.cols + screen_x];
+                        call->cp = out_cp;
+                        call->fg = fg_color;
+                        call->bg = bg_color;
+                        screen_x++;
+                    }
+                }
+                else
+                {
+                    trace_err(MODULE, "fuck this shit");
                 }
             }
             break;
@@ -178,12 +187,21 @@ void fbcon_put_char(uint32_t cp)
 
         default :
             {
+                // trace_debug(MODULE, "text_buffer = %p", text_buffer);
+                // trace_debug(MODULE, "screen_y = %u, size.cols = %u, screen_x = %u", screen_y, size.cols, screen_x);
+                // trace_debug(MODULE, "index = %u", screen_y * size.cols + screen_x);
                 fbcon_cell_t *call = &text_buffer[screen_y * size.cols + screen_x];
-                font_glyph_index(active_font, cp, &call->cp);
-                call->fg = fg_color;
-                call->bg = bg_color;
-                // fbcon_draw_cell(screen_x, screen_y);
-                screen_x++;
+                // trace_debug(MODULE, "call = %p", call);
+                // trace_debug(MODULE, "&call->cp = %p", &call->cp);
+                ret = font_glyph_index(active_font, cp, &call->cp);
+                // KERRNO_CHECK_RETURN(ret);
+                if (ret == KERRNO_SUCCESSES || ret == KERRNO_BAD_INDEX)
+                {
+                    call->fg = fg_color;
+                    call->bg = bg_color;
+                    // fbcon_draw_cell(screen_x, screen_y);
+                    screen_x++;
+                }
             }
             break;
     }
@@ -205,6 +223,10 @@ void fbcon_put_char(uint32_t cp)
 // handles \n \r \t \b and wrapping
 status_t fbcon_putc(uint32_t cp)
 {
+    if (text_buffer == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "text_buffer is null");
+    }
     // ENTER_FUNC("0x%x", cp);
     uint32_t save_x = screen_x;
     uint32_t save_y = screen_y;
@@ -214,6 +236,10 @@ status_t fbcon_putc(uint32_t cp)
 
 status_t fbcon_write(const char *s, size_t len)
 {
+    if (text_buffer == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "text_buffer is null");
+    }
     uint32_t save_x = screen_x;
     uint32_t save_y = screen_y;
     for (size_t i = 0; i < len; i++)

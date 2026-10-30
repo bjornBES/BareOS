@@ -12,6 +12,8 @@
 #include "vfs/fs_registry.h"
 #include "vfs/volume.h"
 
+#include "drivers/base/block/blkdevt.h"
+
 #include "memory.h"
 #include "string.h"
 
@@ -54,9 +56,20 @@ ALWAYS_INLINE cluster_t lba_to_cluster(sector_t lba, fat_priv_data_t *sb)
 status_t fat_read_sectors(void *buffer, sector_t sector, size_t sector_count, device_t *dev, fat_priv_data_t *sb, ssize_t *out)
 {
     // ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, sector, sector_count, dev, sb);
-    ssize_t sector_read = 0;
-    status_t ret = dev->ops.read(dev, buffer, sector_count, sector, &sector_read);
-    *out = sector_read * sb->bytes_per_sector;
+    status_t ret = 0;
+    if (dev->class->type == DEVICE_BLOCK)
+    {
+        blkdev_t *blk_dev = to_blkdev(dev);
+        ssize_t sector_read = 0;
+        ret = blk_dev->ops.read_sectors(blk_dev, buffer, sector_count, sector, &sector_read);
+        *out = sector_read * sb->bytes_per_sector;
+    }
+    else
+    {
+        ssize_t sector_read = 0;
+        ret = dev->ops.read(dev, buffer, sector_count * sb->bytes_per_sector, sector * sb->bytes_per_sector, &sector_read);
+        *out = sector_read;
+    }
     return ret;
 }
 
@@ -71,6 +84,12 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 {
+    if (dev->class->type != DEVICE_BLOCK)
+    {
+        FUNC_NOT_IMPLEMENTED();
+    }
+
+    blkdev_t *blk_dev = to_blkdev(dev);
     volume_t *vol = mnt->volume;
     fat_priv_data_t *fat_priv = kzmalloc(sizeof(fat_priv_data_t));
 
@@ -266,7 +285,7 @@ cluster_t fat_next_cluster(cluster_t current_cluster, device_t *dev, fat_priv_da
 status_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size, ssize_t *len_out, device_t *dev, mountpoint_t *mnt)
 {
     ENTER_FUNC("%p, %p, %u, %u, %p, %p, %p", node, buffer, offset, size, len_out, dev, mnt);
-    
+
     if (!buffer && offset != 0 && size != 0)
     {
         return KERRNO_UNSUCCESS;
@@ -277,35 +296,35 @@ status_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size
 
     fat_inode_t *fat_ino = (fat_inode_t *)node->inode;
 
-/*     trace_debug(MODULE, "base.THIS.curr_index = 0x%04lx", fat_ino->base.this_node.curr_index);
-    trace_debug(MODULE, "base.THIS.priv = 0x%08lx", fat_ino->base.this_node.prev);
-    trace_debug(MODULE, "base.ino = 0x%08lx", fat_ino->base.ino);
-    trace_debug(MODULE, "base.type = 0x%04lx", fat_ino->base.type);
-    trace_debug(MODULE, "base.flags = 0x%04lx", fat_ino->base.flags);
-    trace_debug(MODULE, "base.size = 0x%08lx", fat_ino->base.size);
-    trace_debug(MODULE, "base.uid = 0x%04lx", fat_ino->base.uid);
-    trace_debug(MODULE, "base.gid = 0x%04lx", fat_ino->base.gid);
-    trace_debug(MODULE, "base.created = 0x%016llx", fat_ino->base.created);
-    trace_debug(MODULE, "base.modified = 0x%016llx", fat_ino->base.modified);
-    trace_debug(MODULE, "base.refcount = 0x%04lx", fat_ino->base.refcount);
-    trace_debug(MODULE, "base.volume = %p", fat_ino->base.volume);
-    trace_debug(MODULE, "base.fs = %p", fat_ino->base.fs);
-    trace_debug(MODULE, "base.hash_next = %p", fat_ino->base.hash_next);
-    trace_debug(MODULE, "first_cluster = 0x%08lx", fat_ino->first_cluster);
-    trace_debug(MODULE, "current_cluster = 0x%08lx", fat_ino->current_cluster);
-    trace_debug(MODULE, "cluster_chain = %p", fat_ino->cluster_chain);
-    trace_debug(MODULE, "chain_length = 0x%08lx", fat_ino->chain_length);
-    trace_debug(MODULE, "created_time_tenths = 0x%1x", fat_ino->created_time_tenths);
-    trace_debug(MODULE, "created_time = 0x%02x", fat_ino->created_time.raw);
-    trace_debug(MODULE, "created_date = 0x%02x", fat_ino->created_date.raw);
-    trace_debug(MODULE, "accessed_date = 0x%02x", fat_ino->accessed_date.raw);
-    trace_debug(MODULE, "modified_time = 0x%02x", fat_ino->modified_time.raw);
-    trace_debug(MODULE, "modified_date = 0x%02x", fat_ino->modified_date.raw); */
+    /*     trace_debug(MODULE, "base.THIS.curr_index = 0x%04lx", fat_ino->base.this_node.curr_index);
+        trace_debug(MODULE, "base.THIS.priv = 0x%08lx", fat_ino->base.this_node.prev);
+        trace_debug(MODULE, "base.ino = 0x%08lx", fat_ino->base.ino);
+        trace_debug(MODULE, "base.type = 0x%04lx", fat_ino->base.type);
+        trace_debug(MODULE, "base.flags = 0x%04lx", fat_ino->base.flags);
+        trace_debug(MODULE, "base.size = 0x%08lx", fat_ino->base.size);
+        trace_debug(MODULE, "base.uid = 0x%04lx", fat_ino->base.uid);
+        trace_debug(MODULE, "base.gid = 0x%04lx", fat_ino->base.gid);
+        trace_debug(MODULE, "base.created = 0x%016llx", fat_ino->base.created);
+        trace_debug(MODULE, "base.modified = 0x%016llx", fat_ino->base.modified);
+        trace_debug(MODULE, "base.refcount = 0x%04lx", fat_ino->base.refcount);
+        trace_debug(MODULE, "base.volume = %p", fat_ino->base.volume);
+        trace_debug(MODULE, "base.fs = %p", fat_ino->base.fs);
+        trace_debug(MODULE, "base.hash_next = %p", fat_ino->base.hash_next);
+        trace_debug(MODULE, "first_cluster = 0x%08lx", fat_ino->first_cluster);
+        trace_debug(MODULE, "current_cluster = 0x%08lx", fat_ino->current_cluster);
+        trace_debug(MODULE, "cluster_chain = %p", fat_ino->cluster_chain);
+        trace_debug(MODULE, "chain_length = 0x%08lx", fat_ino->chain_length);
+        trace_debug(MODULE, "created_time_tenths = 0x%1x", fat_ino->created_time_tenths);
+        trace_debug(MODULE, "created_time = 0x%02x", fat_ino->created_time.raw);
+        trace_debug(MODULE, "created_date = 0x%02x", fat_ino->created_date.raw);
+        trace_debug(MODULE, "accessed_date = 0x%02x", fat_ino->accessed_date.raw);
+        trace_debug(MODULE, "modified_time = 0x%02x", fat_ino->modified_time.raw);
+        trace_debug(MODULE, "modified_date = 0x%02x", fat_ino->modified_date.raw); */
 
     // hexdump(fat_ino, sizeof(fat_inode_t), 16);
-    
+
     trace_debug(MODULE, "fat_ino = %p, sb = %p, vol = %p", fat_ino, sb, vol);
-    
+
     cluster_t cluster_start = fat_ino->first_cluster;
     cluster_t offset_cluster = offset / sb->bytes_per_cluster;
     if (offset_cluster != 0)
@@ -406,19 +425,18 @@ status_t fat_free_inode(inode_t *ino)
 static filesystem_t fat_fs = {
     .name = "FAT",
     .probe = fat_probe,
-    
+
     .ident_fs = fat_ident_fs,
 
     .mount = fat_mount,
-    
+
     .lookup = fat_lookup,
-    
+
     .open = fat_open,
     .close = fat_close,
     .read = fat_read_file,
 
     .alloc_inode = fat_alloc_inode,
-    .free_inode = fat_free_inode
-};
+    .free_inode = fat_free_inode};
 
 VFS_FS_DRIVER(fat_fs);

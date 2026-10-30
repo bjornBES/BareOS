@@ -112,5 +112,10 @@ void hexdump(void *ptr, size_t len, size_t size);
     KERRNO_NO_RETURN(ENOSYS, "%s is not implemented", __FUNCTION__); \
     KERNEL_PANIC(MODULE, "%s is not implemented", __FUNCTION__);
 
+/// @brief this is called if the fix is quick and dirty or if a fix isn't there yet.
+#define IMPLEMENTED_QUICK_AND_DIRTY()                                       \
+    KERRNO_NO_RETURN(KERRNO_DONT_DO_THAT, "this is a quick and dirty fix in %s", __FUNCTION__); \
+    KERNEL_PANIC(MODULE, "this is a quick and dirty fix in %s", __FUNCTION__);
+
 // #define KERNEL_PANIC(module, ...) panic(module, __FILE__, __LINE__, __VA_ARGS__)
 

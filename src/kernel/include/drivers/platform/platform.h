@@ -12,7 +12,7 @@
 
 #include "module.h"
 
-status_t platform_device_register(platform_device_t *dev);
+status_t platform_device_register(platform_device_t *platform_dev);
 
 status_t platform_register_driver(platform_driver_t *driver);
 status_t platform_unregister_driver(platform_driver_t *driver);

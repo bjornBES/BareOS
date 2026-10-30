@@ -51,9 +51,9 @@ NORETURN void kernel_main()
 
     pci_initialize();
 
-    platform_device_t *i8042_dev = kzmalloc(sizeof(platform_device_t));
-    i8042_dev->name = "i8042";
-    platform_device_register(i8042_dev);
+    platform_device_t *platform_dev = kzmalloc(sizeof(platform_device_t));
+    platform_dev->name = "i8042";
+    platform_device_register(platform_dev);
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_PREUSER);
 

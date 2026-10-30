@@ -52,26 +52,35 @@ typedef struct fs_ident
 } fs_ident_t;
 
 typedef struct blkdev blkdev_t;
+
 typedef struct blkdev
 {
+    device_t dev;
+    struct
+    {
+        status_t (*read_sectors)(blkdev_t *blk_dev, void *buf, size_t sectors, off_t sector_off, ssize_t *sector_count_out);
+        status_t (*write_sectors)(blkdev_t *blk_dev, const void *buf, size_t sectors, off_t sector_off, ssize_t *sector_count_out);
+    } ops;
+
     uint32_t sector_size;
     sector_t sector_start;
     sector_t sectors_count;
 
     uint32_t flags; // BLOCK_* flags below
-    
+
     hw_id_t hw;
     ptable_id_t ptable;
     uint16_t partition_count;
-    
+
     blkdev_t *parent;
     uint32_t part_index;
     sector_t start_lba;
 
     fs_ident_t fs_ident;
-    
-    device_t *dev;
+
 } blkdev_t;
+
+#define to_blkdev(n) container_of(n, blkdev_t, dev)
 
 #define BLOCK_READ_ONLY    BIT(0) // read-only policy
 #define BLOCK_IS_PARTITION BIT(1)

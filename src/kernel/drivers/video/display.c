@@ -34,7 +34,7 @@ THIS_TO_TYPE_DEF(display_listener_data_t);
 list_t listeners;
 list_t display_list;
 
-display_device_t *primary_device;
+display_device_t *primary_display_dev;
 
 status_t display_device_added(device_t *dev)
 {
@@ -58,31 +58,31 @@ ARCHDONE_INITCALL(display_init);
 
 display_device_t *display_create()
 {
-    display_device_t *dev = kzmalloc(sizeof(display_device_t));
-    return dev;
+    display_device_t *display_dev = kzmalloc(sizeof(display_device_t));
+    return display_dev;
 }
 
 
-status_t display_register(display_device_t *dev)
+status_t display_register(display_device_t *display_dev)
 {
-    ADD_THIS_TO_LIST(display_list, dev);
+    ADD_THIS_TO_LIST(display_list, display_dev);
 
-    if (!primary_device)
+    if (!primary_display_dev)
     {
-        primary_device = dev;
-        display_set_default_mode(dev);
-        display_notify_listeners(dev);
+        primary_display_dev = display_dev;
+        display_set_default_mode(display_dev);
+        display_notify_listeners(display_dev);
     }
     else
     {
         FUNC_NOT_IMPLEMENTED();
     }
 
-    dev->dev.class = &video_class;
+    display_dev->dev.class = &video_class;
 
 
-    dev_set_no_driver(&dev->dev);
-    return device_register(&dev->dev);
+    dev_set_no_driver(&display_dev->dev);
+    return device_register(&display_dev->dev);
 }
 
 status_t display_add_listener(display_listener_t cb, void *ctx)
@@ -93,14 +93,14 @@ status_t display_add_listener(display_listener_t cb, void *ctx)
     return ADD_THIS_TO_LIST(listeners, listener);
 }
 
-status_t display_notify_listeners(display_device_t *dev)
+status_t display_notify_listeners(display_device_t *display_dev)
 {
     list_node_t *node = listeners.tail;
     while (node)
     {
         display_listener_data_t *listener = to_display_listener_data_t(node);
         
-        status_t ret = listener->cb(dev, listener->ctx);
+        status_t ret = listener->cb(display_dev, listener->ctx);
         if (ret != KERRNO_SUCCESSES)
         {
             return ret;

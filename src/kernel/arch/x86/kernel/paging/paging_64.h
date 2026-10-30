@@ -364,22 +364,22 @@ typedef union
 typedef struct
 {
     page_table_entry64 e[PT64_ENTRIES];
-} __attribute__((aligned(4096))) page_map_level_4;
+} ALIGN(4096) page_map_level_4;
 
 typedef struct
 {
     page_table_entry64 e[PT64_ENTRIES];
-} __attribute__((aligned(4096))) page_dpt;
+} ALIGN(4096) page_dpt;
 
 typedef struct
 {
     page_table_entry64 e[PT64_ENTRIES];
-} __attribute__((aligned(4096))) page_directory64;
+} ALIGN(4096) page_directory64;
 
 typedef struct
 {
     page_table_entry64_leaf e[PT64_ENTRIES];
-} __attribute__((aligned(4096))) page_table64;
+} ALIGN(4096) page_table64;
 
 paging_flags mmu_flags_to_pte(mmu_flags_t flags);
 mmu_flags_t pte_to_mmu_flags(paging_flags pte);

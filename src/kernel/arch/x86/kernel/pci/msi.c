@@ -21,24 +21,24 @@
 
 #define MODULE "x86-msi"
 
-status_t msi_arch_set_vector(pci_device_t *dev, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity)
+status_t msi_arch_set_vector(pci_device_t *pci_dev, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity)
 {
-    ENTER_FUNC("%p, 0x%x, %i, %u, %u", dev, vector, target, trigger, polarity);
+    ENTER_FUNC("%p, 0x%x, %i, %u, %u", pci_dev, vector, target, trigger, polarity);
     cpu_entry_t *entry = cpu_get_entry(target);
     uint32_t message_data = (trigger << 15) | (polarity << 14) | (DELI_FIXED << 8) | vector;
-    // if (dev->msi_addr_mask == BIT_RANGE(31, 0))
+    // if (pci_dev->msi_addr_mask == BIT_RANGE(31, 0))
     {
-        msi_pci_write32(dev, PCI_MSI_MASK_32, message_data);
+        msi_pci_write32(pci_dev, PCI_MSI_MASK_32, message_data);
     }
     // else
     // {
-    //     msi_pci_write32(dev, PCI_MSI_DATA_64, message_data);
+    //     msi_pci_write32(pci_dev, PCI_MSI_DATA_64, message_data);
     // }
-    msi_enable(dev);
-    return msi_pci_write32(dev, PCI_MSI_ADDRESS_LO, (0xFEE << 20) | (entry->arch_id << 12));
+    msi_enable(pci_dev);
+    return msi_pci_write32(pci_dev, PCI_MSI_ADDRESS_LO, (0xFEE << 20) | (entry->arch_id << 12));
 }
 
-/* status_t msi_arch_register(pci_device_t *dev, irq_trigger_t trigger, irq_polarity_t polarity, interrupt_vector_t vector, cpu_logical_id_t target)
+/* status_t msi_arch_register(pci_device_t *pci_dev, irq_trigger_t trigger, irq_polarity_t polarity, interrupt_vector_t vector, cpu_logical_id_t target)
 {
 
 } */

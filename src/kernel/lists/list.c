@@ -12,12 +12,16 @@
 
 #include "kerrno.h"
 
+#include "memory.h"
+
 #include <defs.h>
 
 #define MODULE "list"
 
 void list_initialize(list_t *list)
 {
+    ENTER_FUNC("%p", list);
+    memset(&list->list_lock, 0, sizeof(spinlock_t));
     list->has_initialize = true;
     list->count = 0;
     list->head = NULL;
@@ -34,9 +38,10 @@ status_t list_push_head(list_t *list, list_node_t *node)
     {
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "node is null");
     }
-    spinlock_acquire(&list->list_lock);
+    spinlock_acquire_log(&list->list_lock);
     if (!list->has_initialize)
     {
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "list has not been initialized");
     }
     node->next = list->head;
@@ -62,12 +67,13 @@ status_t list_push_head(list_t *list, list_node_t *node)
         cur->curr_index++;
         cur = cur->next;
     }
-    spinlock_release(&list->list_lock);
+    spinlock_release_log(&list->list_lock);
     return KERRNO_SUCCESSES;
 }
 
 status_t list_push_tail(list_t *list, list_node_t *node)
 {
+    ENTER_FUNC("%p, %p", list, node);
     if (!list)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "list is null");
@@ -76,9 +82,10 @@ status_t list_push_tail(list_t *list, list_node_t *node)
     {
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "node is null");
     }
-    spinlock_acquire(&list->list_lock);
+    spinlock_acquire_log(&list->list_lock);
     if (!list->has_initialize)
     {
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "list has not been initialized");
     }
 
@@ -98,7 +105,7 @@ status_t list_push_tail(list_t *list, list_node_t *node)
 
     list->tail = node;
     list->count++;
-    spinlock_release(&list->list_lock);
+    spinlock_release_log(&list->list_lock);
     return KERRNO_SUCCESSES;
 }
 
@@ -142,6 +149,7 @@ status_t list_reindex(list_t *list)
     spinlock_acquire(&list->list_lock);
     if (!list->has_initialize)
     {
+        spinlock_release(&list->list_lock);
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "list has not been initialized");
     }
     status_t ret = list_internal_reindex(list);
@@ -155,21 +163,21 @@ list_node_t *list_pop_head(list_t *list)
     {
         KERRNO_RETURN_TYPE(KERRNO_BAD_VALUE, list_node_t *, "list is null");
     }
-    spinlock_acquire(&list->list_lock);
+    spinlock_acquire_log(&list->list_lock);
     if (!list->has_initialize)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN_TYPE(KERRNO_NOT_INITIALIZED, list_node_t *, "list has not been initialized");
     }
     if (list->count == 0)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN_TYPE(KERRNO_NOT_ALLOWED, list_node_t *, "empty list");
     }
     list_node_t *curr_node = list->head;
     if (!curr_node)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN_TYPE(KERRNO_NOT_ALLOWED, list_node_t *, "empty list");
     }
 
@@ -188,7 +196,7 @@ list_node_t *list_pop_head(list_t *list)
     list->count--;
 
     list_internal_reindex(list);
-    spinlock_release(&list->list_lock);
+    spinlock_release_log(&list->list_lock);
     return curr_node;
 }
 
@@ -198,21 +206,21 @@ list_node_t *list_pop_tail(list_t *list)
     {
         KERRNO_RETURN_TYPE(KERRNO_BAD_VALUE, list_node_t *, "list is null");
     }
-    spinlock_acquire(&list->list_lock);
+    spinlock_acquire_log(&list->list_lock);
     if (!list->has_initialize)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN_TYPE(KERRNO_NOT_INITIALIZED, list_node_t *, "list has not been initialized");
     }
     if (list->count == 0)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN_TYPE(KERRNO_NOT_ALLOWED, list_node_t *, "empty list");
     }
     list_node_t *curr_node = list->tail;
     if (!curr_node)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         return NULL; // empty list
     }
 
@@ -229,7 +237,7 @@ list_node_t *list_pop_tail(list_t *list)
     curr_node->next = NULL;
     curr_node->prev = NULL;
     list->count--;
-    spinlock_release(&list->list_lock);
+    spinlock_release_log(&list->list_lock);
     return curr_node;
 }
 
@@ -244,14 +252,15 @@ status_t list_remove(list_t *list, list_node_t *node)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "list is null");
     }
-    spinlock_acquire(&list->list_lock);
+    spinlock_acquire_log(&list->list_lock);
     if (!list->has_initialize)
     {
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "list has not been initialized");
     }
     if (list->count == 0)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "empty list");
     }
 
@@ -263,7 +272,7 @@ status_t list_remove(list_t *list, list_node_t *node)
 
     if (curr == NULL)
     {
-        spinlock_release(&list->list_lock);
+        spinlock_release_log(&list->list_lock);
         KERRNO_RETURN(KERRNO_BAD_DATA, "couldn't find the node");
     }
 
@@ -291,7 +300,7 @@ status_t list_remove(list_t *list, list_node_t *node)
 
     list_internal_reindex(list);
 
-    spinlock_release(&list->list_lock);
+    spinlock_release_log(&list->list_lock);
     return 0;
 }
 

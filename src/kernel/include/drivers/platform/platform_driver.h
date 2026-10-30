@@ -12,8 +12,8 @@
 
 typedef struct platform_driver
 {
-    status_t (*probe)(platform_device_t *dev);
-    void (*remove)(platform_device_t *dev);
+    status_t (*probe)(platform_device_t *platform_dev);
+    void (*remove)(platform_device_t *platform_dev);
 
     driver_t driver;
 } platform_driver_t;

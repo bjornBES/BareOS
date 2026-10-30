@@ -21,13 +21,13 @@
 status_t platform_bus_match(device_t *dev, driver_t *drv)
 {
     ENTER_FUNC("%p, %p", dev, drv);
-    platform_device_t *pdev = to_platform_dev(dev);
-    platform_driver_t *pdrv = to_platform_driver(drv);
+    platform_device_t *platform_dev = to_platform_dev(dev);
+    platform_driver_t *platform_drv = to_platform_driver(drv);
 
-    trace_debug(MODULE, "pdev->name = %p, drv->name = %p", pdev->name, drv->name);
-    trace_debug(MODULE, "pdev->name = \"%s\", drv->name = \"%s\"", pdev->name, drv->name);
+    trace_debug(MODULE, "platform_dev->name = %p, drv->name = %p", platform_dev->name, drv->name);
+    trace_debug(MODULE, "platform_dev->name = \"%s\", drv->name = \"%s\"", platform_dev->name, drv->name);
 
-    if (strcmp(pdev->name, drv->name) == 0)
+    if (strcmp(platform_dev->name, drv->name) == 0)
     {
         return KERRNO_SUCCESSES;
     }
@@ -37,19 +37,19 @@ status_t platform_bus_match(device_t *dev, driver_t *drv)
 status_t platform_bus_probe(device_t *dev)
 {
     ENTER_FUNC("%p", dev);
-    platform_device_t *pdev = to_platform_dev(dev);
-    platform_driver_t *pdrv = to_platform_driver(dev->driver);
+    platform_device_t *platform_dev = to_platform_dev(dev);
+    platform_driver_t *platform_drv = to_platform_driver(dev->driver);
 
     status_t ret = 0;
 
-    if (pdrv->probe)
+    if (platform_drv->probe)
     {
-        ret = pdrv->probe(pdev);
+        ret = platform_drv->probe(platform_dev);
     }
 
     if (ret != KERRNO_SUCCESSES)
     {
-        pdev->driver = NULL;
+        platform_dev->driver = NULL;
         return ret;
     }
     return ret;

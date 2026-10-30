@@ -61,7 +61,8 @@ status_t bus_for_each_driver(bus_type_t *bus, driver_t *curr, void *data, status
 
 status_t bus_probe_device(device_t *dev)
 {
-    device_initial_probe(dev);
+    status_t ret = 0;
+    ret = device_initial_probe(dev);
 
 /*     dev->bus->probe(dev);
     trace_info(MODULE, "device %p needs a driver", dev);
@@ -78,5 +79,18 @@ status_t bus_probe_device(device_t *dev)
         }
     } */
 
-    return KERRNO_SUCCESSES;
+    return ret;
+}
+
+status_t bus_remove_device(device_t *dev)
+{
+    if (dev->driver)
+    {
+        status_t ret = dev->driver->remove(dev);
+        dev->driver = NULL;
+        return ret;
+    }
+
+    IMPLEMENTED_QUICK_AND_DIRTY();
+    KERRNO_RETURN(KERRNO_DONT_DO_THAT, "");
 }

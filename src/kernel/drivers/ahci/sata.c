@@ -60,11 +60,11 @@ uint32_t sata_find_cmdslot(ahci_port_priv_t *aport)
     return 0xFFFFFFFF;
 }
 
-status_t sata_read_sectors(device_t *dev, void *buf, size_t count, off_t sector, ssize_t *size_out)
+status_t sata_read_sectors(blkdev_t *blk_dev, void *buf, size_t count, off_t sector, ssize_t *size_out)
 {
     // log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
     // log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
-    ahci_port_priv_t *aport = dev->drv_data;
+    ahci_port_priv_t *aport = blk_dev->dev.drv_data;
 
     ahci_cmd_request_t req = {
         .command = SATA_READ_DMA_EX,
@@ -72,7 +72,7 @@ status_t sata_read_sectors(device_t *dev, void *buf, size_t count, off_t sector,
         .is_write = false,
         .buffer = (vaddr_t)buf,
         .sector_count = count,
-        .buffer_size = (count * 512),
+        .buffer_size = (count * blk_dev->sector_size),
     };
     *size_out = count;
     return ahci_submit(aport, &req);
@@ -156,10 +156,10 @@ int sata_identify_aport(sata_port_t *aport, ahci_port_priv_t *ahci_port, vaddr_t
 
 extern void hexdump(void *ptr, size_t len, size_t size);
 
-status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_priv_t *aport, device_t **out_dev)
+status_t sata_init_port(pci_device_t *pci_dev, ahci_host_priv_t *host, ahci_port_priv_t *aport, blkdev_t **blk_dev_out)
 {
-    sata_port_t *sata_aport = kmalloc(sizeof(sata_port_t));
-    memset(sata_aport, 0, sizeof(sata_port_t));
+    ENTER_FUNC("%p, %p, %p, %p", pci_dev, host, aport, blk_dev_out);
+    sata_port_t *sata_aport = kzmalloc(sizeof(sata_port_t));
     sata_aport->abar = host->abar;
     sata_aport->ahci_port = aport;
     aport->port_priv = sata_aport;
@@ -169,13 +169,14 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
     ahci_initialize_aport(aport);
     sata_identify_aport(sata_aport, aport, (vaddr_t)aport->identify);
 
-    device_t *dev;
-    block_device_create(&dev);
-    dev_set_no_driver(dev);
-    *out_dev = dev;
+    blkdev_t *blk_dev;
+    status_t ret = block_device_create(&blk_dev);
+    KERRNO_CHECK_RETURN(ret);
 
-    dev->ops.read = sata_read_sectors;
-
+    *blk_dev_out = blk_dev;
+    
+    blk_dev->ops.read_sectors = sata_read_sectors;
+    
     aport->drive = host->ahci_devices_count;
 
     trace_debug(MODULE, "getting name");
@@ -190,10 +191,10 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
         name[i + 1] = aport->identify->model[i];
     }
 
-    dev->drv_data = aport;
+    blk_dev->dev.drv_data = aport;
     // dev->read = ahci_read;
     // dev->write = ahci_write;
-    dev->init_name = "sata";
+    blk_dev->dev.init_name = "sata";
     // dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
 
     // partition_block_device_register(dev);
@@ -204,11 +205,24 @@ status_t sata_init_port(pci_device_t *pdev, ahci_host_priv_t *host, ahci_port_pr
         total_sectors = aport->identify->lba48_sectors;
     }
 
-    blkdev_t *class_data = dev->class_data;
-    class_data->sector_start = 0;
-    class_data->sectors_count = total_sectors;
+    // uint16_t sector_size = aport->identify->physical_logical & 0xF000;
+    // trace_info(MODULE, "size = 0x%x, 0x%x", (sector_size >> (16-4)), aport->identify->logical_sector_size);
+
+    if (aport->identify->physical_logical & BIT(3))
+    {
+        FUNC_NOT_IMPLEMENTED();
+        blk_dev->sector_size = 0;
+    }
+    else
+    {
+        blk_dev->sector_size = 512;
+    }
+
+    blk_dev->sector_start = 0;
+    blk_dev->sectors_count = total_sectors;
 
     // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
     trace_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
+
     return KERRNO_SUCCESSES;
 }

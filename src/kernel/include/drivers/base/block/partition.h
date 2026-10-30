@@ -12,6 +12,6 @@
 
 #include <types.h>
 
-status_t part_detect(device_t *dev, blkdev_t *blk_dev);
+status_t part_detect(blkdev_t *blk_dev);
 
-status_t mbr_detect(device_t *dev, void *mbr);
+status_t mbr_detect(blkdev_t *blk_dev, void *mbr);

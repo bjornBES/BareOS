@@ -31,7 +31,7 @@ void mutex_init(mutex_t *m)
 void mutex_lock(mutex_t *m)
 {
     #if CONFIG_MUTEX == 1
-    // ENTER_FUNC(MODULE, "%p", m);
+    ENTER_FUNC(MODULE, "%p", m);
     thread_t *self = THISCPU()->current;
 
     spinlock_acquire(&m->lock);

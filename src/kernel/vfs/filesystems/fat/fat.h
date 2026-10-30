@@ -37,7 +37,7 @@ typedef union fat_date
         uint16_t month : 4;
         uint16_t day : 5;
     };
-} __attribute__((packed)) fat_date_t;
+} PACKED fat_date_t;
 
 typedef union fat_time
 {
@@ -48,7 +48,7 @@ typedef union fat_time
         uint16_t min : 6;
         uint16_t sec : 5;
     };
-} __attribute__((packed)) fat_time_t;
+} PACKED fat_time_t;
 
 typedef enum fat_attributes
 {

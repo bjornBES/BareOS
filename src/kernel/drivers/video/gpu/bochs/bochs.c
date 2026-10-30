@@ -89,10 +89,10 @@ status_t bochs_dispi_write(bochs_device_t *bochs_dev, uint16_t reg, uint16_t val
     return 0;
 }
 
-status_t bochs_set_mode(display_device_t *dev, const display_mode_t *mode)
+status_t bochs_set_mode(display_device_t *display_dev, const display_mode_t *mode)
 {
-    ENTER_FUNC("%p, %p", dev, mode);
-    bochs_device_t *b = dev->priv;
+    ENTER_FUNC("%p, %p", display_dev, mode);
+    bochs_device_t *b = display_dev->priv;
 
     if ((uint64_t)mode->w * mode->h * (mode->bpp / 8) > b->fb_size)
     {
@@ -105,10 +105,10 @@ status_t bochs_set_mode(display_device_t *dev, const display_mode_t *mode)
     bochs_dispi_write(b, VBE_DISPI_INDEX_BPP, mode->bpp);
     bochs_dispi_write(b, VBE_DISPI_INDEX_ENABLE, 0x01 | 0x40);
 
-    dev->frame_buffer.width = mode->w;
-    dev->frame_buffer.height = mode->h;
-    dev->frame_buffer.bpp = mode->bpp;
-    dev->frame_buffer.pitch = bochs_dispi_read(b, VBE_DISPI_INDEX_VIRT_WIDTH) * mode->bpp / 8;
+    display_dev->frame_buffer.width = mode->w;
+    display_dev->frame_buffer.height = mode->h;
+    display_dev->frame_buffer.bpp = mode->bpp;
+    display_dev->frame_buffer.pitch = bochs_dispi_read(b, VBE_DISPI_INDEX_VIRT_WIDTH) * mode->bpp / 8;
     return KERRNO_SUCCESSES;
 }
 
@@ -118,15 +118,15 @@ static display_driver_t bochs_video_device = {
 };
 // MODULE_VIDEO_DRIVER(bochs_video_device)
 
-status_t bochs_pci_probe(pci_device_t *pdev, pci_device_id_t *ent)
+status_t bochs_pci_probe(pci_device_t *pci_dev, pci_device_id_t *ent)
 {
-    ENTER_FUNC("%p, %p", pdev, ent);
+    ENTER_FUNC("%p, %p", pci_dev, ent);
 
     status_t ret = 0;
 
-    ret = pci_set_bus_master(pdev, 1);
-    ret |= pci_set_command_flags(pdev, PCI_COMMAND_MEMORY | PCI_COMMAND_IO);
-    ret |= pci_clear_command_flags(pdev, PCI_COMMAND_INTX_DISABLE);
+    ret = pci_set_bus_master(pci_dev, 1);
+    ret |= pci_set_command_flags(pci_dev, PCI_COMMAND_MEMORY | PCI_COMMAND_IO);
+    ret |= pci_clear_command_flags(pci_dev, PCI_COMMAND_INTX_DISABLE);
     if (ret != KERRNO_SUCCESSES)
     {
         return KERRNO_UNSUCCESS;
@@ -136,7 +136,7 @@ status_t bochs_pci_probe(pci_device_t *pdev, pci_device_id_t *ent)
 
     pci_bar_t memory_bar;
     pci_bar_t io_bar;
-    ret = pci_get_bar(pdev, 0, &memory_bar);
+    ret = pci_get_bar(pci_dev, 0, &memory_bar);
     if (ret != KERRNO_SUCCESSES)
     {
         return KERRNO_UNSUCCESS;
@@ -157,18 +157,18 @@ status_t bochs_pci_probe(pci_device_t *pdev, pci_device_id_t *ent)
     display_dev->driver = &bochs_video_device;
     display_dev->priority = 5;
 
-    ret = pci_get_bar(pdev, 2, &io_bar);
+    ret = pci_get_bar(pci_dev, 2, &io_bar);
     if (ret == KERRNO_SUCCESSES)
     {
         trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", io_bar.base, io_bar.is_64bit BOOL_TO_STRING, io_bar.is_mmio BOOL_TO_STRING, io_bar.prefetchable BOOL_TO_STRING, io_bar.size);
-        resource_request(&mem_space.root, &pdev->driver_exclusive_resource, io_bar.base, io_bar.base + io_bar.size, "mmio", RES_TYPE_PCI_BAR, RES_FLAG_NONE);
+        resource_request(&mem_space.root, &pci_dev->driver_exclusive_resource, io_bar.base, io_bar.base + io_bar.size, "mmio", RES_TYPE_PCI_BAR, RES_FLAG_NONE);
         bochs_dev->mmio = ioremap(io_bar.base, io_bar.size);
         resource_t *vga_io = resource_create();
         resource_request(&io_space.root, vga_io, 0x3C0, 0x3DF, "standard vga io", 0, RES_FLAG_NONE);
     }
     else
     {
-        resource_request(&io_space.root, &pdev->driver_exclusive_resource, 0x3C0, 0x3DF, "standard vga io", 0, RES_FLAG_NONE);
+        resource_request(&io_space.root, &pci_dev->driver_exclusive_resource, 0x3C0, 0x3DF, "standard vga io", 0, RES_FLAG_NONE);
     }
 
     uint16_t id = bochs_dispi_read(bochs_dev, VBE_DISPI_INDEX_ID);
@@ -200,15 +200,15 @@ status_t bochs_pci_probe(pci_device_t *pdev, pci_device_id_t *ent)
 
     display_register(display_dev);
 
-    /*     while (true)
-        {
-            ;
-        } */
+    // while (true)
+    // {
+    //     ;
+    // }
 
     return KERRNO_SUCCESSES;
 }
 
-void bochs_pci_remove(pci_device_t *pdev)
+void bochs_pci_remove(pci_device_t *pci_dev)
 {
 }
 

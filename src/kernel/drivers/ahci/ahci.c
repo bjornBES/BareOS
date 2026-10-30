@@ -13,6 +13,7 @@
 #include "asm/mmu_arch.h"
 
 #include "drivers/base/driver.h"
+#include "drivers/base/block/blkdevt.h"
 
 #include "resource/resource.h"
 
@@ -118,16 +119,16 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
     aport->slot_bitmap = 0;
     for (int i = 0; i < 32; i++)
     {
-        #if CONFIG_SEMAPHORE == 1
+#if CONFIG_SEMAPHORE == 1
         sem_init(&aport->cmds[i].done, 0); // 0 = nothing completed yet
-        #endif
-        #if CONFIG_DMA == 1
+#endif
+#if CONFIG_DMA == 1
         aport->cmds[i].dma = dma_allocate(MAX_TRANSFER_SIZE);
         if (aport->cmds[i].dma == NULL)
         {
             KERNEL_PANIC(MODULE, "OMM");
         }
-        #endif
+#endif
     }
 
     port->ie.ie = BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(22) | BIT(23) | BIT(24) | BIT(26) | BIT(27) | BIT(28) | BIT(29) | BIT(30);
@@ -355,11 +356,11 @@ int ahci_check_type(hba_port_t *port)
     }
 }
 
-status_t ahci_init_abar(pci_device_t *dev, ahci_host_priv_t *host)
+status_t ahci_init_abar(pci_device_t *pci_dev, ahci_host_priv_t *host)
 {
-    ENTER_FUNC("%p, %p", dev, host);
+    ENTER_FUNC("%p, %p", pci_dev, host);
 
-    if (dev->msi_cap != 0)
+    if (pci_dev->msi_cap != 0)
     {
     }
 
@@ -379,29 +380,29 @@ status_t ahci_init_abar(pci_device_t *dev, ahci_host_priv_t *host)
                 host->aports[host->ahci_devices_count].host_priv = host;
                 host->aports[host->ahci_devices_count].port = &host->abar->ports[i];
                 host->aports[host->ahci_devices_count].ahci_index = i;
-                device_t *port_dev;
+                blkdev_t *blk_dev;
                 host->ahci_devices_count++;
-                sata_init_port(dev, host, &host->aports[host->ahci_devices_count - 1], &port_dev);
-                
-                device_add(port_dev);
+                sata_init_port(pci_dev, host, &host->aports[host->ahci_devices_count - 1], &blk_dev);
+
+                device_add(&blk_dev->dev);
             }
         }
     }
     return KERRNO_SUCCESSES;
 }
 
-status_t ahci_init_irq(pci_device_t *dev, ahci_host_priv_t *host_priv)
+status_t ahci_init_irq(pci_device_t *pci_dev, ahci_host_priv_t *host_priv)
 {
     size_t nvec = 0;
     status_t ret = 0;
-    if (dev->no_msi == 1)
+    if (pci_dev->no_msi == 1)
     {
         trace_crit(MODULE, "intx path");
         FUNC_NOT_IMPLEMENTED();
         // INTX path
     }
 
-    ret = pci_init_irq(dev, host_priv->nports, SIZE_MAX, PCI_IRQ_MSI);
+    ret = pci_init_irq(pci_dev, host_priv->nports, SIZE_MAX, PCI_IRQ_MSI);
     if (ret != KERRNO_SUCCESSES)
     {
         return ret;
@@ -450,10 +451,10 @@ void ahci_isr_port_handler(ahci_port_priv_t *aport)
     }
 }
 
-status_t ahci_handler(pci_device_t *dev)
+status_t ahci_handler(pci_device_t *pci_dev)
 {
-    ENTER_FUNC("%p", dev);
-    ahci_host_priv_t *host_priv = dev->priv;
+    ENTER_FUNC("%p", pci_dev);
+    ahci_host_priv_t *host_priv = pci_dev->priv;
 
     uint32_t is = host_priv->abar->is;
     // log_debug(MODULE, "is = 0b%b", is);
@@ -484,18 +485,18 @@ status_t ahci_handler(pci_device_t *dev)
     return KERRNO_SUCCESSES;
 }
 
-status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
+status_t ahci_init_one(pci_device_t *pci_dev, pci_device_id_t *id)
 {
-    ENTER_FUNC("%p, %p", dev, id);
+    ENTER_FUNC("%p, %p", pci_dev, id);
 
     ahci_host_priv_t *host_priv = kmalloc(sizeof(ahci_host_priv_t));
-    dev->priv = host_priv;
+    pci_dev->priv = host_priv;
 
     status_t ret = 0;
 
-    ret = pci_set_bus_master(dev, 1);
-    ret |= pci_set_command_flags(dev, PCI_COMMAND_MEMORY);
-    ret |= pci_clear_command_flags(dev, PCI_COMMAND_INTX_DISABLE);
+    ret = pci_set_bus_master(pci_dev, 1);
+    ret |= pci_set_command_flags(pci_dev, PCI_COMMAND_MEMORY);
+    ret |= pci_clear_command_flags(pci_dev, PCI_COMMAND_INTX_DISABLE);
 
     if (ret != KERRNO_SUCCESSES)
     {
@@ -509,8 +510,10 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
     // trace_debug(MODULE, "", sizeof(hba_mem_t), sizeof(hba_port_t));
     // 0x1100
 
+    pci_dev->dev.parent = NULL;
+
     pci_bar_t ahci_bar;
-    ret = pci_get_bar(dev, bar_index, &ahci_bar);
+    ret = pci_get_bar(pci_dev, bar_index, &ahci_bar);
 
     if (ret != KERRNO_SUCCESSES)
     {
@@ -523,32 +526,33 @@ status_t ahci_init_one(pci_device_t *dev, pci_device_id_t *id)
         KERRNO_RETURN(KERRNO_DONT_DO_THAT, "bar%u is I/O", bar_index);
     }
 
-    ret = pci_map_bar(dev, bar_index, (void *)&host_priv->abar);
+    ret = pci_map_bar(pci_dev, bar_index, (void *)&host_priv->abar);
     if (ret != KERRNO_SUCCESSES)
     {
         return KERRNO_UNSUCCESS;
     }
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", host_priv->abar, ahci_bar.is_64bit BOOL_TO_STRING, ahci_bar.is_mmio BOOL_TO_STRING, ahci_bar.prefetchable BOOL_TO_STRING, ahci_bar.size);
 
-    resource_request(&mem_space.root, &dev->driver_exclusive_resource, ahci_bar.base, ahci_bar.base + ahci_bar.size, "ahci bar", dev->resource[bar_index].type, dev->resource[bar_index].flags);
+    resource_request(&mem_space.root, &pci_dev->driver_exclusive_resource, ahci_bar.base, ahci_bar.base + ahci_bar.size, "ahci bar", pci_dev->resource[bar_index].type, pci_dev->resource[bar_index].flags);
 
     uint32_t pi = host_priv->abar->pi;
     host_priv->nports = host_priv->abar->cap.NP + 1;
 
-    dev->dev.init_name = "AHCI";
-    device_add(&dev->dev);
+    device_t *dev = &pci_dev->dev;
+    dev->init_name = "AHCI";
+    device_add(dev);
 
-    ahci_init_irq(dev, host_priv);
+    ahci_init_irq(pci_dev, host_priv);
 
     interrupt_vector_t vector;
     kernel_irq_t irq;
-    ret = pci_get_irq(dev, &vector, &irq);
-    dev->handler = ahci_handler;
+    ret = pci_get_irq(pci_dev, &vector, &irq);
+    pci_dev->ops.handler = ahci_handler;
 
-    return ahci_init_abar(dev, host_priv);
+    return ahci_init_abar(pci_dev, host_priv);
 }
 
-void ahci_remove_one(pci_device_t *dev)
+void ahci_remove_one(pci_device_t *pci_dev)
 {
     return;
 }

@@ -183,7 +183,7 @@ status_t resource_request(resource_t *parent, resource_t *out, resource_size_t s
     out->sibling = NULL;
 
     resource_do_insert(parent, out);
-    resource_dump(parent);
+    // resource_dump(parent);
     return KERRNO_SUCCESSES;
 }
 

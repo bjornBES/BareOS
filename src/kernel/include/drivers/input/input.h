@@ -14,5 +14,5 @@
 
 #include <types.h>
 
-status_t input_report_key(input_dev_t *dev, key_event_t *key);
+status_t input_report_key(input_dev_t *input_dev, key_event_t *key);
 input_dev_t *input_create_device();

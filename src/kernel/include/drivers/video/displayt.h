@@ -31,6 +31,7 @@ typedef struct display_driver display_driver_t;
 
 typedef struct display_device
 {
+    device_t dev;
     LIST_ENTRY_THIS();
 
     const display_driver_t *driver;
@@ -38,7 +39,6 @@ typedef struct display_device
     video_framebuffer_t frame_buffer;
     int priority; // firmware = 0, native driver = higher
 
-    device_t dev;
 
     void *priv;
 } display_device_t;
@@ -46,9 +46,9 @@ typedef struct display_device
 typedef struct display_driver
 {
     const char *name;                                                                         // "bochs", "firmware-fb"
-    status_t (*set_mode)(display_device_t *dev, const display_mode_t *mode);                  // optional
-    status_t (*flush)(display_device_t *dev, uint32_t x, uint32_t y, uint32_t w, uint32_t h); // optional
-    status_t (*release)(display_device_t *dev);                                               // handoff / unregister
+    status_t (*set_mode)(display_device_t *display_dev, const display_mode_t *mode);                  // optional
+    status_t (*flush)(display_device_t *display_dev, uint32_t x, uint32_t y, uint32_t w, uint32_t h); // optional
+    status_t (*release)(display_device_t *display_dev);                                               // handoff / unregister
 
 } display_driver_t;
 

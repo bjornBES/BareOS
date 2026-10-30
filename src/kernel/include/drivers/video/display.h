@@ -21,25 +21,25 @@
 #define MODULE_VIDEO_DRIVER(__video_driver)                                           \
     MODULE_DRIVER(__video_driver, display_driver_register, display_driver_unregister)
 
-typedef status_t (*display_listener_t)(display_device_t *new_primary, void *ctx);
+typedef status_t (*display_listener_t)(display_device_t *new_primary_display_dev, void *ctx);
 
 display_device_t *display_create();
 
-status_t display_register(display_device_t *dev);
-status_t display_unregister(display_device_t *dev);
+status_t display_register(display_device_t *display_dev);
+status_t display_unregister(display_device_t *display_dev);
 display_device_t *display_get_primary();
 
 status_t display_driver_register(display_driver_t *drv);
 status_t display_driver_unregister(display_driver_t *drv);
 
-status_t display_set_mode(display_device_t *dev, const display_mode_t *m);
-status_t display_set_default_mode(display_device_t *dev);
-status_t display_flush(display_device_t *dev, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-const video_framebuffer_t *display_get_fb(display_device_t *dev);
+status_t display_set_mode(display_device_t *display_dev, const display_mode_t *m);
+status_t display_set_default_mode(display_device_t *display_dev);
+status_t display_flush(display_device_t *display_dev, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+const video_framebuffer_t *display_get_fb(display_device_t *display_dev);
 
 status_t display_add_listener(display_listener_t cb, void *ctx);
 
-status_t display_notify_listeners(display_device_t *dev);
+status_t display_notify_listeners(display_device_t *display_dev);
 
 status_t display_draw_putpixel(const video_framebuffer_t *fb, uint32_t x, uint32_t y, color_t color);
 status_t display_draw_fillrect(const video_framebuffer_t *fb, uint32_t x, uint32_t y, uint32_t w, uint32_t h, color_t color);

@@ -14,5 +14,5 @@
 
 #include <types.h>
 
-status_t pci_msi_init(pci_device_t *dev);
-status_t pci_msix_init(pci_device_t *dev);
+status_t pci_msi_init(pci_device_t *pci_dev);
+status_t pci_msix_init(pci_device_t *pci_dev);

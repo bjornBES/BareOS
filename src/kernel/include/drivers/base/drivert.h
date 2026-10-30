@@ -20,7 +20,6 @@
 
 typedef struct device device_t;
 
-
 typedef struct driver
 {
     const char *name;
@@ -29,7 +28,7 @@ typedef struct driver
     size_t match_count;
 
     status_t (*probe)(device_t *dev);   // called when a match is found, driver decides accept/reject
-    void (*remove)(device_t *dev);      // hot-unplug / teardown
+    status_t (*remove)(device_t *dev);  // hot-unplug / teardown
     status_t (*suspend)(device_t *dev); // optional, power state transitions
     status_t (*resume)(device_t *dev);
 

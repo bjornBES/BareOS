@@ -13,6 +13,7 @@
 #include "classt.h"
 
 status_t class_add_device(device_t *dev);
+status_t class_remove_device(device_t *dev);
 
 status_t class_list_devices();
 

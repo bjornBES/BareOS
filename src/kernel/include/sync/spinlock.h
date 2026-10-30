@@ -14,5 +14,8 @@
 
 #include "asm/spinlocks_arch.h"
 
+void spinlock_acquire_log(spinlock_t *lock);
+void spinlock_release_log(spinlock_t *lock);
+
 void spinlock_acquire(spinlock_t *lock);
 void spinlock_release(spinlock_t *lock);

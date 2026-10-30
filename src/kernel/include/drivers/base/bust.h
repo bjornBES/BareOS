@@ -25,6 +25,8 @@ typedef struct bus_type
     status_t (*match)(device_t *dev, driver_t *drv);
 
     status_t (*probe)(device_t *dev);
+    
+    status_t (*remove)(device_t *dev);
 
     // status_t (*suspend)(device_t *dev);
     // status_t (*resume)(device_t *dev);
