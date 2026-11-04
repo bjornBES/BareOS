@@ -40,11 +40,16 @@ status_t display_device_added(device_t *dev)
 {
     return KERRNO_SUCCESSES;
 }
+status_t display_device_removed(device_t *dev)
+{
+    return KERRNO_SUCCESSES;
+}
 
-static dev_class_t video_class = {
+static const dev_class_t video_class = {
     .name = "video",
     .type = DEVICE_VIDEO,
-    .device_added = display_device_added
+    .device_added = display_device_added,
+    .device_removed = display_device_removed
 };
 
 status_t display_init()
@@ -65,6 +70,7 @@ display_device_t *display_create()
 
 status_t display_register(display_device_t *display_dev)
 {
+    ENTER_FUNC("%p", display_dev);
     ADD_THIS_TO_LIST(display_list, display_dev);
 
     if (!primary_display_dev)
@@ -83,6 +89,11 @@ status_t display_register(display_device_t *display_dev)
 
     dev_set_no_driver(&display_dev->dev);
     return device_register(&display_dev->dev);
+}
+
+display_device_t *display_get_primary()
+{
+    return primary_display_dev;
 }
 
 status_t display_add_listener(display_listener_t cb, void *ctx)

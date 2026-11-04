@@ -37,9 +37,6 @@
 #define BIT_ASSIGN(x, bit, value)   x = (((value == 1) ? (x) | BIT(bit) : (x) & (~BIT(bit))))
 #define BIT_TEST_AND_SET(x, bit)    ((x) = BIT_IS_SET(x, bit) ? (x) | (bit) : (x) & ~(bit))
 
-#define BITS_PER_BYTE               8
-#define BITS_PER_TYPE(type)         (sizeof(type) * BITS_PER_BYTE)
-
 #define FLAG_SET(x, flag)           ((x) |= (flag))
 #define FLAG_UNSET(x, flag)         ((x) &= ~(flag))
 #define FLAG_IS_SET(x, flag)        (((x) & (flag)) == (flag))
@@ -63,8 +60,8 @@
 #define KERNEL_DIV_ROUND_UP(n, d)  (((n) + (d) - 1) / (d))
 
 #define BITS_TO_LONGS(nr)          KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(long))
-#define BITS_TO_U64(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(u64))
-#define BITS_TO_U32(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(u32))
+#define BITS_TO_U64(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(uint64_t))
+#define BITS_TO_U32(nr)            KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(uint32_t))
 #define BITS_TO_BYTES(nr)          KERNEL_DIV_ROUND_UP(nr, BITS_PER_TYPE(char))
 
 #define BYTES_TO_BITS(nb)          ((nb) * BITS_PER_BYTE)

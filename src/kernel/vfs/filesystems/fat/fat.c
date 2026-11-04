@@ -57,7 +57,7 @@ status_t fat_read_sectors(void *buffer, sector_t sector, size_t sector_count, de
 {
     // ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, sector, sector_count, dev, sb);
     status_t ret = 0;
-    if (dev->class->type == DEVICE_BLOCK)
+    if (dev->class->type == block_class.type)
     {
         blkdev_t *blk_dev = to_blkdev(dev);
         ssize_t sector_read = 0;
@@ -84,7 +84,7 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 {
-    if (dev->class->type != DEVICE_BLOCK)
+    if (dev->class->type != block_class.type)
     {
         FUNC_NOT_IMPLEMENTED();
     }
@@ -163,7 +163,7 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 
 status_t fat_probe(device_t *dev)
 {
-    if (!dev->ops.read && dev->class->type == DEVICE_BLOCK)
+    if (!dev->ops.read && dev->class->type == block_class.type)
     {
         return KERRNO_UNSUCCESS;
     }
@@ -200,7 +200,7 @@ status_t fat_probe(device_t *dev)
 
 status_t fat_ident_fs(device_t *dev, fs_ident_t *ident)
 {
-    if (!dev->ops.read && dev->class->type == DEVICE_BLOCK)
+    if (!dev->ops.read && dev->class->type == block_class.type)
     {
         return KERRNO_UNSUCCESS;
     }

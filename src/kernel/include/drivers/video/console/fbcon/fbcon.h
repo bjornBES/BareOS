@@ -27,7 +27,6 @@ typedef struct fbcon_size
     uint32_t rows;
 } fbcon_size_t;
 
-status_t fbcon_putc(uint32_t cp);                   // handles \n \r \t \b and wrapping
 status_t fbcon_write(const char *s, size_t len);
 status_t fbcon_clear();                             // clears grid and screen, cursor to 0,0
 

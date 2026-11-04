@@ -16,6 +16,8 @@
 #include "drivers/base/bust.h"
 #include "drivers/base/classt.h"
 
+#include "vfs/vfs_internals.h"
+
 #include <types.h>
 #include <defs.h>
 #include <binary.h>
@@ -48,6 +50,7 @@ typedef struct device_ops
     status_t (*write)(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out);
     /// @brief TODO
     status_t (*poll)(device_t *dev);
+    status_t (*open)(device_t *dev);
     // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
 
     status_t (*destroy)(device_t *dev); // cleanup
@@ -57,7 +60,7 @@ typedef struct device
 {
     LIST_ENTRY_THIS();
     char name[DEVICE_NAME_MAX]; // built on register
-    const char *init_name;      // set by driver
+    char *init_name;      // set by driver
 
     void *bus_id;
 
@@ -71,13 +74,12 @@ typedef struct device
     driver_t *driver; // bound driver, if any
     void *drv_data;   // driver-private state, opaque to generic code
 
-    dev_class_t *class;
+    const dev_class_t *class;
     void *class_data;
 
     uint32_t flags;
 
     list_t children;
-    list_node_t *siblings;
 } device_t;
 
 THIS_TO_TYPE_DEF(device_t);
@@ -111,3 +113,12 @@ CREATE_DEV_FLAG_ACCESSORS(no_driver, DEV_FLAG_NO_DRIVER);
 CREATE_DEV_FLAG_ACCESSORS(same_name, DEV_FLAG_SAME_NAME);
 
 #undef CREATE_DEV_FLAG_ACCESSORS
+
+
+typedef struct dev_inode
+{
+    inode_t base;
+    device_id_t dev_id;
+} dev_inode_t;
+
+#define to_dev_inode(n) container_of(n, dev_inode_t, base);

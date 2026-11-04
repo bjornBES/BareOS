@@ -32,11 +32,13 @@
 static i8042_port_t i8042_ports[I8042_NUM_PORTS];
 
 status_t serio_device_added(device_t *dev) { return KERRNO_SUCCESSES; }
+status_t serio_device_removed(device_t *dev) { return KERRNO_SUCCESSES; }
 
-static dev_class_t i8042_class = {
+static const dev_class_t i8042_class = {
     .name = "serio",
     .type = DEVICE_SERIAL,
     .device_added = serio_device_added,
+    .device_removed = serio_device_removed,
 };
 
 status_t i8042_class_register()

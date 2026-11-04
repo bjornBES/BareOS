@@ -66,7 +66,7 @@
 
 static timer_callback_t pit_callback;
 
-uint32_64 ticks_timer = 0;
+uint32_64_t ticks_timer = 0;
 
 status_t pit_set_oneshot(timer_source_t *self, uint64_t ns, timer_callback_t cb)
 {

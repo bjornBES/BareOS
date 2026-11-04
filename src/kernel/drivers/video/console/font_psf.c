@@ -54,50 +54,17 @@ typedef struct
     uint32_t width;           /* width in pixels */
 } psf_font_t;
 
-status_t map_insert(font_unicode_map_t *m, uint32_t cp, uint32_t glyph)
+status_t map_insert(font_unicode_map_t *m, wchar_t ch, uint32_t glyph)
 {
-    ENTER_FUNC("%p, 0x%x, 0x%x", m, cp, glyph);
+    ENTER_FUNC("%p, 0x%x, 0x%x", m, ch, glyph);
     if (m->count >= m->cap)
     {
         m->cap <<= 1;
         m->e = krealloc(m->e, m->cap * sizeof(struct unicode_map_entry));
     }
-    m->e[m->count].cp = cp;
+    m->e[m->count].ch = ch;
     m->e[m->count].glyph = glyph;
     m->count++;
-    return KERRNO_SUCCESSES;
-}
-
-status_t map_lookup(const font_unicode_map_t *m, uint32_t cp, uint32_t *cp_out)
-{
-    // ENTER_FUNC("%p, 0x%x, %p", m, cp, cp_out);
-    if (cp_out == NULL)
-    {
-        KERRNO_RETURN(KERRNO_BAD_VALUE, "cp_out is NULL");
-    }
-    size_t lo = 0;
-    size_t hi = m->count;
-    while (lo < hi)
-    {
-        size_t mid = lo + (hi - lo) / 2;
-        if (m->e[mid].cp < cp)
-        {
-            lo = mid + 1;
-        }
-        else
-        {
-            hi = mid;
-        }
-    }
-    // trace_debug(MODULE, "lo = %u, m = %p", lo, m);
-    // trace_debug(MODULE, "m->e = %p", m->e);
-    // trace_debug(MODULE, "cp_out = %p", cp_out);
-    *cp_out = (lo < m->count && m->e[lo].cp == cp) ? m->e[lo].glyph : FONT_NO_GLYPH;
-    if (*cp_out == FONT_NO_GLYPH)
-    {
-        return KERRNO_ENTRY_NOT_FOUND;
-        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
-    }
     return KERRNO_SUCCESSES;
 }
 
@@ -105,7 +72,7 @@ int map_compare_cp(const void *blockA, const void *blockB)
 {
     struct unicode_map_entry *a = (struct unicode_map_entry *)blockA;
     struct unicode_map_entry *b = (struct unicode_map_entry *)blockB;
-    return ((int)a->cp) - ((int)b->cp);
+    return ((int)a->ch) - ((int)b->ch);
 }
 
 status_t map_finalize(const font_unicode_map_t *m)
@@ -213,7 +180,7 @@ status_t parse_psf1(font_t *out, const uint8_t *data, size_t size)
         }
     }
 
-    ret = map_lookup(out->map, '?', &out->fallback);
+    ret = font_map_lookup(out, '?', &out->fallback);
     // KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
     {
@@ -246,7 +213,8 @@ status_t font_psf_load(font_t *out, const void *data, size_t size)
 
 const font_t *psf_font_builtin()
 {
-    font_t *out = kmalloc(sizeof(font_t));
+    font_t *out = NULL;
+    font_alloc(&out);
     extern char _binary_font_psf_start;
     extern char _binary_font_psf_end;
     uint8_t *start = (uint8_t *)&_binary_font_psf_start;
@@ -254,71 +222,4 @@ const font_t *psf_font_builtin()
     size_t size = end - start;
     font_psf_load(out, start, size);
     return out;
-}
-
-status_t font_glyph_index(const font_t *font, uint32_t cp, uint32_t *out_cp)
-{
-    // ENTER_FUNC("%p, %x, %p", font, cp, out_cp);
-    if (out_cp == NULL)
-    {
-        KERRNO_RETURN(KERRNO_BAD_VALUE, "out_cp is NULL");
-    }
-    if (!font->map)
-    {
-        *out_cp = cp < font->glyph_count ? cp : FONT_NO_GLYPH;
-        if (*out_cp == FONT_NO_GLYPH)
-        {
-            KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
-        }
-        return KERRNO_SUCCESSES;
-    }
-    status_t ret = map_lookup(font->map, cp, out_cp);
-    // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
-    {
-        *out_cp = font->fallback;
-        return KERRNO_BAD_INDEX;
-        // KERRNO_RETURN(KERRNO_BAD_INDEX, "");
-    }
-    return ret;
-}
-
-status_t font_has_glyph(const font_t *font, uint32_t cp)
-{
-    uint32_t out_cp;
-    if (!font->map)
-    {
-        out_cp = cp < font->glyph_count ? cp : FONT_NO_GLYPH;
-        if (out_cp == FONT_NO_GLYPH)
-        {
-            KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
-        }
-        return KERRNO_SUCCESSES;
-    }
-    status_t ret = map_lookup(font->map, cp, &out_cp);
-    // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
-    {
-        return ret;
-    }
-    return ret;
-}
-
-status_t font_get_glyph(const font_t *font, uint32_t cp, uint8_t **out_glyph)
-{
-    // uint32_t out_cp;
-    // if (!font->map)
-    // {
-    //     out_cp = cp < font->glyph_count ? cp : FONT_NO_GLYPH;
-    //     if (out_cp == FONT_NO_GLYPH)
-    //     {
-    //         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
-    //     }
-    // }
-    // else
-    // {
-    //     map_lookup(font->map, cp, &out_cp);
-    // }
-    *out_glyph = (uint8_t *)(font->glyphs + cp * font->glyph_size);
-    return KERRNO_SUCCESSES;
 }

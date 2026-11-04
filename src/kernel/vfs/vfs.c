@@ -16,6 +16,8 @@
 #include "vfs/inode.h"
 #include "vfs/mount.h"
 
+#include "drivers/base/classt.h"
+
 #include "stdio.h"
 
 #include "kerrno.h"
@@ -88,7 +90,7 @@ status_t vfs_mount(device_t *dev, int flags)
         KERRNO_RETURN(KERRNO_UNSUCCESS, "%s dose not have ident_fs set", fs->name);
     }
 
-    if (dev->class->type != DEVICE_BLOCK)
+    if (dev->class->type != block_class.type)
     {
         FUNC_NOT_IMPLEMENTED();
     }

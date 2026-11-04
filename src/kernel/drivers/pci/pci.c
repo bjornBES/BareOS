@@ -472,11 +472,16 @@ status_t pci_device_added(device_t *dev)
 {
     return KERRNO_SUCCESSES;
 }
+status_t pci_device_removed(device_t *dev)
+{
+    return KERRNO_SUCCESSES;
+}
 
-static dev_class_t pcibus_class = {
+static const dev_class_t pcibus_class = {
     .name = "pci_bus",
     .type = DEVICE_PCI,
     .device_added = pci_device_added,
+    .device_removed = pci_device_removed,
 };
 
 void pci_check_buses()

@@ -10,8 +10,9 @@
 
 #pragma once
 
-#include "vfs/vfs_internals.h"
 #include "dev/devicet.h"
+#include "vfs/inodet.h"
+#include "vfs/vfs_internals.h"
 
 #include "drivers/base/block/blkdevt.h"
 

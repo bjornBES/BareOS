@@ -27,6 +27,7 @@ typedef enum dev_type
     DEVICE_PSEUDO, // /dev/null, /dev/zero, /dev/random
     DEVICE_VIRTUAL,
     DEVICE_PCI,
+    DEVICE_CONSOLE,
     DEVICE_TYPE_MAX,
 } dev_type_t;
 
@@ -45,3 +46,6 @@ typedef struct dev_class
     status_t (*device_added)(device_t *dev);
     status_t (*device_removed)(device_t *dev);
 } dev_class_t;
+
+extern const dev_class_t block_class;
+extern const dev_class_t tty_class;

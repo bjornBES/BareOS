@@ -69,17 +69,6 @@ void hexdump(void *ptr, size_t len, size_t size);
 #define log_debug(module, ...) __asm__("nop")
 #endif
 #define log_info(module, ...) logfl(module, LVL_INFO, __VA_ARGS__)
-#define info(module, ...)                        \
-    {                                            \
-        if (vfs_init_is_done == false)           \
-        {                                        \
-            log_info(module, __VA_ARGS__);       \
-        }                                        \
-        else                                     \
-        {                                        \
-            trace_with_id(4, LVL2, __VA_ARGS__); \
-        }                                        \
-    }
 
 #define log_warn(module, ...) logfl(module, LVL_WARN, __VA_ARGS__)
 #define warn(module, ...)                               \

@@ -53,3 +53,13 @@
 
 #define STRINGIFY_(x...)      #x
 #define STRINGIFY(x...)       STRINGIFY_(x)
+
+#define LIKELY(x)             __builtin_expect(!!(x), 1)
+#define UNLIKELY(x)           __builtin_expect(!!(x), 0)
+#define LIKELY_NOTRACE(x)     LIKELY(x)
+#define UNLIKELY_NOTRACE(x)   UNLIKELY(x)
+
+#define WARN_ON(condition)    ({       \
+    int __ret_warn_on = !!(condition); \
+    UNLIKELY(__ret_warn_on);           \
+})

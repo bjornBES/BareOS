@@ -21,12 +21,12 @@
 
 
 #ifdef __x86_64__
-typedef long long int32_64;
-typedef unsigned long long uint32_64;
+typedef long long int32_64_t;
+typedef unsigned long long uint32_64_t;
 typedef unsigned long long reg_t;
 #else
-typedef int int32_64;
-typedef unsigned int uint32_64;
+typedef int int32_64_t;
+typedef unsigned int uint32_64_t;
 typedef unsigned int reg_t;
 #endif
 typedef uint8_t interrupt_vector_t;
@@ -34,7 +34,7 @@ typedef uint8_t interrupt_vector_t;
 #define _SIGSET_NWORDS (int)(128 / sizeof(long))
 typedef struct __kernel_sigset_t
 {
-    uint32_64 __bits[_SIGSET_NWORDS];
+    uint32_64_t __bits[_SIGSET_NWORDS];
 } kernel_sigset_t;
 
 #define IRQ_MAX 222
@@ -43,10 +43,10 @@ typedef struct irq_mask
     long bits[BITS_TO_LONGS(IRQ_MAX)];
 } irq_mask_t;
 
-typedef uint32_64 sigset_t;
+typedef uint32_64_t sigset_t;
 
-typedef int32_64 suseconds_t;
-typedef uint32_64 time_t;
+typedef int32_64_t suseconds_t;
+typedef uint32_64_t time_t;
 
 typedef struct time_struct
 {
@@ -74,5 +74,5 @@ typedef struct timespec
     int : 8 * (sizeof(time_t) - sizeof(long)) * (__BYTE_ORDER != 4321);
 } timespec_t;
 
-typedef uint32_64 paddr_t;
-typedef uint32_64 vaddr_t;
+typedef uint32_64_t paddr_t;
+typedef uint32_64_t vaddr_t;

@@ -344,6 +344,7 @@ status_t buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
 
 status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_out)
 {
+    // ENTER_FUNC("%p, %u, %p", allocator, order, phys_out);
     buddy_t *global_buddy = allocator->priv;
     if (order >= BUDDY_MAX_ORDER)
     {

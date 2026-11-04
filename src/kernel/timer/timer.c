@@ -199,10 +199,20 @@ status_t timer_class_added(device_t *dev)
     return timer_register(src);
 }
 
-static dev_class_t timer_class = {
+status_t timer_class_removed(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
+
+    FUNC_NOT_IMPLEMENTED();
+
+    return KERRNO_SUCCESSES;
+}
+
+static const dev_class_t timer_class = {
     .name = "timer",
     .type = DEVICE_TIMER,
     .device_added = timer_class_added,
+    .device_removed = timer_class_removed,
 };
 
 status_t timer_init()

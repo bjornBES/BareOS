@@ -12,11 +12,17 @@
 #include "drivers/tty/tty.h"
 #include "drivers/tty/termbits.h"
 
+#include "drivers/tty/vt/vt.h"
+
+#include "drivers/base/core.h"
+
 #include "drivers/base/class.h"
 
 #include "dev/device.h"
 
 #include "ringbuf/ringbuf.h"
+
+#include "lists/list.h"
 
 #include "init.h"
 
@@ -56,35 +62,44 @@ termios_t tty_std_termios = {
     /* .c_line = N_TTY, */
 };
 
+device_t *console_dev;
+
+list_t tty_drivers;
+
 status_t tty_added(device_t *dev)
 {
     return KERRNO_SUCCESSES;
 }
 
-static dev_class_t tty_class = {
+status_t tty_removed(device_t *dev)
+{
+    return KERRNO_SUCCESSES;
+}
+
+const dev_class_t tty_class = {
     .name = "tty",
     .type = DEVICE_TTY,
     .device_added = tty_added,
+    .device_removed = tty_removed,
 };
 
 tty_struct_t *active_tty;
 
 status_t tty_init()
 {
+    list_initialize(&tty_drivers);
     class_register(&tty_class);
-    active_tty = kzmalloc(sizeof(tty_struct_t));
+    // active_tty = kzmalloc(sizeof(tty_struct_t));
+    // memcpy(&active_tty->termios, &tty_std_termios, sizeof(tty_std_termios));
 
-    memcpy(&active_tty->termios, &tty_std_termios, sizeof(tty_std_termios));
+    tty_dev_t *tty_dev = core_device_create_type(&tty_class, NULL, tty_dev_t, NULL, "tty");
+    console_dev = core_device_create(&tty_class, NULL, NULL, "console");
 
     // ringbuf_init(sizeof(wchar_t), 128, &active_tty->char_buffer);
 
-    active_tty->tty_dev.init_name = "tty";
-
-    active_tty->tty_dev.class = &tty_class;
-
-    dev_set_no_driver(&active_tty->tty_dev);
-    dev_set_same_name(&active_tty->tty_dev);
-    device_register(&active_tty->tty_dev);
+#ifdef CONFIG_USE_VT
+    return vty_init();
+#endif
     return KERRNO_SUCCESSES;
 }
 

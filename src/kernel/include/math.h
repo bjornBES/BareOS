@@ -17,6 +17,6 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define sign(x) ((x < 0) ? -1 :((x > 0) ? 1 : 0))
 
-uint32_64 ceil_log2(uint32_64 x);
+uint32_64_t ceil_log2(uint32_64_t x);
 size_t floor_log2(size_t x);
 size_t trailing_zero_count(size_t x);

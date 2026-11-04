@@ -72,7 +72,7 @@ status_t device_register_under_dev_id(device_t *dev, dev_t device_id)
             case DEVICE_CHAR : // DEVICE_SERIAL?
                 devfs_create_entry(dev, DT_CHR);
                 break;
-            case DEVICE_BLOCK :
+            case block_class.type :
                 devfs_create_entry(dev, DT_CHR);
                 break;
             default :
@@ -102,7 +102,7 @@ INTERNAL status_t device_internal_add(device_t *dev, list_t *list)
             case DEVICE_CHAR : // DEVICE_SERIAL?
                 devfs_create_entry(dev, DT_CHR);
                 break;
-            case DEVICE_BLOCK :
+            case block_class.type :
                 get_next_class_id(dev->name);
                 devfs_create_entry(dev, DT_CHR);
                 break;
@@ -115,25 +115,28 @@ INTERNAL status_t device_internal_add(device_t *dev, list_t *list)
 
 INTERNAL status_t device_internal_assign_name(device_t *dev, uint32_t *class_id_out)
 {
+    ENTER_FUNC("%p, %p", dev, class_id_out);
     if (dev->init_name != NULL)
     {
         uint32_t class_id = device_id_get_next_class_id(dev->init_name);
+        size_t s = 0;
         if (dev_same_name(dev) == false)
         {
-            snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
+            s = snprintf(dev->name, DEVICE_NAME_MAX, "%s%u", dev->init_name, class_id);
         }
         else
         {
-            snprintf(dev->name, DEVICE_NAME_MAX, "%s", dev->init_name);
+            s = snprintf(dev->name, DEVICE_NAME_MAX, "%s", dev->init_name);
         }
         if (class_id_out)
         {
             *class_id_out = class_id;
         }
+        dev->name[s] = '\0';
     }
     else
     {
-        log_err(MODULE, "class name is NULL for type %u", dev->class);
+        trace_err(MODULE, "class name is NULL for type %u", dev->class);
         return KERRNO_UNSUCCESS;
     }
     return KERRNO_SUCCESSES;
@@ -236,7 +239,7 @@ status_t device_register(device_t *dev)
     ENTER_FUNC("%p", dev);
     if (dev == NULL)
     {
-        log_crit(MODULE, "Device is null try again");
+        trace_crit(MODULE, "Device is null try again");
         return -EINVAL;
     }
 
@@ -269,7 +272,7 @@ status_t device_unregister(device_t *dev)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "argument 'dev' is NULL");
     }
-    
+
     if (!dev->class)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "Device class is NULL");
@@ -308,7 +311,6 @@ status_t device_unregister(device_t *dev)
         device_t *child_dev = to_device_t(child);
         ret |= device_unregister(child_dev);
     }
-
 
     if (dev->bus)
     {
@@ -384,4 +386,31 @@ void device_debug()
             dev_node = dev_node->prev;
         }
     } */
+}
+
+status_t device_get_device(device_id_t *id, device_t **out_dev)
+{
+    ENTER_FUNC("%p, %p", id, out_dev);
+    dev_class_t *class;
+    status_t ret = class_get(id->major, &class);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        return ret;
+    }
+    list_node_t *node = class->devices.head;
+    while (node)
+    {
+        device_t *dev = to_device_t(node);
+        if (dev->devt.id == id->id)
+        {
+            *out_dev = dev;
+        }
+        node = node->next;
+    }
+    if (*out_dev == NULL)
+    {
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "class '%s' did not have id %u:%u:%u", class->name, id->major, id->device, id->minor);
+    }
+    return KERRNO_SUCCESSES;
 }

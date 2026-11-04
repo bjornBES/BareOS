@@ -86,7 +86,7 @@ typedef struct
 #define GDT_ENTRIES 12
 
 void gdt_set_entry(gdt_entry_t *table, uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
-void gdt_set_entry_system_segment(gdt_entry_t *table, uint16_t index, uint32_64 base, uint32_t limit, uint8_t access, uint8_t flags);
+void gdt_set_entry_system_segment(gdt_entry_t *table, uint16_t index, uint32_64_t base, uint32_t limit, uint8_t access, uint8_t flags);
 
 void gdt_load(gdtr_t *gdt, gdt_entry_t *table);
 void gdt_initialize(gdtr_t *gdt, gdt_entry_t *table);

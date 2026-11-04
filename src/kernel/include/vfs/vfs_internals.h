@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include "dev/devicet.h"
-
 #include "lists/list_node.h"
 
 #include <config.h>

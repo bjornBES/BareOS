@@ -26,6 +26,7 @@ typedef void (*exitcall_t)();
 #define INITCALL_LVL_EARLY      early
 #define INITCALL_LVL_ARCH       1
 #define INITCALL_LVL_CORE       2
+#define INITCALL_LVL_CONSOLE    console
 #define INITCALL_LVL_POSTCORE   3
 #define INITCALL_LVL_ARCHDONE   4
 #define INITCALL_LVL_SUBSYS     5
@@ -74,6 +75,8 @@ typedef void (*exitcall_t)();
 #define ROOTFS_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_ROOTFS)
 #define DEVICE_INITCALL(fn)          DEFINE_INITCALL(fn, INITCALL_LVL_DEVICE)
 #define PREUSER_INITCALL(fn)         DEFINE_INITCALL(fn, INITCALL_LVL_PREUSER)
+
+#define CONSOLE_INITCALL(fn)         DEFINE_INITCALL(fn, INITCALL_LVL_CONSOLE)
 
 #define INITCALL(fn)                 DEVICE_INITCALL(fn)
 

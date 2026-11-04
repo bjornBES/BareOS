@@ -39,11 +39,20 @@ status_t input_device_added(device_t *dev)
 
     return KERRNO_SUCCESSES;
 }
+status_t input_device_removed(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
 
-static dev_class_t input_class = {
+    FUNC_NOT_IMPLEMENTED();
+
+    return KERRNO_SUCCESSES;
+}
+
+static const dev_class_t input_class = {
     .name = "input",
     .type = DEVICE_CHAR,
     .device_added = input_device_added,
+    .device_removed = input_device_removed,
 };
 
 key_modifiers_t update_mods(key_event_t *event, input_dev_t *input_dev)

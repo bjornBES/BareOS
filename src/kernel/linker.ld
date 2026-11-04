@@ -41,6 +41,10 @@ SECTIONS
         KEEP(*(.initcall2.init))
         QUAD(0x0)
 
+        initcallconsole_start = .;
+        KEEP(*(.initcallconsole.init))
+        QUAD(0x0)
+
         initcall3_start = .;
         KEEP(*(.initcall3.init))
         QUAD(0x0)

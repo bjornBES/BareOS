@@ -12,6 +12,8 @@
 
 #include "debug/debug.h"
 
+#include <defs.h>
+
 #define MODULE "spinlock"
 
 void spinlock_acquire_log(spinlock_t *lock)
@@ -34,4 +36,9 @@ void spinlock_acquire(spinlock_t *lock)
 void spinlock_release(spinlock_t *lock)
 {
     spinlock_arch_release(lock);
+}
+
+bool spinlock_is_locked(spinlock_t *lock)
+{
+    return spinlock_arch_is_locked(lock);
 }

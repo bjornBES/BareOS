@@ -32,7 +32,7 @@
         return (type *)container_of(node, type, LIST_ENTRY_NAME); \
     }
 
-#define THIS_NODE(n) n->LIST_ENTRY_NAME
+#define THIS_NODE(n) (n)->LIST_ENTRY_NAME
 
 typedef struct list_node
 {

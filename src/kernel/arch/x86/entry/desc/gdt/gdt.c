@@ -50,7 +50,7 @@ void gdt_set_entry(gdt_entry_t *table, uint16_t index, uint32_t base, uint32_t l
     entry->limit_low = GDT_LIMIT_LOW(limit);
 }
 
-void gdt_set_entry_system_segment(gdt_entry_t *table, uint16_t index, uint32_64 base, uint32_t limit, uint8_t access, uint8_t flags)
+void gdt_set_entry_system_segment(gdt_entry_t *table, uint16_t index, uint32_64_t base, uint32_t limit, uint8_t access, uint8_t flags)
 {
     system_segment_descriptor_t *entry = (system_segment_descriptor_t *)&table[index];
     entry->access = access;

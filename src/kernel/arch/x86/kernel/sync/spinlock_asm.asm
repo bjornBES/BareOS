@@ -53,3 +53,19 @@ spinlock_arch_release:
     pop rax
     popfq
     ret
+
+;
+; bool spinlock_arch_is_locked(spinlock_t *lock);
+;
+global spinlock_arch_is_locked
+spinlock_arch_is_locked:
+    xor rax, rax
+    ; mov ebx, 1
+.retry:
+    ; Compare EAX with [rdi]. If equal, ZF is set and ebx is loaded into [rdi]. Else, clear ZF and load [rdi] into EAX.
+    mov eax, dword [rdi]
+    test eax, eax
+    jnz .done
+    xor rax, rax
+.done:
+    ret

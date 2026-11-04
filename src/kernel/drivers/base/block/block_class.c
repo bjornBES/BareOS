@@ -41,11 +41,20 @@ status_t block_device_added(device_t *dev)
 
     return KERRNO_SUCCESSES;
 }
+status_t block_device_removed(device_t *dev)
+{
+    ENTER_FUNC("%p", dev);
 
-dev_class_t block_class = {
+    FUNC_NOT_IMPLEMENTED();
+
+    return KERRNO_SUCCESSES;
+}
+
+const dev_class_t block_class = {
     .name = "block",
     .type = DEVICE_BLOCK,
     .device_added = block_device_added,
+    .device_removed = block_device_removed,
     .devices = { 0 },
 };
 

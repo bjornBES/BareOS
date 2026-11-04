@@ -23,9 +23,11 @@
 hash_map_t *classes;
 list_t class_list;
 
-status_t class_register(dev_class_t *class)
+uint32_t class_ids[BITS_TO_U32(256)];
+
+status_t class_register(const dev_class_t *class)
 {
-    ENTER_FUNC("%p", class);
+    ENTER_FUNC("%p (%s)", class, class->name);
     if (!class->device_added || !class->device_removed)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "'%s' class isn't set correctly", class->name);
@@ -35,8 +37,43 @@ status_t class_register(dev_class_t *class)
     {
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "'%s' class name is already in use", class->name);
     }
-    ADD_THIS_TO_LIST(class_list, class);
-    list_initialize(&class->devices);
+
+    if (TEST_BIT(class->type, class_ids))
+    {
+        int id = class->type + 1;
+        while (TEST_BIT(id, class_ids))
+        {
+            id++;
+        }
+        trace_info(MODULE, "switched class id for '%s' from %u to %u", class->name, class->type, id);
+        ((dev_class_t *)class)->type = id;
+    }
+
+    SET_BIT(class->type, class_ids);
+
+    ADD_THIS_TO_LIST(class_list, (dev_class_t *)class);
+    list_initialize(&((dev_class_t *)class)->devices);
+    return KERRNO_SUCCESSES;
+}
+
+status_t class_get(dev_type_t type, dev_class_t **class_out)
+{
+    if (!TEST_BIT(type, class_ids))
+    {
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "class type 0x%02x is not registered", type);
+    }
+
+    list_node_t *node = class_list.tail;
+    while (node)
+    {
+        dev_class_t *class = container_of(node, dev_class_t, LIST_ENTRY_NAME);
+        if (class->type == type)
+        {
+            *class_out = class;
+            break;
+        }
+        node = node->prev;
+    }
     return KERRNO_SUCCESSES;
 }
 
@@ -50,7 +87,7 @@ status_t class_add_device(device_t *dev)
     //     inline_asm("int3");
     //     return KERRNO_UNSUCCESS;
     // }
-    dev_class_t *class = dev->class;
+    dev_class_t *class = (dev_class_t *)dev->class;
     trace_debug(MODULE, "class = %p, class->devices = %p", class, &class->devices);
     status_t ret = ADD_THIS_TO_LIST(class->devices, dev);
     KERRNO_CHECK_RETURN(ret);
@@ -67,7 +104,7 @@ status_t class_add_device(device_t *dev)
 status_t class_remove_device(device_t *dev)
 {
     ENTER_FUNC("%p", dev);
-    dev_class_t *class = dev->class;
+    dev_class_t *class = (dev_class_t *)dev->class;
     trace_debug(MODULE, "class = %p, class->devices = %p", class, &class->devices);
     status_t ret = 0;
 
@@ -90,7 +127,7 @@ status_t class_remove_device(device_t *dev)
     return ret;
 }
 
-INTERNAL status_t class_list_class(dev_class_t *class)
+INTERNAL status_t class_list_class(const dev_class_t *class)
 {
     // ENTER_FUNC("%p", class);
     list_node_t *node = class->devices.head;
@@ -103,6 +140,7 @@ INTERNAL status_t class_list_class(dev_class_t *class)
         uint64_t device = dev->devt.device;
         uint64_t minor = dev->devt.minor;
         trace_info(MODULE, "device: %u (%p), id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", i, dev, dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
+        // hexdump(dev->name, sizeof(dev->name), 16);
         node = node->next;
         i++;
     }
@@ -115,7 +153,7 @@ status_t class_list_devices()
     list_node_t *node = class_list.tail;
     while (node)
     {
-        dev_class_t *class = container_of(node, dev_class_t, LIST_ENTRY_NAME);
+        const dev_class_t *class = container_of(node, dev_class_t, LIST_ENTRY_NAME);
         class_list_class(class);
         node = node->prev;
     }
@@ -125,7 +163,28 @@ status_t class_list_devices()
 status_t class_init()
 {
     list_initialize(&class_list);
-    return hash_map_create(&classes, 50);
+    return hash_map_create(&classes, 256);
 }
 
-POSTCORE_INITCALL(class_init);
+CORE_INITCALL(class_init);
+
+status_t class_find_device(const dev_class_t *class, const device_t *start, const void *data, device_match_t match, device_t **out_dev)
+{
+    device_t *dev;
+    list_node_t *node = class->devices.tail;
+    if (start)
+    {
+        node = &THIS_NODE((device_t *)start);
+    }
+    while (node)
+    {
+        dev = to_device_t(node);
+        if (match(dev, data))
+        {
+            break;
+        }
+        node = node->prev;
+    }
+    *out_dev = dev;
+    return KERRNO_SUCCESSES;
+}

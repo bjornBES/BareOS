@@ -12,6 +12,7 @@
 
 #include "vfs/vfs_internals.h"
 #include "vfs/volume.h"
+#include "vfs/inodet.h"
 
 #include <types.h>
 

@@ -20,3 +20,4 @@ typedef struct spinlock
 
 void spinlock_arch_acquire(spinlock_t *lock);
 void spinlock_arch_release(spinlock_t *lock);
+bool spinlock_arch_is_locked(spinlock_t *lock);

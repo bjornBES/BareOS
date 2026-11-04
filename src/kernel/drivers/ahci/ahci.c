@@ -137,9 +137,9 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
 
     void *mapped_clb_virt;
     void *mapped_clb = kmalloc_phys(4096, &mapped_clb_virt);
-    port->clb = (uint32_t)((uint32_64)mapped_clb & 0xFFFFFFFF);
+    port->clb = (uint32_t)((uint32_64_t)mapped_clb & 0xFFFFFFFF);
 #ifdef __x86_64__
-    port->clbu = (uint32_t)((uint32_64)mapped_clb >> 32);
+    port->clbu = (uint32_t)((uint32_64_t)mapped_clb >> 32);
 #else
     port->clbu = 0;
 #endif
@@ -147,9 +147,9 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
 
     void *mapped_fb_virt;
     void *mapped_fb = kmalloc_phys(4096, &mapped_fb_virt);
-    port->fb = (uint32_t)((uint32_64)mapped_fb & 0xFFFFFFFF);
+    port->fb = (uint32_t)((uint32_64_t)mapped_fb & 0xFFFFFFFF);
 #ifdef __x86_64__
-    port->clbu = (uint32_t)((uint32_64)mapped_fb >> 32);
+    port->clbu = (uint32_t)((uint32_64_t)mapped_fb >> 32);
 #else
     port->clbu = 0;
 #endif
@@ -166,9 +166,9 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
         void *ctba_buf_virt = (void *)((uintptr_t)ctba_pool_virt + i * CTBA_SLOT_SIZE);
         cmd_header[i].prdtl = 1;
         aport->ctba[i] = ctba_buf_virt;
-        cmd_header[i].ctba = (uint32_64)ctba_buf & 0xFFFFFFFF;
+        cmd_header[i].ctba = (uint32_64_t)ctba_buf & 0xFFFFFFFF;
 #ifdef __x86_64__
-        cmd_header[i].ctbau = ((uint32_64)ctba_buf >> 32);
+        cmd_header[i].ctbau = ((uint32_64_t)ctba_buf >> 32);
 #else
         cmd_header[i].ctbau = 0;
 #endif

@@ -10,19 +10,19 @@
 
 #include "math.h"
 
-uint32_64 ceil_log2(uint32_64 x)
+uint32_64_t ceil_log2(uint32_64_t x)
 {
-    static const uint32_64 t[6] = {0xFFFFFFFF00000000ull, 0x00000000FFFF0000ull,
+    static const uint32_64_t t[6] = {0xFFFFFFFF00000000ull, 0x00000000FFFF0000ull,
                                    0x000000000000FF00ull, 0x00000000000000F0ull,
                                    0x000000000000000Cull, 0x0000000000000002ull};
 
-    uint32_64 y = (((x & (x - 1)) == 0) ? 0 : 1);
-    uint32_64 j = 32;
-    uint32_64 i;
+    uint32_64_t y = (((x & (x - 1)) == 0) ? 0 : 1);
+    uint32_64_t j = 32;
+    uint32_64_t i;
 
     for (i = 0; i < 6; i++)
     {
-        uint32_64 k = (((x & t[i]) == 0) ? 0 : j);
+        uint32_64_t k = (((x & t[i]) == 0) ? 0 : j);
         y += k;
         x >>= k;
         j >>= 1;

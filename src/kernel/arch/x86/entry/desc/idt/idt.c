@@ -46,7 +46,7 @@ void idt_enable_gate(uint32_t interrupt)
 
 void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist)
 {
-    uint32_64 base = (uint32_64)callback;
+    uint32_64_t base = (uint32_64_t)callback;
     kernel_idt_table[interrupt].base_1 = ((uint32_t)base) & 0xFFFF;
     kernel_idt_table[interrupt].segment_selector = segment_descriptor;
     kernel_idt_table[interrupt].reserved1 = 0;

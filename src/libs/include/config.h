@@ -11,6 +11,8 @@
 #define CONFIG_TOOLCHAIN "toolchains"
 #define CONFIG_MOUNTMETHOD "mount"
 #define CONFIG_USE_BIOS 1
+#define CONFIG_USE_VT 1
+#define CONFIG_VT_CONSOLE 1
 #define CONFIG_MUTEX 1
 #define CONFIG_SEMAPHORE 0
 #define CONFIG_PATH_DIR_SEPARATOR '/'
