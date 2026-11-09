@@ -44,6 +44,8 @@ boot_params_t *main_boot_params;
 
 extern void hexdump(void *ptr, size_t len, size_t size);
 
+extern void kernel_start_pid0();
+
 NORETURN void kernel_main()
 {
     ENTER_FUNC("", 0);
@@ -66,6 +68,8 @@ NORETURN void kernel_main()
     resource_dump(&irq_space.root);
 
     tty_write(active_tty, L"Hello world!", 12, NULL);
+
+    kernel_start_pid0();
 
     for (;;)
     {
