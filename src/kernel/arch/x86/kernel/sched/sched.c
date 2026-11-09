@@ -16,14 +16,14 @@
 
 #define MODULE "x86-sched"
 
-NORETURN void scheduler_arch_yield()
+void scheduler_arch_yield()
 {
-    ENTER_FUNC("", 0);
+    // ENTER_FUNC("", 0);
     inline_asm("int 0xd1");
-    trace_crit(MODULE, "something is wrong");
-    while (true)
-    {
-        ;
-    }
+    // trace_crit(MODULE, "something is wrong in arch_yield");
+    // while (true)
+    // {
+    //     ;
+    // }
     
 }

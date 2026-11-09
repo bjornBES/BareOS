@@ -92,11 +92,11 @@ void dsdt_init(paddr_t dsdt_phys)
 {
     ENTER_FUNC("0x%p", dsdt_phys);
 
-    mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys), PAGE_ALIGN_DOWN((paddr_t)dsdt_phys), kernel_data_flags);
+    mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys), PAGE_ALIGN_DOWN((paddr_t)dsdt_phys), kernel_data_flags, NULL);
     dsdt = (dsdt_t *)dsdt_phys;
     uint32_t size = dsdt->header.length;
     log_debug(MODULE, "size = %u", size);
-    mmu_arch_unmap(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys));
+    mmu_arch_unmap(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys), NULL);
     dsdt = (dsdt_t *)(ioremap((paddr_t)dsdt_phys, size) + GET_PAGE_OFFSET(dsdt_phys));
     hexdump(dsdt->aml, dsdt->header.length, 16);
     for (int i = 0; i < dsdt->header.length; i++)

@@ -208,7 +208,8 @@ status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_
 
     paddr_t dba_phys = aport->cmds[slot].dma->phys;
 #else
-    paddr_t dba_phys = mmu_arch_virt_to_phys(&kernel_page, req->buffer);
+    paddr_t dba_phys;
+    mmu_arch_virt_to_phys(&kernel_page, req->buffer, &dba_phys);
     trace_debug(MODULE, "dba_phys @ %p", dba_phys);
     // paging_print_tree(&kernel_page);
 #endif
@@ -385,6 +386,8 @@ status_t ahci_init_abar(pci_device_t *pci_dev, ahci_host_priv_t *host)
                 sata_init_port(pci_dev, host, &host->aports[host->ahci_devices_count - 1], &blk_dev);
 
                 device_add(&blk_dev->dev);
+                trace_debug(MODULE, "dev->name == %s", blk_dev->dev.name);
+                trace_debug(MODULE, "blk_dev->ops.read_sectors == %p", blk_dev->ops.read_sectors);
             }
         }
     }

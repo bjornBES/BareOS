@@ -143,14 +143,47 @@ void mmu_arch_init(boot_params_t *bp)
     paging_print_tree(&kernel_page);
 }
 
+status_t mmu_arch_create_table(page_table_t **out_table)
+{
+    page_table_t *result = kzmalloc(sizeof(page_table_t));
+
+    paging_create_table(result);
+
+    *out_table = result;
+
+    return paging_copy_con_entries(result, &kernel_page);
+}
+
 status_t mmu_arch_load_table(page_table_t *table)
 {
+    // ENTER_FUNC("%p", table);
     paddr_t cr3 = (paddr_t)table->page_dir_phys;
+    // trace_debug(MODULE, "loading %p/%p", cr3, table->page_dir);
     inline_asm("mov cr3, %0" : : "r"(cr3));
     return KERRNO_SUCCESSES;
 }
 
-size_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu_flags_t flags)
+status_t mmu_arch_current_table(page_table_t *table)
+{
+    paddr_t cr3;
+    __asm__ volatile("mov %0, cr3" : "=r"(cr3));
+    vaddr_t virt_cr3 = phys_to_virt_auto(cr3);
+    table->page_dir = virt_cr3;
+    table->page_dir_phys = cr3;
+    return KERRNO_SUCCESSES;
+}
+
+status_t mmu_arch_copy_from_kernel(page_table_t *table)
+{
+    return paging_copy_con_entries(table, &kernel_page);
+}
+
+status_t mmu_arch_copy_from(page_table_t *dest, page_table_t *src)
+{
+    return paging_copy_con_entries(dest, src);
+}
+
+status_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu_flags_t flags, size_t *out_size)
 {
     // this is done becurse the kernel should be able to map with 2 MB pages only 4 KB for the kernel
     // and then other systems like the DMA can map with 2 MB pages.
@@ -161,34 +194,69 @@ size_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, mmu
     }
     vaddr_t virt = (vaddr_t)ALIGN_2_UP((uint64_t)virtAddr, PAGE_SIZE);
 
-    return allocate_leaf(table, virt, physAddr, flags);
+    size_t size;
+    status_t ret = allocate_leaf(table, virt, physAddr, flags, &size);
+    if (out_size)
+    {
+        *out_size = size;
+    }
+    return ret;
 }
 
-paddr_t mmu_arch_unmap(page_table_t *table, vaddr_t virt)
+status_t mmu_arch_unmap(page_table_t *table, vaddr_t virt, paddr_t *out_paddr)
 {
     if (!paging_disable_print)
     {
         ENTER_FUNC(MODULE, "%p, %p", table, virt);
     }
 
-    paddr_t addr = paging_unmap_page(table, virt);
+    paddr_t addr;
+    status_t ret = paging_unmap_page(table, virt, &addr);
 
-    if (addr > 0 && addr < 1024)
+    if ((addr > 0 && addr < 1024) || ret)
     {
-        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_unmap_page) return %u", addr);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_unmap_page) return %u", ret);
     }
-    int state = paging_clean_up(table, virt);
-    if (state != 0)
+    ret = paging_clean_up(table, virt);
+    if (ret)
     {
-        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_clean_up) return %u", state);
+        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_clean_up) return %u", ret);
     }
-    return addr;
+    if (out_paddr)
+    {
+        *out_paddr = addr;
+    }
+    return KERRNO_SUCCESSES;
 }
 
-paddr_t mmu_arch_virt_to_phys(page_table_t *table, vaddr_t virt)
+status_t mmu_arch_protect(page_table_t *table, vaddr_t virt, mmu_flags_t flags)
+{
+    return paging_remap_flags(table, virt, flags);
+}
+
+status_t mmu_arch_virt_to_phys(page_table_t *table, vaddr_t virt, paddr_t *out_paddr)
 {
     // paging_print_tree(table);
-    return paging_get_physical(table, virt);
+    paddr_t addr;
+    status_t ret = paging_get_physical(table, virt, &addr);
+    if (out_paddr)
+    {
+        *out_paddr = addr;
+    }
+    return ret;
+}
+
+status_t mmu_arch_is_present(page_table_t *table, vaddr_t virt, bool *is_present)
+{
+    mmu_mapping_t entry;
+    paging_get_entry(table, virt, &entry);
+
+    *is_present = false;
+    if (entry.flags.present)
+    {
+        *is_present = true;
+    }
+    return KERRNO_SUCCESSES;
 }
 
 void mmu_arch_flush_page(vaddr_t virt)

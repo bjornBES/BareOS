@@ -39,7 +39,7 @@ vaddr_t kstack_alloc(stack_info_t *info)
     for (vaddr_t va = stack_bottom; va < stack_top; va += PAGE_SIZE)
     {
         paddr_t pa = pmm_alloc_frame();
-        mmu_arch_map(&kernel_page, va, pa, kernel_stack_flags);
+        mmu_arch_map(&kernel_page, va, pa, kernel_stack_flags, NULL);
     }
 
     if (info != NULL)
@@ -73,7 +73,7 @@ vaddr_t kstack_per_cpu_alloc(stack_info_t *info)
     for (vaddr_t va = stack_bottom; va < stack_top; va += PAGE_SIZE)
     {
         paddr_t pa = pmm_alloc_frame();
-        mmu_arch_map(&kernel_page, va, pa, kernel_stack_flags);
+        mmu_arch_map(&kernel_page, va, pa, kernel_stack_flags, NULL);
     }
 
     if (info != NULL)
@@ -101,7 +101,7 @@ void kstack_free(vaddr_t stack_top)
     paddr_t pa;
     for (vaddr_t va = stack_bottom; va < top; va += PAGE_SIZE)
     {
-        pa = mmu_arch_unmap(&kernel_page, va);
+        mmu_arch_unmap(&kernel_page, va, &pa);
         pmm_free_frame(pa);
     }
 }

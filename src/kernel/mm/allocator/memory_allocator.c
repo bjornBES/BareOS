@@ -38,7 +38,8 @@ status_t alloc_new_page()
     paddr_t phys = pmm_alloc_frame();
     vaddr_t virt = heap_end;  // next virtual page after current end
 	// mmu_arch_enable_prints();
-    size_t size_mapped = mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags);
+    size_t size_mapped;
+	mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags, &size_mapped);
 	// mmu_arch_disable_prints();
 	if (!(size_mapped > KERRNO_ERRORS_END))
 	{
@@ -283,7 +284,8 @@ void *kmalloc_phys(size_t size, void **virt_out)
 	// log_debug(MODULE, "malloc returned %p", virt);
 	memset(virt, 0, size);
 	*virt_out = virt;
-	paddr_t phys = mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)virt);
+	paddr_t phys;
+	mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)virt, &phys);
 	// log_debug(MODULE, "p%p = kmalloc_phys(%u, v%p)", phys, size, virt);
 	return (void*)phys;
 }
@@ -293,5 +295,7 @@ void *kcalloc_phys(size_t num, size_t size, void **virt_out)
 	void *virt = kcalloc(num, size);
 	memset(virt, 0, size * num);
 	*virt_out = virt;
-	return (void*)mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)virt);
+	paddr_t addr;
+	mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)virt, &addr);
+	return (void*)addr;
 }

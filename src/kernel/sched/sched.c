@@ -20,6 +20,7 @@
 #include "asm/sched_arch.h"
 #include "asm/context_arch.h"
 #include "asm/frame_arch.h"
+#include "asm/mmu_arch.h"
 
 #include "ivt/ivt.h"
 #include "irq/irq.h"
@@ -94,8 +95,6 @@ void scheduler_tick(void *_)
     {
         return;
     }
-    // trace_debug(MODULE, "scheduler_tick");
-    // trace_debug(MODULE, "THISCPU @ %p", THISCPU());
     // scheduler_wakeup_check();
 
     if (current_thread == NULL)
@@ -103,6 +102,7 @@ void scheduler_tick(void *_)
         schedule(NULL);
         return;
     }
+
     uint32_t level_before = current_thread->priority;
     cpu_t *cpu = cpu_arch_get_current();
     cpu->sched_class->ops.tick(cpu->runq_data, cpu->current);
@@ -118,6 +118,8 @@ void scheduler_tick(void *_)
     // uint64_t next = SCHEDULER_TICK_NS;
     // timer_set_oneshot(next, scheduler_tick);
 
+    // trace_debug(MODULE, "scheduler_tick THISCPU @ %p, time = %u current_thread->state = %u", THISCPU(), current_thread->timeslice, current_thread->state);
+    // trace_debug(MODULE, "total_threads = %u", total_threads);
     if (current_thread->state == THREAD_RUNNING)
     {
         if (current_thread->timeslice == 0 || current_thread->priority != level_before)
@@ -166,6 +168,7 @@ INTERNAL_INLINE thread_t *sched_next()
     thread_t *thread = me->sched_class->ops.pick_next(me->runq_data);
     if (thread != NULL)
     {
+        total_threads--;
         // trace_debug(MODULE, "thread from cpu %u", me->logical_id);
         // sched_print_thread_info(thread);
         spinlock_release(&me->local_runq_lock);
@@ -179,6 +182,7 @@ INTERNAL_INLINE thread_t *sched_next()
     thread = sched_runq.sched_class->ops.pick_next(sched_runq.threads);
     if (thread != NULL)
     {
+        total_threads--;
         // sched_print_thread_info(thread);
         spinlock_release(&sched_runq.lock);
         return thread;
@@ -201,6 +205,7 @@ INTERNAL_INLINE thread_t *sched_next()
 
         if (thread != NULL)
         {
+            total_threads--;
             return thread;
         }
     }
@@ -214,12 +219,16 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
 {
-    ENTER_FUNC("%p", next);
-    trace_debug(MODULE, "current_thread = %p", current_thread);
+    // ENTER_FUNC("%p", next);
+    // trace_debug(MODULE, "current_thread = %p", current_thread);
     current_thread = next;
     current_thread->state = THREAD_RUNNING;
     current_thread->timeslice = current_thread->timeslice_reset;
     current_thread->in_queue = false;
+    if (THISCPU() != NULL && current_thread != NULL)
+    {
+        THISCPU()->current_proc = current_thread->proc;
+    }
 
     // log_debug(MODULE, "here4");
     // spinlock_release(&schedule_lock);
@@ -231,7 +240,7 @@ INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
     cpu_arch_set_kernel_stack(cpu_arch_get_current(), (vaddr_t)current_thread->kstack);
     if (!current_thread->is_idle_thread)
     {
-        trace_debug(MODULE, "switching to tid %u %p\n", current_thread->tid, current_thread->kstack);
+        // trace_debug(MODULE, "switching to tid %u %p\n", current_thread->tid, current_thread->kstack);
         // frame_arch_dump_frame(current_thread->ctx.regs);
         // frame_arch_dump_frame((intr_frame_t *)current_thread->ctx.sp);
     }
@@ -272,14 +281,26 @@ status_t schedule(intr_frame_t *regs)
         irq_arch_enable();
         return KERRNO_SUCCESSES;
     }
+    if (THISCPU()->disable)
+    {
+        irq_eoi(0);
+        return KERRNO_SUCCESSES;
+    }
+    if (total_threads == 0)
+    {
+        irq_eoi(0);
+        irq_arch_enable();
+        return KERRNO_SUCCESSES;
+    }
     if (current_thread != NULL && !current_thread->is_idle_thread)
     {
-        trace_info(MODULE, "enter schedule(%p)\n", regs);
+        // ENTER_FUNC("%p", regs);
     }
     cpu_t *cpu = THISCPU();
 
     if (cpu->current)
     {
+        // trace_debug(MODULE, "current_thread->state = %u", current_thread->state);
         current_thread->last_cpu = cpu;
         if (current_thread->is_idle_thread)
         {
@@ -307,7 +328,7 @@ status_t schedule(intr_frame_t *regs)
         }
         else
         {
-            trace_debug(MODULE, "don't know what to do with %u", current_thread->tid);
+            trace_crit(MODULE, "don't know what to do with %u", current_thread->tid);
             // sched_print_thread_info(current_thread);
         }
     }
@@ -322,7 +343,7 @@ try_again:
     thread_t *next = sched_next();
     if (!next->is_idle_thread)
     {
-        // log(MODULE, "next = %p tid = %u\n", next, next->tid);
+        // trace_debug(MODULE, "next = %p tid = %u", next, next->tid);
         // irq_arch_disable();
     }
     // sched_print_thread_info(next);
@@ -361,7 +382,7 @@ try_again:
         } */
     if (current_thread && current_thread->state == THREAD_REMAINS)
     {
-        trace_debug(MODULE, "thread (%u) is gonna die soon", current_thread->tid);
+        // trace_debug(MODULE, "thread (%u) is gonna die soon", current_thread->tid);
         sched_add(current_thread);
     }
 
@@ -373,25 +394,30 @@ try_again:
         }
     }
 
-    /*     if (current_thread != NULL)
+    if (current_thread != NULL)
+    {
+        // trace_debug(MODULE, "current_thread = %p", current_thread);
+        // trace_debug(MODULE, "current_thread->proc = %p", current_thread->proc);
+        // trace_debug(MODULE, "next->proc = %p", next->proc);
+        if (next->proc != current_thread->proc)
         {
-            if (next->proc != current_thread->proc)
+            if (next->tid == 0 || next->proc == NULL)
             {
-                if (next->tid == 0 || next->proc == NULL)
-                {
-                    // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
-                    mmu_arch_load_table(&kernel_page);
-                }
-                else
-                {
-                    // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
-                    mmu_arch_map_kernel(next->proc->page_dir);
-                    mmu_arch_load_table(next->proc->page_dir);
-                }
-                // trace_debug(MODULE, "here3");
+                // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
+                mmu_arch_load_table(&kernel_page);
             }
-            current_thread->last_cpu = cpu;
-        } */
+            else
+            {
+                // trace_debug(MODULE, "next->proc->pid = %u", next->proc->pid);
+                // trace_debug(MODULE, "next->proc->vma = %p", next->proc->vma);
+                // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
+                mmu_arch_copy_from_kernel(next->proc->vma->page_directory);
+                mmu_arch_load_table(next->proc->vma->page_directory);
+            }
+            // trace_debug(MODULE, "here3");
+        }
+        current_thread->last_cpu = cpu;
+    }
 
     // spinlock_release(&schedule_lock);
     schedule_switch(next, regs);
@@ -402,6 +428,7 @@ INTERNAL ALWAYS_INLINE void sched_algorithm_enqueue(sched_class_t *class, void *
 {
     if (t->in_queue)
     {
+        total_threads--;
         trace_warn(MODULE, "thread %u is already in queue", t->tid);
         return;
     }
@@ -410,12 +437,22 @@ INTERNAL ALWAYS_INLINE void sched_algorithm_enqueue(sched_class_t *class, void *
 
 status_t sched_add(thread_t *t)
 {
-    trace_debug(MODULE, "adding thread %u", t->tid);
+    // ENTER_FUNC("%p", t);
+    // trace_debug(MODULE, "adding thread %u/%p", t->tid, t);
+    // trace_debug(MODULE, "total_threads = %u", total_threads);
+    // trace_debug(MODULE, "in_queue = %u", t->in_queue);
     if (t->is_idle_thread)
     {
-        trace_debug(MODULE, "ignore %u", t->tid);
+        // trace_debug(MODULE, "ignore %u", t->tid);
         return 1;
     }
+
+    // if (current_thread == t && t->state != THREAD_READY)
+    // {
+    //     trace_crit(MODULE, "same thread current_thread == t running");
+    //     return KERRNO_SUCCESSES;
+    // }
+
     cpu_t *target = NULL;
 
     if (t->cpu_affinity)
@@ -427,9 +464,19 @@ status_t sched_add(thread_t *t)
         target = t->last_cpu;
     }
 
+    // if (current_thread == t && total_threads == 0)
+    // {
+    //     if (t->timeslice > 0)
+    //     {
+    //         t->state = THREAD_RUNNING;
+    //         trace_crit(MODULE, "same thread running");
+    //         return KERRNO_SUCCESSES;
+    //     }
+    // }
+
     if (target)
     {
-        trace_debug(MODULE, "in cpu %u", target->arch_id);
+        // trace_debug(MODULE, "in cpu %u", target->arch_id);
         spinlock_acquire(&target->local_runq_lock);
         sched_algorithm_enqueue(target->sched_class, target->runq_data, t);
         // list_push_tail(&target->local_runq, &t->node);
@@ -447,7 +494,7 @@ status_t sched_add(thread_t *t)
     }
     else
     {
-        trace_debug(MODULE, "in global");
+        // trace_debug(MODULE, "in global");
         spinlock_acquire(&sched_runq.lock);
         sched_algorithm_enqueue(sched_runq.sched_class, sched_runq.threads, t);
         total_threads++;
@@ -455,6 +502,7 @@ status_t sched_add(thread_t *t)
         // sched_runq.count++;
         spinlock_release(&sched_runq.lock);
     }
+    // trace_debug(MODULE, "total_threads = %u", total_threads);
     return KERRNO_SUCCESSES;
 }
 
@@ -491,14 +539,20 @@ status_t sched_yield()
     {
         return KERRNO_SUCCESSES;
     }
-    // ENTER_FUNC(MODULE, "", "");
     cpu->sched_class->ops.yield(cpu->runq_data, cpu->current);
-    scheduler_arch_yield();
-    KERNEL_PANIC(MODULE, "thread didn't yield");
-    while (true)
+    if (total_threads == 0)
     {
-        ;
+        cpu->current->timeslice = cpu->current->timeslice_reset;
+        return KERRNO_SUCCESSES;
     }
+    // ENTER_FUNC(MODULE, "", "");
+    scheduler_arch_yield();
+    return KERRNO_SUCCESSES;
+    // KERNEL_PANIC(MODULE, "thread didn't yield");
+    // while (true)
+    // {
+    //     ;
+    // }
 }
 
 NORETURN void sched_thread_exit(uintptr_t ret)
@@ -551,6 +605,7 @@ status_t sched_init(thread_t *main_thread)
             continue;
         }
         cpu_t *other_cpu = entry->cpu;
+        other_cpu->disable = 1;
         trace_debug(MODULE, "here 1 cpu = %p", other_cpu);
         trace_debug(MODULE, "here 2 args = %p", args);
         args->cb = scheduler_tick;
@@ -581,6 +636,7 @@ status_t sched_init(thread_t *main_thread)
 
     kfree(args);
     sched_add(main_thread);
+    main_thread->cpu_affinity->disable = 0;
 
     sched_init_done = 1;
     return KERRNO_SUCCESSES;

@@ -109,7 +109,9 @@ int sata_identify_aport(sata_port_t *aport, ahci_port_priv_t *ahci_port, vaddr_t
 
     HBA_CMD_TBL *cmd_table = (HBA_CMD_TBL *)ahci_port->ctba[slot];
 
-    cmd_table->prdt_entry[0].dba = (uint64_t)mmu_arch_virt_to_phys(&kernel_page, buf_virt);
+    paddr_t addr;
+    mmu_arch_virt_to_phys(&kernel_page, buf_virt, &addr);
+    cmd_table->prdt_entry[0].dba = (uint32_t)addr;
     cmd_table->prdt_entry[0].dbc = 511;
     cmd_table->prdt_entry[0].i = 1;
 
@@ -174,9 +176,9 @@ status_t sata_init_port(pci_device_t *pci_dev, ahci_host_priv_t *host, ahci_port
     KERRNO_CHECK_RETURN(ret);
 
     *blk_dev_out = blk_dev;
-    
+
     blk_dev->ops.read_sectors = sata_read_sectors;
-    
+
     aport->drive = host->ahci_devices_count;
 
     trace_debug(MODULE, "getting name");
