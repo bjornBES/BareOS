@@ -55,13 +55,13 @@ DEFINE_FLAGS_READ_ONLY(vdso_text_flags, /* exec */ 1, /* user */ 1);
 DEFINE_FLAGS_STACK(kernel_stack_flags, 0);
 
 // user .text
-DEFINE_FLAGS_READ_ONLY(text_flags, /* exec */ 1, /* user */ 1);
+mmu_flags_t text_flags = {.present = 1, .read = 1, .write = 0, .exec = 1, .user = 1, .cached = 0, .global = 0, .grows_down = 0, .cow = 0, .allocatable = 0, .large = 0};
 
 // user stack
 DEFINE_FLAGS_STACK(stack_flags, 1);
 
 // user .data / heap
-DEFINE_FLAGS_RW(data_flags, 0, 1);
+mmu_flags_t data_flags = {.present = 1, .read = 1, .write = 1, .exec = 0, .user = 1, .cached = 0, .global = 0, .grows_down = 0, .cow = 0, .allocatable = 0, .large = 0};
 
 // user .rodata
 DEFINE_FLAGS_READ_ONLY(rodata_flags, /* exec */ 0, /* user */ 1);
@@ -86,7 +86,8 @@ size_t mmu_map_region(page_table_t *table, vaddr_t _virt, paddr_t _phys, size_t 
     size_t total_size = 0;
     for (size_t i = 0; i < pages; i++)
     {
-        size_t mapped_size = mmu_arch_map(table, virt, phys, flags);
+        size_t mapped_size;
+        mmu_arch_map(table, virt, phys, flags, &mapped_size);
         mmu_arch_flush_page(virt);
         virt += mapped_size;
         phys += mapped_size;
@@ -107,7 +108,7 @@ status_t mmu_free_region(page_table_t *table, vaddr_t _virt, size_t size)
 
     for (size_t i = 0; i < pages; i++)
     {
-        mmu_arch_unmap(table, virt);
+        mmu_arch_unmap(table, virt, NULL);
         virt += PAGE_SIZE;
     }
     return KERRNO_SUCCESSES;
