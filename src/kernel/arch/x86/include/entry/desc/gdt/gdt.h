@@ -70,7 +70,7 @@ typedef struct
     uint8_t limit_high : 4; // limit (bits 16-19)
     uint8_t flags : 4;      // flags
     uint8_t base_high;      // base (bits 24-31)
-    uint32_t base_upper;    // bits 63:32
+    uint32_t base_upper;    // bits 32:63
     uint32_t reserved;
 } PACKED system_segment_descriptor_t;
 #else

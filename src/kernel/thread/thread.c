@@ -12,6 +12,7 @@
 #include "thread/threadt.h"
 
 #include "asm/thread_arch.h"
+#include "asm/cpu_arch.h"
 
 #include "mm/allocator/kstack_allocator.h"
 
@@ -22,6 +23,11 @@
 #define MODULE "thread"
 
 static tid_t next_tid = 0;
+
+thread_t *thread_get_current()
+{
+    return THISCPU()->current;
+}
 
 INTERNAL ALWAYS_INLINE tid_t get_tid()
 {
@@ -57,6 +63,24 @@ thread_t *thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flag
     t->tid = get_tid();
     t->state = THREAD_READY;
     thread_set_priority(t, PRIORITY_NORMAL_SHORT);
+    return t;
+}
+
+thread_t *thread_create_user(process_t *proc, vaddr_t ustack, uint32_t flags)
+{
+    ENTER_FUNC("%p, %p, 0x%x", proc, ustack, flags);
+    thread_t *t = thread_allocate();
+
+    vaddr_t kstack = kstack_alloc(&t->kernel_stack);
+
+    // fake iretq frame — CPU pops these on iretq
+    t->kstack = thread_user_arch_ctx_init(t, proc->loader_data.entry, kstack, ustack, 0);
+    t->tid = get_tid();
+    thread_set_priority(t, PRIORITY_NORMAL);
+    t->is_user_thread = true;
+    t->state = THREAD_READY;
+    t->proc = proc;
+
     return t;
 }
 

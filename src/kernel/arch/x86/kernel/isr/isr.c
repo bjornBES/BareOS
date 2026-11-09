@@ -101,6 +101,10 @@ void stack_trace(uint32_t max_frames)
         {
             break;
         }
+        if (frame->bp == 0)
+        {
+            break;
+        }
 
         trace_debug(MODULE, "  [%u] ip = %p, bp = %p", i, frame->ip, frame->bp);
         frame = (stack_frame_t *)frame->bp;
@@ -112,7 +116,7 @@ void isr_handler(intr_frame_t *frame)
     {
         if ((frame->interrupt >= 0 && frame->interrupt < IPI_END_PRINTABLE) || (frame->interrupt > CPU_TIMER_VECTOR && frame->interrupt <= MAX_VECTOR))
         {
-            ENTER_FUNC("%p", frame);
+            // ENTER_FUNC("%p", frame);
         }
         if (frame->interrupt < EXC_END)
         {

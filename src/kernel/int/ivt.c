@@ -37,7 +37,7 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
 {
     if ((frame->interrupt >= 0 && frame->interrupt < IPI_END_PRINTABLE) || (frame->interrupt > CPU_TIMER_VECTOR && frame->interrupt <= MAX_VECTOR))
     {
-        ENTER_FUNC("%u, %p, handler: %p", vector, frame, handlers[vector].handler);
+        // ENTER_FUNC("%u/0x%x, %p, handler: %p", vector, vector, frame, handlers[vector].handler);
     }
     if (!FLAG_IS_SET(handlers[vector].state, HANDLER_IN_USE))
     {

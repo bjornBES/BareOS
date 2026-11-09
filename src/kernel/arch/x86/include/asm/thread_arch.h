@@ -14,4 +14,5 @@
 
 #include <types.h>
 
-status_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t kstack, uintptr_t arg);
+vaddr_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t kstack, uintptr_t arg);
+vaddr_t thread_user_arch_ctx_init(thread_t *thread, vaddr_t entry, vaddr_t kstack, vaddr_t ustack, uint64_t arg);

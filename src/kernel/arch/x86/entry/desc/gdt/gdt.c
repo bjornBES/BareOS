@@ -10,9 +10,12 @@
 
 #include "entry/desc/gdt/gdt.h"
 
-#include <defs.h>
-
 #include "debug/debug.h"
+
+#include "string.h"
+
+#include <defs.h>
+#include <config.h>
 
 // helper functions
 #define GDT_LIMIT_LOW(limit)                  (limit & 0xFFFF)
@@ -21,7 +24,7 @@
 #define GDT_LIMIT_HIGH(limit)                 ((limit >> 16) & 0xF)
 #define GDT_FLAGS_LIMIT_HI(limit, flags)      (((limit >> 16) & 0xF) | (flags & 0xF0))
 #define GDT_BASE_HIGH(base)                   ((base >> 24) & 0xFF)
-#define GDT_BASE_UPPER(base)                  ((base >> 32) & 0xFFFF)
+#define GDT_BASE_UPPER(base)                  ((base >> 32) & 0xFFFFFFFF)
 
 #define GDT_ENTRY(base, limit, access, flags) { \
     GDT_LIMIT_LOW(limit),                       \
@@ -81,8 +84,8 @@ void gdt_initialize(gdtr_t *gdt, gdt_entry_t *table)
 #ifdef __x86_64__
     gdt_set_entry(table, KERNEL_CODE_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_READABLE | GDT_ACCESS_CODE_EXE_IN_RING | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_RING0 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
     gdt_set_entry(table, KERNEL_DATA_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_WRITEABLE | GDT_ACCESS_DATA_DIRECTION_UP | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_RING0 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
-    gdt_set_entry(table, USER_DATA_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_READABLE | GDT_ACCESS_CODE_EXE_IN_RING | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
-    gdt_set_entry(table, USER_CODE_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_WRITEABLE | GDT_ACCESS_DATA_DIRECTION_UP | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
+    gdt_set_entry(table, USER_DATA_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_WRITEABLE | GDT_ACCESS_DATA_DIRECTION_UP | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
+    gdt_set_entry(table, USER_CODE_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_READABLE | GDT_ACCESS_CODE_EXE_IN_RING | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_64BIT | GDT_FLAG_GRANULARITY_4K);
     gdt_set_entry(table, UNUSED32_INDEX, 0, 0, 0, 0);
     gdt_set_entry(table, USER_CODE32_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_READABLE | GDT_ACCESS_CODE_EXE_IN_RING | GDT_ACCESS_CODE_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K);
     gdt_set_entry(table, USER_DATA32_INDEX, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_WRITEABLE | GDT_ACCESS_DATA_DIRECTION_UP | GDT_ACCESS_DATA_SEGMENT | GDT_ACCESS_RING3 | GDT_ACCESS_PRESENT, GDT_FLAG_32BIT | GDT_FLAG_GRANULARITY_4K);
@@ -96,7 +99,13 @@ void gdt_initialize(gdtr_t *gdt, gdt_entry_t *table)
 
 gdt_entry_t *gdt_get_entry(uint16_t sel)
 {
-    return NULL;
+    gdtr_t gdtr;
+    __asm__("sgdt %0" : "=m"(gdtr));
+    uint8_t *gdt = (uint8_t *)gdtr.ptr;
+    uint16_t index = sel >> 3;
+    // Print raw descriptor bytes
+    uint8_t *desc = gdt + index * 8;
+    return (gdt_entry_t *)desc;
 }
 
 // debug function
@@ -104,13 +113,66 @@ gdt_entry_t *gdt_get_entry(uint16_t sel)
 void gdt_dump_selector(uint16_t sel)
 {
 #ifdef DEBUG
-
+    uint16_t index = sel >> 3;
+    x86_gdt_dump_selector_index(index);
 #endif
 }
 
 void x86_gdt_dump_selector_index(uint16_t index)
 {
 #ifdef DEBUG
+    gdtr_t gdtr;
+    __asm__("sgdt %0" : "=m"(gdtr));
+    gdt_entry_t *gdt = gdtr.ptr;
+    // Print raw descriptor bytes
+    gdt_entry_t *desc = &gdt[index];
+    // 0x28
+    // hexdump(gdt, sizeof(gdt_entry_t) * GDT_ENTRIES, 8);
+    // hexdump(desc, sizeof(gdt_entry_t), 16);
 
+    size_t limit = (desc->limit_high << 16) | desc->limit_low;
+    paddr_t base = (desc->base_high << 24) | (desc->base_middle << 16) | desc->base_low;
+    bool is_present = BIT_GET(desc->access, 7) == 1;
+    int dpl = BIT_GET_RANGE(desc->access, 5, 6);
+    char *desc_size = NULL;
+
+    if (BIT_GET(desc->flags, 1) == 1)
+    {
+        desc_size = "LONG";
+    }
+    else if (BIT_GET(desc->flags, 2) == 1)
+    {
+        desc_size = "PMODE32";
+    }
+    else
+    {
+        desc_size = "PMODE16";
+    }
+    
+    if (BIT_GET(desc->access, 4) == 0)
+    {
+        system_segment_descriptor_t *ss_desc = (system_segment_descriptor_t *)desc;
+#ifdef CONFIG_64BIT
+        base |= ((uint64_t)ss_desc->base_upper << 32);
+#endif
+        int desc_type = BIT_GET_RANGE(desc->access, 0, 3);
+        trace_info(NO_MODULE, "gdt[%u] = system { base: %p, limit: %p, present: %s, ring%u, type: 0x%x, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, desc_size);
+        hexdump(ss_desc, sizeof(system_segment_descriptor_t), 16);
+    }
+    else
+    {
+        int accessed = BIT_GET(desc->access, 0);
+        char *desc_type = NULL;
+        if (BIT_GET(desc->access, 3) == 1)
+        {
+            desc_type = "TEXT";
+        }
+        else
+        {
+            desc_type = "DATA";
+        }
+        trace_info(NO_MODULE, "gdt[%u] = segment { base: %p, limit: %p, present: %s, ring%u, seg_type: %s, accessed: %s, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, accessed BOOL_TO_STRING, desc_size);
+        hexdump(desc, sizeof(gdt_entry_t), 16);
+    }
 #endif
 }

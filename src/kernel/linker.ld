@@ -41,10 +41,6 @@ SECTIONS
         KEEP(*(.initcall2.init))
         QUAD(0x0)
 
-        initcallconsole_start = .;
-        KEEP(*(.initcallconsole.init))
-        QUAD(0x0)
-
         initcall3_start = .;
         KEEP(*(.initcall3.init))
         QUAD(0x0)
@@ -75,6 +71,14 @@ SECTIONS
 
         initcall9_start = .;
         KEEP(*(.initcall9.init))
+        QUAD(0x0)
+
+        initcallconsole_start = .;
+        KEEP(*(.initcallconsole.init))
+        QUAD(0x0)
+
+        initcallloader_start = .;
+        KEEP(*(.initcallloader.init))
         QUAD(0x0)
 
         __initcall_end = .;

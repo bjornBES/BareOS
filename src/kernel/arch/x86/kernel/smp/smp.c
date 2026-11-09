@@ -43,7 +43,7 @@ NORETURN void ap_startup()
         cpuid(0x0B, subleaf, &regs_leaf);
         trace_info(MODULE, "0x0B.0x%02x = {eax = 0x%08x, ebx = 0x%08x, ecx = 0x%08x, edx = 0x%08x}", subleaf, regs_leaf.eax, regs_leaf.ebx, regs_leaf.ecx, regs_leaf.edx);
         uint32_t level_type = BIT_GET_RANGE(regs_leaf.ecx, 8, 15);
-        
+
         if (level_type == 0)
         {
             break; // no more levels
@@ -67,13 +67,13 @@ NORETURN void ap_startup()
 
     cpu_t *cpu = cpu_arch_get(apic_id);
     trace_info("CPU", "AP %u started %p", apic_id, cpu);
-    
+
     cpu_init_ap(apic_id, cpu);
-    
+
     inline_asm("sti" : : : "memory");
-    
+
     // mmu_arch_load_table(&kernel_page);
-    
+
     lapic_enable();
     lapic_timer_init(apic_id, cpu->logical_id);
 
@@ -144,17 +144,18 @@ void smp_arch_idle_thread()
     trace_debug(MODULE, "cpu %u is going idle", cpu->arch_id);
     while (true)
     {
-        /* __asm__ volatile("cli");
-        if (sched_has_work(cpu) == KERRNO_SUCCESSES)
-        {
-            trace_debug(MODULE, "cpu %u found work", cpu->arch_id);
-            __asm__ volatile("sti");
-            sched_yield();
-        } */
-        __asm__ volatile("sti");
+        // if (sched_has_work(cpu) == KERRNO_SUCCESSES)
+        // {
+        //     trace_debug(MODULE, "cpu %u found work", cpu->arch_id);
+        //     __asm__ volatile("sti");
+        //     sched_yield();
+        // }
+        // __asm__ volatile("sti");
+        __asm__ volatile("cli");
         __asm__ volatile("hlt");
     }
 }
+
 THREAD_WARPER_NO_RETURN_ARG(smp_arch_idle_thread);
 
 status_t smp_arch_send_ipi(uint32_t apic_id, interrupt_vector_t vector)

@@ -101,12 +101,18 @@ INTERNAL_INLINE void get_ids(char *id_log)
 {
     int count = 0;
     cpu_t *cpu = cpu_arch_get_current();
-    /* if (cpu != NULL && cpu->current != NULL && cpu->current->proc != NULL)
+    if (cpu != NULL && cpu->current != NULL && (cpu->current->proc != NULL || cpu->current_proc != NULL))
     {
-        count = sprintf(id_log, "%u.%u.%u", cpu->apic_id, cpu->current->tid, cpu->current->proc->pid);
+        if (cpu->current->proc)
+        {
+            count = sprintf(id_log, "%u.%u.%u", cpu->arch_id, cpu->current->tid, cpu->current->proc->pid);
+        }
+        else
+        {
+            count = sprintf(id_log, "%u.%u.%u", cpu->arch_id, cpu->current->tid, cpu->current_proc->pid);
+        }
     }
-    */
-    if (cpu != NULL && cpu->current != NULL)
+    else if (cpu != NULL && cpu->current != NULL)
     {
         count = sprintf(id_log, "%u.%u.N", cpu->arch_id, cpu->current->tid);
     }

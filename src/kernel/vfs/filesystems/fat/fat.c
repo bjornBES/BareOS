@@ -55,11 +55,15 @@ ALWAYS_INLINE cluster_t lba_to_cluster(sector_t lba, fat_priv_data_t *sb)
 
 status_t fat_read_sectors(void *buffer, sector_t sector, size_t sector_count, device_t *dev, fat_priv_data_t *sb, ssize_t *out)
 {
-    // ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, sector, sector_count, dev, sb);
+    ENTER_FUNC("%p, %u, %u, %p, %p", buffer, sector, sector_count, dev, sb);
     status_t ret = 0;
+    trace_debug(MODULE, "dev->class->type == %u", dev->class->type);
+    trace_debug(MODULE, "block_class.type == %u", block_class.type);
     if (dev->class->type == block_class.type)
     {
         blkdev_t *blk_dev = to_blkdev(dev);
+        trace_debug(MODULE, "dev->name == %s", dev->name);
+        trace_debug(MODULE, "blk_dev->ops.read_sectors == %p", blk_dev->ops.read_sectors);
         ssize_t sector_read = 0;
         ret = blk_dev->ops.read_sectors(blk_dev, buffer, sector_count, sector, &sector_read);
         *out = sector_read * sb->bytes_per_sector;
@@ -75,7 +79,7 @@ status_t fat_read_sectors(void *buffer, sector_t sector, size_t sector_count, de
 
 status_t fat_read_clusters(void *buffer, cluster_t cluster_start, cluster_t clusters_count, device_t *dev, fat_priv_data_t *sb, ssize_t *out)
 {
-    // ENTER_FUNC(MODULE, "%p, %u, %u, %p, %p", buffer, cluster_start, clusters_count, dev, sb);
+    ENTER_FUNC("%p, %u, %u, %p, %p", buffer, cluster_start, clusters_count, dev, sb);
     sector_t lba = cluster_to_lba(cluster_start, sb);
     return fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb, out);
 }

@@ -36,6 +36,8 @@ typedef struct arch_cpu_info
     struct thread *current;      // thread_t running on this core
     struct thread *idle;         // this core's idle thread_t
 
+    process_t *current_proc;
+
     cpu_logical_id_t logical_id; // sequential index 0..n
     uint32_t arch_id;
     uint32_t irq_count;
@@ -43,7 +45,8 @@ typedef struct arch_cpu_info
     uint8_t online : 1; // has this AP finished init
     uint8_t need_resched : 1;
     uint8_t has_stopped : 1;
-    uint8_t res : 5;
+    uint8_t disable : 1;
+    uint8_t res : 4;
 
     cpuid_leaves_t cpuid;
 

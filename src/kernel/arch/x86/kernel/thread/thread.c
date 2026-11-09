@@ -31,7 +31,7 @@ void kthread_entry(thread_func_t entry, uintptr_t arg)
     sched_thread_exit(ret);
 }
 
-status_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t kstack, uintptr_t arg)
+vaddr_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t kstack, uintptr_t arg)
 {
     ENTER_FUNC(MODULE, "%p, %p, %p", thread, entry, arg);
     // carve a fake frame and stack at top of kernel stack
@@ -72,5 +72,39 @@ status_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t kst
     thread->ctx.regs = frame;
 
     // ivt_dump_frame(frame);
+    return stack_frame;
+}
+
+vaddr_t thread_user_arch_ctx_init(thread_t *thread, vaddr_t entry, vaddr_t kstack, vaddr_t ustack, uint64_t arg)
+{
+    ENTER_FUNC(MODULE, "%p, %p, %p", thread, entry, arg);
+    // carve a fake frame and stack at top of kernel stack
+
+    vaddr_t stack_frame = kstack & ~0xFull;
+
+    stack_frame -= sizeof(intr_frame_t);
+    intr_frame_t *frame = (intr_frame_t *)stack_frame;
+    memset(frame, 0, sizeof(intr_frame_t));
+    trace_debug(MODULE, "stack_frame = %p", stack_frame);
+
+    frame->sp = ustack;
+    frame->cs = USER_CODE_SELECTOR | 3;
+    frame->ss = USER_DATA_SELECTOR | 3;
+    frame->ds = USER_DATA_SELECTOR | 3;
+    frame->es = USER_DATA_SELECTOR | 3;
+#if CONFIG_ENABLE_SMP == 0
+    frame->gs = USER_DATA_SELECTOR | 3;
+    frame->fs = USER_DATA_SELECTOR | 3;
+#endif
+    frame->pc = (vaddr_t)entry;
+
+    frame->flags = X86_EFLAGS_IF | X86_EFLAGS_FIXED;
+
+    // frame_arch_dump_frame(frame);
+
+    // point ctx at the fake frame
+    thread->ctx.regs = frame;
+
+    frame_arch_dump_frame(frame);
     return stack_frame;
 }

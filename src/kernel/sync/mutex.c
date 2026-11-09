@@ -39,7 +39,7 @@ void mutex_lock(mutex_t *m)
     {
         // block ourselves onto this mutex's wait list, atomically w.r.t. m->lock
         self->state = THREAD_BLOCKED;
-        list_push_tail(&m->waiters, &self->node);
+        list_push_tail(&m->waiters, &THIS_NODE(self));
         spinlock_release(&m->lock);
 
         sched_yield();  // won't be picked again until sched_wake_one hits our node
@@ -55,12 +55,13 @@ void mutex_lock(mutex_t *m)
 void mutex_unlock(mutex_t *m)
 {
     #if CONFIG_MUTEX == 1
+    ENTER_FUNC("%p", m);
     spinlock_acquire(&m->lock);
     m->locked = false;
     list_node_t *n;
     if (m->waiters.count == 0)
     {
-        n = &m->owner->node;
+        n = &THIS_NODE(m->owner);
     }
     m->owner = NULL;
     if (m->waiters.count != 0)
@@ -76,7 +77,7 @@ void mutex_unlock(mutex_t *m)
 
     if (n)
     {
-        thread_t *t = container_of(n, thread_t, node);
+        thread_t *t = to_thread(n);
         if (t->state == THREAD_REMAINS)
         {
             sched_thread_reap(t);

@@ -73,7 +73,7 @@ status_t list_push_head(list_t *list, list_node_t *node)
 
 status_t list_push_tail(list_t *list, list_node_t *node)
 {
-    ENTER_FUNC("%p, %p", list, node);
+    // ENTER_FUNC("%p, %p", list, node);
     if (!list)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "list is null");

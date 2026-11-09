@@ -12,6 +12,8 @@
 
 #include "thread/priority.h"
 
+#include "process/processt.h"
+
 #include "asm/threadt_arch.h"
 #include "asm/contextt_arch.h"
 
@@ -41,8 +43,9 @@ typedef struct thread thread_t;
 
 typedef struct thread
 {
-    list_node_t node; // intrusive — used by whichever queue currently
-    // struct process *proc;
+    LIST_ENTRY_THIS();
+    // list_node_t node; // intrusive — used by whichever queue currently
+    struct process *proc;
 
     // kernel stack
     vaddr_t kstack;
@@ -82,3 +85,5 @@ typedef struct thread
 
     thread_t *next_runnable;
 } thread_t;
+
+#define to_thread(n) container_of(n, thread_t, LIST_ENTRY_NAME);

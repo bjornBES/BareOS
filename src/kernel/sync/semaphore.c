@@ -39,7 +39,7 @@ void sem_wait(semaphore_t *s)
     spinlock_acquire(&s->lock);
     while (s->count <= 0)
     {
-        list_push_tail(&s->queue_list, &self->node);
+        list_push_tail(&s->queue_list, &THIS_NODE(self));
         self->state = THREAD_BLOCKED;
         spinlock_release(&s->lock);
         sched_yield();
@@ -65,7 +65,7 @@ void sem_post(semaphore_t *s)
 
     if (n)
     {
-        thread_t *t = container_of(n, thread_t, node);
+        thread_t *t = to_thread(n);
         if (t->state == THREAD_REMAINS)
         {
             sched_thread_reap(t);

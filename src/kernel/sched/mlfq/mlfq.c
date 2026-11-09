@@ -48,7 +48,7 @@ thread_t *mlfq_steal_one(void *runq_data)
         if (n)
         {
             q->count--;
-            thread_t *t = container_of(n, thread_t, node);
+            thread_t *t = to_thread(n);
             t->in_queue = false;
             return t;
         }
@@ -92,7 +92,6 @@ status_t mlfq_yield(void *runq_data, thread_t *current)
 
 status_t mlfq_tick(void *runq_data, thread_t *current)
 {
-    (void)runq_data;
     if (current->timeslice > 0)
     {
         current->timeslice--;
@@ -129,7 +128,7 @@ thread_t *mlfq_pick_next(void *runq_data)
             if (n)
             {
                 q->count--;
-                thread_t *t = container_of(n, thread_t, node);
+                thread_t *t = to_thread(n);
                 t->in_queue = false;
                 t->timeslice = t->timeslice_reset; // reload cached value, no recompute
                 return t;
@@ -149,7 +148,7 @@ status_t mlfq_enqueue(void *runq_data, thread_t *t)
     t->in_queue = true;
     mlfq_data_t *q = runq_data;
     int b = priority_to_bucket(t->priority);
-    list_push_tail(&q->queues[b], &t->node);
+    list_push_tail(&q->queues[b], &THIS_NODE(t));
     q->count++;
     return KERRNO_SUCCESSES;
 }
@@ -157,7 +156,7 @@ status_t mlfq_enqueue(void *runq_data, thread_t *t)
 thread_t *mlfq_get_first(void *runq_data, int level)
 {
     mlfq_data_t *q = runq_data;
-    thread_t *t = container_of(q->queues[level].head, thread_t, node);
+    thread_t *t = to_thread(q->queues[level].head);
     return t;
 }
 
