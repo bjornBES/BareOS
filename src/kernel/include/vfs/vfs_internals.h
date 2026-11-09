@@ -53,7 +53,7 @@ typedef struct inode
     gid_t gid;
     timespec_t created;
     timespec_t modified;
-    uint32_t refcount;
+    refcount_t refcount;
     volume_t *volume;
     filesystem_t *fs;
     struct inode *hash_next; // icache hash chain
@@ -70,7 +70,7 @@ typedef struct dentry
     struct dentry *hash_next; // next in dcache hash bucket
     mountpoint_t *mountpoint; // if this dentry is a mountpoint
     uint32_t flags;
-    uint32_t refcount;
+    refcount_t refcount;
 } dentry_t;
 
 typedef struct mountpoint

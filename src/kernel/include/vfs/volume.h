@@ -31,7 +31,7 @@ typedef struct volume
     device_t *device;
     void *sb;
     uint32_t flags;
-    uint32_t refcount;
+    refcount_t refcount;
     list_t mountpoints;
     mountpoint_t *mountpoint;
 } volume_t;

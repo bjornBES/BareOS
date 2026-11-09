@@ -211,3 +211,13 @@ status_t vfs_read(vfs_node_t *node, void *buf, size_t len, ssize_t *out_read)
     }
     return node->fs->read(node, buf, node->offset, len, out_read, dev, mount);
 }
+
+status_t vfs_seek(vfs_node_t *node, off_t offset, int whence)
+{
+    if (whence == SEEK_SET)
+    {
+        node->offset = offset;
+        return KERRNO_SUCCESSES;
+    }
+    return KERRNO_UNSUCCESS;
+}
