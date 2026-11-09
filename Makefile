@@ -15,8 +15,7 @@ include mk/toolchain.mk
 #
 build_image: $(BUILD_DIR)/image.iso
 
-$(BUILD_DIR)/image.iso: bootloader kernel
-# user
+$(BUILD_DIR)/image.iso: bootloader kernel user
 	@python ./scripts/python/make_image.py
 
 	@echo "--> Created: image.iso"
@@ -58,8 +57,8 @@ documentation:
 #
 # user
 #
-# user: $(TARGET_CORE_LIBS)
-# 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
+user: libs config
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
 	python ./scripts/python/run_vm.py

@@ -57,3 +57,5 @@ typedef uint32_t gsi_t;
 typedef uint32_t kernel_irq_t;
 
 typedef uint32_t color_t;
+
+typedef uint32_t refcount_t;

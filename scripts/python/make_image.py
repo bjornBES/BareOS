@@ -540,7 +540,7 @@ stage2_bin = os.path.join(arch_build_path, "stage2/stage2.bin")
 kernel_bin = os.path.join(arch_build_path, "kernel/kernel.elf")
 
 disks.append(disk_spec("main", os.path.join(arch_build_path, "image.iso"), parse_size(image_size), 512, image_fs, False, [
-    disk_partition_spec("USER", "user", 2048, "fat32", parse_size("120m"), False, False, []), ## 120 mb fat32 partition
+    disk_partition_spec("USER", "user", 2048, "fat32", parse_size("120m"), False, False, ["init.elf"]), ## 120 mb fat32 partition
     disk_partition_spec("BOOT", "boot", 0, "fat32", parse_size("10m"), True, False, [], stage1_vbr, stage2_bin, kernel_bin), ## 10 mb fat32 partition
     disk_partition_spec("EXT4", "test", 0, "ext2", 0, False, False, []), ## 120 mb ext2 partition
     ], stage1_mbr))

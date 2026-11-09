@@ -30,6 +30,13 @@ export TARGET_OBJCOPY := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(OBJCOPY)
 export TARGET_AR      := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(AR)
 export TARGET_AS      := $(AS)
 
+export USER_TARGET_CC      := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(CC)
+export USER_TARGET_CXX     := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(CXX)
+export USER_TARGET_LD      := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(LD)
+export USER_TARGET_OBJCOPY := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(OBJCOPY)
+export USER_TARGET_AR      := $(TOOLCHAIN_BIN_PATH)/$(TARGET)-$(AR)
+export USER_TARGET_AS      := $(AS)
+
 ifeq (,$(wildcard $(TARGET_CC)))
 # $(error toolchain missing: $(TARGET_CC), build it or check toolchain= in config.env)
 endif
@@ -60,6 +67,9 @@ export COMMON_INCLUDE := -I./ -I./include \
 	-I$(SOURCE_DIR)/src/libs/arch/$(SRCARCH) -I$(SOURCE_DIR)/src/libs/arch/$(SRCARCH)/include \
 	-I./arch/generic -I./arch/generic/include \
 	-I$(INCLUDE_DIR)
+export COMMON_USER_INCLUDE := $(COMMON_INCLUDE) \
+	-I./arch/$(SRCARCH) -I./arch/$(SRCARCH)/include \
+	-I$(SOURCE_DIR)/src/user/libc -I$(SOURCE_DIR)/src/user/libc/include
 
 export COMMON_LIBS = -lgcc
 export ASFLAGS_COMMON := $(ASFLAGS_DEFINE)
@@ -80,3 +90,9 @@ export TARGET_ASFLAGS := $(COMMON_INCLUDE) $(ASFLAGS_COMMON) -f elf64
 export TARGET_CFLAGS := -mcmodel=kernel $(COMMON_INCLUDE) $(CFLAGS_COMMON)
 export TARGET_CXXFLAGS := $(COMMON_INCLUDE) $(CFLAGS_COMMON)
 export TARGET_LDFLAGS := $(LDFLAGS_COMMON)
+
+export USER_TARGET_ASFLAGS := $(COMMON_USER_INCLUDE) $(ASFLAGS_COMMON) -f elf64
+export USER_TARGET_CFLAGS := $(COMMON_USER_INCLUDE) $(CFLAGS_COMMON)
+export USER_TARGET_CXXFLAGS := $(COMMON_USER_INCLUDE) $(CFLAGS_COMMON)
+export USER_TARGET_LDFLAGS := $(LDFLAGS_COMMON)
+export USER_TARGET_LIBS := $(COMMON_LIBS) $(BUILD_DIR)/libc.a $(BUILD_DIR)/libcore.a
