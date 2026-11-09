@@ -16,7 +16,7 @@
 #include "memory.h"
 
 #include "x86.h"
-#include "bios.h"
+#include "bios/bios.h"
 
 #include <defs.h>
 

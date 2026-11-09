@@ -11,7 +11,7 @@
 // credit to: https://github.com/levex/osdev for the core idea
 // https://github.com/levex/osdev/blob/master/memory/malloc.c
 
-#include "memory_allocator.h"
+#include "allocator/memory_allocator.h"
 #include "types.h"
 #include "syscall.h"
 #include "sys/mman.h"

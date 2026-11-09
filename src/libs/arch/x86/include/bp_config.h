@@ -8,4 +8,4 @@
  * -----
  */
 
-#include "../x86/boot/arch_bp_config.h"
+#include "boot/arch_bp_config.h"

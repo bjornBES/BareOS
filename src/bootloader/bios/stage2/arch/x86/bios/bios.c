@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "bios.h"
+#include "bios/bios.h"
 
 #include <defs.h>
 

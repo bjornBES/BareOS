@@ -10,4 +10,4 @@
 
 #pragma once
 
-#include "../x86/arch_ctype.h"
+#include "arch_ctype.h"

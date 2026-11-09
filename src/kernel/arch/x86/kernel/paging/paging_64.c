@@ -10,8 +10,8 @@
 
 #ifdef __x86_64__
 
-#include "paging_64.h"
-#include "paging.h"
+#include "kernel/paging/paging_64.h"
+#include "kernel/paging/paging.h"
 
 #include "asm/mmu_arch.h"
 

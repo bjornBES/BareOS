@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "e9.h"
+#include "kernel/debug/e9/e9.h"
 
 #include "kernel/io.h"
 #include <defs.h>

@@ -10,4 +10,4 @@
 
 #pragma once
 
-#include "../x86/arch_memory.h"
+#include "arch_memory.h"

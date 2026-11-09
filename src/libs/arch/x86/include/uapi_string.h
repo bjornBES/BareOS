@@ -10,4 +10,4 @@
 
 #pragma once
 
-#include "../x86/arch_string.h"
+#include "arch_string.h"

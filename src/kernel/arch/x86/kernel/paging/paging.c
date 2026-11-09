@@ -23,7 +23,7 @@
 #include "align.h"
 #include "memory.h"
 #include "string.h"
-#include "paging.h"
+#include "kernel/paging/paging.h"
 #include "panic.h"
 
 #include <binary.h>

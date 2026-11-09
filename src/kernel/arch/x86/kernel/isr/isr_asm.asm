@@ -31,7 +31,7 @@ x86_isr_%1:
 
 %endmacro
 
-%include "kernel/isr/isrs_gen.inc"
+%include "arch/x86/kernel/isr/isrs_gen.inc"
 %include "config.inc"
 
 	%if     __x86_64__

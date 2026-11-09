@@ -10,8 +10,8 @@
 
 // this code is from https://github.com/malwarepad/cavOS/blob/master/src/kernel/drivers/printf.c
 
-#include "printf_config.h"
-#include "printf.h"
+#include "printf_driver/printf_config.h"
+#include "printf_driver/printf.h"
 
 #include <stdint.h>
 #include <stdbool.h>
