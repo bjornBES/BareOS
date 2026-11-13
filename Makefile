@@ -3,7 +3,7 @@ include mk/config.mk
 
 include mk/toolchain_config.mk
 
-.PHONY: all build_image bootloader clean always debug libs kernel
+.PHONY: all build_image bootloader clean always debug kernel libcore
 # user
 
 all: build_image
@@ -15,7 +15,7 @@ include mk/toolchain.mk
 #
 build_image: $(BUILD_DIR)/image.iso
 
-$(BUILD_DIR)/image.iso: bootloader kernel user
+$(BUILD_DIR)/image.iso: libcore bootloader kernel user
 	@python ./scripts/python/make_image.py
 
 	@echo "--> Created: image.iso"
@@ -31,7 +31,7 @@ build_bootloader:
 #
 # Kernel
 #
-kernel: libs config $(BUILD_DIR)/kernel/kernel.elf
+kernel: config $(BUILD_DIR)/kernel/kernel.elf
 
 
 $(BUILD_DIR)/kernel/kernel.elf: always
@@ -45,10 +45,10 @@ src/libs/include/config.h: config/config.env scripts/gen_config.sh
 	sh scripts/gen_config.sh config/config.env $@ src/libs/include/config.inc
 
 
-libs: $(BUILD_DIR)/libcore.a
+libcore: $(BUILD_DIR)/libcore.a
 
-$(BUILD_DIR)/libcore.a:
-	@$(MAKE) -C src/libs TARGET_ARCH=64 BUILD_DIR=$(abspath $(BUILD_DIR)) -s
+$(BUILD_DIR)/libcore.a: always
+	@$(MAKE) -C src/libs TARGET_ARCH=64 BUILD_DIR=$(abspath $(BUILD_DIR))
 
 
 documentation:
@@ -57,7 +57,7 @@ documentation:
 #
 # user
 #
-user: libs config
+user: config
 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR))
 
 runnow:
@@ -90,14 +90,16 @@ debugnow:
 always:
 	@mkdir -p $(BUILD_DIR)
 	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
-# 	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
-# 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) always
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
+	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) always -s
 
 #
 # Clean
 #
 clean:
 	@$(MAKE) -C src/bootloader BUILD_DIR=$(abspath $(BUILD_DIR)) clean
-# 	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
-# 	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/kernel BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/libs BUILD_DIR=$(abspath $(BUILD_DIR)) clean
+	@$(MAKE) -C src/user BUILD_DIR=$(abspath $(BUILD_DIR)) clean
 	@rm -rf $(BUILD_DIR)/*

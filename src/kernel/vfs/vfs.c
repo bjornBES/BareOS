@@ -55,10 +55,19 @@ INTERNAL status_t vfs_do_mount(const char *path, device_t *dev, volume_t *volume
 
 status_t vfs_mount_label(const char *path, device_t *dev, int flags)
 {
+    ENTER_FUNC("%s, %p, 0x%x", path, dev, flags);
     char volume_path[CONFIG_MAX_VOLUME_LENGTH];
     path_split_prefix(path, volume_path, NULL);
+    filesystem_t *fs;
+    status_t ret = vfs_fs_probe(dev, &fs);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret != KERRNO_SUCCESSES)
+    {
+        return ret;
+    }
+
     volume_t *vol = NULL;
-    status_t ret = volume_register(volume_path, dev, &vol);
+    ret = volume_do_register(volume_path, dev, fs, &vol);
     KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
     {
@@ -113,7 +122,7 @@ status_t vfs_mount(device_t *dev, int flags)
     }
 
     trace_debug(MODULE, "vol = %p", vol);
-    char path[255];
+    char *path = kzmalloc(CONFIG_MAX_VOLUME_LENGTH);
     size_t path_count = 0;
 #if CONFIG_VOLUME_POSTFIX != 0 && CONFIG_VOLUME_PREFIX != 0
     path_count = sprintf(path, "%c%c%s%c%c", CONFIG_PATH_DIR_SEPARATOR, CONFIG_VOLUME_PREFIX, block_dev->fs_ident.label, CONFIG_VOLUME_POSTFIX, CONFIG_PATH_DIR_SEPARATOR);
@@ -151,6 +160,7 @@ status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **o
     volume_t *vol = node->mountpoint->volume;
     mountpoint_t *mnt = node->mountpoint;
 
+    trace_debug(MODULE, "vol->fs->name = %s", vol->fs->name);
     trace_debug(MODULE, "vol->fs->open @ %p", vol->fs->open);
     ret = vol->fs->open(node, vol->device, mnt);
     KERRNO_CHECK_RETURN(ret);
@@ -177,7 +187,7 @@ status_t vfs_open(const char *path, int flags, int mode, vfs_node_t **out_node)
 status_t vfs_close(vfs_node_t *node)
 {
     status_t ret = 0;
-    
+
     ret = inode_put(node->inode);
     KERRNO_CHECK_RETURN(ret);
     if (ret != KERRNO_SUCCESSES)
@@ -197,7 +207,7 @@ status_t vfs_close(vfs_node_t *node)
     return ret;
 }
 
-status_t vfs_read(vfs_node_t *node, void *buf, size_t len, ssize_t *out_read)
+status_t vfs_read(vfs_node_t *node, void *buf, off_t offset, size_t len, ssize_t *out_read)
 {
     mountpoint_t *mount = node->mountpoint;
     trace_debug(MODULE, "mount = %p", mount);
@@ -209,7 +219,19 @@ status_t vfs_read(vfs_node_t *node, void *buf, size_t len, ssize_t *out_read)
     {
         return KERRNO_UNSUCCESS;
     }
-    return node->fs->read(node, buf, node->offset, len, out_read, dev, mount);
+    return node->fs->read(node, buf, offset, len, out_read, dev, mount);
+}
+
+status_t vfs_write(vfs_node_t *node, const void *buf, off_t offset, size_t len, ssize_t *out_read)
+{
+    mountpoint_t *mount = node->mountpoint;
+    volume_t *volume = mount->volume;
+    device_t *dev = volume->device;
+    if (node->fs->write == NULL)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "fs \"%s\" doesn't have write", node->fs->name);
+    }
+    return node->fs->write(node, buf, offset, len, out_read, dev, mount);
 }
 
 status_t vfs_seek(vfs_node_t *node, off_t offset, int whence)

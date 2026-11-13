@@ -178,6 +178,8 @@ status_t cpu_init_cpu()
         // check CPUID.0x80000001:EDX[29] intel64
         arch_runtime_data.long_mode = BIT_GET(regs_leaf_ext1.edx, 29);
         arch_runtime_data.paging.paging_64 = arch_runtime_data.long_mode;
+
+        arch_runtime_data.syscall.has_syscall = BIT_GET(regs_leaf_ext1.edx, 11);
     }
 
     if (max_ext_subleaf >= 0x80000008)

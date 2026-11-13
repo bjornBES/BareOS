@@ -23,3 +23,5 @@ status_t proc_exec(process_t *proc, const char *path, char *argv[], char *envp[]
 status_t proc_kernel_execve(process_t *proc, const char *path, char *argv[], char *envp[], thread_t **out_thread);
 status_t proc_add_thread(process_t *proc, thread_t *t);
 status_t proc_run(process_t *proc);
+
+status_t process_get_current(process_t **out_proc);

@@ -15,6 +15,8 @@
 
 #include "memory.h"
 
+#define MODULE "device"
+
 device_t *device_create()
 {
     device_t *device = kmalloc(sizeof(device_t));
@@ -38,4 +40,17 @@ status_t device_set_name(device_t *dev, const char *fmt, ...)
     // err = kobject_set_name_vargs(&dev->kobj, fmt, vargs);
     va_end(vargs);
     return err;
+}
+
+status_t device_open(device_t *dev, int flags)
+{
+    ENTER_FUNC("%p, 0x%x", dev, flags);
+    if (!dev->ops.open)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "");
+    }
+
+    vfs_node_t node;
+    status_t ret = dev->ops.open(dev, flags, &node);
+    return ret;
 }

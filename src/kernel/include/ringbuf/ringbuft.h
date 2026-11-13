@@ -14,7 +14,8 @@
 
 typedef struct ringbuf
 {
-    void **buffer;
+    uint8_t *buffer;
+    size_t count;
     size_t object_size;
 
     uint32_t read_ptr;

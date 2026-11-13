@@ -10,6 +10,7 @@
 
 #include "drivers/tty/vt/vt.h"
 #include "drivers/tty/vt/vtt.h"
+#include "drivers/tty/vt/vt_buffer.h"
 
 #include "drivers/tty/tty.h"
 #include "drivers/base/class.h"
@@ -59,121 +60,223 @@ static virtual_console_t consoles[MAX_CONSOLES];
 virt_con_ops_t *conswitchp;
 extern const virt_con_ops_t dummy_con;
 
-static virtual_console_data_t *master_display_fg;
+static vc_data_t *master_display_fg;
 
 static int fg_console;
 
 #define LOCK_NAME vt_lock
 DEF_LOCK(LOCK_NAME);
 
-status_t vt_putc(tty_struct_t *tty, wchar_t ch)
-{
-    ENTER_FUNC("%p, 0x%x", tty, ch);
-    virtual_console_data_t *data = tty->tty_dev->driver_data;
+color_t default_color_table[] = {
+    TO_RGBX(0, 0, 0, 0),
+    TO_RGBX(0xAA, 0, 0, 0),
+    TO_RGBX(0, 0xAA, 0, 0),
+    TO_RGBX(0xAA, 0x55, 0, 0),
+    TO_RGBX(0, 0, 0xAA, 0),
+    TO_RGBX(0xAA, 0, 0xAA, 0),
+    TO_RGBX(0, 0xAA, 0xAA, 0),
+    TO_RGBX(0xAA, 0xAA, 0xAA, 0),
+    TO_RGBX(0x55, 0x55, 0x55, 0),
+    TO_RGBX(0xFF, 0x55, 0x55, 0),
+    TO_RGBX(0x55, 0xFF, 0x55, 0),
+    TO_RGBX(0xFF, 0xFF, 0x55, 0),
+    TO_RGBX(0x55, 0x55, 0xFF, 0),
+    TO_RGBX(0xFF, 0x55, 0xFF, 0),
+    TO_RGBX(0x55, 0xFF, 0xFF, 0),
+    TO_RGBX(0xFF, 0xFF, 0xFF, 0),
+};
 
-    return KERRNO_UNSUCCESS;
+enum vc_ctl_state
+{
+    ESnormal,
+    ESesc,
+    ESsquare,
+    ESgetpars,
+    ESgetsubpars,
+    ESfunckey,
+    EShash,
+    ESsetG0,
+    ESsetG1,
+    ESpercent,
+    EScsiignore,
+    ESnonstd,
+    ESpalette,
+    ESosc,
+    ESANSI_first = ESosc,
+    ESapc,
+    ESpm,
+    ESdcs,
+    ESANSI_last = ESdcs,
+};
+
+enum
+{
+    ASCII_NULL = 0,
+    ASCII_BELL = 7,
+    ASCII_BACKSPACE = 8,
+    ASCII_IGNORE_FIRST = ASCII_BACKSPACE,
+    ASCII_HTAB = 9,
+    ASCII_LINEFEED = 10,
+    ASCII_VTAB = 11,
+    ASCII_FORMFEED = 12,
+    ASCII_CAR_RET = 13,
+    ASCII_IGNORE_LAST = ASCII_CAR_RET,
+    ASCII_SHIFTOUT = 14,
+    ASCII_SHIFTIN = 15,
+    ASCII_CANCEL = 24,
+    ASCII_SUBSTITUTE = 26,
+    ASCII_ESCAPE = 27,
+    ASCII_CSI_IGNORE_FIRST = ' ', /* 0x2x, 0x3a and 0x3c - 0x3f */
+    ASCII_CSI_IGNORE_LAST = '?',
+    ASCII_DEL = 127,
+    ASCII_EXT_CSI = 128 + ASCII_ESCAPE,
+};
+
+INTERNAL_INLINE vt_cell_t *vc_cell(vc_data_t *vc, vt_cell_t *buf)
+{
+    return &buf[(size_t)vc->vc_y * vc->vc_cols + vc->vc_x];
 }
 
-static tty_ops_t vt_ops = {
-    .put_char = vt_putc,
-};
+INTERNAL_INLINE vt_cell_t *vc_buffer_cell(vc_data_t *vc, uint16_t x, uint16_t y)
+{
+    return &vc->vc_screenbuf[(size_t)y * vc->vc_cols + x];
+}
 
-static tty_driver_t vt = {
-    .name = "tty",
-    .ops = &vt_ops,
-};
+INTERNAL_INLINE vt_cell_t *vc_origin_cell(vc_data_t *vc, uint16_t x, uint16_t y)
+{
+    return &vc->vc_origin[(size_t)y * vc->vc_cols + x];
+}
 
-void vc_redraw_screen(virtual_console_data_t *vc, int is_switch);
-
-INTERNAL status_t vt_data_init(virtual_console_data_t *vc, int num, bool init)
+INTERNAL status_t vc_data_init(vc_data_t *vc, int num, bool init)
 {
     ENTER_FUNC("%p, %u, %s", vc, num, init BOOL_TO_STRING);
     trace_debug(MODULE, "conswitchp = %p", conswitchp);
-    vc->current = conswitchp;
-
-    vc->current_font = psf_font_builtin();
+    vc->vc_sw = conswitchp;
 
     if (con_driver_map[num])
     {
-        vc->current = con_driver_map[num];
+        vc->vc_sw = con_driver_map[num];
     }
 
-    vc->console_number = num;
-    vc->display_fg = &master_display_fg;
-    vc->can_do_color = 0;
-    status_t ret = vc->current->init(vc, init);
+    vc->vc_index = num;
+    vc->vc_display_fg = &master_display_fg;
+    // vc->can_do_color = 0;
+    status_t ret = vc->vc_sw->con_init(vc, init);
     if (ret == KERRNO_SUCCESSES)
     {
-        vc->console_bpr = vc->size.cols << 1;
-        vc->buffer_size = (vc->size.rows * vc->size.cols) * sizeof(virtual_console_cell_t);
+        // vc->vc_size_row = vc->vc_cols << 1;
+        vc->vc_screenbuf_cells = vc->vc_rows * vc->vc_cols;
         return KERRNO_SUCCESSES;
     }
     return ret;
 }
 
-static void vt_data_deinit(virtual_console_data_t *vc)
+INTERNAL void vt_data_deinit(vc_data_t *vc)
 {
-    vc->current->uninit(vc);
+    vc->vc_sw->con_deinit(vc);
 }
 
-/**
- * vc_is_visible - checks whether the current console is visible
- * @vc: virtual console
- *
- * RETURNS: zero if not visible, nonzero if visible
- */
-bool vc_is_visible(const virtual_console_data_t *vc)
+bool con_is_visible(const vc_data_t *vc)
 {
-    return *vc->display_fg == vc;
+    // trace_debug(MODULE, "*vc->vc_display_fg = %p, vc = %p", *vc->vc_display_fg, vc);
+    WARN_LOCK_UNLOCKED();
+    return *vc->vc_display_fg == vc;
 }
 
-INTERNAL void vc_save_screen(virtual_console_data_t *vc)
+INTERNAL_INLINE bool vc_is_fg(vc_data_t *vc)
 {
-    if (vc->current->save_screen)
+    return vc->vc_index == fg_console;
+}
+
+INTERNAL_INLINE bool con_should_update(const vc_data_t *vc)
+{
+    return con_is_visible(vc);
+}
+
+INTERNAL_INLINE vt_cell_t *screenpos(const struct vc_data *vc, vaddr_t offset, bool viewed)
+{
+    vt_cell_t *origin = viewed ? vc->vc_visible_origin : vc->vc_origin;
+
+    return (vt_cell_t *)(origin + offset);
+}
+
+INTERNAL status_t vc_putc(vc_data_t *vc, vt_cell_t *ca, uint32_t y, uint32_t x)
+{
+    if (vc->vc_sw->con_putc)
     {
-        vc->current->save_screen(vc);
-    }
-}
-
-INTERNAL void vc_set_origin(virtual_console_data_t *vc)
-{
-    if (!vc_is_visible(vc) || !vc->current->set_origin || vc->current->set_origin(vc))
-    {
-        vc->origin = (uint32_64_t)vc->cell_buffer;
-    }
-    vc->visible_origin = vc->origin;
-    vc->scr_end = vc->origin + vc->buffer_size;
-    vc->pos = (virtual_console_cell_t *)(vc->origin + vc->console_bpr * vc->state.y + 2 * vc->state.x);
-}
-
-INTERNAL ALWAYS_INLINE bool vc_is_fg(virtual_console_data_t *vc)
-{
-    return vc->console_number == fg_console;
-}
-
-INTERNAL ALWAYS_INLINE bool vc_should_update(const virtual_console_data_t *vc)
-{
-    return vc_is_visible(vc);
-}
-
-INTERNAL void vc_putc(virtual_console_data_t *vc, virtual_console_cell_t *ca, uint32_t y, uint32_t x)
-{
-    if (vc->current->putc)
-    {
-        vc->current->putc(vc, *ca, y, x);
+        return vc->vc_sw->con_putc(vc, *ca, x, y);
     }
     else
     {
-        vc->current->putcs(vc, ca, 1, y, x);
+        return vc->vc_sw->con_putcs(vc, ca, 1, x, y);
     }
 }
 
-INTERNAL virtual_console_cell_t softcursor_original = {.cp = (~0)};
-
-INTERNAL void vc_add_softcursor(virtual_console_data_t *vc)
+INTERNAL void vc_do_update_region(vc_data_t *vc, vt_cell_t *start, size_t count)
 {
-    virtual_console_cell_t i = *vc->pos;
-    uint32_t type = vc->cursor_type;
+    ENTER_FUNC("%p, %p, 0x%x", vc, start, count);
+    unsigned int xx, yy, offset;
+    vt_cell_t *p = (vt_cell_t *)start;
+
+    offset = ((vaddr_t)start - (vaddr_t)vc->vc_origin);
+    xx = offset % vc->vc_cols;
+    yy = offset / vc->vc_cols;
+
+    for (;;)
+    {
+        uint32_t attrib = scr_readw(p).attr;
+        int startx = xx;
+        vt_cell_t *q = p;
+        while (xx < vc->vc_cols && count)
+        {
+            if (attrib != (scr_readw(p).attr))
+            {
+                if (p > q)
+                {
+                    vc->vc_sw->con_putcs(vc, q, (size_t)((void *)p - (void *)q), startx, yy);
+                }
+                startx = xx;
+                q = p;
+                attrib = scr_readw(p).attr;
+            }
+            p++;
+            xx++;
+            count--;
+        }
+        if (p > q)
+        {
+            vc->vc_sw->con_putcs(vc, q, (size_t)((void *)p - (void *)q), startx, yy);
+        }
+        if (!count)
+        {
+            break;
+        }
+        xx = 0;
+        yy++;
+    }
+}
+
+static void insert_char(vc_data_t *vc, unsigned int nr)
+{
+    vt_cell_t *p = vc->vc_pos;
+
+    // vc_uniscr_insert(vc, nr);
+    scr_memmovew(p + nr, p, vc->vc_cols - vc->vc_x - nr);
+    vt_cell_t blank_cell = {.bg = vc->vc_bg, .cp = ' '};
+    scr_memsetw(p, blank_cell, nr);
+    vc_clear_need_wrap(vc);
+    if (con_should_update(vc))
+    {
+        vc_do_update_region(vc, p, vc->vc_cols - vc->vc_x);
+    }
+}
+
+INTERNAL vt_cell_t softcursor_original = {.cp = (~0)};
+
+INTERNAL void vc_add_softcursor(vc_data_t *vc)
+{
+    vt_cell_t i = *vc->vc_pos;
+    uint32_t type = 0;
 
     if (!(type & CUR_SW))
     {
@@ -194,53 +297,56 @@ INTERNAL void vc_add_softcursor(virtual_console_data_t *vc)
     {
         i.fg ^= CUR_FG;
     }
-    *vc->pos = i;
-    if (vc_should_update(vc))
+    *vc->vc_pos = i;
+    if (con_should_update(vc))
     {
-        vc_putc(vc, &i, vc->state.y, vc->state.x);
+        vc_putc(vc, &i, vc->vc_y, vc->vc_x);
     }
 }
 
-INTERNAL void vc_hide_softcursor(virtual_console_data_t *vc)
+INTERNAL void vc_hide_softcursor(vc_data_t *vc)
 {
     if (softcursor_original.cp != (~0))
     {
-        *vc->pos = softcursor_original;
-        if (vc_should_update(vc))
+        *vc->vc_pos = softcursor_original;
+        if (con_should_update(vc))
         {
-            vc_putc(vc, &softcursor_original, vc->state.y, vc->state.x);
+            vc_putc(vc, &softcursor_original, vc->vc_y, vc->vc_x);
         }
         softcursor_original.cp = (~0);
     }
 }
 
-INTERNAL void vc_hide_cursor(virtual_console_data_t *vc)
+INTERNAL void vc_hide_cursor(vc_data_t *vc)
 {
     // if (vc_is_sel(vc))
     // {
     //     clear_selection();
     // }
 
-    vc->current->cursor(vc, false);
+    if (vc->vc_sw->con_cursor)
+    {
+        vc->vc_sw->con_cursor(vc, false);
+    }
     vc_hide_softcursor(vc);
 }
 
-INTERNAL void vc_set_cursor(virtual_console_data_t *vc)
+INTERNAL void vc_set_cursor(vc_data_t *vc)
 {
-    if (!vc_is_fg(vc) || !vc->text_mode)
+    if (!vc_is_fg(vc))
     {
         return;
     }
-    if (vc->deccm)
+    if (FLAG_IS_SET(vc->vc_modes, VC_MODE_CUR_VISIBLE))
     {
         // if (vc_is_sel(vc))
         // {
         //     clear_selection();
         // }
         vc_add_softcursor(vc);
-        if (CUR_SIZE(vc->cursor_type) != CUR_NONE)
+        // if (CUR_SIZE(vc->cursor_type) != CUR_NONE)
         {
-            vc->current->cursor(vc, true);
+            vc->vc_sw->con_cursor(vc, true);
         }
     }
     else
@@ -249,84 +355,327 @@ INTERNAL void vc_set_cursor(virtual_console_data_t *vc)
     }
 }
 
-INTERNAL void vc_gotoxy(virtual_console_data_t *vc, uint32_t new_x, uint32_t new_y)
+INTERNAL void vc_set_origin(vc_data_t *vc)
 {
-
-    if (new_x < 0)
+    if (!con_is_visible(vc) || !vc->vc_sw->con_set_origin || vc->vc_sw->con_set_origin(vc))
     {
-        vc->state.x = 0;
+        vc->vc_origin = vc->vc_screenbuf;
+    }
+    vc->vc_visible_origin = vc->vc_origin;
+    vc->vc_scr_end = vc->vc_origin + vc->vc_screenbuf_cells;
+    vc->vc_pos = vc_cell(vc, vc->vc_origin);
+    // vc->vc_pos = (vc->vc_origin + vc->vc_y + sizeof(vt_cell_t) * vc->vc_x);
+}
+
+INTERNAL void vc_save_screen(vc_data_t *vc)
+{
+    if (vc->vc_sw->con_save_screen)
+    {
+        vc->vc_sw->con_save_screen(vc);
+    }
+}
+
+static void con_scroll(vc_data_t *vc, uint32_t top, uint32_t bottom, con_scroll_t dir, uint32_t nr)
+{
+    ENTER_FUNC("%p, 0x%x, 0x%x, %u, %u", vc, top, bottom, dir, nr);
+    uint32_t rows = bottom - top;
+    vt_cell_t *clear;
+    vt_cell_t *dst;
+    vt_cell_t *src;
+
+    if (top + nr >= bottom)
+    {
+        nr = rows - 1;
+    }
+    if (bottom > vc->vc_rows || top >= bottom || nr < 1)
+    {
+        return;
+    }
+
+    // vc_uniscr_scroll(vc, top, bottom, dir, nr);
+    if (con_is_visible(vc) && vc->vc_sw->con_scroll(vc, top, bottom, dir, nr))
+    {
+        return;
+    }
+
+    src = clear = &vc->vc_origin[top * vc->vc_cols];
+    dst = &vc->vc_origin[(top + nr) * vc->vc_cols];
+
+    if (dir == SM_UP)
+    {
+        clear = &src[(rows - nr) * vc->vc_cols];
+        swap(src, dst);
+    }
+    scr_memmovew(dst, src, rows - nr);
+    vt_cell_t blank_cell = {.bg = vc->vc_bg, .cp = ' '};
+    scr_memsetw(clear, blank_cell, nr);
+}
+
+static void lf(struct vc_data *vc)
+{
+    // ENTER_FUNC("%p", vc);
+    // trace_debug(MODULE, "pos = %p, vc_y = %u", vc->vc_pos, vc->vc_y);
+    if (vc->vc_y + 1 == vc->vc_bottom)
+    {
+        con_scroll(vc, vc->vc_top, vc->vc_bottom, SM_UP, 1);
+    }
+    else if (vc->vc_y < vc->vc_rows - 1)
+    {
+        vc->vc_y++;
+        vc->vc_pos += 1;
+    }
+    // trace_debug(MODULE, "pos = %p, vc_y = %u", vc->vc_pos, vc->vc_y);
+    vc_clear_need_wrap(vc);
+    // notify_write(vc, '\n');
+}
+
+static void ri(struct vc_data *vc)
+{
+    if (vc->vc_y == vc->vc_top)
+    {
+        con_scroll(vc, vc->vc_top, vc->vc_bottom, SM_DOWN, 1);
+    }
+    else if (vc->vc_y > 0)
+    {
+        vc->vc_y--;
+        vc->vc_pos -= 1;
+    }
+    vc_clear_need_wrap(vc);
+}
+
+static inline void cr(struct vc_data *vc)
+{
+    // ENTER_FUNC("%p", vc);
+    // trace_debug(MODULE, "pos = %p, vc_x = %u", vc->vc_pos, vc->vc_x);
+    vc->vc_pos -= vc->vc_x;
+    vc_clear_need_wrap(vc);
+    vc->vc_x = 0;
+    // trace_debug(MODULE, "pos = %p, vc_x = %u", vc->vc_pos, vc->vc_x);
+    // notify_write(vc, '\r');
+}
+
+static inline void bs(struct vc_data *vc)
+{
+    if (vc->vc_x)
+    {
+        vc->vc_pos -= 1;
+        vc->vc_x--;
+        vc_clear_need_wrap(vc);
+        // notify_write(vc, '\b');
+    }
+}
+
+static inline void del(struct vc_data *vc)
+{
+    /* ignored */
+}
+
+void vc_update_region(vc_data_t *vc, vt_cell_t *start, size_t count)
+{
+    WARN_LOCK_UNLOCKED();
+
+    if (con_should_update(vc))
+    {
+        vc_hide_cursor(vc);
+        vc_do_update_region(vc, start, count);
+        vc_set_cursor(vc);
+    }
+}
+
+void vc_clear_buffer_attributes(vc_data_t *vc)
+{
+    vt_cell_t *p = (vt_cell_t *)vc->vc_origin;
+    int count = vc->vc_screenbuf_cells;
+    // int mask = vc->vc_hi_font_mask | 0xFF;
+
+    for (; count > 0; count--, p++)
+    {
+        p->attr = 0;
+        p->bg = p->fg = 0;
+        p->cp = ' ';
+        // scr_writew((scr_readw(p) & mask) | (vc->vc_video_erase_char & ~mask), p);
+    }
+}
+
+void vc_redraw_screen(vc_data_t *vc, int is_switch)
+{
+    ENTER_FUNC("%p, %s", vc, is_switch BOOL_TO_STRING);
+    int redraw = 0;
+
+    WARN_LOCK_UNLOCKED();
+    trace_debug(MODULE, "here");
+
+    if (!vc)
+    {
+        /* strange ... */
+        /* printk("vc_redraw_screen: tty %d not allocated ??\n", new_console+1); */
+        return;
+    }
+    trace_debug(MODULE, "here 1");
+
+    if (is_switch)
+    {
+        vc_data_t *old_vc = consoles[fg_console].data;
+        if (old_vc == vc)
+        {
+            return;
+        }
+        if (!con_is_visible(vc))
+        {
+            redraw = 1;
+        }
+        *vc->vc_display_fg = vc;
+        fg_console = vc->vc_index;
+        vc_hide_cursor(old_vc);
+        if (!con_is_visible(old_vc))
+        {
+            vc_save_screen(old_vc);
+            vc_set_origin(old_vc);
+        }
     }
     else
     {
-        if (new_x >= vc->size.cols)
+        vc_hide_cursor(vc);
+        redraw = 1;
+    }
+
+    trace_debug(MODULE, "here 2");
+    if (redraw)
+    {
+        bool update;
+        bool old_was_color = vc_can_color(vc);
+
+        trace_debug(MODULE, "here 3");
+        vc_set_origin(vc);
+        trace_debug(MODULE, "here 4");
+        update = vc->vc_sw->con_switch(vc);
+        // set_palette(vc);
+
+        if (old_was_color != vc_can_color(vc))
         {
-            vc->state.x = vc->size.cols - 1;
+            // update_attr(vc);
+            vc_clear_buffer_attributes(vc);
+        }
+
+        if (update && vc_use_text(vc))
+        {
+            vc_do_update_region(vc, vc->vc_origin, vc->vc_screenbuf_cells);
+        }
+    }
+    vc_set_cursor(vc);
+    if (is_switch)
+    {
+        // vt_set_leds_compute_shiftstate();
+        // notify_update(vc);
+        FUNC_NOT_IMPLEMENTED();
+    }
+}
+
+INTERNAL void vc_gotoxy(vc_data_t *vc, uint32_t new_x, uint32_t new_y)
+{
+    if (new_x < 0)
+    {
+        vc->vc_x = 0;
+    }
+    else
+    {
+        if (new_x >= vc->vc_cols)
+        {
+            vc->vc_x = vc->vc_cols - 1;
         }
         else
         {
-            vc->state.x = new_x;
+            vc->vc_x = new_x;
         }
     }
 
     uint32_t min_y;
     uint32_t max_y;
-    if (vc->decom)
+    if (FLAG_IS_SET(vc->vc_modes, VC_MODE_ORIGIN_MODE))
     {
-        min_y = vc->top;
-        max_y = vc->bottom;
+        min_y = vc->vc_top;
+        max_y = vc->vc_bottom;
     }
     else
     {
         min_y = 0;
-        max_y = vc->size.rows;
+        max_y = vc->vc_rows;
     }
     if (new_y < min_y)
     {
-        vc->state.y = min_y;
+        vc->vc_y = min_y;
     }
     else if (new_y >= max_y)
     {
-        vc->state.y = max_y - 1;
+        vc->vc_y = max_y - 1;
     }
     else
     {
-        vc->state.y = new_y;
+        vc->vc_y = new_y;
     }
-    vc->pos = (virtual_console_cell_t *)(vc->origin + vc->state.y * vc->console_bpr + (vc->state.x << 1));
-    vc->need_wrap = 0;
+    // vc->vc_pos = (((vt_cell_t *)vc->vc_origin) + vc->vc_y * vc->vc_cols + vc->vc_x);
+    vc->vc_pos = vc_cell(vc, vc->vc_origin);
+    FLAG_UNSET(vc->vc_modes, VC_MODE_NEED_WRAP);
 }
 
-INTERNAL void vc_save_cur(virtual_console_data_t *vc)
+INTERNAL void vc_save_cur(vc_data_t *vc)
 {
-    memcpy(&vc->saved_state, &vc->state, sizeof(vc->state));
+    vc->vc_saved_x = vc->vc_x;
+    vc->vc_saved_y = vc->vc_y;
+    vc->vc_saved_fg = vc->vc_fg;
+    vc->vc_saved_bg = vc->vc_bg;
+    vc->vc_saved_attr = vc->vc_attr;
 }
 
-INTERNAL void vc_restore_cur(virtual_console_data_t *vc)
+INTERNAL void vc_restore_cur(vc_data_t *vc)
 {
-    memcpy(&vc->state, &vc->saved_state, sizeof(vc->state));
+    vc->vc_x = vc->vc_saved_x;
+    vc->vc_y = vc->vc_saved_y;
+    vc->vc_fg = vc->vc_saved_fg;
+    vc->vc_bg = vc->vc_saved_bg;
+    vc->vc_attr = vc->vc_saved_attr;
+    vc_gotoxy(vc, vc->vc_x, vc->vc_y);
 
-    vc_gotoxy(vc, vc->state.x, vc->state.y);
+    FLAG_UNSET(vc->vc_modes, VC_MODE_NEED_WRAP);
+}
 
-    // vc->vc_need_wrap = 0;
+static void vc_reset_terminal(vc_data_t *vc, int do_clear)
+{
+    unsigned int i;
+
+    vc->vc_top = 0;
+    vc->vc_bottom = vc->vc_rows;
+    vc->vc_state = ESnormal;
+    vc_set_use_utf8(vc);
+    vc->vc_utf_count = 0;
+
+    BITMAP_ZERO(vc->vc_tab_stop, VC_TABSTOPS_COUNT);
+    for (i = 0; i < VC_TABSTOPS_COUNT; i += 8)
+    {
+        SET_BIT(i, vc->vc_tab_stop);
+    }
+
+    vc_gotoxy(vc, 0, 0);
+    vc_save_cur(vc);
 }
 
 static color_t default_color = 0x00FFFFFF;           /* white */
 static color_t default_italic_color = 0x0000AA00;    // green (ASCII)
 static color_t default_underline_color = 0x0000AAAA; // cyan (ASCII)
 
-INTERNAL void vc_init(virtual_console_data_t *vc, int do_clear)
+INTERNAL void vc_init(vc_data_t *vc, int do_clear)
 {
-    int j, k;
-
     vc_set_origin(vc);
-    vc->pos = (virtual_console_cell_t *)vc->origin;
-    vc->text_mode = 1;
-    vc->def_color = default_color;
-    vc->ulcolor = default_underline_color;
-    vc->itcolor = default_italic_color;
-    vc->halfcolor = 0x808080; /* grey */
+    vc->vc_pos = (vt_cell_t *)vc->vc_origin;
+    vc_set_use_text(vc);
+    int j, k;
+    for (j = k = 0; j < 16; j++)
+    {
+        vc->vc_palette[k++] = default_color_table[j];
+    }
+    vc->vc_def_fg = vc->vc_fg = default_color;
     // init_waitqueue_head(&vc->paste_wait);
-    // reset_terminal(vc, do_clear);
+    vc_reset_terminal(vc, do_clear);
 }
 
 #define VC_MAXCOL (32767)
@@ -335,14 +684,14 @@ INTERNAL void vc_init(virtual_console_data_t *vc, int do_clear)
 status_t vc_allocate(uint32_t currcons)
 {
     ENTER_FUNC("%u", currcons)
-    virtual_console_data_t *vc;
+    vc_data_t *vc;
     status_t ret;
 
     WARN_LOCK_UNLOCKED();
 
     if (currcons >= MAX_CONSOLES)
     {
-        return ENXIO;
+        KERRNO_RETURN(ENXIO, "");
     }
 
     if (consoles[currcons].data)
@@ -350,38 +699,34 @@ status_t vc_allocate(uint32_t currcons)
         return KERRNO_SUCCESSES;
     }
 
-    vc = kzmalloc(sizeof(virtual_console_data_t));
+    vc = kzmalloc(sizeof(vc_data_t));
     if (!vc)
     {
-        return ENOMEM;
+        KERRNO_RETURN(KERRNO_OOM, "");
     }
 
     consoles[currcons].data = vc;
-    // tty_port_init(&vc->port);
-    // vc->port.ops = &vc_port_ops;
-    // INIT_WORK(&vc_cons[currcons].SAK_work, vc_SAK);
 
-    vt_data_init(vc, currcons, true);
-
-    // if (!*vc->uni_pagedict_loc)
-    // {
-    //     con_set_default_unimap(vc);
-    // }
-
-    if (vc->size.cols > VC_MAXCOL || vc->size.rows > VC_MAXROW || !vc->buffer_size)
+    ret = vc_data_init(vc, currcons, true);
+    if (ret)
     {
-        ret = EINVAL;
-        KERRNO_NO_RETURN(EINVAL, "Size is invalid");
-        trace_debug(MODULE, "vc->size = { %ux%u }, vc->buffer_size = %u", vc->size.cols, vc->size.rows, vc->buffer_size);
+        KERRNO_NO_RETURN(ret, "");
         goto err_free;
     }
 
-    vc->cell_buffer = kzmalloc(vc->buffer_size);
-
-    if (!vc->cell_buffer)
+    if (vc->vc_cols > VC_MAXCOL || vc->vc_rows > VC_MAXROW || !vc->vc_screenbuf_cells)
     {
-        ret = ENOMEM;
-        KERRNO_NO_RETURN(ENOMEM, "");
+        ret = KERRNO_BAD_VALUE;
+        KERRNO_NO_RETURN(KERRNO_BAD_VALUE, "Size is invalid");
+        trace_debug(MODULE, "vc->size = { %ux%u }, vc->vc_screenbuf_cells = %u", vc->vc_cols, vc->vc_rows, vc->vc_screenbuf_cells);
+        goto err_free;
+    }
+
+    vc->vc_screenbuf = kzmalloc(vc->vc_screenbuf_cells * sizeof(vt_cell_t));
+    if (!vc->vc_screenbuf)
+    {
+        KERRNO_NO_RETURN(KERRNO_OOM, "");
+        ret = KERRNO_OOM;
         goto err_free;
     }
 
@@ -395,21 +740,21 @@ err_free:
     return ret;
 }
 
-INTERNAL ALWAYS_INLINE status_t vc_resize_screen(virtual_console_data_t *vc, int width, int height, bool from_user)
+INTERNAL ALWAYS_INLINE status_t vc_resize_screen(vc_data_t *vc, int width, int height, bool from_user)
 {
     ENTER_FUNC("%p, %u, %u, %s", vc, width, height, from_user BOOL_TO_STRING);
     /* Resizes the resolution of the display adapater */
     int err = 0;
 
-    if (vc->current->resize)
+    if (vc->vc_sw->con_resize)
     {
-        err = vc->current->resize(vc, width, height, from_user);
+        err = vc->vc_sw->con_resize(vc, width, height, from_user);
     }
 
     return err;
 }
 
-INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, uint32_t cols, uint32_t lines, bool from_user)
+INTERNAL status_t vc_do_resize(tty_struct_t *tty, vc_data_t *vc, uint32_t cols, uint32_t lines, bool from_user)
 {
     ENTER_FUNC("%p, %p, %u, %u, %s", tty, vc, cols, lines, from_user BOOL_TO_STRING);
     status_t err = 0;
@@ -421,12 +766,12 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
         KERRNO_RETURN(EINVAL, "");
     }
 
-    uint32_t new_cols = (cols ? cols : vc->size.cols);
-    uint32_t new_rows = (lines ? lines : vc->size.rows);
-    size_t new_row_size = new_cols << 1;
-    size_t new_screen_size = new_rows * new_cols * sizeof(virtual_console_cell_t);
+    uint32_t new_cols = (cols ? cols : vc->vc_cols);
+    uint32_t new_rows = (lines ? lines : vc->vc_rows);
+    size_t new_row_size = new_cols << 4;
+    size_t new_screen_size = new_rows * new_cols;
 
-    if (new_cols == vc->size.cols && new_rows == vc->size.rows)
+    if (new_cols == vc->vc_cols && new_rows == vc->vc_rows)
     {
         return vc_resize_screen(vc, new_cols, new_rows, from_user);
     }
@@ -435,7 +780,7 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
     {
         KERRNO_RETURN(EINVAL, "");
     }
-    virtual_console_cell_t *newscreen = kzmalloc(new_screen_size);
+    vt_cell_t *newscreen = kzmalloc(new_screen_size * sizeof(vt_cell_t));
     if (!newscreen)
     {
         KERRNO_RETURN(ENOMEM, "");
@@ -456,8 +801,9 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
     //     clear_selection();
     // }
 
-    uint32_t old_rows = vc->size.rows;
-    size_t old_row_size = vc->console_bpr;
+    uint32_t old_rows = vc->vc_rows;
+    uint32_t old_cols = vc->vc_cols;
+    size_t old_row_size = (old_cols << 4);
 
     err = vc_resize_screen(vc, new_cols, new_rows, from_user);
     if (err)
@@ -467,35 +813,35 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
         return err;
     }
 
-    vc->size.rows = new_rows;
-    vc->size.cols = new_cols;
-    vc->console_bpr = new_row_size;
-    vc->buffer_size = new_screen_size;
+    vc->vc_rows = new_rows;
+    vc->vc_cols = new_cols;
+    // vc->vc_size_row = new_row_size;
+    vc->vc_screenbuf_cells = new_screen_size;
 
     uint32_64_t rlth = min(old_row_size, new_row_size);
     uint32_64_t rrem = new_row_size - rlth;
-    vaddr_t old_origin = vc->origin;
-    vaddr_t new_origin = (vaddr_t)newscreen;
-    vaddr_t new_scr_end = new_origin + new_screen_size;
+    vt_cell_t *old_origin = vc->vc_origin;
+    vt_cell_t *new_origin = newscreen;
+    vt_cell_t *new_scr_end = &new_origin[new_screen_size];
 
     uint32_t first_copied_row = 0;
-    if (vc->state.y > new_rows)
+    if (vc->vc_y > new_rows)
     {
-        if (old_rows - vc->state.y < new_rows)
+        if (old_rows - vc->vc_y < new_rows)
         {
             first_copied_row = (old_rows - new_rows);
         }
         else
         {
-            first_copied_row = (vc->state.y - new_rows / 2);
+            first_copied_row = (vc->vc_y - new_rows);
         }
-        old_origin += first_copied_row * old_row_size;
+        old_origin += first_copied_row;
     }
     else
     {
         first_copied_row = 0;
     }
-    vaddr_t end = old_origin + old_row_size * min(old_rows, new_rows);
+    vt_cell_t *end = &old_origin[min(old_rows, new_rows)];
 
     // vc_uniscr_copy_area(new_uniscr, new_cols, new_rows, vc->vc_uni_lines, rlth / 2, first_copied_row, min(old_rows, new_rows));
     // vc_uniscr_set(vc, new_uniscr);
@@ -503,34 +849,38 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
     // vc_update_attr(vc);
 
     trace_debug(MODULE, "newscreen = %p", newscreen);
-    trace_debug(MODULE, "new_origin = %p, old_origin = %p, rlth = %u", new_origin, old_origin, rlth);
-    trace_debug(MODULE, "new_row_size = %u, old_row_size = %u, rrem = %u", new_row_size, old_row_size, rrem);
+    trace_debug(MODULE, "new_origin = %p, old_origin = %p", new_origin, old_origin);
+    trace_debug(MODULE, "end = %p", end);
+    trace_debug(MODULE, "new_row_size = %u, old_row_size = %u", new_row_size, old_row_size);
+    trace_debug(MODULE, "new_cols = %u, old_cols = %u", new_cols, old_cols);
+    trace_debug(MODULE, "new_rows = %u, old_rows = %u", new_rows, old_rows);
+    trace_debug(MODULE, "rlth = %u, rrem = %u", rlth, rrem);
     while (old_origin < end)
     {
-        memcpy((virtual_console_cell_t *)new_origin, (virtual_console_cell_t *)old_origin, rlth * sizeof(virtual_console_cell_t));
-        if (rrem)
-        {
-            memset((void *)(new_origin + rlth * sizeof(virtual_console_cell_t)), 0, rrem * sizeof(virtual_console_cell_t));
-        }
-        old_origin += old_row_size;
-        new_origin += new_row_size;
+        memcpy((vt_cell_t *)new_origin, (vt_cell_t *)old_origin, sizeof(vt_cell_t));
+        // if (rrem)
+        // {
+        //     memset((void *)(new_origin + rlth * sizeof(vt_cell_t)), 0, rrem * sizeof(vt_cell_t));
+        // }
+        old_origin += 1;
+        new_origin += 1;
     }
     trace_debug(MODULE, "new_origin = %p, new_scr_end = %p, old_origin = %p, new_scr_end - new_origin = %p", new_origin, new_scr_end, old_origin, new_scr_end - new_origin);
     if (new_scr_end > new_origin)
     {
-        memset((void *)new_origin, 0, (new_scr_end - new_origin));
+        memset((void *)new_origin, 0, new_scr_end - new_origin);
     }
-    virtual_console_cell_t *oldscreen = vc->cell_buffer;
-    vc->cell_buffer = newscreen;
-    vc->buffer_size = new_screen_size;
+    vt_cell_t *oldscreen = vc->vc_screenbuf;
+    vc->vc_screenbuf = newscreen;
+    vc->vc_screenbuf_cells = new_screen_size;
     vc_set_origin(vc);
     trace_debug(MODULE, "oldscreen = %p", oldscreen);
     kfree(oldscreen);
 
-    /* do part of a reset_terminal() */
-    vc->top = 0;
-    vc->bottom = vc->size.rows;
-    vc_gotoxy(vc, vc->state.x, vc->state.y);
+    /* do part of a vc_reset_terminal() */
+    vc->vc_top = 0;
+    vc->vc_bottom = vc->vc_rows;
+    vc_gotoxy(vc, vc->vc_x, vc->vc_y);
     vc_save_cur(vc);
 
     if (tty)
@@ -539,13 +889,13 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
            resulting sizes */
         winsize_t ws;
         memset(&ws, 0, sizeof(ws));
-        ws.ws_row = vc->size.rows;
-        ws.ws_col = vc->size.cols;
-        ws.ws_ypixel = vc->console_bpr;
+        ws.ws_row = vc->vc_rows;
+        ws.ws_col = vc->vc_cols;
+        // ws.ws_ypixel = vc->vc_size_row;
         tty_do_resize(tty, &ws);
     }
 
-    if (vc_is_visible(vc))
+    if (con_is_visible(vc))
     {
         update_screen(vc);
     }
@@ -554,10 +904,10 @@ INTERNAL status_t vc_do_resize(tty_struct_t *tty, virtual_console_data_t *vc, ui
     return err;
 }
 
-status_t vc_resize(virtual_console_data_t *vc, uint32_t cols, uint32_t rows, bool from_user)
+status_t vc_resize(vc_data_t *vc, uint32_t cols, uint32_t rows, bool from_user)
 {
     ENTER_FUNC("%p, %u, %u, %s", vc, cols, rows, from_user BOOL_TO_STRING);
-    tty_struct_t *tty = vc->tty;
+    tty_struct_t *tty = vc->vc_tty;
     // tty_dev_t *tty_dev = tty->tty_dev;
     // LOCK();
     status_t ret = vc_do_resize(tty, vc, cols, rows, from_user);
@@ -567,96 +917,10 @@ status_t vc_resize(virtual_console_data_t *vc, uint32_t cols, uint32_t rows, boo
 
 static status_t vt_resize(tty_struct_t *tty, winsize_t *ws)
 {
-    virtual_console_data_t *vc = tty->tty_dev->driver_data;
+    vc_data_t *vc = tty->tty_dev->driver_data;
 
     // guard(console_lock)();
     return vc_do_resize(tty, vc, ws->ws_col, ws->ws_row, false);
-}
-
-void vc_clear_buffer_attributes(virtual_console_data_t *vc)
-{
-    virtual_console_cell_t *p = (virtual_console_cell_t *)vc->origin;
-    int count = vc->buffer_size / sizeof(virtual_console_cell_t);
-    // int mask = vc->vc_hi_font_mask | 0xFF;
-
-    for (; count > 0; count--, p++)
-    {
-        p->bg = p->fg = 0;
-        p->cp = ' ';
-        // scr_writew((scr_readw(p) & mask) | (vc->vc_video_erase_char & ~mask), p);
-    }
-}
-
-void vc_redraw_screen(virtual_console_data_t *vc, int is_switch)
-{
-    int redraw = 0;
-
-    if (!vc)
-    {
-        /* strange ... */
-        /* printk("vc_redraw_screen: tty %d not allocated ??\n", new_console+1); */
-        return;
-    }
-
-    if (is_switch)
-    {
-        virtual_console_data_t *old_vc = consoles[fg_console].data;
-        if (old_vc == vc)
-        {
-            return;
-        }
-        if (!vc_is_visible(vc))
-        {
-            redraw = 1;
-        }
-        *vc->display_fg = vc;
-        fg_console = vc->console_number;
-        vc_hide_cursor(old_vc);
-        if (!vc_is_visible(old_vc))
-        {
-            vc_save_screen(old_vc);
-            vc_set_origin(old_vc);
-        }
-    }
-    else
-    {
-        vc_hide_cursor(vc);
-        redraw = 1;
-    }
-
-    if (redraw)
-    {
-        bool update;
-        int old_was_color = vc->can_do_color;
-
-        vc_set_origin(vc);
-        update = vc->current->switch_console(vc);
-        // set_palette(vc);
-        /*
-         * If console changed from mono<->color, the best we can do
-         * is to clear the buffer attributes. As it currently stands,
-         * rebuilding new attributes from the old buffer is not doable
-         * without overly complex code.
-         */
-        if (old_was_color != vc->can_do_color)
-        {
-            // update_attr(vc);
-            vc_clear_buffer_attributes(vc);
-        }
-
-        if (update && !vc->text_mode)
-        {
-            FUNC_NOT_IMPLEMENTED();
-            // do_update_region(vc, vc->origin, vc->buffer_size / 2);
-        }
-    }
-    vc_set_cursor(vc);
-    if (is_switch)
-    {
-        // vt_set_leds_compute_shiftstate();
-        // notify_update(vc);
-        FUNC_NOT_IMPLEMENTED();
-    }
 }
 
 int vc_cons_allocated(unsigned int i)
@@ -676,57 +940,636 @@ status_t vt_console_removed()
 
 typedef struct vc_draw_region
 {
-    virtual_console_cell_t *from;
-    virtual_console_cell_t *to;
+    vt_cell_t *from;
+    vt_cell_t *to;
     int x;
 } vc_draw_region_t;
 
-static void vt_con_flush(virtual_console_data_t *vc, vc_draw_region_t *draw)
+static void vt_con_flush(vc_data_t *vc, vc_draw_region_t *draw)
 {
     ENTER_FUNC("%p, %p", vc, draw);
-    trace_debug(MODULE, "draw->x = %u", draw->x);
-    trace_debug(MODULE, "draw->to = %p", draw->to);
-    trace_debug(MODULE, "draw->from = %p", draw->from);
+    // trace_debug(MODULE, "draw->x = %u", draw->x);
+    // trace_debug(MODULE, "draw->to = %p", draw->to);
+    // trace_debug(MODULE, "draw->from = %p", draw->from);
     if (draw->x < 0)
     {
-        // return;
+        return;
     }
 
-    vc->current->putcs(vc, draw->from, draw->to - draw->from, draw->x, vc->state.y);
+    vc->vc_sw->con_putcs(vc, draw->from, draw->to - draw->from, draw->x, vc->vc_y);
     draw->x = -1;
 }
 
-INTERNAL status_t vc_con_write_normal(virtual_console_data_t *vc, wchar_t c)
+INTERNAL status_t vc_con_write_normal(vc_data_t *vc, code_point_t tc, code_point_t c, vc_draw_region_t *draw)
 {
-    ENTER_FUNC("%p, 0x%x", vc, c);
+    // ENTER_FUNC("%p, 0x%x, 0x%x, %p", vc, tc, c, draw);
 
-    status_t ret = font_has_glyph(vc->current_font, c);
-    if (ret)
+    // int next_c;
+    uint32_t vc_attr = vc->vc_attr;
+    uint8_t width = 1;
+    // bool inverse = false;
+
+    // if (vc->vc_utf && !vc->vc_disp_ctrl)
+    // {
+    //     width = vc_process_ucs(vc, &c, &tc);
+    //     if (!width)
+    //     {
+    //         goto out;
+    //     }
+    // }
+
+    // tc = vc_get_glyph(vc, tc);
+    // if (tc == -1)
+    // {
+    //     return -1; /* nothing to display */
+    // }
+    // if (tc < 0)
+    // {
+    //     inverse = true;
+    //     tc = conv_uni_to_pc(vc, '?');
+    //     if (tc < 0)
+    //     {
+    //         tc = '?';
+    //     }
+
+    //     vc_attr = vc_invert_attr(vc);
+    //     con_flush(vc, draw);
+    // }
+
+    // next_c = c;
+    while (1)
     {
-        return ret; /* nothing to display */
+        if (vc_need_wrap(vc) || vc_decim_mode(vc))
+        {
+            vt_con_flush(vc, draw);
+        }
+        if (vc_need_wrap(vc))
+        {
+            cr(vc);
+            lf(vc);
+        }
+        if (vc_decim_mode(vc))
+        {
+            insert_char(vc, 1);
+        }
+        // vc_uniscr_putc(vc, next_c);
+
+        vt_cell_t cell = {.attr = vc_attr, .bg = vc->vc_bg, .fg = vc->vc_fg, .cp = tc};
+
+        scr_writew(cell, vc->vc_pos);
+
+        if (con_should_update(vc) && draw->x < 0)
+        {
+            draw->x = vc->vc_x;
+            draw->from = vc->vc_pos;
+        }
+        if (vc->vc_x == vc->vc_cols - 1)
+        {
+            vc_assign_need_wrap(vc, vc_decawm_mode(vc));
+            draw->to = vc->vc_pos + 1;
+        }
+        else
+        {
+            vc->vc_x++;
+            draw->to = (vc->vc_pos += 1);
+        }
+
+        if (!--width)
+        {
+            break;
+        }
     }
 
-    vc->pos->cp = c;
-    vc->pos->bg = 0x0;
-    vc->pos->fg = 0x00FFFFFF;
-    vc->pos++;
+    // trace_debug(MODULE, "draw->x = %u", draw->x);
+    // trace_debug(MODULE, "draw->to = %p", draw->to);
+    // trace_debug(MODULE, "draw->from = %p", draw->from);
+
+    // vc->vc_pos->cp = tc;
+    // vc->vc_pos->bg = vc->vc_bg;
+    // vc->vc_pos->fg = vc->vc_fg;
+    // vc->vc_pos->attr = vc->vc_attr;
+    // vc->vc_pos++;
 
     return KERRNO_SUCCESSES;
 }
 
-status_t vc_con_install(tty_driver_t *driver, tty_struct_t *tty)
+static bool ansi_control_string(enum vc_ctl_state state)
+{
+    return state >= ESANSI_first && state <= ESANSI_last;
+}
+
+static bool handle_ascii(tty_struct_t *tty, vc_data_t *vc, uint8_t c)
+{
+    ENTER_FUNC("%p, %p, 0x%x", tty, vc, c);
+    switch (c)
+    {
+        case ASCII_NULL :
+            return true;
+        case ASCII_BELL :
+            if (ansi_control_string(vc->vc_state))
+            {
+                vc->vc_state = ESnormal;
+            }
+            // else if (vc->vc_bell_duration)
+            // {
+            // kd_mksound(vc->vc_bell_pitch, vc->vc_bell_duration);
+            // }
+            return true;
+        case ASCII_BACKSPACE :
+            return true;
+        case ASCII_HTAB :
+            {
+                void *tmp_pos = vc->vc_pos;
+                tmp_pos -= vc->vc_x;
+                vc->vc_pos = tmp_pos;
+
+                vc->vc_x = find_next_bit(vc->vc_tab_stop, min(vc->vc_cols - 1, VC_TABSTOPS_COUNT), vc->vc_x + 1);
+                if (vc->vc_x >= VC_TABSTOPS_COUNT)
+                {
+                    vc->vc_x = vc->vc_cols - 1;
+                }
+
+                tmp_pos = vc->vc_pos;
+                tmp_pos += (vc->vc_x);
+                vc->vc_pos = tmp_pos;
+            }
+            return true;
+        case ASCII_LINEFEED :
+        case ASCII_VTAB :
+        case ASCII_FORMFEED :
+            lf(vc);
+            // if (!is_kbd(vc, lnm))
+            // {
+            // return true;
+            // }
+            cr(vc);
+            return true;
+        case ASCII_CAR_RET :
+            cr(vc);
+            return true;
+        case ASCII_SHIFTOUT :
+            // vc->state.charset = 1;
+            // vc->vc_translate = set_translate(vc->state.Gx_charset[1], vc);
+            // vc->vc_disp_ctrl = 1;
+            return true;
+        case ASCII_SHIFTIN :
+            // vc->state.charset = 0;
+            // vc->vc_translate = set_translate(vc->state.Gx_charset[0], vc);
+            // vc->vc_disp_ctrl = 0;
+            return true;
+        case ASCII_CANCEL :
+        case ASCII_SUBSTITUTE :
+            vc->vc_state = ESnormal;
+            return true;
+        case ASCII_ESCAPE :
+            vc->vc_state = ESesc;
+            return true;
+        case ASCII_DEL :
+            del(vc);
+            return true;
+        case ASCII_EXT_CSI :
+            vc->vc_state = ESsquare;
+            return true;
+    }
+
+    return false;
+}
+
+static void do_con_trol(tty_struct_t *tty, vc_data_t *vc, uint8_t c)
+{
+    if (ansi_control_string(vc->vc_state) && c >= ASCII_IGNORE_FIRST && c <= ASCII_IGNORE_LAST)
+    {
+        return;
+    }
+
+    if (handle_ascii(tty, vc, c))
+    {
+        return;
+    }
+
+    FUNC_NOT_IMPLEMENTED();
+
+    /*
+    switch (vc->vc_state)
+    {
+        case ESesc :
+            handle_esc(tty, vc, c);
+            return;
+        case ESnonstd :
+            switch (c)
+            {
+                case 'P' :
+                    vc_reset_params(vc);
+                    vc->vc_state = ESpalette;
+                    return;
+                case 'R' :
+                    reset_palette(vc);
+                    break;
+                case '0' ... '9' :
+                    vc->vc_state = ESosc;
+                    return;
+            }
+            vc->vc_state = ESnormal;
+            return;
+        case ESpalette :
+            if (isxdigit(c))
+            {
+                vc->vc_par[vc->vc_npar++] = hex_to_bin(c);
+                if (vc->vc_npar == 7)
+                {
+                    int i = vc->vc_par[0] * 3, j = 1;
+                    vc->vc_palette[i] = 16 * vc->vc_par[j++];
+                    vc->vc_palette[i++] += vc->vc_par[j++];
+                    vc->vc_palette[i] = 16 * vc->vc_par[j++];
+                    vc->vc_palette[i++] += vc->vc_par[j++];
+                    vc->vc_palette[i] = 16 * vc->vc_par[j++];
+                    vc->vc_palette[i] += vc->vc_par[j];
+                    set_palette(vc);
+                    vc->vc_state = ESnormal;
+                }
+            }
+            else
+            {
+                vc->vc_state = ESnormal;
+            }
+            return;
+        case ESsquare :
+            vc_reset_params(vc);
+
+            vc->vc_state = ESgetpars;
+            switch (c)
+            {
+                case '[' :
+                    vc->vc_state = ESfunckey;
+                    return;
+                case '?' :
+                    vc->vc_priv = EPdec;
+                    return;
+                case '>' :
+                    vc->vc_priv = EPgt;
+                    return;
+                case '=' :
+                    vc->vc_priv = EPeq;
+                    return;
+                case '<' :
+                    vc->vc_priv = EPlt;
+                    return;
+            }
+            vc->vc_priv = EPecma;
+            fallthrough;
+        case ESgetpars :
+            switch (c)
+            {
+                case ':' :
+                    if (vc->vc_par[vc->vc_npar] == CSI_m_FG_COLOR ||
+                        vc->vc_par[vc->vc_npar] == CSI_m_BG_COLOR ||
+                        vc->vc_par[vc->vc_npar] == CSI_m_UNDERLINE_COLOR)
+                    {
+                        vc->vc_state = ESgetsubpars;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                    fallthrough;
+                case ';' :
+                    if (vc->vc_npar < NPAR - 1)
+                    {
+                        vc->vc_npar++;
+                        return;
+                    }
+                    break;
+                case '0' ... '9' :
+                    vc->vc_par[vc->vc_npar] *= 10;
+                    vc->vc_par[vc->vc_npar] += c - '0';
+                    return;
+            }
+            if (c >= ASCII_CSI_IGNORE_FIRST && c <= ASCII_CSI_IGNORE_LAST)
+            {
+                vc->vc_state = EScsiignore;
+                return;
+            }
+
+            vc->vc_state = ESnormal;
+
+            switch (vc->vc_priv)
+            {
+                case EPdec :
+                    csi_DEC(tty, vc, c);
+                    return;
+                case EPecma :
+                    csi_ECMA(tty, vc, c);
+                    return;
+                default :
+                    return;
+            }
+        case ESgetsubpars :
+            switch (c)
+            {
+                case ':' :
+                case ';' :
+                    if (vc->vc_npar < NPAR - 1)
+                    {
+                        vc->vc_npar++;
+                        return;
+                    }
+                    break;
+                case '0' ... '9' :
+                    vc->vc_par[vc->vc_npar] *= 10;
+                    vc->vc_par[vc->vc_npar] += c - '0';
+                    return;
+            }
+            if (c >= ASCII_CSI_IGNORE_FIRST && c <= ASCII_CSI_IGNORE_LAST)
+            {
+                vc->vc_state = EScsiignore;
+                return;
+            }
+
+            vc->vc_state = ESnormal;
+
+            switch (vc->vc_priv)
+            {
+                case EPdec :
+                    csi_DEC(tty, vc, c);
+                    return;
+                case EPecma :
+                    csi_ECMA(tty, vc, c);
+                    return;
+                default :
+                    return;
+            }
+        case EScsiignore :
+            if (c >= ASCII_CSI_IGNORE_FIRST && c <= ASCII_CSI_IGNORE_LAST)
+            {
+                return;
+            }
+            vc->vc_state = ESnormal;
+            return;
+        case ESpercent :
+            vc->vc_state = ESnormal;
+            switch (c)
+            {
+                case '@' :
+                    vc->vc_utf = 0;
+                    return;
+                case 'G' :
+                case '8' :
+                    vc->vc_utf = 1;
+                    return;
+            }
+            return;
+        case ESfunckey :
+            vc->vc_state = ESnormal;
+            return;
+        case EShash :
+            vc->vc_state = ESnormal;
+            if (c == '8')
+            {
+                vc->vc_video_erase_char =
+                    (vc->vc_video_erase_char & 0xFF00) | 'E';
+                csi_J(vc, CSI_J_VISIBLE);
+                vc->vc_video_erase_char =
+                    (vc->vc_video_erase_char & 0xFF00) | ' ';
+                do_update_region(vc, vc->vc_origin, vc->vc_screenbuf_size / 2);
+            }
+            return;
+        case ESsetG0 :
+            vc_setGx(vc, 0, c);
+            vc->vc_state = ESnormal;
+            return;
+        case ESsetG1 :
+            vc_setGx(vc, 1, c);
+            vc->vc_state = ESnormal;
+            return;
+        case ESapc :
+            return;
+        case ESosc :
+            return;
+        case ESpm :
+            return;
+        case ESdcs :
+            return;
+        default :
+            vc->vc_state = ESnormal;
+    }
+    */
+}
+
+static inline code_point_t vc_translate_ascii(const vc_data_t *vc, code_point_t c)
+{
+    return c;
+}
+
+static inline code_point_t vc_sanitize_unicode(const code_point_t c)
+{
+    if (c >= 0xD800 && c <= 0xDFFF)
+    {
+        return 0xFFFD;
+    }
+
+    return c;
+}
+
+static code_point_t vc_translate_unicode(vc_data_t *vc, code_point_t c, bool *rescan)
+{
+    static const uint32_t utf8_length_changes[] = {0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
+
+    if ((c & 0xC0) == 0x80)
+    {
+        if (!vc->vc_utf_count)
+        {
+            goto bad_sequence;
+        }
+
+        vc->vc_utf_char = (vc->vc_utf_char << 6) | (c & 0x3F);
+        vc->vc_npar++;
+        if (--vc->vc_utf_count)
+        {
+            goto need_more_bytes;
+        }
+
+        c = vc->vc_utf_char;
+        if (c <= utf8_length_changes[vc->vc_npar - 1] || c > utf8_length_changes[vc->vc_npar])
+        {
+            goto bad_sequence;
+        }
+
+        return vc_sanitize_unicode(c);
+    }
+
+    if (vc->vc_utf_count)
+    {
+        *rescan = true;
+        vc->vc_utf_count = 0;
+        goto bad_sequence;
+    }
+
+    if (c <= 0x7F)
+    {
+        return c;
+    }
+
+    vc->vc_npar = 0;
+    if ((c & 0xE0) == 0xC0)
+    {
+        vc->vc_utf_count = 1;
+        vc->vc_utf_char = (c & 0x1F);
+    }
+    else if ((c & 0xF0) == 0xE0)
+    {
+        vc->vc_utf_count = 2;
+        vc->vc_utf_char = (c & 0x0F);
+    }
+    else if ((c & 0xF8) == 0xF0)
+    {
+        vc->vc_utf_count = 3;
+        vc->vc_utf_char = (c & 0x07);
+    }
+    else
+    {
+        goto bad_sequence;
+    }
+
+need_more_bytes:
+    return -1;
+
+bad_sequence:
+    return 0xFFFD;
+}
+
+static code_point_t vc_translate(vc_data_t *vc, code_point_t *c, bool *rescan)
+{
+    if (vc->vc_state != ESnormal)
+    {
+        return *c;
+    }
+
+    if (vc_use_utf8(vc))
+    {
+        return *c = vc_translate_unicode(vc, *c, rescan);
+    }
+
+    return vc_translate_ascii(vc, *c);
+}
+
+static bool vc_is_control(vc_data_t *vc, code_point_t tc, code_point_t c)
+{
+    static const uint32_t CTRL_ACTION = BIT(ASCII_NULL) |
+        GENMASK(ASCII_SHIFTIN, ASCII_BELL) | BIT(ASCII_CANCEL) |
+        BIT(ASCII_SUBSTITUTE) | BIT(ASCII_ESCAPE);
+    /* Cannot be overridden by disp_ctrl */
+    static const uint32_t CTRL_ALWAYS = BIT(ASCII_NULL) | BIT(ASCII_BACKSPACE) |
+        BIT(ASCII_LINEFEED) | BIT(ASCII_SHIFTIN) | BIT(ASCII_SHIFTOUT) |
+        BIT(ASCII_CAR_RET) | BIT(ASCII_FORMFEED) | BIT(ASCII_ESCAPE);
+    if (vc->vc_state != ESnormal)
+    {
+        return true;
+    }
+
+    if (!tc)
+    {
+        return true;
+    }
+
+    if (c < BITS_PER_TYPE(CTRL_ALWAYS))
+    {
+        // if (vc->vc_disp_ctrl)
+        // {
+        //     return CTRL_ALWAYS & BIT(c);
+        // }
+        // else
+        {
+            return vc_use_utf8(vc) || (CTRL_ACTION & BIT(c));
+        }
+    }
+
+    if (c == ASCII_DEL)
+    {
+        return true;
+    }
+
+    if (c == ASCII_EXT_CSI)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+status_t vt_do_con_write(tty_struct_t *tty, const uint8_t *buf, size_t count, size_t *size_out)
+{
+    ENTER_FUNC("%p, %p, %u, %p", tty, buf, count, size_out);
+    vc_data_t *vc = tty->tty_dev->driver_data;
+    trace_debug(MODULE, "vc = %p", vc);
+    vc_draw_region_t draw = {
+        .x = -1,
+    };
+    int n = 0;
+    unsigned int currcons;
+
+    LOCK();
+    currcons = vc->vc_index;
+    if (!vc_cons_allocated(currcons))
+    {
+        UNLOCK();
+        KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "con_write: console %d not allocated", currcons);
+    }
+
+    if (vc_is_fg(vc))
+    {
+        vc_hide_cursor(vc);
+    }
+    while (!tty->flow.stopped && count)
+    {
+        uint8_t orig = *buf;
+        buf++;
+        n++;
+        count--;
+rescan_last_byte:
+        code_point_t c = orig;
+        code_point_t tc = 0;
+        bool rescan = false;
+
+        tc = vc_translate(vc, &c, &rescan);
+        if (tc == -1)
+        {
+            continue;
+        }
+
+        if (vc_is_control(vc, tc, c))
+        {
+            vt_con_flush(vc, &draw);
+            do_con_trol(tty, vc, orig);
+            continue;
+        }
+
+        if (vc_con_write_normal(vc, tc, c, &draw))
+        {
+            continue;
+        }
+
+        if (rescan)
+        {
+            goto rescan_last_byte;
+        }
+    }
+    // draw.to = draw.from + n;
+    vt_con_flush(vc, &draw);
+    // notify_update(vc);
+
+    // trace_debug(MODULE, "pos = %p, vc_x = %u", vc->vc_pos, vc->vc_x);
+    *size_out = n;
+    UNLOCK();
+    return KERRNO_SUCCESSES;
+}
+
+status_t con_vc_install(tty_driver_t *driver, tty_struct_t *tty)
 {
     ENTER_FUNC("%p, %p", driver, tty);
     unsigned int currcons = tty->index;
-    virtual_console_data_t *vc;
+    vc_data_t *vc;
     int ret;
 
-    if (spinlock_is_locked(&SPIN_NAME(LOCK_NAME)))
-    {
-        trace_warn(MODULE, "lock is taken");
-    }
-
-    WARN_LOCK_UNLOCKED();
     LOCK();
     ret = vc_allocate(currcons);
     if (ret)
@@ -737,20 +1580,20 @@ status_t vc_con_install(tty_driver_t *driver, tty_struct_t *tty)
 
     vc = consoles[currcons].data;
 
-    if (vc->tty)
+    if (vc->vc_tty)
     {
-        FUNC_NOT_IMPLEMENTED();
+        KERRNO_RETURN(KERRNO_INTERRUPTED, "");
     }
 
     tty->tty_dev->driver_data = vc;
-    vc->tty = tty;
+    vc->vc_tty = tty;
 
     if (!tty->winsize.ws_row && !tty->winsize.ws_col)
     {
-        tty->winsize.ws_row = consoles[currcons].data->size.rows;
-        tty->winsize.ws_col = consoles[currcons].data->size.cols;
+        tty->winsize.ws_row = consoles[currcons].data->vc_rows;
+        tty->winsize.ws_col = consoles[currcons].data->vc_cols;
     }
-    if (vc->vc_utf)
+    if (vc_use_utf8(vc))
     {
         tty->termios.c_iflag |= IUTF8;
     }
@@ -761,99 +1604,22 @@ status_t vc_con_install(tty_driver_t *driver, tty_struct_t *tty)
 
     UNLOCK();
 
-    return 0;
-}
-
-static status_t vt_do_con_write(tty_struct_t *tty, const wchar_t *buf, int count, size_t *size_out)
-{
-    ENTER_FUNC("%p, %p, %u, %p", tty, buf, count, size_out);
-    virtual_console_data_t *vc = tty->tty_dev->driver_data;
-    vc_draw_region_t draw = {
-        .x = vc->state.x,
-        .from = vc->pos,
-    };
-    int n = 0;
-    unsigned int currcons;
-    bool rescan;
-
-    LOCK();
-    currcons = vc->console_number;
-    if (!vc_cons_allocated(currcons))
-    {
-        /* could this happen? */
-        trace_info(MODULE, "con_write: tty %d not allocated", currcons + 1);
-        UNLOCK();
-        return 0;
-    }
-
-    /* undraw cursor first */
-    if (vc_is_fg(vc))
-    {
-        vc_hide_cursor(vc);
-    }
-
-    while (count)
-    {
-        wchar_t orig = *buf;
-        buf++;
-        n++;
-        count--;
-        // rescan_last_byte:
-        //         c = orig;
-        //         rescan = false;
-
-        //         tc = vc_translate(vc, &c, &rescan);
-        //         if (tc == -1)
-        //         {
-        //             continue;
-        //         }
-
-        //         param.c = tc;
-        //         if (atomic_notifier_call_chain(&vt_notifier_list, VT_PREWRITE,
-        //                                        &param) == NOTIFY_STOP)
-        //         {
-        //             continue;
-        //         }
-
-        //         if (vc_is_control(vc, tc, c))
-        //         {
-        //             vt_con_flush(vc, &draw);
-        //             do_con_trol(tty, vc, orig);
-        //             continue;
-        //         }
-
-        if (vc_con_write_normal(vc, orig))
-        {
-            continue;
-        }
-
-        //         if (rescan)
-        //         {
-        //             goto rescan_last_byte;
-        //         }
-    }
-    draw.to = draw.from + n;
-    vt_con_flush(vc, &draw);
-    // notify_update(vc);
-
-    *size_out = n;
-    UNLOCK();
     return KERRNO_SUCCESSES;
 }
 
-status_t con_get_index(tty_driver_t *tty_driver, int *index)
+status_t con_vc_open(tty_struct_t *tty, vfs_node_t *filp)
 {
-    *index = fg_console;
+    /* everything done in install */
     return KERRNO_SUCCESSES;
 }
 
-status_t con_put_char(tty_struct_t *tty, wchar_t ch)
+status_t con_vc_close(tty_struct_t *tty, vfs_node_t *filp)
 {
-    size_t si;
-    return vt_do_con_write(tty, &ch, 1, &si);
+    /* Nothing to do - we defer to shutdown */
+    return KERRNO_SUCCESSES;
 }
 
-status_t vc_con_write(tty_struct_t *tty, const wchar_t *buf, size_t count, ssize_t *size_out)
+status_t vc_con_write(tty_struct_t *tty, const uint8_t *buf, size_t count, ssize_t *size_out)
 {
     ENTER_FUNC("%p, %p, %u, %p", tty, buf, count, size_out);
     size_t si;
@@ -863,6 +1629,12 @@ status_t vc_con_write(tty_struct_t *tty, const wchar_t *buf, size_t count, ssize
         *size_out = si;
     }
     return ret;
+}
+
+status_t con_put_char(tty_struct_t *tty, uint8_t ch)
+{
+    size_t si;
+    return vt_do_con_write(tty, &ch, 1, &si);
 }
 
 tty_driver_t *console_driver;
@@ -911,7 +1683,7 @@ status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
     //     }
 
     //     start = (ushort *)vc->vc_pos;
-    //     start_x = vc->state.x;
+    //     start_x = vc->vc_x;
     //     cnt = 0;
     //     while (count--)
     //     {
@@ -921,14 +1693,14 @@ status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
     //         {
     //             if (cnt && con_is_visible(vc))
     //             {
-    //                 vc->vc_sw->con_putcs(vc, start, cnt, vc->state.y, start_x);
+    //                 vc->vc_sw->con_putcs(vc, start, cnt, vc->vc_y, start_x);
     //             }
     //             cnt = 0;
     //             if (c == ASCII_BACKSPACE)
     //             {
     //                 bs(vc);
     //                 start = (ushort *)vc->vc_pos;
-    //                 start_x = vc->state.x;
+    //                 start_x = vc->vc_x;
     //                 continue;
     //             }
     //             if (c != ASCII_CAR_RET)
@@ -937,7 +1709,7 @@ status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
     //             }
     //             cr(vc);
     //             start = (ushort *)vc->vc_pos;
-    //             start_x = vc->state.x;
+    //             start_x = vc->vc_x;
     //             if (c == ASCII_LINEFEED || c == ASCII_CAR_RET)
     //             {
     //                 continue;
@@ -947,19 +1719,19 @@ status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
     //         scr_writew((vc->vc_attr << 8) + c, (unsigned short *)vc->vc_pos);
     //         notify_write(vc, c);
     //         cnt++;
-    //         if (vc->state.x == vc->vc_cols - 1)
+    //         if (vc->vc_x == vc->vc_cols - 1)
     //         {
     //             vc->vc_need_wrap = 1;
     //         }
     //         else
     //         {
     //             vc->vc_pos += 2;
-    //             vc->state.x++;
+    //             vc->vc_x++;
     //         }
     //     }
     //     if (cnt && con_is_visible(vc))
     //     {
-    //         vc->vc_sw->con_putcs(vc, start, cnt, vc->state.y, start_x);
+    //         vc->vc_sw->con_putcs(vc, start, cnt, vc->vc_y, start_x);
     //     }
     //     set_cursor(vc);
     //     notify_update(vc);
@@ -994,18 +1766,13 @@ console_t vt_console_driver = {
 #endif
 
 static const tty_ops_t con_ops = {
-    .get_index = con_get_index,
-    .install = vc_con_install,
-    // 	.open = con_open,
-    // 	.close = con_close,
+    .install = con_vc_install,
+    .open = con_vc_open,
+    .close = con_vc_close,
     .write = vc_con_write,
     // .write_room = con_write_room,
     .put_char = con_put_char,
     // 	.flush_chars = con_flush_chars,
-    // 	.ioctl = vt_ioctl,
-    // #ifdef CONFIG_COMPAT
-    // 	.compat_ioctl = vt_compat_ioctl,
-    // #endif
     // 	.stop = con_stop,
     // 	.start = con_start,
     // 	.throttle = con_throttle,
@@ -1033,16 +1800,18 @@ status_t vty_init()
     console_driver->init_termios = tty_std_termios;
     console_driver->init_termios.c_iflag |= IUTF8;
     console_driver->ops = &con_ops;
-    if (tty_register_driver(console_driver))
+    tty_dev_t *vtty_dev;
+    if (tty_register_driver(console_driver, &vtty_dev))
     {
         KERNEL_PANIC(MODULE, "Couldn't register console driver");
     }
+    vtty_dev->tty = master_display_fg->vc_tty;
     // kbd_init();
     // console_map_init();
     return KERRNO_SUCCESSES;
 }
 
-static const dev_class_t vtconsole_class = {
+const dev_class_t vtconsole_class = {
     .name = "vtconsole",
     .device_added = vt_console_added,
     .device_removed = vt_console_removed,
@@ -1053,9 +1822,10 @@ status_t vt_init()
 {
     class_register(&vtconsole_class);
 
+    LOCK();
+
     conswitchp = (virt_con_ops_t *)&dummy_con;
-    const char *name;
-    conswitchp->startup(&name);
+    const char *name = conswitchp->con_name;
 
     for (int i = 0; i < MAX_CONSOLE_DRIVER; i++)
     {
@@ -1076,31 +1846,33 @@ status_t vt_init()
         con_driver_map[i] = conswitchp;
     }
 
+    int currcons = 0;
     for (int currcons = 0; currcons < MIN_CONSOLES; currcons++)
     {
-        virtual_console_data_t *vc = kzmalloc(sizeof(virtual_console_data_t));
-        
+        vc_data_t *vc = kzmalloc(sizeof(vc_data_t));
+
         consoles[currcons].data = vc;
         // INIT_WORK(&vc_cons[currcons].SAK_work, vc_SAK);
         // tty_port_init(&vc->port);
-        vt_data_init(vc, currcons, true);
-        /* Assuming vc->vc_{cols,rows,screenbuf_size} are sane here. */
-        vc->cell_buffer = kzmalloc(vc->buffer_size);
-        vc_init(vc, currcons || !vc->current->save_screen);
+        vc_data_init(vc, currcons, true);
+        vc->vc_screenbuf = kzmalloc(vc->vc_screenbuf_cells * sizeof(vt_cell_t));
+        vc_init(vc, currcons || !vc->vc_sw->con_save_screen);
     }
 
-    virtual_console_data_t *vc = consoles[0].data;
-    fg_console = 0;
+    currcons = fg_console = 0;
+    vc_data_t *vc = consoles[currcons].data;
     master_display_fg = vc;
     vc_set_origin(vc);
     vc_save_screen(vc);
-    vc_gotoxy(vc, vc->state.x, vc->state.y);
+    vc_gotoxy(vc, vc->vc_x, vc->vc_y);
     update_screen(vc);
-    trace_info(MODULE, "Console: %s %s %dx%d\n", vc->can_do_color ? "color" : "mono", name, vc->size.cols, vc->size.rows);
+    trace_info(MODULE, "Console: %s %s %dx%d", vc_can_color(vc) ? "color" : "mono", name, vc->vc_cols, vc->vc_rows);
 
 #ifdef CONFIG_VT_CONSOLE
     console_register(&vt_console_driver);
 #endif
+
+    UNLOCK();
 
     return KERRNO_SUCCESSES;
 }
@@ -1139,7 +1911,7 @@ INTERNAL int vc_do_bind_con_driver(const virt_con_ops_t *csw, int first, int las
 
     if (!(con_driver->flag & CON_DRIVER_FLAG_INIT))
     {
-        csw->startup(NULL);
+        // csw->con_startup(NULL);
         con_driver->flag |= CON_DRIVER_FLAG_INIT;
     }
 
@@ -1154,27 +1926,35 @@ INTERNAL int vc_do_bind_con_driver(const virt_con_ops_t *csw, int first, int las
 
     for (i = first; i <= last; i++)
     {
-        virtual_console_data_t *vc = consoles[i].data;
+        vc_data_t *vc = consoles[i].data;
 
         con_driver_map[i] = (virt_con_ops_t *)csw;
 
-        if (!vc || !vc->current)
+        if (!vc || !vc->vc_sw)
         {
             continue;
         }
 
         j = i;
 
-        if (vc_is_visible(vc))
+        if (con_is_visible(vc))
         {
             k = i;
             vc_save_screen(vc);
         }
 
-        vc->current->uninit(vc);
-        vc->origin = (vaddr_t)vc->cell_buffer;
-        vc_init(vc, i);
+        bool old_was_color = vc_can_color(vc);
+
+        vc->vc_sw->con_deinit(vc);
+        vc->vc_origin = vc->vc_screenbuf;
+        vc_data_init(vc, i, true);
         vc_set_origin(vc);
+        // update_attr(vc);
+
+        if (old_was_color != vc_can_color(vc))
+        {
+            vc_clear_buffer_attributes(vc);
+        }
     }
 
     trace_info(MODULE, "Console: switching ");
@@ -1184,10 +1964,16 @@ INTERNAL int vc_do_bind_con_driver(const virt_con_ops_t *csw, int first, int las
     }
     if (j >= 0)
     {
-        virtual_console_data_t *vc = consoles[j].data;
+        vc_data_t *vc = consoles[j].data;
+        // switch_screen(vc);
+        // master_display_fg = vc;
 
-        trace_info(MODULE, "to %s %s %dx%d", vc->can_do_color ? "colour" : "mono", desc, vc->size.cols, vc->size.rows);
+        trace_info(MODULE, "to %u %s %s %dx%d", j, vc_can_color(vc) ? "color" : "mono", desc, vc->vc_cols, vc->vc_rows);
+        trace_info(MODULE, "switching to %p", vc);
 
+        trace_info(MODULE, "i = %u, j = %u, k = %u", i, j, k);
+        trace_debug(MODULE, "conswitchp = %p", conswitchp);
+        trace_debug(MODULE, "vc->vc_sw = %p", vc->vc_sw);
         if (k >= 0)
         {
             vc = consoles[k].data;
@@ -1196,7 +1982,7 @@ INTERNAL int vc_do_bind_con_driver(const virt_con_ops_t *csw, int first, int las
     }
     else
     {
-        trace_info(MODULE, "to %s\n", desc);
+        trace_info(MODULE, "to \"%s\"", desc);
     }
 
     return ret;
@@ -1219,14 +2005,9 @@ INTERNAL status_t vc_do_register_con_driver(const virt_con_ops_t *con, uint32_t 
         }
     }
 
-    const char *desc;
-    status_t ret = con->startup(&desc);
-    if (ret != KERRNO_SUCCESSES || !desc)
-    {
-        KERRNO_RETURN(ENODEV, "");
-    }
+    const char *desc = con->con_name;
 
-    ret = EINVAL;
+    status_t ret = EINVAL;
 
     for (int i = 0; i < MAX_CONSOLE_DRIVER; i++)
     {
@@ -1247,7 +2028,8 @@ INTERNAL status_t vc_do_register_con_driver(const virt_con_ops_t *con, uint32_t 
 
     if (ret)
     {
-        return ret;
+        LOG_RETURN(ret);
+        // return ret;
     }
 
     con_driver->dev = core_device_create(&vtconsole_class, NULL, con_driver, "vtcon%i", con_driver->node);

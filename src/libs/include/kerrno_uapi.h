@@ -213,107 +213,107 @@
 #define KERRNO_ILLEGAL_DATA                      (KERRNO_TRANSLATION_ERROR_BASE + 3) /* Input data is invalid for translation */
 
 /* POSIX Errors */
-#define KERRNO_TO_POSIX_ERROR(error)             (-(error))                                          /* Convert a positive kernel error to a negative POSIX-style result */
-#define KERRNO_FROM_POSIX_ERROR(error)           (-(error))                                          /* Convert a negative POSIX-style result to a positive kernel error */
+#define KERRNO_TO_POSIX_ERROR(error)             (-(error))                   /* Convert a positive kernel error to a negative POSIX-style result */
+#define KERRNO_FROM_POSIX_ERROR(error)           (-(error))                   /* Convert a negative POSIX-style result to a positive kernel error */
 
-#define KERRNO_POSIX_ENOMEM                      KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 0)  /* Memory allocation failed */
-#define E2BIG                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 1)  /* Argument list is too long */
-#define ECHILD                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 2)  /* Required child process is unavailable */
-#define EDEADLK                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 3)  /* Deadlock would occur */
-#define EFBIG                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 4)  /* File is too large */
-#define EMLINK                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 5)  /* Too many links */
-#define ENFILE                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 6)  /* System file table is full */
-#define ENODEV                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 7)  /* Device does not exist */
-#define ENOLCK                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 8)  /* No locks are available */
-#define ENOSYS                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 9)  /* Function is not implemented */
-#define ENOTTY                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 10) /* Inappropriate device operation */
-#define ENXIO                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 11) /* Device or address does not exist */
-#define ESPIPE                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 12) /* Invalid seek on a pipe or stream */
-#define ESRCH                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 13) /* Process does not exist */
-#define EFPOS                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 14) /* Invalid file position */
-#define ESIGPARM                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 15) /* Invalid signal parameter */
-#define EDOM                                     KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 16) /* Argument is outside the function domain */
-#define ERANGE                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 17) /* Result is outside the representable range */
-#define EPROTOTYPE                               KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 18) /* Protocol type is incorrect */
-#define EPROTONOSUPPORT                          KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 19) /* Protocol is unsupported */
-#define EPFNOSUPPORT                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 20) /* Protocol family is unsupported */
-#define EAFNOSUPPORT                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 21) /* Address family is unsupported */
-#define EADDRINUSE                               KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 22) /* Address is already in use */
-#define EADDRNOTAVAIL                            KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 23) /* Address is not available */
-#define ENETDOWN                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 24) /* Network is down */
-#define ENETUNREACH                              KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 25) /* Network is unreachable */
-#define ENETRESET                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 26) /* Network connection was reset */
-#define ECONNABORTED                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 27) /* Connection was aborted */
-#define ECONNRESET                               KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 28) /* Connection was reset */
-#define EISCONN                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 29) /* Socket is already connected */
-#define ENOTCONN                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 30) /* Socket is not connected */
-#define ESHUTDOWN                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 31) /* Endpoint has been shut down */
-#define ECONNREFUSED                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 32) /* Connection was refused */
-#define EHOSTUNREACH                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 33) /* Host is unreachable */
-#define ENOPROTOOPT                              KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 34) /* Protocol option is unavailable */
-#define ENOBUFS                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 35) /* No buffer space is available */
-#define EINPROGRESS                              KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 36) /* Operation is in progress */
-#define EALREADY                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 37) /* Operation is already in progress */
-#define EILSEQ                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 38) /* Invalid byte sequence */
-#define ENOMSG                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 39) /* Required message is unavailable */
-#define ESTALE                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 40) /* Stale file handle */
-#define EOVERFLOW                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 41) /* Value would overflow */
-#define EMSGSIZE                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 42) /* Message is too large */
-#define EOPNOTSUPP                               KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 43) /* Operation is not supported */
-#define ENOTSOCK                                 KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 44) /* File descriptor is not a socket */
-#define EHOSTDOWN                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 45) /* Host is down */
-#define EBADMSG                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 46) /* Message is invalid */
-#define ECANCELED                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 47) /* Operation was canceled */
-#define EDESTADDRREQ                             KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 48) /* Destination address is required */
-#define EDQUOT                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 49) /* Disk quota is exceeded */
-#define EIDRM                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 50) /* Identifier was removed */
-#define EMULTIHOP                                KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 51) /* Too many protocol hops */
-#define ENODATA                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 52) /* No data is available */
-#define ENOLINK                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 53) /* Link has been severed */
-#define ENOSR                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 54) /* No stream resources */
-#define ENOSTR                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 55) /* Object is not a stream */
-#define ENOTSUP                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 56) /* Feature is not supported */
-#define EPROTO                                   KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 57) /* Protocol error */
-#define ETIME                                    KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 58) /* Timer expired */
-#define ETXTBSY                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 59) /* Text file is busy */
-#define ENOATTR                                  KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 60) /* Attribute is missing */
-#define ENOTRECOVERABLE                          KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 61) /* State cannot be recovered */
-#define EOWNERDEAD                               KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 62) /* Previous owner died */
-#define ESOCKTNOSUPPORT                          KERRNO_TO_POSIX_ERROR(KERRNO_POSIX_ERROR_BASE + 63) /* Socket type is unsupported */
+#define KERRNO_POSIX_ENOMEM                      KERRNO_POSIX_ERROR_BASE + 0  /* Memory allocation failed */
+#define E2BIG                                    KERRNO_POSIX_ERROR_BASE + 1  /* Argument list is too long */
+#define ECHILD                                   KERRNO_POSIX_ERROR_BASE + 2  /* Required child process is unavailable */
+#define EDEADLK                                  KERRNO_POSIX_ERROR_BASE + 3  /* Deadlock would occur */
+#define EFBIG                                    KERRNO_POSIX_ERROR_BASE + 4  /* File is too large */
+#define EMLINK                                   KERRNO_POSIX_ERROR_BASE + 5  /* Too many links */
+#define ENFILE                                   KERRNO_POSIX_ERROR_BASE + 6  /* System file table is full */
+#define ENODEV                                   KERRNO_POSIX_ERROR_BASE + 7  /* Device does not exist */
+#define ENOLCK                                   KERRNO_POSIX_ERROR_BASE + 8  /* No locks are available */
+#define ENOSYS                                   KERRNO_POSIX_ERROR_BASE + 9  /* Function is not implemented */
+#define ENOTTY                                   KERRNO_POSIX_ERROR_BASE + 10 /* Inappropriate device operation */
+#define ENXIO                                    KERRNO_POSIX_ERROR_BASE + 11 /* Device or address does not exist */
+#define ESPIPE                                   KERRNO_POSIX_ERROR_BASE + 12 /* Invalid seek on a pipe or stream */
+#define ESRCH                                    KERRNO_POSIX_ERROR_BASE + 13 /* Process does not exist */
+#define EFPOS                                    KERRNO_POSIX_ERROR_BASE + 14 /* Invalid file position */
+#define ESIGPARM                                 KERRNO_POSIX_ERROR_BASE + 15 /* Invalid signal parameter */
+#define EDOM                                     KERRNO_POSIX_ERROR_BASE + 16 /* Argument is outside the function domain */
+#define ERANGE                                   KERRNO_POSIX_ERROR_BASE + 17 /* Result is outside the representable range */
+#define EPROTOTYPE                               KERRNO_POSIX_ERROR_BASE + 18 /* Protocol type is incorrect */
+#define EPROTONOSUPPORT                          KERRNO_POSIX_ERROR_BASE + 19 /* Protocol is unsupported */
+#define EPFNOSUPPORT                             KERRNO_POSIX_ERROR_BASE + 20 /* Protocol family is unsupported */
+#define EAFNOSUPPORT                             KERRNO_POSIX_ERROR_BASE + 21 /* Address family is unsupported */
+#define EADDRINUSE                               KERRNO_POSIX_ERROR_BASE + 22 /* Address is already in use */
+#define EADDRNOTAVAIL                            KERRNO_POSIX_ERROR_BASE + 23 /* Address is not available */
+#define ENETDOWN                                 KERRNO_POSIX_ERROR_BASE + 24 /* Network is down */
+#define ENETUNREACH                              KERRNO_POSIX_ERROR_BASE + 25 /* Network is unreachable */
+#define ENETRESET                                KERRNO_POSIX_ERROR_BASE + 26 /* Network connection was reset */
+#define ECONNABORTED                             KERRNO_POSIX_ERROR_BASE + 27 /* Connection was aborted */
+#define ECONNRESET                               KERRNO_POSIX_ERROR_BASE + 28 /* Connection was reset */
+#define EISCONN                                  KERRNO_POSIX_ERROR_BASE + 29 /* Socket is already connected */
+#define ENOTCONN                                 KERRNO_POSIX_ERROR_BASE + 30 /* Socket is not connected */
+#define ESHUTDOWN                                KERRNO_POSIX_ERROR_BASE + 31 /* Endpoint has been shut down */
+#define ECONNREFUSED                             KERRNO_POSIX_ERROR_BASE + 32 /* Connection was refused */
+#define EHOSTUNREACH                             KERRNO_POSIX_ERROR_BASE + 33 /* Host is unreachable */
+#define ENOPROTOOPT                              KERRNO_POSIX_ERROR_BASE + 34 /* Protocol option is unavailable */
+#define ENOBUFS                                  KERRNO_POSIX_ERROR_BASE + 35 /* No buffer space is available */
+#define EINPROGRESS                              KERRNO_POSIX_ERROR_BASE + 36 /* Operation is in progress */
+#define EALREADY                                 KERRNO_POSIX_ERROR_BASE + 37 /* Operation is already in progress */
+#define EILSEQ                                   KERRNO_POSIX_ERROR_BASE + 38 /* Invalid byte sequence */
+#define ENOMSG                                   KERRNO_POSIX_ERROR_BASE + 39 /* Required message is unavailable */
+#define ESTALE                                   KERRNO_POSIX_ERROR_BASE + 40 /* Stale file handle */
+#define EOVERFLOW                                KERRNO_POSIX_ERROR_BASE + 41 /* Value would overflow */
+#define EMSGSIZE                                 KERRNO_POSIX_ERROR_BASE + 42 /* Message is too large */
+#define EOPNOTSUPP                               KERRNO_POSIX_ERROR_BASE + 43 /* Operation is not supported */
+#define ENOTSOCK                                 KERRNO_POSIX_ERROR_BASE + 44 /* File descriptor is not a socket */
+#define EHOSTDOWN                                KERRNO_POSIX_ERROR_BASE + 45 /* Host is down */
+#define EBADMSG                                  KERRNO_POSIX_ERROR_BASE + 46 /* Message is invalid */
+#define ECANCELED                                KERRNO_POSIX_ERROR_BASE + 47 /* Operation was canceled */
+#define EDESTADDRREQ                             KERRNO_POSIX_ERROR_BASE + 48 /* Destination address is required */
+#define EDQUOT                                   KERRNO_POSIX_ERROR_BASE + 49 /* Disk quota is exceeded */
+#define EIDRM                                    KERRNO_POSIX_ERROR_BASE + 50 /* Identifier was removed */
+#define EMULTIHOP                                KERRNO_POSIX_ERROR_BASE + 51 /* Too many protocol hops */
+#define ENODATA                                  KERRNO_POSIX_ERROR_BASE + 52 /* No data is available */
+#define ENOLINK                                  KERRNO_POSIX_ERROR_BASE + 53 /* Link has been severed */
+#define ENOSR                                    KERRNO_POSIX_ERROR_BASE + 54 /* No stream resources */
+#define ENOSTR                                   KERRNO_POSIX_ERROR_BASE + 55 /* Object is not a stream */
+#define ENOTSUP                                  KERRNO_POSIX_ERROR_BASE + 56 /* Feature is not supported */
+#define EPROTO                                   KERRNO_POSIX_ERROR_BASE + 57 /* Protocol error */
+#define ETIME                                    KERRNO_POSIX_ERROR_BASE + 58 /* Timer expired */
+#define ETXTBSY                                  KERRNO_POSIX_ERROR_BASE + 59 /* Text file is busy */
+#define ENOATTR                                  KERRNO_POSIX_ERROR_BASE + 60 /* Attribute is missing */
+#define ENOTRECOVERABLE                          KERRNO_POSIX_ERROR_BASE + 61 /* State cannot be recovered */
+#define EOWNERDEAD                               KERRNO_POSIX_ERROR_BASE + 62 /* Previous owner died */
+#define ESOCKTNOSUPPORT                          KERRNO_POSIX_ERROR_BASE + 63 /* Socket type is unsupported */
 
-#define ENOMEM                                   KERRNO_POSIX_ENOMEM                                 /* POSIX name for out-of-memory */
+#define ENOMEM                                   KERRNO_POSIX_ENOMEM          /* POSIX name for out-of-memory */
 
 /* POSIX errors that can be mapped to BeOS error codes */
-#define EACCES                                   KERRNO_TO_POSIX_ERROR(KERRNO_PERMISSION_DENIED)   /* Permission denied */
-#define EINTR                                    KERRNO_TO_POSIX_ERROR(KERRNO_INTERRUPTED)         /* Interrupted system call */
-#define EIO                                      KERRNO_TO_POSIX_ERROR(KERRNO_IO_ERROR)            /* Input/output error */
-#define EBUSY                                    KERRNO_TO_POSIX_ERROR(KERRNO_BUSY)                /* Device or resource is busy */
-#define EFAULT                                   KERRNO_TO_POSIX_ERROR(KERRNO_BAD_ADDRESS)         /* Bad address */
-#define ETIMEDOUT                                KERRNO_TO_POSIX_ERROR(KERRNO_TIMED_OUT)           /* Operation timed out */
-#define EAGAIN                                   KERRNO_TO_POSIX_ERROR(KERRNO_WOULD_BLOCK)         /* SysV compatibility */
-#define EWOULDBLOCK                              KERRNO_TO_POSIX_ERROR(KERRNO_WOULD_BLOCK)         /* BSD compatibility */
-#define EBADF                                    KERRNO_TO_POSIX_ERROR(KERRNO_FILE_ERROR)          /* Bad file descriptor */
-#define EEXIST                                   KERRNO_TO_POSIX_ERROR(KERRNO_FILE_EXISTS)         /* File exists */
-#define EINVAL                                   KERRNO_TO_POSIX_ERROR(KERRNO_BAD_VALUE)           /* Invalid argument */
-#define ENAMETOOLONG                             KERRNO_TO_POSIX_ERROR(KERRNO_NAME_TOO_LONG)       /* File name is too long */
-#define ENOENT                                   KERRNO_TO_POSIX_ERROR(KERRNO_ENTRY_NOT_FOUND)     /* No such file or directory */
-#define EPERM                                    KERRNO_TO_POSIX_ERROR(KERRNO_NOT_ALLOWED)         /* Operation not permitted */
-#define ENOTDIR                                  KERRNO_TO_POSIX_ERROR(KERRNO_NOT_A_DIRECTORY)     /* Not a directory */
-#define EISDIR                                   KERRNO_TO_POSIX_ERROR(KERRNO_IS_A_DIRECTORY)      /* Is a directory */
-#define ENOTEMPTY                                KERRNO_TO_POSIX_ERROR(KERRNO_DIRECTORY_NOT_EMPTY) /* Directory not empty */
-#define ENOSPC                                   KERRNO_TO_POSIX_ERROR(KERRNO_DEVICE_FULL)         /* No space left on device */
-#define EROFS                                    KERRNO_TO_POSIX_ERROR(KERRNO_READ_ONLY_DEVICE)    /* Read-only file system */
-#define EMFILE                                   KERRNO_TO_POSIX_ERROR(KERRNO_NO_MORE_FDS)         /* Too many open files */
-#define EXDEV                                    KERRNO_TO_POSIX_ERROR(KERRNO_CROSS_DEVICE_LINK)   /* Cross-device link */
-#define ELOOP                                    KERRNO_TO_POSIX_ERROR(KERRNO_LINK_LIMIT)          /* Too many symbolic links */
-#define ENOEXEC                                  KERRNO_TO_POSIX_ERROR(KERRNO_NOT_AN_EXECUTABLE)   /* Exec format error */
-#define EPIPE                                    KERRNO_TO_POSIX_ERROR(KERRNO_BUSTED_PIPE)         /* Broken pipe */
+#define EACCES                                   KERRNO_PERMISSION_DENIED   /* Permission denied */
+#define EINTR                                    KERRNO_INTERRUPTED         /* Interrupted system call */
+#define EIO                                      KERRNO_IO_ERROR            /* Input/output error */
+#define EBUSY                                    KERRNO_BUSY                /* Device or resource is busy */
+#define EFAULT                                   KERRNO_BAD_ADDRESS         /* Bad address */
+#define ETIMEDOUT                                KERRNO_TIMED_OUT           /* Operation timed out */
+#define EAGAIN                                   KERRNO_WOULD_BLOCK         /* SysV compatibility */
+#define EWOULDBLOCK                              KERRNO_WOULD_BLOCK         /* BSD compatibility */
+#define EBADF                                    KERRNO_FILE_ERROR          /* Bad file descriptor */
+#define EEXIST                                   KERRNO_FILE_EXISTS         /* File exists */
+#define EINVAL                                   KERRNO_BAD_VALUE           /* Invalid argument */
+#define ENAMETOOLONG                             KERRNO_NAME_TOO_LONG       /* File name is too long */
+#define ENOENT                                   KERRNO_ENTRY_NOT_FOUND     /* No such file or directory */
+#define EPERM                                    KERRNO_NOT_ALLOWED         /* Operation not permitted */
+#define ENOTDIR                                  KERRNO_NOT_A_DIRECTORY     /* Not a directory */
+#define EISDIR                                   KERRNO_IS_A_DIRECTORY      /* Is a directory */
+#define ENOTEMPTY                                KERRNO_DIRECTORY_NOT_EMPTY /* Directory not empty */
+#define ENOSPC                                   KERRNO_DEVICE_FULL         /* No space left on device */
+#define EROFS                                    KERRNO_READ_ONLY_DEVICE    /* Read-only file system */
+#define EMFILE                                   KERRNO_NO_MORE_FDS         /* Too many open files */
+#define EXDEV                                    KERRNO_CROSS_DEVICE_LINK   /* Cross-device link */
+#define ELOOP                                    KERRNO_LINK_LIMIT          /* Too many symbolic links */
+#define ENOEXEC                                  KERRNO_NOT_AN_EXECUTABLE   /* Exec format error */
+#define EPIPE                                    KERRNO_BUSTED_PIPE         /* Broken pipe */
 
 /* new error codes that can be mapped to POSIX errors */
-#define KERRNO_BUFFER_OVERFLOW                   KERRNO_FROM_POSIX_ERROR(EOVERFLOW)  /* Buffer or value overflowed */
-#define KERRNO_TOO_MANY_ARGS                     KERRNO_FROM_POSIX_ERROR(E2BIG)      /* Too many arguments */
-#define KERRNO_FILE_TOO_LARGE                    KERRNO_FROM_POSIX_ERROR(EFBIG)      /* File is too large */
-#define KERRNO_RESULT_NOT_REPRESENTABLE          KERRNO_FROM_POSIX_ERROR(ERANGE)     /* Result cannot be represented */
-#define KERRNO_DEVICE_NOT_FOUND                  KERRNO_FROM_POSIX_ERROR(ENODEV)     /* Device was not found */
-#define KERRNO_NOT_SUPPORTED                     KERRNO_FROM_POSIX_ERROR(EOPNOTSUPP) /* Operation is not supported */
+#define KERRNO_BUFFER_OVERFLOW                   EOVERFLOW  /* Buffer or value overflowed */
+#define KERRNO_TOO_MANY_ARGS                     E2BIG      /* Too many arguments */
+#define KERRNO_FILE_TOO_LARGE                    EFBIG      /* File is too large */
+#define KERRNO_RESULT_NOT_REPRESENTABLE          ERANGE     /* Result cannot be represented */
+#define KERRNO_DEVICE_NOT_FOUND                  ENODEV     /* Device was not found */
+#define KERRNO_NOT_SUPPORTED                     EOPNOTSUPP /* Operation is not supported */
 

@@ -40,6 +40,16 @@ static INLINE void *memset32(void *s, int c, size_t n)
 
     return origDst;
 }
+#ifdef __x86_64__
+static INLINE void *memset64(void *s, long long c, size_t n)
+{
+    char *origDst = (char*)s;
+    __asm__(
+        "rep stosq" : "+D"(s), "+c"(n) : "a"(c) : "memory");
+
+    return origDst;
+}
+#endif
 
 static INLINE int memcmp(const char *cs, const char *ct, size_t num)
 {

@@ -13,10 +13,10 @@
 
 int rt_sig_action(int signum, sigaction_t *action, sigaction_t *old_action)
 {
-    return syscall4(SYS_SIGACTION, (uintptr_t)signum, (uintptr_t)action, (uintptr_t)old_action, sizeof(sigset_t));
+    return 0; // syscall4(SYS_SIGACTION, (uintptr_t)signum, (uintptr_t)action, (uintptr_t)old_action, sizeof(sigset_t));
 }
 
 int kill(pid_t pid, int sig)
 {
-    return syscall2(SYS_KILL, (uintptr_t)pid, (uintptr_t)sig);
+    return 0; // syscall2(SYS_KILL, (uintptr_t)pid, (uintptr_t)sig);
 }

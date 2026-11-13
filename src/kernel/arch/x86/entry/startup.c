@@ -101,6 +101,33 @@ status_t general_protection_fault(intr_frame_t *frame)
     return ENOSYS;
 }
 
+status_t segment_not_present(intr_frame_t *frame)
+{
+    log_err("SNP", "Segment not present 0x%x", frame->error);
+    frame_arch_dump_frame(frame);
+    uint8_t table = BIT_GET_RANGE(frame->error, 1, 2);
+    uint16_t selector = frame->error & ~0x3;
+    if (table == 0b00)
+    {
+        gdt_dump_selector(selector);
+        gdt_entry_t *entry = gdt_get_entry(selector);
+        uint32_t checksum = entry->access + entry->base_high + entry->base_low + entry->base_middle + entry->flags + entry->limit_high + entry->limit_low;
+        if (selector == 0 && checksum != 0)
+        {
+            gdt_set_entry(entry, 0, 0, 0, 0, 0);
+            return KERRNO_SUCCESSES;
+        }
+    }
+    else if (table == 0b01 || table == 0b11)
+    {
+        idt_dump_selector(selector);
+    }
+    KERNEL_PANIC("SNP", "KERNEL GOT a SNP from %u ss", frame->error);
+
+    FUNC_NOT_IMPLEMENTED();
+    return ENOSYS;
+}
+
 uint8_t PF_times = 0;
 
 status_t page_fault(intr_frame_t *regs)
@@ -145,6 +172,7 @@ __init void arch_setup(boot_params_t *boot_params)
     ivt_set_handler(EXC_DEBUG, write_registers);
     ivt_set_handler(EXC_BREAKPOINT, breakpoint);
     ivt_set_handler(EXC_DF, double_fault);
+    ivt_set_handler(EXC_NP, segment_not_present);
     ivt_set_handler(EXC_GP, general_protection_fault);
     ivt_set_handler(EXC_FAULT, page_fault);
 

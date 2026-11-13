@@ -43,6 +43,13 @@ typedef union process_exit_code
         uint8_t signal;
     };
 
+    struct {
+        uint16_t res;
+        uint8_t exit_code;
+        uint8_t coredump : 1;
+        uint8_t signal : 7;
+    } POSIX_status;
+
     uint32_t raw;
 } process_exit_code_t;
 

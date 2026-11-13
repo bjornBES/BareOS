@@ -81,6 +81,58 @@ static status_t tty_ldisc_get(tty_struct_t *tty, int disc, tty_ldisc_t **out_ldi
     return KERRNO_SUCCESSES;
 }
 
+static status_t tty_ldisc_open(tty_struct_t *tty, tty_ldisc_t *ld)
+{
+    WARN_ON(TEST_AND_SET_BIT(TTY_LDISC_OPEN, &tty->flags));
+    if (ld->ops->open)
+    {
+        status_t ret;
+        ret = ld->ops->open(tty);
+        if (ret)
+        {
+            CLEAR_BIT(TTY_LDISC_OPEN, &tty->flags);
+        }
+        return ret;
+    }
+    return KERRNO_SUCCESSES;
+}
+
+static void tty_ldisc_close(tty_struct_t *tty, tty_ldisc_t *ld)
+{
+    WARN_ON(!TEST_BIT(TTY_LDISC_OPEN, &tty->flags));
+    CLEAR_BIT(TTY_LDISC_OPEN, &tty->flags);
+    if (ld->ops->close)
+    {
+        ld->ops->close(tty);
+    }
+}
+
+status_t tty_ldisc_setup(tty_struct_t *tty, tty_struct_t *o_tty)
+{
+    ENTER_FUNC("%p, %p", tty, o_tty);
+    status_t ret = tty_ldisc_open(tty, tty->ldisc);
+
+    if (ret)
+    {
+        return ret;
+    }
+
+    if (o_tty)
+    {
+        /*
+         * Called without o_tty->ldisc_sem held, as o_tty has been
+         * just allocated and no one has a reference to it.
+         */
+        ret = tty_ldisc_open(o_tty, o_tty->ldisc);
+        if (ret)
+        {
+            tty_ldisc_close(tty, tty->ldisc);
+            return ret;
+        }
+    }
+    return KERRNO_SUCCESSES;
+}
+
 status_t tty_ldisc_init(tty_struct_t *tty)
 {
     tty_ldisc_t *ld;

@@ -29,11 +29,11 @@ typedef struct arch_cpu_info
     struct arch_cpu_info *self;
 
     // per-core kernel stack (used during interrupt entry)
-    vaddr_t user_stack;
-    vaddr_t kernel_stack;
+    vaddr_t user_stack;     // CPU_USER_RSP
+    vaddr_t kernel_stack;   // CPU_KERNEL_RSP
 
     // scheduler
-    struct thread *current;      // thread_t running on this core
+    struct thread *current;      // CURRENT | thread_t running on this core
     struct thread *idle;         // this core's idle thread_t
 
     process_t *current_proc;

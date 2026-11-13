@@ -62,7 +62,7 @@ status_t volume_do_register(const char *volume_id, device_t *dev, filesystem_t *
     vol->fs = fs;
     list_initialize(&vol->mountpoints);
 
-    if (dev == NULL)
+    if (dev->class->type == virtual_class.type)
     {
         vol->flags |= VOLUME_VIRTUAL;
     }

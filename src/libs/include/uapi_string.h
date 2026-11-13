@@ -11,3 +11,5 @@
 #pragma once
 
 #include "arch_string.h"
+
+#include "generic/generic_string.h"

@@ -28,6 +28,11 @@ typedef enum cons_flags
     CON_NBCON_ATOMIC_UNSAFE = BIT(9),
 } cons_flags_t;
 
+typedef enum con_scroll {
+	SM_UP,
+	SM_DOWN,
+} con_scroll_t;
+
 typedef struct console console_t;
 
 typedef struct console

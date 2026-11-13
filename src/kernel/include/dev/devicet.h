@@ -38,6 +38,7 @@ typedef enum device_flags
     DEV_FLAG_OFFLINE = 9,
     DEV_FLAG_NO_DRIVER = 10,
     DEV_FLAG_SAME_NAME = 11,
+    DEV_FLAG_CHAR_DEV = 12,
 
     DEV_FLAG_COUNT
 } device_flags_t;
@@ -50,7 +51,7 @@ typedef struct device_ops
     status_t (*write)(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out);
     /// @brief TODO
     status_t (*poll)(device_t *dev);
-    status_t (*open)(device_t *dev);
+    status_t (*open)(device_t *dev, int flags, vfs_node_t *out_file);
     // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
 
     status_t (*destroy)(device_t *dev); // cleanup
@@ -111,14 +112,7 @@ CREATE_DEV_FLAG_ACCESSORS(offline_disabled, DEV_FLAG_OFFLINE_DISABLED);
 CREATE_DEV_FLAG_ACCESSORS(offline, DEV_FLAG_OFFLINE);
 CREATE_DEV_FLAG_ACCESSORS(no_driver, DEV_FLAG_NO_DRIVER);
 CREATE_DEV_FLAG_ACCESSORS(same_name, DEV_FLAG_SAME_NAME);
+CREATE_DEV_FLAG_ACCESSORS(is_char, DEV_FLAG_CHAR_DEV);
 
 #undef CREATE_DEV_FLAG_ACCESSORS
 
-
-typedef struct dev_inode
-{
-    inode_t base;
-    device_id_t dev_id;
-} dev_inode_t;
-
-#define to_dev_inode(n) container_of(n, dev_inode_t, base);

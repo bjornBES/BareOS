@@ -11,6 +11,9 @@
 #include "process/process.h"
 #include "thread/thread.h"
 
+#include "drivers/tty/tty.h"
+#include "dev/device.h"
+
 #include "asm/cpu_arch.h"
 #include "asm/mmu_arch.h"
 
@@ -33,13 +36,13 @@ status_t kernel_pid0(process_t *process)
     char *argv[2] = {"/@USER/bin/INIT.ELF", NULL};
     thread_t *t;
     proc_kernel_execve(process_pid1, "/@USER/bin/INIT.ELF", argv, NULL, &t);
-    
+
     thread_t *curr = thread_get_current();
     curr->timeslice = curr->timeslice_reset;
 
     inline_asm("cli");
-    paging_print_tree(process_pid1->vma->page_directory);
-    paging_print_tree(&kernel_page);
+    // paging_print_tree(process_pid1->vma->page_directory);
+    // paging_print_tree(&kernel_page);
     inline_asm("sti");
 
     proc_add_thread(process_pid1, t);
@@ -64,6 +67,11 @@ void kernel_start_pid0()
     // proc_spawn(NULL, process);
     process->vma = kzmalloc(sizeof(vma_memory_t));
     process->vma->page_directory = &kernel_page;
+
+    vfs_open_file(&process->fd_table, "/@DEVFS/tty", NULL);
+    vfs_open_file(&process->fd_table, "/@DEVFS/vtty", NULL);
+    vfs_open_file(&process->fd_table, "/@DEVFS/vtty8", NULL);
+
     thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_pid0), (uintptr_t)process, 0);
     main_thread->is_main_thread = 1;
     main_thread->cpu_affinity = cpu_arch_get_current();

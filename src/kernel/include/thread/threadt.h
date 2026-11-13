@@ -43,12 +43,13 @@ typedef struct thread thread_t;
 
 typedef struct thread
 {
+    vaddr_t kstack; // KERNEL_STACK
+
     LIST_ENTRY_THIS();
     // list_node_t node; // intrusive — used by whichever queue currently
     struct process *proc;
 
     // kernel stack
-    vaddr_t kstack;
     stack_info_t kernel_stack;
 
     tid_t tid;

@@ -9,13 +9,17 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 
 int main()
 {
+    printf("\nHello world!!\n");
+    printf("Hello world!!\n");
+    printf("Hello world!!\n");
+    write(2, (const void*)"Hello world\n", 12);
     while (true)
     {
     }
-    printf("Hello world");
     
     return 0;
 }

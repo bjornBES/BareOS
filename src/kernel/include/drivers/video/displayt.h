@@ -15,6 +15,7 @@
 #include "lists/list_node.h"
 
 #include "dev/devicet.h"
+#include "drivers/video/console/kernel_fontt.h"
 
 #include <types.h>
 
@@ -38,6 +39,7 @@ typedef struct display_device
     video_framebuffer_t frame_buffer;
     int priority; // firmware = 0, native driver = higher
 
+    font_t *font_data;
 
     void *priv;
 } display_device_t;

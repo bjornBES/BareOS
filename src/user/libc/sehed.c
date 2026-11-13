@@ -13,5 +13,5 @@
 
 int sched_yield()
 {
-    return syscall0(SYS_YIELD);
+    return 0; // syscall0(SYS_YIELD);
 }

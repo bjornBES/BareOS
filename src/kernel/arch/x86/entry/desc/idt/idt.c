@@ -41,7 +41,10 @@ void idt_disable_gate(uint32_t interrupt)
 
 void idt_enable_gate(uint32_t interrupt)
 {
+    ENTER_FUNC("%u", interrupt);
+    trace_debug(MODULE, "kernel_idt_table[0x%x].flags = 0x%x", interrupt, kernel_idt_table[interrupt].flags);
     FLAG_SET(kernel_idt_table[interrupt].flags, IDT_FLAG_PRESENT);
+    trace_debug(MODULE, "kernel_idt_table[0x%x].flags = 0x%x", interrupt, kernel_idt_table[interrupt].flags);
 }
 
 void idt_set_gate(uint32_t interrupt, void *callback, uint32_t segment_descriptor, uint8_t flags, uint8_t ist)

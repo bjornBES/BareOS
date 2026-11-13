@@ -47,5 +47,7 @@ typedef struct dev_class
     status_t (*device_removed)(device_t *dev);
 } dev_class_t;
 
+extern const dev_class_t vtconsole_class;
 extern const dev_class_t block_class;
 extern const dev_class_t tty_class;
+extern const dev_class_t virtual_class;

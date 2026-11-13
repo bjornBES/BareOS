@@ -14,6 +14,7 @@
 
 #include "string.h"
 
+#include <binary.h>
 #include <defs.h>
 #include <config.h>
 

@@ -11,3 +11,5 @@
 #pragma once
 
 #include "arch_memory.h"
+
+#include "generic/generic_memory.h"

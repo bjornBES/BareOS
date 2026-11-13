@@ -45,19 +45,21 @@ status_t device_initialize(device_t *dev)
 status_t device_create_groups_vargs(const dev_class_t *class, device_t *parent, size_t dev_size, off_t dev_offset, void *drvdata, const char *fmt, bool set_init, va_list args, device_t **out)
 {
     ENTER_FUNC("%p, %p, %u, %u, %p, %s, %s, 0, %p", class, parent, dev_size, dev_offset, drvdata, fmt, set_init BOOL_TO_STRING, out);
+    void *t_dev = NULL;
     device_t *dev = NULL;
     status_t ret = ENODEV;
 
-    dev = kzmalloc(dev_size);
-    if (!dev)
+    t_dev = kzmalloc(dev_size);
+    if (!t_dev)
     {
         KERRNO_RETURN(ENOMEM, "");
     }
 
-    if (dev_offset != -1 && dev_offset > 0)
+    dev = t_dev;
+    if (dev_offset >= 0)
     {
-        device_t *dev_field = ((void *)dev + dev_offset);
-        trace_debug(MODULE, "dev = %p", dev);
+        device_t *dev_field = ((void *)t_dev + dev_offset);
+        trace_debug(MODULE, "t_dev = %p", t_dev);
         trace_debug(MODULE, "dev_field = %p", dev_field);
         dev = dev_field;
     }
@@ -89,7 +91,7 @@ status_t device_create_groups_vargs(const dev_class_t *class, device_t *parent, 
         return ret;
     }
 
-    *out = dev;
+    *out = t_dev;
     return KERRNO_SUCCESSES;
 }
 

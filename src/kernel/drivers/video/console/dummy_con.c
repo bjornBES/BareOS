@@ -8,41 +8,37 @@
  * -----
  */
 
-#include "drivers/tty/vt/vtt.h"
+#include "drivers/tty/vt/vt.h"
 
 #include "kerrno.h"
 
 #define DUMMY_COLUMNS 80
 #define DUMMY_ROWS    25
 
-static status_t dummycon_putc(virtual_console_data_t *vc, virtual_console_cell_t c, uint32_t x, uint32_t y)
+#define MODULE "dummy-con"
+
+static status_t dummycon_putc(vc_data_t *vc, vt_cell_t c, uint32_t x, uint32_t y)
 {
     return KERRNO_SUCCESSES;
 }
 
-static status_t dummycon_putcs(virtual_console_data_t *vc, const virtual_console_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos)
+static status_t dummycon_putcs(vc_data_t *vc, const vt_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos)
 {
     return KERRNO_SUCCESSES;
 }
 
-static status_t dummycon_switch(virtual_console_data_t *vc)
+static status_t dummycon_switch(vc_data_t *vc)
 {
     return KERRNO_UNSUCCESS;
 }
 
-static status_t dummycon_startup(const char **name_out)
+static status_t dummycon_init(vc_data_t *vc, bool init)
 {
-    *name_out = "dummy device";
-    return KERRNO_SUCCESSES;
-}
-
-static status_t dummycon_init(virtual_console_data_t *vc, bool init)
-{
-    vc->can_do_color = 1;
+    vc_set_can_color(vc);
     if (init)
     {
-        vc->size.cols = DUMMY_COLUMNS;
-        vc->size.rows = DUMMY_ROWS;
+        vc->vc_cols = DUMMY_COLUMNS;
+        vc->vc_rows = DUMMY_ROWS;
     }
     else
     {
@@ -51,30 +47,32 @@ static status_t dummycon_init(virtual_console_data_t *vc, bool init)
     return KERRNO_SUCCESSES;
 }
 
-static status_t dummycon_deinit(virtual_console_data_t *vc)
+static status_t dummycon_deinit(vc_data_t *vc)
+{
+    ENTER_FUNC("%p", vc);
+    return KERRNO_SUCCESSES;
+}
+
+static status_t dummycon_clear(vc_data_t *vc, const vt_cell_t *blank, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
     return KERRNO_SUCCESSES;
 }
 
-static status_t dummycon_clear(virtual_console_data_t *vc, uint32_t xpos, uint32_t ypos, size_t count)
-{
-    return KERRNO_SUCCESSES;
-}
-
-static status_t dummycon_cursor(virtual_console_data_t *vc, bool enable)
+static status_t dummycon_cursor(vc_data_t *vc, bool enable)
 {
     return KERRNO_SUCCESSES;
 }
 
 const virt_con_ops_t dummy_con = {
-    .startup = dummycon_startup,
-    .init = dummycon_init,
-    .uninit = dummycon_deinit,
-    .clear = dummycon_clear,
-    .putc = dummycon_putc,
-    .putcs = dummycon_putcs,
-    .cursor = dummycon_cursor,
+    .con_name = "dummy device",
+    .con_flags = 0,
+    .con_init = dummycon_init,
+    .con_deinit = dummycon_deinit,
+    .con_clear = dummycon_clear,
+    .con_putc = dummycon_putc,
+    .con_putcs = dummycon_putcs,
+    .con_cursor = dummycon_cursor,
     // .scroll =	dummycon_scroll,
-    .switch_console = dummycon_switch,
+    .con_switch = dummycon_switch,
     // .blank =	dummycon_blank,
 };

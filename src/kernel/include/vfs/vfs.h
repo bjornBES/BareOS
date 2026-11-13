@@ -179,8 +179,8 @@ status_t vfs_lookup(const char *path, vfs_node_t **out);
 
 status_t vfs_open(const char *path, int flags, int mode, vfs_node_t **out_node);
 status_t vfs_close(vfs_node_t *node);
-status_t vfs_read(vfs_node_t *node, void *buf, size_t len, ssize_t *out_read);
-status_t vfs_write(vfs_node_t *node, const void *buf, size_t len, ssize_t *out_read);
+status_t vfs_read(vfs_node_t *node, void *buf, off_t offset, size_t len, ssize_t *out_read);
+status_t vfs_write(vfs_node_t *node, const void *buf, off_t offset, size_t len, ssize_t *out_read);
 status_t vfs_readdir(vfs_node_t *dir, off_t index, vfs_dirent_t *out);
 
 status_t vfs_mkdir(const char *path, int mode);

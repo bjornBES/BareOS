@@ -16,6 +16,7 @@ typedef struct hash_node
 {
     // key is string
     char *key;
+    uint64_t index;
 
     // value is also string
     void *value;

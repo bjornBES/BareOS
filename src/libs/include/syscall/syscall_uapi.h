@@ -10,6 +10,7 @@
 
 #pragma once
 
+#define sys_X(nr, name, sysname, sysnameupper, ret, pledge, abi, _sys, version, ...) SYS_##sysnameupper = nr,
 #define X(nr, name, sysname, sysnameupper, ret, pledge, abi, _sys, version, ...) SYS_##sysnameupper = nr,
 
 typedef enum
@@ -18,4 +19,5 @@ typedef enum
     SYSCALL_COUNT
 } syscall_nr_t;
 
+#undef sys_X
 #undef X

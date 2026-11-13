@@ -45,7 +45,7 @@ status_t loader_register(loader_t *loader)
 status_t loader_load(vfs_node_t *file, process_t *proc)
 {
     uint8_t *buffer = kzmalloc(512);
-    vfs_read(file, buffer, 512, NULL);
+    vfs_read(file, buffer, 0, 512, NULL);
 
     list_node_t *curr = loader_list.head;
     loader_t *loader = NULL;

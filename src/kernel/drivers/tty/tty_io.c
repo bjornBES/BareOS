@@ -14,6 +14,9 @@
 #include "drivers/base/core.h"
 #include "drivers/base/class.h"
 
+#include "vfs/filesystems/devfs/devfs.h"
+#include "vfs/filesystems/devfs/devfst.h"
+
 #include "dev/device.h"
 
 #include "lists/list.h"
@@ -121,32 +124,32 @@ static const wchar_t ascii[KEY_CNT] = {
 
 static const wchar_t keymap_ctrl[KEY_CNT] = {
     [KEY_SLASH] = '\177',
-    [KEY_A] = 1,
-    [KEY_B] = 2,
-    [KEY_C] = 3,
-    [KEY_D] = 4,
-    [KEY_E] = 5,
-    [KEY_F] = 6,
-    [KEY_G] = 7,
-    [KEY_H] = 8,
-    [KEY_I] = 9,
-    [KEY_J] = 10,
-    [KEY_K] = 11,
-    [KEY_L] = 12,
-    [KEY_M] = 13,
-    [KEY_N] = 14,
-    [KEY_O] = 15,
-    [KEY_P] = 16,
-    [KEY_Q] = 17,
-    [KEY_R] = 18,
-    [KEY_S] = 19,
-    [KEY_T] = 20,
-    [KEY_U] = 21,
-    [KEY_V] = 22,
-    [KEY_W] = 23,
-    [KEY_X] = 24,
-    [KEY_Y] = 25,
-    [KEY_Z] = 26,
+    [KEY_A] = 0x41 - 0x40,
+    [KEY_B] = 0x42 - 0x40,
+    [KEY_C] = 0x43 - 0x40,
+    [KEY_D] = 0x44 - 0x40,
+    [KEY_E] = 0x45 - 0x40,
+    [KEY_F] = 0x46 - 0x40,
+    [KEY_G] = 0x47 - 0x40,
+    [KEY_H] = 0x48 - 0x40,
+    [KEY_I] = 0x49 - 0x40,
+    [KEY_J] = 0x4A - 0x40,
+    [KEY_K] = 0x4B - 0x40,
+    [KEY_L] = 0x4C - 0x40,
+    [KEY_M] = 0x4D - 0x40,
+    [KEY_N] = 0x4E - 0x40,
+    [KEY_O] = 0x4F - 0x40,
+    [KEY_P] = 0x50 - 0x40,
+    [KEY_Q] = 0x51 - 0x40,
+    [KEY_R] = 0x52 - 0x40,
+    [KEY_S] = 0x53 - 0x40,
+    [KEY_T] = 0x54 - 0x40,
+    [KEY_U] = 0x55 - 0x40,
+    [KEY_V] = 0x56 - 0x40,
+    [KEY_W] = 0x57 - 0x40,
+    [KEY_X] = 0x58 - 0x40,
+    [KEY_Y] = 0x59 - 0x40,
+    [KEY_Z] = 0x5A - 0x40,
     [KEY_RIGHTBRACE] = 27,
     [KEY_BACKSLASH] = 28,
     [KEY_MINUS] = 31,
@@ -256,6 +259,45 @@ extern list_t tty_drivers;
 extern device_t *console_dev;
 extern const dev_class_t tty_class;
 
+const char *tty_name(const tty_struct_t *tty)
+{
+    if (!tty)
+    {
+        return "NULL tty";
+    }
+    return tty->name;
+}
+
+const char *tty_driver_name(const tty_struct_t *tty)
+{
+    if (!tty || !tty->driver)
+    {
+        return "";
+    }
+    return tty->driver->name;
+}
+
+void __start_tty(tty_struct_t *tty)
+{
+    if (!tty->flow.stopped || tty->flow.tco_stopped)
+    {
+        return;
+    }
+    tty->flow.stopped = false;
+    if (tty->ops->start)
+    {
+        tty->ops->start(tty);
+    }
+}
+
+void start_tty(tty_struct_t *tty)
+{
+    ENTER_FUNC("%p", tty);
+    spinlock_acquire(&tty->flow.lock);
+    __start_tty(tty);
+    spinlock_release(&tty->flow.lock);
+}
+
 wchar_t tty_layout_resolve(key_code_t key, key_modifiers_t mods)
 {
     ENTER_FUNC("0x%x, 0x%x", key, mods);
@@ -353,116 +395,73 @@ status_t tty_echo_erase(tty_struct_t *tty)
     return KERRNO_UNSUCCESS;
 }
 
-// --- line buffer ---
-
-// push a byte into the line buffer
-status_t tty_linebuf_push(tty_struct_t *tty, uint8_t byte)
-{
-    tty_line_buf_t *lb = &tty->line_buf;
-    if (lb->head >= TTY_BUF_SIZE)
-    {
-        KERRNO_RETURN(ENOBUFS, "buffer full, drop");
-    }
-
-    lb->buf[lb->head++] = byte;
-    return KERRNO_SUCCESSES;
-}
-
-// erase the last byte from the line buffer
-status_t tty_linebuf_erase(tty_struct_t *tty)
-{
-    tty_line_buf_t *lb = &tty->line_buf;
-    if (lb->head >= TTY_BUF_SIZE)
-    {
-        KERRNO_RETURN(ENOBUFS, "buffer full, drop");
-    }
-    lb->head--;
-    if (FLAG_IS_SET(tty->termios.c_lflag, ECHOE))
-    {
-        return tty_echo_erase(tty);
-    }
-    return KERRNO_SUCCESSES;
-}
-
-status_t tty_process_byte(tty_struct_t *tty, wchar_t ch)
-{
-    // map \r → \n if ICRNL set
-    if (ch == '\r' && FLAG_IS_SET(tty->termios.c_iflag, ICRNL))
-    {
-        ch = '\n';
-    }
-
-    // echo
-    if (FLAG_IS_SET(tty->termios.c_lflag, ECHO))
-    {
-        // tty_echo(tty, ch);
-    }
-
-    // push into line buffer
-    tty_linebuf_push(tty, ch);
-
-    // if canonical mode and we got a newline, mark line complete
-    if (FLAG_IS_SET(tty->termios.c_lflag, ICANON) && (ch == '\n' || ch == '\r'))
-    {
-        tty->line_buf.has_line = true;
-    }
-    return KERRNO_SUCCESSES;
-}
-
-status_t tty_process_event(tty_struct_t *tty, wchar_t ch)
-{
-    ENTER_FUNC("%p, 0x%x", tty, ch);
-
-    {
-        if (FLAG_IS_SET(tty->termios.c_lflag, ISIG))
-        {
-            if (ch == tty->termios.c_cc[VINTR])
-            {
-                // Ctrl+C
-                FUNC_NOT_IMPLEMENTED();
-                // tty_signal(tty, SIGINT, SI_USER);
-                return KERRNO_SUCCESSES;
-            }
-            if (ch == tty->termios.c_cc[VSUSP])
-            {
-                // Ctrl+Z
-                FUNC_NOT_IMPLEMENTED();
-                // tty_signal(tty, SIGTSTP, SI_USER);
-                return KERRNO_SUCCESSES;
-            }
-        }
-        if (ch == tty->termios.c_cc[VEOF])
-        {
-            // Ctrl+D
-            tty->line_buf.has_line = true; // wake reader with 0 bytes = EOF
-            return KERRNO_SUCCESSES;
-        }
-        if (ch == tty->termios.c_cc[VERASE])
-        {
-            return tty_linebuf_erase(tty);
-        }
-    }
-
-    // normal printable character
-    return tty_process_byte(tty, ch);
-}
-
 status_t tty_receive(tty_struct_t *tty, wchar_t ch)
 {
-    tty_process_event(tty, ch);
-    return KERRNO_SUCCESSES;
+    return tty->ldisc->ops->receive(tty, ch);
 }
 
-status_t tty_write(tty_struct_t *tty, wchar_t *ch, size_t count, ssize_t *out_size)
+status_t tty_read(tty_struct_t *tty, uint8_t *ch, size_t count, ssize_t *out_size)
 {
     ENTER_FUNC("%p, %p, %u, %p", tty, ch, count, out_size);
     ssize_t size;
-    status_t ret = tty->ops->write(tty, ch, count, &size);
+    status_t ret = tty->ldisc->ops->read(tty, NULL, ch, count, &size);
     if (out_size)
     {
         *out_size = size;
     }
     return ret;
+}
+
+status_t tty_write(tty_struct_t *tty, const uint8_t *ch, size_t count, ssize_t *out_size)
+{
+    ENTER_FUNC("%p, %p, %u, %p", tty, ch, count, out_size);
+    trace_debug(MODULE, "tty tty_dev = %p", tty->tty_dev);
+    trace_debug(MODULE, "tty dev = %p", &tty->tty_dev->dev);
+    ssize_t size;
+    status_t ret = tty->ldisc->ops->write(tty, NULL, ch, count, &size);
+    if (out_size)
+    {
+        *out_size = size;
+    }
+    return ret;
+}
+
+status_t tty_dev_write(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out)
+{
+    ENTER_FUNC("%p, %p, 0x%x, 0x%x, %p", dev, buf, len, off, size_out);
+    tty_dev_t *tty_dev = to_tty_dev(dev);
+    trace_debug(MODULE, "tty_dev tty = %p", tty_dev->tty);
+    trace_debug(MODULE, "tty_dev dev = %p", &tty_dev->dev);
+    uint8_t *buffer = (void *)buf;
+    return tty_write(tty_dev->tty, buffer, len, size_out);
+}
+
+status_t tty_put_char(tty_struct_t *tty, uint8_t ch)
+{
+    if (tty->ops->put_char)
+    {
+        return tty->ops->put_char(tty, ch);
+    }
+    ssize_t count = 0;
+    status_t ret = tty->ops->write(tty, &ch, 1, &count);
+    if (count != 1)
+    {
+        KERRNO_RETURN(KERRNO_UNSUCCESS, "");
+    }
+    return ret;
+}
+
+status_t tty_write_room(tty_struct_t *tty, size_t *out_size)
+{
+    if (tty->ops->write_room)
+    {
+        if (!out_size)
+        {
+            KERRNO_RETURN(KERRNO_BAD_VALUE, "out_size is null");
+        }
+        return tty->ops->write_room(tty, out_size);
+    }
+    return 2048;
 }
 
 status_t tty_do_resize(tty_struct_t *tty, winsize_t *ws)
@@ -526,9 +525,9 @@ status_t alloc_tty_struct(tty_driver_t *driver, int idx, tty_struct_t **out_tty)
     return KERRNO_SUCCESSES;
 }
 
-status_t tty_register_device_attr(tty_driver_t *driver, uint32_t index, device_t *device, void *drvdata, device_t **dev_out)
+status_t tty_register_device_attr(tty_driver_t *driver, uint32_t index, device_t *parent, void *drvdata, tty_dev_t **dev_out)
 {
-    ENTER_FUNC("%p, %u, %p, %p, %p", driver, index, device, drvdata, dev_out);
+    ENTER_FUNC("%p, %u, %p, %p, %p", driver, index, parent, drvdata, dev_out);
     char name[DEVICE_NAME_MAX];
     status_t ret;
 
@@ -549,27 +548,37 @@ status_t tty_register_device_attr(tty_driver_t *driver, uint32_t index, device_t
     }
     name[s] = '\0';
 
-    device_t *dev = kzmalloc(sizeof(device_t));
-    if (!dev)
+    tty_dev_t *tty_dev = kzmalloc(sizeof(tty_dev_t));
+    if (!tty_dev)
     {
         KERRNO_RETURN(ENOMEM, "");
     }
+    device_t *dev = &tty_dev->dev;
 
     dev->class = &tty_class;
-    dev->parent = device;
+    dev->parent = parent;
     // dev->ops.release = tty_device_create_release;
     device_set_name(dev, "%s", name);
     // dev->groups = attr_grp;
     device_set_drvdata(dev, drvdata);
     dev->driver = &driver->driver;
-
-    ret = device_register(dev);
+    
+    if (parent)
+    {
+        memcpy(&dev->ops, &parent->ops, sizeof(device_ops_t));
+        ret = device_register(dev);
+    }
+    else
+    {
+        ret = device_register(dev);
+    }
+    devfs_add(&tty_dev->dev);
     if (ret)
     {
         goto err_put;
     }
 
-    *dev_out = dev;
+    *dev_out = tty_dev;
     return KERRNO_SUCCESSES;
 
 // err_del:
@@ -580,9 +589,9 @@ err_put:
     return ret;
 }
 
-status_t tty_register_device(tty_driver_t *driver, uint32_t index, device_t *device, device_t **out_dev)
+status_t tty_register_device(tty_driver_t *driver, uint32_t index, device_t *parent, tty_dev_t **out_dev)
 {
-    return tty_register_device_attr(driver, index, device, NULL, out_dev);
+    return tty_register_device_attr(driver, index, parent, NULL, out_dev);
 }
 
 status_t tty_unregister_device(tty_driver_t *tty_driver, unsigned index)
@@ -592,19 +601,52 @@ status_t tty_unregister_device(tty_driver_t *tty_driver, unsigned index)
     return KERRNO_SUCCESSES;
 }
 
-status_t tty_init_dev(tty_driver_t *driver, int idx, tty_struct_t **tty_out, tty_dev_t **dev_out)
+void tty_init_termios(tty_struct_t *tty)
+{
+    int idx = tty->index;
+
+    if (tty->driver->flags & TTY_DRIVER_RESET_TERMIOS)
+    {
+        tty->termios = tty->driver->init_termios;
+    }
+    else
+    {
+        termios_t *tp = tty->driver->termios[idx];
+        if (tp != NULL)
+        {
+            tty->termios = *tp;
+            tty->termios.c_line = tty->driver->init_termios.c_line;
+        }
+        else
+        {
+            tty->termios = tty->driver->init_termios;
+        }
+    }
+    // tty->termios.c_ispeed = tty_termios_input_baud_rate(&tty->termios);
+    // tty->termios.c_ospeed = tty_termios_baud_rate(&tty->termios);
+}
+
+status_t tty_standard_install(tty_driver_t *driver, tty_struct_t *tty)
+{
+    tty_init_termios(tty);
+    // tty_driver_kref_get(driver);
+    // tty->count++;
+    driver->ttys[tty->index] = tty;
+    return KERRNO_SUCCESSES;
+}
+
+status_t tty_init_dev(tty_driver_t *driver, int idx, device_t *parent, tty_struct_t **tty_out, tty_dev_t **dev_out)
 {
     ENTER_FUNC("%p, %u, %p, %p", driver, idx, tty_out, dev_out);
     tty_struct_t *tty;
     status_t ret;
 
-    device_t *dev;
-    ret = tty_register_device(driver, idx, NULL, &dev);
+    tty_dev_t *tty_dev;
+    ret = tty_register_device(driver, idx, parent, &tty_dev);
     if (ret)
     {
         return ret;
     }
-    tty_dev_t *tty_dev = to_tty_dev(dev);
     *dev_out = tty_dev;
 
     ret = alloc_tty_struct(driver, idx, &tty);
@@ -612,6 +654,23 @@ status_t tty_init_dev(tty_driver_t *driver, int idx, tty_struct_t **tty_out, tty
     {
         return ret;
     }
+
+    ret = tty_standard_install(driver, tty);
+    if (ret)
+    {
+        return ret;
+    }
+    if (driver->ops->install)
+    {
+        ret = driver->ops->install(driver, tty);
+        if (ret)
+        {
+            return ret;
+        }
+    }
+
+    ret = tty_ldisc_setup(tty, tty->link);
+
     *tty_out = tty;
 
     tty_dev->tty = tty;
@@ -619,7 +678,7 @@ status_t tty_init_dev(tty_driver_t *driver, int idx, tty_struct_t **tty_out, tty
     return KERRNO_SUCCESSES;
 }
 
-status_t tty_register_driver(tty_driver_t *tty_driver)
+status_t tty_register_driver(tty_driver_t *tty_driver, tty_dev_t **out_tty_dev)
 {
     ENTER_FUNC("%p", tty_driver);
     tty_dev_t *tty_dev = core_device_create_type(&tty_class, NULL, tty_dev_t, NULL, tty_driver->name);
@@ -627,8 +686,11 @@ status_t tty_register_driver(tty_driver_t *tty_driver)
     tty_driver->minor_start = tty_dev->dev.devt.minor + 1;
     // return drivers_register(&tty_driver->driver);
 
+    tty_dev->dev.ops.write = tty_dev_write;
+
     tty_dev->dev.driver = &tty_driver->driver;
     tty_dev->driver = tty_driver;
+    devfs_add(&tty_dev->dev);
 
     status_t ret = 0;
 
@@ -642,15 +704,14 @@ status_t tty_register_driver(tty_driver_t *tty_driver)
         {
             tty_dev_t *t_dev;
             tty_struct_t *tty;
-            ret = tty_init_dev(tty_driver, i, &tty, &t_dev);
+            ret = tty_init_dev(tty_driver, i, &tty_dev->dev, &tty, &t_dev);
             KERRNO_CHECK_RETURN(ret);
             if (ret)
             {
                 goto err_unreg_devs;
             }
             tty_driver->ttys[i] = tty;
-            tty_driver->ops->install(tty_driver, tty);
-            if (!active_tty && i == 1)
+            if (!active_tty)
             {
                 active_tty = tty;
             }
@@ -662,6 +723,7 @@ status_t tty_register_driver(tty_driver_t *tty_driver)
     {
         device_set_drvdata(console_dev, (void *)tty_dev->dev.devt.id);
     }
+    *out_tty_dev = tty_dev;
 
     return KERRNO_SUCCESSES;
 
@@ -738,75 +800,37 @@ err_free_all:
     return ret;
 }
 
-INTERNAL status_t tty_open_by_driver(device_t *dev, vfs_node_t *filp, tty_struct_t **out_tty)
+status_t tty_do_open(tty_struct_t *tty, vfs_node_t *out_file)
 {
-    tty_struct_t *tty;
-    tty_dev_t *tty_dev = to_tty_dev(dev);
-    tty_driver_t *tty_driver = tty_dev->driver;
-    trace_info(MODULE, "tty_driver->major = %u, tty_driver->device = %u, tty_driver->minor_start = %u, tty_driver->name_base = %u, tty_driver->num = %u", tty_driver->major, tty_driver->device, tty_driver->minor_start, tty_driver->name_base, tty_driver->num);
+    ENTER_FUNC("%p, %p", tty, out_file);
 
     status_t ret = 0;
-    int index = 0;
-    if (tty_driver->ops->get_index)
-    {
-        ret = tty_driver->ops->get_index(tty_driver, &index);
-    }
-    else
-    {
-        FUNC_NOT_IMPLEMENTED();
-    }
-
-    if (ret)
-    {
-        return ret;
-    }
-
-    if (index >= tty_driver->num)
-    {
-        KERRNO_RETURN(EINVAL, "");
-    }
-    tty = tty_driver->ttys[index];
-    if (tty)
-    {
-        return KERRNO_UNSUCCESS;
-    }
-    else
-    {
-        // ret = tty_init_dev(tty_driver, index, &tty);
-    }
-
-    if (ret)
-    {
-        return ret;
-    }
-    *out_tty = tty;
-    return KERRNO_SUCCESSES;
-}
-
-status_t tty_open(inode_t *inode, vfs_node_t *filp)
-{
-    /* ENTER_FUNC("%p, %p", inode, filp);
-    dev_inode_t *dev_inode = to_dev_inode(inode);
-    device_t *dev;
-    status_t ret = device_get_device(&dev_inode->dev_id, &dev);
-
-    trace_info(MODULE, "device: %u (%p), id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", 0, dev, dev->id, dev->devt.major, dev->devt.device, dev->devt.minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
-
-    tty_struct_t *tty;
-    tty_open_by_driver(dev, filp, &tty);
+    tty_driver_t *tty_driver = tty->driver;
+    trace_info(MODULE, "tty_driver->major = %u, tty_driver->device = %u, tty_driver->minor_start = %u, tty_driver->name_base = %u, tty_driver->num = %u", tty_driver->major, tty_driver->device, tty_driver->minor_start, tty_driver->name_base, tty_driver->num);
 
     if (tty->ops->open)
     {
-        ret = tty->ops->open(tty, filp);
+        ret = tty->ops->open(tty, out_file);
+        KERRNO_CHECK_RETURN(ret);
     }
     else
     {
         KERRNO_RETURN(ENODEV, "");
     }
 
-    while (true)
-    {
-        ;
-    } */
     return KERRNO_SUCCESSES;
+}
+
+status_t tty_open(inode_t *inode, vfs_node_t *out_file)
+{
+    ENTER_FUNC("%p, %p", inode, out_file);
+    dev_inode_t *dev_inode = to_dev_inode(inode);
+    device_t *dev;
+    status_t ret = device_get_device(&dev_inode->dev_id, &dev);
+    KERRNO_CHECK_RETURN(ret);
+
+    trace_info(MODULE, "device: %u (%p), id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p, parent: %p", 0, dev, dev->id, dev->devt.major, dev->devt.device, dev->devt.minor, dev->class->name, dev->class->type, dev->name, dev->driver, dev->parent);
+
+    tty_dev_t *tty_dev = to_tty_dev(dev);
+    return tty_do_open(tty_dev->tty, out_file);
 }

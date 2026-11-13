@@ -78,13 +78,14 @@ status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
     while (node)
     {
         filesystem_t *fs = to_filesystem_t(node);
+        trace_debug(MODULE, "fs = %p", fs);
         if (fs->probe == NULL)
         {
             trace_err(MODULE, "%s doesn't have probe set", fs->name);
             node = node->prev;
             continue;
         }
-        
+        trace_debug(MODULE, "fs->probe = %p", fs->probe);
         if (fs->probe(dev) == KERRNO_SUCCESSES)
         {
             *out_fs = fs;

@@ -285,7 +285,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     ret = volume_find(vol_id, &vol);
     if (ret != KERRNO_SUCCESSES)
     {
-        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "volume not found at %s", vol_id);
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "volume not found at \"%s\"", vol_id);
         return ret;
     }
 

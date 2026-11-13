@@ -25,7 +25,7 @@
 
 #include <array.h>
 
-#define FB_MAX 32 /* sufficient for now */
+#define FB_MAX 32
 
 #define MODULE "fbcon"
 
@@ -38,6 +38,8 @@ static video_framebuffer_t *fbcon_registered_fb[FB_MAX];
 static int fbcon_num_registered_fb;
 
 static int con2fb_map[MAX_CONSOLES];
+
+font_t *default_font;
 
 static video_framebuffer_t *fbcon_info_from_console(int console)
 {
@@ -86,44 +88,54 @@ INTERNAL status_t fbcon_bind_surface(const video_framebuffer_t *fb)
 INTERNAL status_t fbcon_on_display_change(display_device_t *primary_display_dev, void *ctx)
 {
     ENTER_FUNC("%p, %p", primary_display_dev, ctx);
-    virtual_console_data_t *vc = ctx;
+    vc_data_t *vc = ctx;
 
-    trace_info(MODULE, "vc->current_font = %p", vc->current_font);
+    trace_info(MODULE, "primary_display_dev->font_data = %p", primary_display_dev->font_data);
 
     video_framebuffer_t *fb = &primary_display_dev->frame_buffer;
-    fbcon_registered_fb[vc->console_number] = fb;
-    fb_display[vc->console_number] = primary_display_dev;
-    vc_resize(vc, fb->width / vc->current_font->width, fb->height / vc->current_font->height, false);
+    fbcon_registered_fb[vc->vc_index] = fb;
+    fb_display[vc->vc_index] = primary_display_dev;
+    if (!primary_display_dev->font_data)
+    {
+        primary_display_dev->font_data = default_font;
+    }
+    vc_resize(vc, fb->width / primary_display_dev->font_data->width, fb->height / primary_display_dev->font_data->height, false);
     // return fbcon_bind_surface(fb);
     // return fbcon_redraw();
     return KERRNO_SUCCESSES;
 }
 
-INTERNAL INLINE bool fbcon_is_active(virtual_console_data_t *vc, video_framebuffer_t *info)
+INTERNAL INLINE bool fbcon_is_active(vc_data_t *vc, video_framebuffer_t *info)
 {
-    return vc->text_mode;
+    return vc_use_text(vc);
 }
 
-INTERNAL status_t fbcon_draw_cell(virtual_console_data_t *vc, video_framebuffer_t *info, virtual_console_cell_t *call, uint32_t col, uint32_t row)
+INTERNAL status_t fbcon_draw_cell(vc_data_t *vc, video_framebuffer_t *info, vt_cell_t *call, uint32_t col, uint32_t row)
 {
-    ENTER_FUNC("%p, %p, %p, %u, %u, %u", vc, info, call, col, row);
+    // ENTER_FUNC("%p, %p, %p, %u, %u", vc, info, call, col, row);
     uint8_t *glyph = NULL;
-    font_get_glyph(vc->current_font, call->cp, &glyph);
-    return display_draw_blit_mono(info, col * vc->current_font->width, row * vc->current_font->height, glyph, vc->current_font->width, vc->current_font->height, call->fg, call->bg);
+    display_device_t *display_dev = fb_display[vc->vc_index];
+    if (!display_dev)
+    {
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "");
+    }
+    font_t *font = display_dev->font_data;
+    font_get_glyph(font, call->cp, &glyph);
+    return display_draw_blit_mono(info, col * font->width, row * font->height, glyph, font->width, font->height, call->fg, call->bg);
 }
 
 // moves grid rows, then redraws
-INTERNAL status_t fbcon_scroll(virtual_console_data_t *vc, uint32_t lines)
+INTERNAL status_t fbcon_scroll(vc_data_t *vc, uint32_t lines)
 {
     ENTER_FUNC("%p, %u", vc, lines);
 
-    // fbcon_cell_t *src = &vc->cell_buffer[lines * vc->size.cols];
+    // fbcon_cell_t *src = &vc->cell_buffer[lines * vc->vc_cols];
     // fbcon_cell_t *dst = &vc->cell_buffer[0];
-    // size_t _size = vc->size.cols * (vc->size.rows - lines);
+    // size_t _size = vc->vc_cols * (vc->vc_rows - lines);
     // fbcon_cell_t *new = &vc->cell_buffer[_size];
     // memmove(dst, src, _size * sizeof(fbcon_cell_t));
 
-    // memset(new, 0, (lines * vc->size.cols) * sizeof(fbcon_cell_t));
+    // memset(new, 0, (lines * vc->vc_cols) * sizeof(fbcon_cell_t));
 
     // screen_y -= lines;
     // return fbcon_redraw_region(0, save_y, size.cols - 1, screen_y);
@@ -180,23 +192,23 @@ status_t fbcon_redraw_region(uint32_t start_col, uint32_t start_row, uint32_t co
     return KERRNO_SUCCESSES;
 }
 
-status_t fbcon_resize(virtual_console_data_t *vc, uint32_t width, uint32_t height, bool from_user)
+status_t fbcon_resize(vc_data_t *vc, uint32_t width, uint32_t height, bool from_user)
 {
     return KERRNO_SUCCESSES;
 }
 
-status_t fbcon_putcs(virtual_console_data_t *vc, const virtual_console_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos)
+status_t fbcon_putcs(vc_data_t *vc, const vt_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos)
 {
     ENTER_FUNC("%p, %p, %u, %u, %u", vc, s, count, xpos, ypos);
-    video_framebuffer_t *info = fbcon_info_from_console(vc->console_number);
-    display_device_t *p = fb_display[vc->console_number];
+    video_framebuffer_t *info = fbcon_info_from_console(vc->vc_index);
+    display_device_t *p = fb_display[vc->vc_index];
     // struct fbcon_par *par = info->fbcon_par;
 
     if (fbcon_is_active(vc, info))
     {
         while (count)
         {
-            fbcon_draw_cell(vc, info, (virtual_console_cell_t *)s, xpos, ypos);
+            fbcon_draw_cell(vc, info, (vt_cell_t *)s, xpos, ypos);
             s++;
             count--;
             xpos++;
@@ -205,7 +217,7 @@ status_t fbcon_putcs(virtual_console_data_t *vc, const virtual_console_cell_t *s
     return KERRNO_UNSUCCESS;
 }
 
-status_t fbcon_putc(virtual_console_data_t *vc, virtual_console_cell_t c, uint32_t x, uint32_t y)
+status_t fbcon_putc(vc_data_t *vc, vt_cell_t c, uint32_t x, uint32_t y)
 {
     // ENTER_FUNC("0x%x", cp);
     // uint32_t save_x = screen_x;
@@ -215,45 +227,42 @@ status_t fbcon_putc(virtual_console_data_t *vc, virtual_console_cell_t c, uint32
     return KERRNO_UNSUCCESS;
 }
 
-status_t fbcon_init(virtual_console_data_t *vc, bool do_init)
+status_t fbcon_switch(vc_data_t *vc)
 {
-    ENTER_FUNC("%p, %s", vc, do_init BOOL_TO_STRING);
-    // vc->current_font = psf_font_builtin();
-    if (do_init)
-    {
-        display_add_listener(fbcon_on_display_change, vc);
-        fbcon_registered_fb[vc->console_number] = NULL;
-    }
-
-    display_device_t *display_dev = display_get_primary();
-    trace_info(MODULE, "display_dev = %p", display_dev);
-    if (display_dev == NULL)
-    {
-        vc->size.cols = 80;
-        vc->size.rows = 40;
-    }
+    ENTER_FUNC("%p", vc);
+    video_framebuffer_t *info = fbcon_info_from_console(vc->vc_index);
+    display_device_t *p = fb_display[vc->vc_index];
     return KERRNO_SUCCESSES;
 }
 
-status_t fb_startup(const char **name_out)
+status_t fbcon_init(vc_data_t *vc, bool do_init)
 {
-    ENTER_FUNC("%p", name_out);
-    *name_out = "frame buffer device";
+    ENTER_FUNC("%p, %s", vc, do_init BOOL_TO_STRING);
+    if (do_init)
+    {
+        display_add_listener(fbcon_on_display_change, vc);
+        fbcon_registered_fb[vc->vc_index] = NULL;
+    }
 
     display_device_t *display_dev = display_get_primary();
     trace_info(MODULE, "display_dev = %p", display_dev);
     if (display_dev == NULL)
     {
+        vc->vc_cols = 80;
+        vc->vc_rows = 40;
     }
     return KERRNO_SUCCESSES;
 }
 
 const virt_con_ops_t fbcon = {
-    .startup = fb_startup,
-    .init = fbcon_init,
-    .putc = fbcon_putc,
-    .putcs = fbcon_putcs,
-    .resize = fbcon_resize,
+    .con_name = "frame buffer device",
+    .con_flags = BIT(VC_FLAGS_UTF8) | BIT(VC_FLAGS_COLOR) | BIT(VC_FLAGS_TEXT),
+    .con_init = fbcon_init,
+
+    .con_switch = fbcon_switch,
+
+    .con_putcs = fbcon_putcs,
+    .con_putc = fbcon_putc,
 };
 
 // Load the font, allocate the character grid, register the display listener
@@ -263,6 +272,7 @@ const virt_con_ops_t fbcon = {
 status_t fbcon_initcall()
 {
     ENTER_FUNC("", 0);
+    default_font = (font_t *)psf_font_builtin();
     vc_take_over_console(&fbcon, first_fb_vc, last_fb_vc, true);
     // return display_add_listener(fbcon_on_display_change, NULL);
     return KERRNO_SUCCESSES;

@@ -11,3 +11,5 @@
 #pragma once
 
 #include "arch_ctype.h"
+
+#include "generic/generic_ctype.h"

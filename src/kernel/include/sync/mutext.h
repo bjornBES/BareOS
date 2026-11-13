@@ -16,7 +16,7 @@
 
 #include <types.h>
 
-typedef struct
+typedef struct mutex
 {
     spinlock_t lock; // protects the fields below, held only briefly
     bool locked;

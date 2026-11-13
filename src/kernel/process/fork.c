@@ -43,10 +43,7 @@ status_t proc_vfork(process_t *parent, process_t *child)
 
     proc_add(parent, child);
 
-    for (size_t i = 0; i < CONFIG_PROCESS_MAX_OPEN_FD; i++)
-    {
-        vfs_open_node(&child->fd_table, i);
-    }
+    vfs_clone_node(&parent->fd_table, &child->fd_table);
 
     FUNC_NOT_IMPLEMENTED();
     return KERRNO_SUCCESSES;
@@ -59,12 +56,7 @@ status_t proc_spawn(process_t *parent, process_t *child)
     if (parent)
     {
         proc_add(parent, child);
-
-        memcpy(&parent->fd_table, &child->fd_table, sizeof(fd_table_t));
-        for (size_t i = 0; i < CONFIG_PROCESS_MAX_OPEN_FD; i++)
-        {
-            vfs_open_node(&child->fd_table, i);
-        }
+        vfs_clone_node(&parent->fd_table, &child->fd_table);
     }
     return KERRNO_SUCCESSES;
 }

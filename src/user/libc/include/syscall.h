@@ -20,90 +20,118 @@
 // raw
 static inline uintptr_t syscall0(int number)
 {
-    uintptr_t result;
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "syscall" : "=a"(result) : "a"(number) : "memory");
-    return result;
+        "syscall\n\t"
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
+    // inline_asm(
+    //     "syscall" : "=a"(result) : "a"(number) : "memory");
+    // return result;
 }
 
 static inline uintptr_t syscall1(int number, uintptr_t arg1)
 {
-    uintptr_t result;
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "mov rdi, %[arg1]\n\t"
-        "push r11\n\t"
-        "push rcx\n\t"
         "syscall\n\t"
-        "pop rcx\n\t"
-        "pop r11" : "=a"(result) : "a"(number),
-        [arg1] "m"(arg1) : "memory", "rcx", "r11");
-    return result;
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : "D"(arg1) : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
+    // inline_asm(
+    //     "mov rdi, %[arg1]\n\t"
+    //     "push r11\n\t"
+    //     "push rcx\n\t"
+    //     "syscall\n\t"
+    //     "pop rcx\n\t"
+    //     "pop r11" : "=a"(result) : "a"(number),
+    //     [arg1] "m"(arg1) : "memory", "rcx", "r11");
+    // return result;
 }
 
 static inline uintptr_t syscall2(int number, uintptr_t arg1, uintptr_t arg2)
 {
-    uintptr_t result;
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "mov rsi, %[arg2]\n\t"
-        "mov rdi, %[arg1]\n\t"
-        "push r11\n\t"
-        "push rcx\n\t"
         "syscall\n\t"
-        "pop rcx\n\t"
-        "pop r11" : "=a"(result) : "a"(number),
-        [arg1] "m"(arg1), [arg2] "m"(arg2) : "memory", "rcx", "r11");
-    return result;
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : "D"(arg1), "S"(arg2) : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
+    // inline_asm(
+    //     "mov rsi, %[arg2]\n\t"
+    //     "mov rdi, %[arg1]\n\t"
+    //     "push r11\n\t"
+    //     "push rcx\n\t"
+    //     "syscall\n\t"
+    //     "pop rcx\n\t"
+    //     "pop r11" : "=a"(result) : "a"(number),
+    //     [arg1] "m"(arg1), [arg2] "m"(arg2) : "memory", "rcx", "r11");
+    // return result;
 }
 
 static inline uintptr_t syscall3(int number, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 {
-    uintptr_t result;
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "mov rdx, %[arg3]\n\t"
-        "mov rsi, %[arg2]\n\t"
-        "mov rdi, %[arg1]\n\t"
-        "push r11\n\t"
-        "push rcx\n\t"
         "syscall\n\t"
-        "pop rcx\n\t"
-        "pop r11" : "=a"(result) : "a"(number),
-        [arg1] "m"(arg1), [arg2] "m"(arg2), [arg3] "m"(arg3) : "memory", "rcx", "r11");
-    return result;
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : "D"(arg1), "S"(arg2), "d"(arg3) : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
+    // inline_asm(
+    //     "mov rdx, %[arg3]\n\t"
+    //     "mov rsi, %[arg2]\n\t"
+    //     "mov rdi, %[arg1]\n\t"
+    //     "push r11\n\t"
+    //     "push rcx\n\t"
+    //     "syscall\n\t"
+    //     "pop rcx\n\t"
+    //     "pop r11" : "=a"(result) : "a"(number),
+    //     [arg1] "m"(arg1), [arg2] "m"(arg2), [arg3] "m"(arg3) : "memory", "rcx", "r11");
+    // return result;
 }
 
 static inline uintptr_t syscall4(int number, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    uintptr_t result;
+    register uintptr_t r10 asm("r10") = arg4;
+
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "mov r10, %[arg4]\n\t"
-        "mov rdx, %[arg3]\n\t"
-        "mov rsi, %[arg2]\n\t"
-        "mov rdi, %[arg1]\n\t"
-        "push r11\n\t"
-        "push rcx\n\t"
         "syscall\n\t"
-        "pop rcx\n\t"
-        "pop r11" : "=a"(result) : "a"(number),
-        [arg1] "m"(arg1), [arg2] "m"(arg2), [arg3] "m"(arg3), [arg4] "m"(arg4) : "memory", "rcx", "r11");
-    return result;
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : "D"(arg1), "S"(arg2), "d"(arg3), "r"(r10) : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
+    // inline_asm(
+    //     "mov r10, %[arg4]\n\t"
+    //     "mov rdx, %[arg3]\n\t"
+    //     "mov rsi, %[arg2]\n\t"
+    //     "mov rdi, %[arg1]\n\t"
+    //     "push r11\n\t"
+    //     "push rcx\n\t"
+    //     "syscall\n\t"
+    //     "pop rcx\n\t"
+    //     "pop r11" : "=a"(result) : "a"(number),
+    //     [arg1] "m"(arg1), [arg2] "m"(arg2), [arg3] "m"(arg3), [arg4] "m"(arg4) : "memory", "rcx", "r11");
+    // return result;
 }
 
 static inline uintptr_t syscall6(int number, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5, uintptr_t arg6)
 {
-    uintptr_t result;
+    register uintptr_t r10 asm("r10") = arg4;
+    register uintptr_t r8 asm("r8") = arg5;
+    register uintptr_t r9 asm("r9") = arg6;
+
+    uintptr_t result = number;
+    uintptr_t st;
     inline_asm(
-        "mov r9, %[arg6]\n\t"
-        "mov r8, %[arg5]\n\t"
-        "mov r10, %[arg4]\n\t"
-        "mov rdx, %[arg3]\n\t"
-        "mov rsi, %[arg2]\n\t"
-        "mov rdi, %[arg1]\n\t"
-        "push r11\n\t"
-        "push rcx\n\t"
         "syscall\n\t"
-        "pop rcx\n\t"
-        "pop r11" : "=a"(result) : "a"(number),
-        [arg1] "m"(arg1), [arg2] "m"(arg2), [arg3] "m"(arg3), [arg4] "m"(arg4), [arg5] "m"(arg5), [arg6] "m"(arg6) : "memory", "rcx", "r11");
-    return result;
+        "mov %[st], r12" : "+a"(result),
+        [st] "=&r"(st) : "D"(arg1), "S"(arg2), "d"(arg3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "r12", "memory");
+    return st ? -st : result;
 }
 

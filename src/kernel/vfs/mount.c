@@ -57,6 +57,8 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "path '%s' already has a mountpoint", path);
     }
 
+    trace_debug(MODULE, "vol->fs = %p", vol->fs);
+
     if (vol->fs->mount == NULL)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "%s has not set mount function", vol->fs->name);
@@ -198,6 +200,7 @@ status_t mount_destroy(mountpoint_t *mnt)
 
 INTERNAL status_t mount_int_find(const char *mount_path, volume_t *volume, mountpoint_t **out)
 {
+    ENTER_FUNC("%s, %p, %p", mount_path, volume, out);
     if (mount_path == NULL)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
@@ -207,10 +210,16 @@ INTERNAL status_t mount_int_find(const char *mount_path, volume_t *volume, mount
     size_t best_length = 0;
     size_t path_length = strlen(mount_path);
 
+    trace_debug(MODULE, "volume->mountpoints = %p", volume->mountpoints);
     list_node_t *node = volume->mountpoints.tail;
+    if (!node)
+    {
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
+    }
     while (node)
     {
         mountpoint_t *mnt = container_of(node, mountpoint_t, LIST_ENTRY_NAME);
+        trace_debug(MODULE, "mnt = %p, mount_path = %s", mnt, mount_path);
         size_t length = strlen(mnt->path); // max(path_length, strlen(mnt->path));
 
         trace_debug(MODULE, "mnt->path = \"%s\", mount_path = \"%s\" length = %u", mnt->path, mount_path, length);
@@ -228,7 +237,7 @@ INTERNAL status_t mount_int_find(const char *mount_path, volume_t *volume, mount
         return KERRNO_UNSUCCESS;
     }
 
-    if (out != NULL)
+    if (out)
     {
         *out = best;
     }

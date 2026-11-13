@@ -26,7 +26,7 @@
 #include <types.h>
 #include <array.h>
 
-#define MODULE             "DEVICE-REGISTRY"
+#define MODULE             "device-registry"
 
 #define MAX_DEVICE_CLASSES 32
 
@@ -357,6 +357,16 @@ void device_debug_dev(device_t *parent_dev)
     }
 }
 
+void device_print_debug(device_t *dev)
+{
+    uint64_t major = dev->devt.major;
+    uint64_t device = dev->devt.device;
+    uint64_t minor = dev->devt.minor;
+
+    trace_info(MODULE, "device: 0, id:0x%x, dev_id=%u:%u:%u, name:%s, driver:%p", dev->id, major, device, minor, dev->name, dev->driver);
+    trace_info(MODULE, "device: 0, id:0x%x, dev_id=%u:%u:%u, %s(%u), name:%s, driver:%p", dev->id, major, device, minor, dev->class->name, dev->class->type, dev->name, dev->driver);
+}
+
 void device_debug()
 {
     trace_info(MODULE, "device count: %u", dev_count);
@@ -391,6 +401,7 @@ void device_debug()
 status_t device_get_device(device_id_t *id, device_t **out_dev)
 {
     ENTER_FUNC("%p, %p", id, out_dev);
+    device_id_print(id);
     dev_class_t *class;
     status_t ret = class_get(id->major, &class);
     KERRNO_CHECK_RETURN(ret);

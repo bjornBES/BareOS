@@ -9,3 +9,5 @@
  */
 
 #include "arch_types.h"
+#include "arch_time_types.h"
+

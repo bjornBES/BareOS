@@ -12,6 +12,8 @@
 #include "process/process.h"
 #include "process/pid.h"
 
+#include "asm/cpu_arch.h"
+
 #include "sched/sched.h"
 
 #include "sync/spinlock.h"
@@ -75,3 +77,8 @@ status_t proc_run(process_t *proc)
     return KERRNO_SUCCESSES;
 }
 
+status_t process_get_current(process_t **out_proc)
+{
+    *out_proc = THISCPU()->current_proc;
+    return KERRNO_SUCCESSES;
+}

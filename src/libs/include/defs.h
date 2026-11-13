@@ -31,6 +31,9 @@
 #define COLD                  __attribute__((cold))
 #define USED                  __attribute__((used))
 #define UNUSED                __attribute__((unused))
+#define WEAK                  __attribute__((weak))
+#define FORCE                 __attribute__((force))
+#define ATTRIBUTE_CONST       __attribute__((__const__))
 
 #define INTERNAL              static
 

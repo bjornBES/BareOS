@@ -87,6 +87,34 @@
 #define OPOST    BIT(0) // Perform output processing
 #define OLCUC    BIT(1) // Map lower case to upper case on output.
 #define ONLCR    BIT(2) // Map NL to CR-NL on output.
+#define OCRNL    BIT(3)
+#define ONOCR    BIT(4)
+#define ONLRET   BIT(5)
+#define OFILL    BIT(6)
+#define OFDEL    BIT(7)
+#define NLDLY    BIT(8)
+#define NL0      0x00000
+#define NL1      0x00100
+#define CRDLY    BIT(9) | BIT(10)
+#define CR0      0x00000
+#define CR1      0x00200
+#define CR2      0x00400
+#define CR3      0x00600
+#define TABDLY   BIT(11) | BIT(12)
+#define TAB0     0x00000
+#define TAB1     0x00800
+#define TAB2     0x01000
+#define TAB3     0x01800
+#define XTABS    0x01800
+#define BSDLY    BIT(13)
+#define BS0      0x00000
+#define BS1      0x02000
+#define VTDLY    BIT(14)
+#define VT0      0x00000
+#define VT1      0x04000
+#define FFDLY    BIT(15)
+#define FF0      0x00000
+#define FF1      0x08000
 
 // c_lflag
 #define ISIG     BIT(0) // enable signal generation (SIGINT etc.)
@@ -94,16 +122,16 @@
 #define ECHO     BIT(3) // echo input back to output
 #define ECHOE    BIT(4) // echo backspace as \b \b
 #define ECHOK    BIT(5)
-#define ECHONL	BIT(6)
-#define NOFLSH	BIT(7)
-#define TOSTOP	BIT(8)
-#define ECHOCTL	BIT(9)
-#define ECHOPRT	BIT(10)
-#define ECHOKE	BIT(11)
-#define FLUSHO	BIT(12)
-#define PENDIN	BIT(14)
-#define IEXTEN	BIT(15)
-#define EXTPROC	BIT(16)
+#define ECHONL   BIT(6)
+#define NOFLSH   BIT(7)
+#define TOSTOP   BIT(8)
+#define ECHOCTL  BIT(9)
+#define ECHOPRT  BIT(10)
+#define ECHOKE   BIT(11)
+#define FLUSHO   BIT(12)
+#define PENDIN   BIT(14)
+#define IEXTEN   BIT(15)
+#define EXTPROC  BIT(16)
 
 // c_cc indices
 #define VINTR    0 // interrupt char   (default Ctrl+C = 0x03)

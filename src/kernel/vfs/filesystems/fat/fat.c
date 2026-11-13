@@ -167,9 +167,9 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 
 status_t fat_probe(device_t *dev)
 {
-    if (!dev->ops.read && dev->class->type == block_class.type)
+    if (dev->class->type != block_class.type)
     {
-        return KERRNO_UNSUCCESS;
+        KERRNO_RETURN(KERRNO_NOT_SUPPORTED, "");
     }
 
     uint8_t buffer[512];
@@ -441,6 +441,7 @@ static filesystem_t fat_fs = {
     .read = fat_read_file,
 
     .alloc_inode = fat_alloc_inode,
-    .free_inode = fat_free_inode};
+    .free_inode = fat_free_inode,
+};
 
 VFS_FS_DRIVER(fat_fs);

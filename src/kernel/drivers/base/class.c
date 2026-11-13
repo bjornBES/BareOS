@@ -163,7 +163,9 @@ status_t class_list_devices()
 status_t class_init()
 {
     list_initialize(&class_list);
-    return hash_map_create(&classes, 256);
+    status_t ret = hash_map_create(&classes, 256);
+    class_register(&virtual_class);
+    return ret;
 }
 
 CORE_INITCALL(class_init);

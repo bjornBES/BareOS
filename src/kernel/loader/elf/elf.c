@@ -34,7 +34,7 @@ size_t elf_read_file(vfs_node_t *file, void *buffer, size_t buffer_size, size_t 
     // ENTER_FUNC(MODULE, "%u, %p, %u, %u, %u", file, buffer, buffer_size, count, offset);
     vfs_seek(file, offset, SEEK_SET);
     ssize_t size;
-    vfs_read(file, buffer, buffer_size * count, &size);
+    vfs_read(file, buffer, offset, buffer_size * count, &size);
     return size;
 }
 
@@ -131,7 +131,15 @@ status_t elf_read_program(vfs_node_t *file, process_t *proc, elf_header_t *heade
         if (header->bitness == ELF_CLASS_64)
         {
             elf64_program_header_t *entry64 = (elf64_program_header_t *)(buffer + (i * sizeof(elf64_program_header_t)));
-            memcpy(&elf_prog_header, entry64, sizeof(elf64_program_header_t));
+            elf_prog_header.type = entry64->type;
+            elf_prog_header.offset = entry64->offset;
+            elf_prog_header.virtual_address = entry64->virtual_address;
+            elf_prog_header.physical_address = entry64->physical_address;
+            elf_prog_header.file_size = entry64->file_size;
+            elf_prog_header.memory_size = entry64->memory_size;
+            elf_prog_header.flags = entry64->flags;
+            elf_prog_header.align = entry64->align;
+            // memcpy(&elf_prog_header, entry64, sizeof(elf64_program_header_t));
         }
         else
         {

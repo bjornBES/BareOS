@@ -13,5 +13,5 @@
 
 pid_t waitpid(pid_t pid, int *wstatus, int options)
 {
-    return syscall3(SYS_WAITPID, (uintptr_t)pid, (uintptr_t)wstatus, (uintptr_t)options);
+    return 0; // syscall3(SYS_WAITPID, (uintptr_t)pid, (uintptr_t)wstatus, (uintptr_t)options);
 }

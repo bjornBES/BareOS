@@ -35,6 +35,11 @@ typedef struct x86_arch_data
         uint16_t has_super_pke : 1;
     } paging;
 
+    struct
+    {
+        uint16_t has_syscall : 1;
+    } syscall;
+
     cpuid_leaves_t cpuid;
 
 } x86_arch_data_t;

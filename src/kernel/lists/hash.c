@@ -36,7 +36,7 @@ status_t hash_map_create(hash_map_t **out_mp, int max_capacity)
 #define FNV_OFFSET 14695981039346656037ul
 #define FNV_PRIME  1099511628211ul
 
-uint64_t hash_key(hash_map_t *mp, const char *key)
+uint64_t hash_do_hash_key(const char *key, int capacity)
 {
     uint64_t hash = FNV_OFFSET;
     while (*key)
@@ -46,8 +46,13 @@ uint64_t hash_key(hash_map_t *mp, const char *key)
         hash *= FNV_PRIME;
         key++;
     }
-    uint64_t index = hash % mp->capacity;
+    uint64_t index = hash % capacity;
     return index;
+}
+
+uint64_t hash_key(hash_map_t *mp, const char *key)
+{
+    return hash_do_hash_key(key, mp->capacity);
 }
 
 status_t hash_insert(hash_map_t *mp, char *key, void *value)
@@ -63,11 +68,14 @@ status_t hash_insert(hash_map_t *mp, char *key, void *value)
     }
     uint64_t bucket_index = hash_key(mp, key);
     hash_node_t *new_node = (hash_node_t *)kzmalloc(sizeof(hash_node_t));
-    trace_info(MODULE, "bucket_index = %x, new_node = %p", bucket_index, new_node);
+    trace_info(MODULE, "bucket_index = 0x%x, new_node = %p", bucket_index, new_node);
     
     new_node->key = key;
     new_node->value = value;
     new_node->next = NULL;
+    new_node->index = hash_do_hash_key(key, UINT16_MAX);
+    // hexdump(new_node->key, 16, 16);
+    trace_info(MODULE, "new_node->key = %s, new_node->value = %p", new_node->key, new_node->value);
     
     if (mp->arr[bucket_index] == NULL)
     {
@@ -75,7 +83,7 @@ status_t hash_insert(hash_map_t *mp, char *key, void *value)
     }
     else
     {
-        KERRNO_RETURN(KERRNO_NAME_IN_USE, "key '%s' is already in use", key);
+        // KERRNO_RETURN(KERRNO_NAME_IN_USE, "key '%s' is already in use", key);
         new_node->next = mp->arr[bucket_index];
         mp->arr[bucket_index] = new_node;
     }
@@ -97,10 +105,11 @@ status_t hash_delete(hash_map_t *mp, char *key)
     hash_node_t *prev_node = NULL;
 
     hash_node_t *curr_node = mp->arr[bucket_index];
+    uint64_t index = hash_do_hash_key(key, UINT16_MAX);
 
     while (curr_node != NULL)
     {
-        if (strcmp(key, curr_node->key) == 0)
+        if (curr_node->index == index)
         {
             if (curr_node == mp->arr[bucket_index])
             {
@@ -132,12 +141,13 @@ status_t hash_search(hash_map_t *mp, char *key, hash_node_t **out)
     uint64_t bucket_index = hash_key(mp, key);
     trace_info(MODULE, "bucket_index = 0x%x", bucket_index);
 
+    uint64_t index = hash_do_hash_key(key, UINT16_MAX);
     hash_node_t *bucket_head = mp->arr[bucket_index];
     while (bucket_head != NULL)
     {
-        if (!strcmp(bucket_head->key, key))
+        if (bucket_head->index == index)
         {
-            trace_debug(MODULE, "bucket_head->key = %s, key = %s, out = %p", bucket_head->key, key, out);
+            trace_debug(MODULE, "bucket_head = %p, bucket_head->key = %s, key = %s, out = %p", bucket_head, bucket_head->key, key, out);
             if (out != NULL)
             {
                 *out = bucket_head;

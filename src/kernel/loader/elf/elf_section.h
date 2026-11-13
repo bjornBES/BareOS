@@ -12,6 +12,7 @@
 
 #include "elf_base_types.h"
 
+#include <config.h>
 #include <types.h>
 
 typedef enum elf_section_type

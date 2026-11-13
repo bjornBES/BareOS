@@ -16,11 +16,10 @@
 
 #include <types.h>
 
+#define MAX_CONSOLE_DRIVER          8
 
-#define MAX_CONSOLE_DRIVER 8
-
-#define MIN_CONSOLES       1
-#define MAX_CONSOLES       8
+#define MIN_CONSOLES                1
+#define MAX_CONSOLES                8
 
 #define CUR_MAKE(size, change, set) ((size) | ((change) << 8) | ((set) << 16))
 #define CUR_SIZE(c)                 ((c) & 0x00000F)
@@ -39,12 +38,15 @@
 #define CUR_CHANGE(c)               ((c) & 0x00FF00)
 #define CUR_SET(c)                  (((c) & 0xFF0000) >> 8)
 
-typedef struct virtual_console_cell
+#define VC_TABSTOPS_COUNT           256u
+
+typedef struct vt_cell
 {
-    uint32_t cp; // glyph index
-    color_t fg;  // palette indexes
-    color_t bg;  // palette indexes
-} virtual_console_cell_t;
+    code_point_t cp; // glyph index
+    color_t fg;      // RGBX8888
+    color_t bg;      // RGBX8888
+    uint32_t attr;
+} vt_cell_t;
 
 typedef struct virtual_console_size
 {
@@ -67,84 +69,118 @@ typedef struct vc_state
     // bool reverse;
 } vc_state_t;
 
+typedef struct vt_damage
+{
+    uint16_t x0;
+    uint16_t x1;
+} vt_damage_t;
+
+typedef enum vc_flags
+{
+    VC_FLAGS_UTF8,
+    VC_FLAGS_COLOR,
+    VC_FLAGS_TEXT,
+
+    VC_FLAG_COUNT
+} vc_flags_t;
+
+typedef enum vc_mode
+{
+    VC_MODE_SCREEN_MODE,
+    VC_MODE_ORIGIN_MODE,
+    VC_MODE_AUTOWRAP_MODE,
+    VC_MODE_INSERT_MODE,
+    VC_MODE_CUR_VISIBLE,
+    VC_MODE_NEED_WRAP,
+} vc_mode_t;
+
 typedef struct virt_con_ops virt_con_ops_t;
 
-typedef struct virtual_console_data
+typedef struct vc_data
 {
-    vc_state_t state;
-    vc_state_t saved_state;
+    int vc_index;
+    tty_struct_t *vc_tty;
+    virt_con_ops_t *vc_sw;
+    void *vc_priv;
 
-    tty_struct_t *tty;
-    device_t *dev;
+    uint16_t vc_cols;
+    uint16_t vc_rows;
+    vt_cell_t *vc_screenbuf;
+    size_t vc_screenbuf_cells;
 
-    int console_number;
-    virtual_console_size_t size;
+    uint16_t vc_x;
+    uint16_t vc_y;
+    uint16_t vc_top;    /* Scrolling region */
+    uint16_t vc_bottom; /* Scrolling region */
+    uint16_t vc_saved_x;
+    uint16_t vc_saved_y;
+    vt_cell_t *vc_pos;
+    vt_cell_t *vc_origin;
+    vt_cell_t *vc_scr_end;
+    vt_cell_t *vc_visible_origin;
+    // uint32_t vc_size_row;
 
-    uint32_t console_bpr; // bpr = bytes per row
+    color_t vc_fg;
+    color_t vc_bg;
+    uint32_t vc_attr;
+    color_t vc_def_fg;
+    color_t vc_def_bg;
+    color_t vc_saved_fg;
+    color_t vc_saved_bg;
+    uint32_t vc_saved_attr;
+    color_t vc_palette[16];
 
-    vaddr_t origin;
-    uint32_64_t scr_end;
-    uint32_64_t visible_origin;
-    uint32_t top;    /* Scrolling region */
-    uint32_t bottom; /* Scrolling region */
+    uint8_t vc_state;
+    uint8_t vc_npar;
+    uint32_t vc_par[16];
+    uint8_t vc_intermediate;
 
-    const virt_con_ops_t *current;
-    struct virtual_console_data **display_fg;
+    uint32_t vc_modes;
+    DECLARE_BITMAP(vc_tab_stop, VC_TABSTOPS_COUNT);
 
-    virtual_console_cell_t *cell_buffer;
-    size_t buffer_size;
-
-    color_t def_color; /* Default colors */
-    color_t ulcolor;   /* Color for underline mode */
-    color_t itcolor;
-    color_t halfcolor; /* Color for half intensity mode */
-
-    uint32_t cursor_type;
-    uint16_t complement_mask;   /* [#] Xor mask for mouse pointer */
-    uint16_t s_complement_mask; /* Saved mouse pointer mask */
-    virtual_console_cell_t *pos;
+    unsigned char vc_utf_count;
+    code_point_t vc_utf_char;
 
     const font_t *current_font;
 
-    uint32_t disp_ctrl : 1;   /* Display chars < 32? */
-    uint32_t toggle_meta : 1; /* Toggle high bit? */
-    uint32_t decscnm : 1;     /* Screen Mode */
-    uint32_t decom : 1;       /* Origin Mode */
-    uint32_t decawm : 1;      /* Autowrap Mode */
-    uint32_t deccm : 1;       /* Cursor Visible */
-    uint32_t decim : 1;       /* Insert Mode */
-    uint32_t vc_utf : 1;
+    vt_damage_t *vc_damage;
+    bool vc_visible;
 
-    uint32_t need_wrap : 1;
-    uint32_t can_do_color : 1;
-    uint32_t text_mode : 1;
-    uint32_t unused : 21;
+    struct vc_data **vc_display_fg;
 
-} virtual_console_data_t;
+    spinlock_t vc_lock;
+
+    device_t *dev;
+
+} vc_data_t;
 
 typedef struct virtual_console
 {
-    virtual_console_data_t *data;
+    vc_data_t *data;
 } virtual_console_t;
 
 typedef struct virt_con_ops
 {
-    status_t (*startup)(const char **name_out);
-    status_t (*init)(virtual_console_data_t *vc, bool do_init);
-    status_t (*uninit)(virtual_console_data_t *vc);
+    const char *con_name;
+    uint32_t con_flags;
 
-    status_t (*clear)(virtual_console_data_t *vc, uint32_t xpos, uint32_t ypos, size_t count);
+    status_t (*con_init)(vc_data_t *vc, bool do_init);
+    status_t (*con_deinit)(vc_data_t *vc);
 
-    status_t (*putc)(virtual_console_data_t *vc, virtual_console_cell_t cell, uint32_t x, uint32_t y);
-    status_t (*putcs)(virtual_console_data_t *vc, const virtual_console_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos);
+    status_t (*con_resize)(vc_data_t *vc, uint32_t width, uint32_t height, bool from_user);
 
-    status_t (*cursor)(virtual_console_data_t *vc, bool enable);
+    status_t (*con_putcs)(vc_data_t *vc, const vt_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos);
+    status_t (*con_putc)(vc_data_t *vc, vt_cell_t cell, uint32_t x, uint32_t y);
 
-    status_t (*switch_console)(virtual_console_data_t *vc);
+    status_t (*con_clear)(vc_data_t *vc, const vt_cell_t *blank, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 
-    status_t (*resize)(virtual_console_data_t *vc, uint32_t width, uint32_t height, bool from_user);
+    status_t (*con_scroll)(vc_data_t *vc, uint32_t top, uint32_t bottom, int dir, uint16_t lines);
 
-    status_t (*set_origin)(virtual_console_data_t *vc);
-    status_t (*save_screen)(virtual_console_data_t *vc);
+    status_t (*con_cursor)(vc_data_t *vc, bool enable);
+
+    status_t (*con_switch)(vc_data_t *vc);
+
+    status_t (*con_set_origin)(vc_data_t *vc);
+    status_t (*con_save_screen)(vc_data_t *vc);
 } virt_con_ops_t;
 

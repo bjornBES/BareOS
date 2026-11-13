@@ -67,7 +67,21 @@ NORETURN void kernel_main()
     resource_dump(&io_space.root);
     resource_dump(&irq_space.root);
 
-    tty_write(active_tty, L"Hello world!", 12, NULL);
+    tty_write(active_tty, (uint8_t *)"Hello world!\n\n", 14, NULL);
+    tty_write(active_tty, (uint8_t *)"Hello world!", 12, NULL);
+
+    uint8_t input[128];
+    ssize_t size;
+    // tty_read(active_tty, input, 128, &size);
+    // hexdump(input, size, 16);
+    // input[size] = 0;
+    // trace_info(MODULE, "size = %u", size);
+    // trace_info(MODULE, "input = %s", input);
+
+    // while (true)
+    // {
+    //     ;
+    // }
 
     kernel_start_pid0();
 

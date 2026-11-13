@@ -61,11 +61,16 @@ endif
 
 export ASFLAGS_DEFINE := -D__i686__=0 -D__x86_64__=0 -D__$(arch)__=1 -D__$(SRCARCH)__=1
 export CFLAGS_DEFINE := -D__$(arch)__=1 -D__$(SRCARCH)__=1 -Werror
-export COMMON_INCLUDE := -I./ -I./include \
+
+export COMMON_ARCH_INCLUDE := \
 	-I./arch/$(SRCARCH)/include \
+	-I$(SOURCE_DIR)/src/libs/arch/$(SRCARCH)/include
+
+export COMMON_INCLUDE := -I./ -I./include $(COMMON_ARCH_INCLUDE) \
 	-I$(SOURCE_DIR)/src/libs/include \
-	-I$(SOURCE_DIR)/src/libs/arch/$(SRCARCH)/include \
+	-I$(SOURCE_DIR)/src/libs/arch/generic/include \
 	-I./arch/generic/include \
+	-I$(SOURCE_DIR)/src/libs/include/generic \
 	-I$(INCLUDE_DIR)
 export COMMON_USER_INCLUDE := $(COMMON_INCLUDE) \
 	-I./arch/$(SRCARCH) -I./arch/$(SRCARCH)/include \
