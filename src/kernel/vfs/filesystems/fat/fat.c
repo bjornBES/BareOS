@@ -105,6 +105,8 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
     ssize_t sector_read = 0;
     dev->ops.read(dev, buffer, 1, 0, &sector_read);
 
+    hexdump(buffer, 512, 16);
+
     fat_priv->bytes_per_sector = bpb->bytes_per_sector;
     fat_priv->sectors_per_cluster = bpb->sectors_per_cluster;
     fat_priv->reserved_sectors = bpb->reserved_sectors;
@@ -117,6 +119,8 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
         fat_priv->sectors_per_fat = bpb->ebr32.sectors_per_fat;
     }
 
+    trace_debug(MODULE, "root_entry_count = %u", root_entry_count);
+    trace_debug(MODULE, "fat_priv->bytes_per_sector = %u", fat_priv->bytes_per_sector);
     uint32_t root_sectors = (root_entry_count * 32 + fat_priv->bytes_per_sector - 1) / fat_priv->bytes_per_sector;
 
     uint32_t fat_start = fat_priv->reserved_sectors;
@@ -130,6 +134,9 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
         total_sectors = bpb->large_sector_count;
     }
 
+    trace_debug(MODULE, "total_sectors = %u", total_sectors);
+    trace_debug(MODULE, "data_start = %u", data_start);
+    trace_debug(MODULE, "fat_priv->sectors_per_cluster = %u", fat_priv->sectors_per_cluster);
     uint32_t cluster_count = (total_sectors - data_start) / fat_priv->sectors_per_cluster;
 
     if (cluster_count < 4085)
@@ -167,6 +174,7 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 
 status_t fat_probe(device_t *dev)
 {
+    ENTER_FUNC("%p", dev);
     if (dev->class->type != block_class.type)
     {
         KERRNO_RETURN(KERRNO_NOT_SUPPORTED, "");
@@ -177,7 +185,7 @@ status_t fat_probe(device_t *dev)
     ssize_t sectors_read = 0;
     dev->ops.read(dev, buffer, 1, 0, &sectors_read);
 
-    // hexdump(bpb, sizeof(fat_boot_sector_t), 16);
+    hexdump(bpb, sizeof(fat_boot_sector_t), 16);
 
     uint16_t sig = *(uint16_t *)(buffer + 510);
     if (sig != 0xAA55)

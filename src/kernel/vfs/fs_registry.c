@@ -88,11 +88,13 @@ status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
         trace_debug(MODULE, "fs->probe = %p", fs->probe);
         if (fs->probe(dev) == KERRNO_SUCCESSES)
         {
+            trace_debug(MODULE, "found fs = %p", fs);
             *out_fs = fs;
             return KERRNO_SUCCESSES;
         }
+        trace_debug(MODULE, "node = %p", node);
         node = node->prev;
     }
-    return KERRNO_ENTRY_NOT_FOUND;
-    // KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "Didn't find any file systems that could do that");
+    KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "Didn't find any file systems that could do that");
+    // return KERRNO_ENTRY_NOT_FOUND;
 }

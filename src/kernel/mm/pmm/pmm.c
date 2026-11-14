@@ -240,6 +240,19 @@ paddr_t pmm_alloc_frames_contiguous(size_t times)
     return base;
 }
 
+status_t pmm_alloc_frame_at_size(size_t nframes, paddr_t *out_addr)
+{
+    if (nframes == 0)
+    {
+        return 0;
+    }
+
+    paddr_t addr;
+    status_t ret = info.allocator->ops.alloc(info.allocator, nframes, &addr);
+    *out_addr = addr;
+    return ret;
+}
+
 status_t pmm_ref_frame(paddr_t phys)
 {
     trace_debug(MODULE, "phys = %p", phys);

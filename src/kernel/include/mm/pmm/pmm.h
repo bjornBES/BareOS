@@ -15,6 +15,8 @@
 #include <boot/params.h>
 #include <types.h>
 
+#define FRAME_COUNT(n) n / PAGE_SIZE
+
 status_t pmm_early_init(boot_params_t *bp);
 
 status_t pmm_insert_resource(boot_params_t *params);
@@ -44,9 +46,10 @@ paddr_t pmm_alloc_at(paddr_t addr);
 paddr_t pmm_alloc_region(paddr_t start_phys, paddr_t end_phys);
 
 /// @brief 
-/// @param size 
-/// @return Physical address of the first allocated frame or kerrno code on failure.
-paddr_t pmm_alloc_frame_at_size(size_t size);
+/// @param[in] nframes 
+/// @param[out] out_addr Physical address of the first allocated frame 
+/// @return KERRNO_SUCCESSES on successes or an kerrno number.
+status_t pmm_alloc_frame_at_size(size_t nframes, paddr_t *out_addr);
 
 /// @brief 
 /// @param times 

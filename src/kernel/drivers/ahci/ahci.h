@@ -13,6 +13,9 @@
 #include <types.h>
 #include <defs.h>
 #include <binary.h>
+#include <config.h>
+
+#include "mm/dma/dmat.h"
 
 #include "sync/mutext.h"
 #include "sync/semaphoret.h"
@@ -212,7 +215,9 @@ typedef struct
 {
     semaphore_t done;
     status_t status;
-    // dma_alloc_t *dma;
+#if CONFIG_DMA == 1
+    dma_t *dma;
+#endif
 } ahci_cmd_ctx_t;
 
 typedef struct

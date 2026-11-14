@@ -120,7 +120,7 @@ void isr_handler(intr_frame_t *frame)
         }
         if (frame->interrupt < EXC_END)
         {
-            stack_trace(5);
+            stack_trace(10);
         }
     }
     inline_asm("cli");

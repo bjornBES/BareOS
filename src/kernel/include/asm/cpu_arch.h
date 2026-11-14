@@ -10,9 +10,9 @@
 
 #pragma once
 
-/// @defgroup contract_arch_x86_cpu
+/// @defgroup contract_arch_cpu
 
-/// @ingroup contract_arch_x86_cpu
+/// @ingroup contract_arch_cpu
 /// @{
 
 #include <types.h>

@@ -11,10 +11,10 @@
 #pragma once
 
 
-/// @defgroup contract_arch_x86_mmu
+/// @defgroup contract_arch_mmu
 /// @brief the contract functions that the kernel will call to use the cpu's mmu.
 
-/// @ingroup contract_arch_x86_mmu
+/// @ingroup contract_arch_mmu
 /// @{
     
 #include "page_arch.h"
@@ -38,25 +38,25 @@ void mmu_arch_init(boot_params_t *bp);
 // --- Address Space ---
 
 /// @brief create a new empty address space, returns physical address of top level table
-/// @return The new page table or an errno number
+/// @return The new page table or an kerrno number
 /// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
 status_t mmu_arch_create_table(page_table_t **out_table);
 
 /// @brief destroy an address space and free all arch-owned paging structures
 /// @param[in] table The table to destroy
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: table is not valid
 status_t mmu_arch_destroy_table(page_table_t *table);
 
 /// @brief switch to the given table
 /// @param[in] table The table to load
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: table is not valid
 status_t mmu_arch_load_table(page_table_t *table);
 
 /// @brief get currently active address space
 /// @param[out] table The currently active page table
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: table is not valid
 status_t mmu_arch_current_table(page_table_t *table);
 
@@ -64,14 +64,14 @@ status_t mmu_arch_current_table(page_table_t *table);
 
 /// @brief map kernel pages into a userspace table (for higher half kernel)
 /// @param[in] table The table that the kernel table will be copied into.
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: table is not valid
 status_t mmu_arch_copy_from_kernel(page_table_t *table);
 
 /// @brief map pages from src into the table dst
 /// @param[in] dst The destination table
 /// @param[in] src The source table
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: dst or src is not valid
 status_t mmu_arch_copy_from(page_table_t *dst, page_table_t *src);
 
@@ -82,7 +82,7 @@ status_t mmu_arch_copy_from(page_table_t *dst, page_table_t *src);
 /// @param[in] virt The virtual address that needs to be mapped to a physical address
 /// @param[in] phys The physical address that needs to be mapped to a virtual address
 /// @param[in] flags The flags of the leaf entry
-/// @return The size of the mapped page size or an errno number
+/// @return The size of the mapped page size or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: phys or virt is not valid e.g. They are too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: flags or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
@@ -93,7 +93,7 @@ status_t mmu_arch_map(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags
 /// @brief unmap a single virtual page and will also free the physical frames
 /// @param[in] table The page table where the entries will be freed from
 /// @param[in] virt The virtual address that will be freed
-/// @return the physical address of the mapped page on successes or an errno number
+/// @return the physical address of the mapped page on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: virt is not valid e.g. It is too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: table is not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
@@ -104,7 +104,7 @@ status_t mmu_arch_unmap(page_table_t *table, vaddr_t virt, paddr_t *out_paddr);
 /// @param[in] table The page table where the entry is in
 /// @param[in] virt The virtual address that the entry is mapped to
 /// @param[in] flags The flags that will change the old once
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: virt is not valid e.g. It is too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: flags or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
@@ -115,7 +115,7 @@ status_t mmu_arch_protect(page_table_t *table, vaddr_t virt, mmu_flags_t flags);
 /// @brief walk the page table and finds the physical address mapped at virt
 /// @param[in] table The page table where the entry is in
 /// @param[in] virt The virtual address to be translated
-/// @return the physical address mapped at virt on successes or an errno number
+/// @return the physical address mapped at virt on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: virt is not valid e.g. It is too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: table is not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
@@ -125,7 +125,7 @@ status_t mmu_arch_virt_to_phys(page_table_t *table, vaddr_t virt, paddr_t *out_p
 /// @brief checks if the entry mapped to the virtual address is present
 /// @param[in] table The page table where the entry is in
 /// @param[in] virt The virtual address of the entry
-/// @return 0 on successes or an errno number
+/// @return 0 on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: virt is not valid e.g. It is too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
@@ -167,7 +167,7 @@ vaddr_t mmu_arch_get_faulting_address();
 /// @brief walk the page table and return the virtual address mapped at phys
 /// @param[in] table The page table where the entry is in
 /// @param[in] phys The physical address to be translated
-/// @return the virtual address mapped at virt on successes or an errno number
+/// @return the virtual address mapped at virt on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: phys is not valid e.g. It is too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: table is not valid
 /// @retval KERRNO_ENTRY_NOT_FOUND: no entry exists at that physical address

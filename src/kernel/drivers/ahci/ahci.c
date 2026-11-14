@@ -22,6 +22,8 @@
 
 #include "drivers/pci/pci.h"
 
+#include "mm/dma/dma.h"
+
 #include "irq/irq.h"
 #include "cpu/cpu.h"
 
@@ -123,8 +125,8 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
         sem_init(&aport->cmds[i].done, 0); // 0 = nothing completed yet
 #endif
 #if CONFIG_DMA == 1
-        aport->cmds[i].dma = dma_allocate(MAX_TRANSFER_SIZE);
-        if (aport->cmds[i].dma == NULL)
+        status_t ret = dma_allocate(MAX_TRANSFER_SIZE, &aport->cmds[i].dma);
+        if (ret)
         {
             KERNEL_PANIC(MODULE, "OMM");
         }
@@ -148,7 +150,7 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
     void *mapped_fb_virt;
     void *mapped_fb = kmalloc_phys(4096, &mapped_fb_virt);
     port->fb = (uint32_t)((uint32_64_t)mapped_fb & 0xFFFFFFFF);
-#ifdef __x86_64__
+#ifdef CONFIG_64BIT
     port->clbu = (uint32_t)((uint32_64_t)mapped_fb >> 32);
 #else
     port->clbu = 0;
@@ -167,7 +169,7 @@ void ahci_initialize_aport(ahci_port_priv_t *aport)
         cmd_header[i].prdtl = 1;
         aport->ctba[i] = ctba_buf_virt;
         cmd_header[i].ctba = (uint32_64_t)ctba_buf & 0xFFFFFFFF;
-#ifdef __x86_64__
+#ifdef CONFIG_64BIT
         cmd_header[i].ctbau = ((uint32_64_t)ctba_buf >> 32);
 #else
         cmd_header[i].ctbau = 0;
@@ -186,7 +188,7 @@ status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_
 #if CONFIG_DMA == 1
     if (req->is_write == true)
     {
-        dma_copy_from(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size);
+        dma_copy_from(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size, NULL);
     }
 #endif
 
@@ -207,6 +209,7 @@ status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_
     }
 
     paddr_t dba_phys = aport->cmds[slot].dma->phys;
+    trace_debug(MODULE, "dba_phys @ %p", dba_phys);
 #else
     paddr_t dba_phys;
     mmu_arch_virt_to_phys(&kernel_page, req->buffer, &dba_phys);
@@ -270,7 +273,7 @@ status_t ahci_program_command_slot(ahci_port_priv_t *aport, uint32_t slot, ahci_
 #if CONFIG_DMA == 1
     if (req->is_write == false)
     {
-        dma_copy_to(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size);
+        dma_copy_to(aport->cmds[slot].dma, (void *)req->buffer, req->buffer_size, NULL);
     }
 #endif
     return KERRNO_SUCCESSES;
@@ -368,13 +371,15 @@ status_t ahci_init_abar(pci_device_t *pci_dev, ahci_host_priv_t *host)
     uint32_t pi = host->abar->pi;
     host->abar->ghc.IE = 1;
 
-    trace_debug(MODULE, "nports = %u", host->nports);
-
+    trace_debug(MODULE, "host_priv->nports = %u", host->nports);
+    
     for (size_t i = 0; i < host->nports; i++)
     {
+        trace_debug(MODULE, "pi & 1 = %u", pi & 1);
         if (pi & 1)
         {
             int dt = ahci_check_type(&host->abar->ports[i]);
+            trace_debug(MODULE, "dt = %u", dt);
             if (dt == AHCI_DEV_SATA)
             {
                 host->aports[host->ahci_devices_count].port_type = dt;
@@ -436,6 +441,7 @@ status_t ahci_read_slot_status(ahci_port_priv_t *aport, int slot)
 
 void ahci_isr_port_handler(ahci_port_priv_t *aport)
 {
+    ENTER_FUNC("%p", aport);
     uint32_t completed = ahci_read_completed_mask(aport); // which slots finished, from port regs
     trace_debug(MODULE, "completed = 0x%x", completed);
     for (int slot = 0; slot < 32; slot++)
@@ -539,7 +545,11 @@ status_t ahci_init_one(pci_device_t *pci_dev, pci_device_id_t *id)
     resource_request(&mem_space.root, &pci_dev->driver_exclusive_resource, ahci_bar.base, ahci_bar.base + ahci_bar.size, "ahci bar", pci_dev->resource[bar_index].type, pci_dev->resource[bar_index].flags);
 
     uint32_t pi = host_priv->abar->pi;
+    trace_debug(MODULE, "pi = 0x%04x", pi);
+    trace_debug(MODULE, "host_priv->abar->cap.NP = %x", host_priv->abar->cap.NP);
+    // 0b00111111
     host_priv->nports = host_priv->abar->cap.NP + 1;
+    trace_debug(MODULE, "host_priv->nports = %x", host_priv->nports);
 
     device_t *dev = &pci_dev->dev;
     dev->init_name = "AHCI";
