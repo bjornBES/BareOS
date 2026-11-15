@@ -88,6 +88,9 @@ else:
     qemu_args.extend(["-device", "ide-hd,drive=disk"])
     
 # qemu_args.extend(["-device", "vmware-svga"])
+qemu_args.extend(["-device", "isa-serial"])
+# qemu_args.extend(["-device", "pci-serial"])
+# qemu_args.extend(["-device", "virtio-serial-pci"])
 qemu_args.extend(["-device", "e1000"])
 
 qemu_args.extend(["-device", "sb16"])

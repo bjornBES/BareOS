@@ -29,6 +29,7 @@
 #include "video_detect.h"
 #include "acpi/acpi.h"
 #include "kernel.h"
+#include "cmdline/cmdline.h"
 
 #include <defs.h>
 #include <boot/params.h>
@@ -141,7 +142,25 @@ NORETURN CDECL void start(void *partition_data)
         goto end;
     }
 
-    if (elf_read_kernel(&part, boot_params) == 1)
+    char kernel_path[256];
+    memset(kernel_path, 0, sizeof(kernel_path));
+    memcpy(kernel_path, "boot/kernel.elf", 15);
+    fat_file_t *cmd_line_file = fat_open(&part, "bareboot/cmd");
+    if (cmd_line_file == NULL)
+    {
+        // the kernel does not exist in the disk
+        printf("cmdline: error bareboot/cmd isn't on the given partition\n");
+    }
+    else
+    {
+        if (cmdline_early_parse(&part, cmd_line_file, (char **)&kernel_path, boot_params))
+        {
+            printf("cmdline: using fall back %s\n", kernel_path);
+        }
+        fat_close(&part, cmd_line_file);
+    }
+
+    if (elf_read_kernel(kernel_path, &part, boot_params) == 1)
     {
         printf("The kernel fail to be read\n");
         goto end;

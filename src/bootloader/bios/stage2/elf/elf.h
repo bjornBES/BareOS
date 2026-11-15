@@ -14,4 +14,4 @@
 #include <boot/params.h>
 #include "partition/partition.h"
 
-int elf_read_kernel(partition_t *part, boot_params_t *bp);
+int elf_read_kernel(char *kernel_path, partition_t *part, boot_params_t *bp);

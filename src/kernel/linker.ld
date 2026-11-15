@@ -27,6 +27,12 @@ SECTIONS
         *(.init.rodata .init.rodata*)
     } :init
 
+    .cmdline_params : {
+        __cmdline_params_start = .;
+        KEEP(*(.cmdline_params))
+        __cmdline_params_end = .;
+    }
+
     .init.data              : AT(ADDR(.init.data) - KERNEL_VMA + KERNEL_LMA)
     {
         __initcall_start = .;

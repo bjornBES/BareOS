@@ -70,7 +70,7 @@ void kernel_start_pid0()
 
     vfs_open_file(&process->fd_table, "/@DEVFS/tty", NULL);
     vfs_open_file(&process->fd_table, "/@DEVFS/vtty", NULL);
-    vfs_open_file(&process->fd_table, "/@DEVFS/vtty8", NULL);
+    vfs_open_file(&process->fd_table, "/@DEVFS/vtty", NULL);
 
     thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_pid0), (uintptr_t)process, 0);
     main_thread->is_main_thread = 1;

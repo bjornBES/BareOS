@@ -26,6 +26,7 @@ SECTIONS
     text_end = .;
     
     __fat_driver = 0x00040000;
+    __cmdline = 0x00050000;
 
     res = 0x00080000;
     END = 0x000FFFFF;

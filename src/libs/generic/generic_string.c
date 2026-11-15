@@ -70,6 +70,15 @@ WEAK char *strchr(const char *s, int c)
     return (char *)s;
 }
 
+WEAK char *strchrnul(const char *s, int c)
+{
+    while (*s && *s != (char)c)
+    {
+        s++;
+    }
+    return (char *)s;
+}
+
 WEAK size_t strlen(const char *s)
 {
     size_t res = __SIZE_MAX__;

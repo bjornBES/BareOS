@@ -50,13 +50,14 @@ extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t rsdt_parse(boot_params_t *bp)
 {
+    trace_debug(MODULE, "bp->acpi.rsdp_address = %p", bp->acpi.rsdp_address);
     rsdp_t *rsdp = (rsdp_t *)(ioremap(bp->acpi.rsdp_address, 1024) + GET_PAGE_OFFSET(bp->acpi.rsdp_address));
-    hexdump(rsdp, sizeof(rsdp_t), 16);
-    
-    trace_info(MODULE, "%u,%u,0x%08x", rsdp->checksum, rsdp->revision, rsdp->rsdt_address);
     
     if (rsdp->revision != 0)
     {
+        xsdp_t *xsdp = (xsdp_t *)rsdp;
+        hexdump(xsdp, sizeof(xsdp_t), 16);
+        table_set_base_xsdt((vaddr_t)xsdp->xsdt_address, bp->acpi.rsdp_address);
         log_crit(MODULE, "rsdp is XSDT");
         for (;;)
         {
@@ -65,6 +66,8 @@ status_t rsdt_parse(boot_params_t *bp)
         
         return 1;
     }
+    hexdump(rsdp, sizeof(rsdp_t), 16);
+    trace_info(MODULE, "%u,%u,0x%08x", rsdp->checksum, rsdp->revision, rsdp->rsdt_address);
     
     trace_info(MODULE, "phys base = %p", bp->acpi.rsdp_address);
     table_set_base((vaddr_t)rsdp->rsdt_address, bp->acpi.rsdp_address);

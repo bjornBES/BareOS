@@ -127,9 +127,9 @@ int elf64_read(partition_t *part, fat_file_t *file, boot_params_t *bp)
     return 0;
 }
 
-int elf_read_kernel(partition_t *part, boot_params_t *bp)
+int elf_read_kernel(char *kernel_path, partition_t *part, boot_params_t *bp)
 {
-    fat_file_t *kernel = fat_open(part, "boot/kernel.elf");
+    fat_file_t *kernel = fat_open(part, kernel_path);
     if (kernel == NULL)
     {
         // the kernel does not exist in the disk

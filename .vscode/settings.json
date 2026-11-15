@@ -10,6 +10,7 @@
         "bootable",
         "bootparams",
         "CCFLAGS",
+        "cmdline",
         "cpuid",
         "cpus",
         "DDBHANDLE",

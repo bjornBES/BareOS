@@ -36,7 +36,8 @@ typedef struct boot_params
     uint64_t kernel_size;
     
     uint32_t boot_flags;
-    char cmd_line[MAX_CMDLINE];
+    uint64_t cmdline_addr;
+    uint64_t cmdline_size;
     char bootloader_name[MAX_BOOTLOADER_NAME];
 
     struct

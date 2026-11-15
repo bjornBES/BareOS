@@ -27,7 +27,7 @@ void acpi_detect(boot_params_t *bt)
         char *addr = (char *)(i + ebda_phys);
         if (memcmp(addr, "RSD PTR ", 8) == 0)
         {
-            hexdump(addr, 16);
+            // hexdump(addr, 20);
             bt->acpi.rsdp_address = (uint32_t)((void *)addr);
             break;
         }
@@ -47,7 +47,7 @@ void acpi_detect(boot_params_t *bt)
         char *addr = (char *)i;
         if (memcmp(addr, "RSD PTR ", 8) == 0)
         {
-            hexdump(addr, 16);
+            // hexdump(addr, 20);
             bt->acpi.rsdp_address = (uint32_t)((void *)addr);
             break;
         }
