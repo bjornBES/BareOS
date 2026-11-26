@@ -63,7 +63,7 @@ if debug:
         os.remove(gdb_script)
     with open(gdb_script, "x") as gdb_file:
         gdb_file.write( "target remote :1234\n" +
-                       f"add-symbol-file {kernel_elf} 0xffffffff80000000\n" +
+                    #    f"add-symbol-file {kernel_elf} 0xffffffff80000000\n" +
                        f"add-symbol-file {stage2_elf} 0x8000\n" +
                         "set disassembly-flavor intel\n"
                         )
@@ -88,7 +88,7 @@ else:
     qemu_args.extend(["-device", "ide-hd,drive=disk"])
     
 # qemu_args.extend(["-device", "vmware-svga"])
-qemu_args.extend(["-device", "isa-serial"])
+# qemu_args.extend(["-device", "isa-serial"])
 # qemu_args.extend(["-device", "pci-serial"])
 # qemu_args.extend(["-device", "virtio-serial-pci"])
 qemu_args.extend(["-device", "e1000"])

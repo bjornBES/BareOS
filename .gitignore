@@ -8,8 +8,6 @@ image_scripts/__pycache__/*.pyc
 image_scripts/c/partitons.o
 image_scripts/c/partitons
 debug.txt
-rootfs
-rootfs/user
 musl
 busybox
 .gdb_script.gdb

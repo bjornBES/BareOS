@@ -66,12 +66,16 @@ export COMMON_ARCH_INCLUDE := \
 	-I./arch/$(SRCARCH)/include \
 	-I$(SOURCE_DIR)/src/libs/arch/$(SRCARCH)/include
 
+export GENERIC_INCLUDE := \
+	-I./arch/generic/include \
+	-I$(SOURCE_DIR)/src/libs/arch/generic/include \
+	-I$(SOURCE_DIR)/src/libs/include/generic
+
 export COMMON_INCLUDE := -I./ -I./include $(COMMON_ARCH_INCLUDE) \
 	-I$(SOURCE_DIR)/src/libs/include \
-	-I$(SOURCE_DIR)/src/libs/arch/generic/include \
-	-I./arch/generic/include \
-	-I$(SOURCE_DIR)/src/libs/include/generic \
+	$(GENERIC_INCLUDE) \
 	-I$(INCLUDE_DIR)
+
 export COMMON_USER_INCLUDE := $(COMMON_INCLUDE) \
 	-I./arch/$(SRCARCH) -I./arch/$(SRCARCH)/include \
 	-I$(SOURCE_DIR)/src/user/libc -I$(SOURCE_DIR)/src/user/libc/include
@@ -100,4 +104,4 @@ export USER_TARGET_ASFLAGS := $(COMMON_USER_INCLUDE) $(ASFLAGS_COMMON) -f elf64
 export USER_TARGET_CFLAGS := $(COMMON_USER_INCLUDE) $(CFLAGS_COMMON)
 export USER_TARGET_CXXFLAGS := $(COMMON_USER_INCLUDE) $(CFLAGS_COMMON)
 export USER_TARGET_LDFLAGS := $(LDFLAGS_COMMON)
-export USER_TARGET_LIBS := $(COMMON_LIBS) $(BUILD_DIR)/libc.a $(BUILD_DIR)/libcore.a
+export USER_TARGET_LIBS := $(COMMON_LIBS) $(BUILD_DIR)/libc.a
