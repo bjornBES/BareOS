@@ -12,7 +12,7 @@
 
 #include "module.h"
 
-#define MODULE ENTER_MODULE("", "stdio")
+#define MODULE "stdio"
 
 int fputc(char c, fd_t file)
 {
@@ -44,8 +44,6 @@ int puts(const char *str)
     // return fputs(str, stdout);
     return 0;
 }
-
-
 
 int printf(const char *fmt, ...)
 {
@@ -132,4 +130,24 @@ int vsnprintf(char *s, size_t n, const char *fmt, va_list args)
     int state = vsnprintf_int(s, n, fmt, args);
     // irq_arch_enable();
     return state;
+}
+
+int vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
+{
+    int i = vsnprintf(buf, size, fmt, args);
+    if (i >= 0 && (size_t)i < size)
+    {
+        return i;
+    }
+    return size ? (int)(size - 1) : 0;
+}
+
+int scnprintf(char *buf, size_t size, const char *fmt, ...)
+{
+    va_list args;
+    int i;
+    va_start(args, fmt);
+    i = vscnprintf(buf, size, fmt, args);
+    va_end(args);
+    return i;
 }

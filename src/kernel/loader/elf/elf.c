@@ -71,15 +71,17 @@ status_t elf_read_program_header(process_t *proc, file_ref_t *file, elf_program_
         }
     }
     // flags.present = 0;
-    vma_t *vma = do_mmap_eager(proc->vma, dest, size_in_bytes, type, flags);
+    vma_t *vma;
+    do_mmap_eager(proc->vma, dest, size_in_bytes, type, flags, &vma);
+    // TODO: check kerrno
     vma->file_offset = elf_prog_header->offset;
     vma->file_size = elf_prog_header->file_size;
     vma->file = file;
     file->refcount++;
 
-    // trace_info(MODULE, "PADDR 0x%p\n", phys->start);
-    trace_info(MODULE, "dest %p\n", dest);
-    trace_info(MODULE, "size 0x%x/0x%x\n", priv->program_size, priv->program_size_align);
+    // trace_info(MODULE, "PADDR 0x%p", phys->start);
+    trace_info(MODULE, "dest %p", dest);
+    trace_info(MODULE, "size 0x%x/0x%x", priv->program_size, priv->program_size_align);
 
     memset((void *)dest, 0, elf_prog_header->memory_size);
     // only bss dose not have this
@@ -98,7 +100,7 @@ status_t elf_read_program_header(process_t *proc, file_ref_t *file, elf_program_
     //     hexdump((void *)dest, 16, 16);
     // }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t elf_read_program(vfs_node_t *file, process_t *proc, elf_header_t *header, elf_priv_t *priv, loader_t *loader)
@@ -192,7 +194,7 @@ status_t elf_read_program(vfs_node_t *file, process_t *proc, elf_header_t *heade
     }
 
     trace_info(MODULE, "entry = 0x%x", proc->loader_data.entry);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 int elf_read(vfs_node_t *file, process_t *proc, loader_t *loader, elf_header_t *header)
@@ -220,7 +222,7 @@ int elf_read(vfs_node_t *file, process_t *proc, loader_t *loader, elf_header_t *
     {
         return ret;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t elf_load(vfs_node_t *file, process_t *proc, loader_t *loader)
@@ -244,7 +246,7 @@ status_t elf_load(vfs_node_t *file, process_t *proc, loader_t *loader)
         return elf_read(file, proc, loader, &global_header);
     }
     FUNC_NOT_IMPLEMENTED();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t elf_probe(uint8_t *buffer, loader_t *loader)
@@ -258,7 +260,7 @@ status_t elf_probe(uint8_t *buffer, loader_t *loader)
         return KERRNO_UNSUCCESS;
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 loader_t elf_loader = {

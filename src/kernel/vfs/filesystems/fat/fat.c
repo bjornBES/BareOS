@@ -12,7 +12,8 @@
 #include "vfs/fs_registry.h"
 #include "vfs/volume.h"
 
-#include "drivers/base/block/blkdevt.h"
+#include "drivers/base/classt.h"
+#include "drivers/block/blkdevt.h"
 
 #include "memory.h"
 #include "string.h"
@@ -84,8 +85,6 @@ status_t fat_read_clusters(void *buffer, cluster_t cluster_start, cluster_t clus
     return fat_read_sectors(buffer, lba, clusters_count * sb->sectors_per_cluster, dev, sb, out);
 }
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 status_t fat_mount(device_t *dev, mountpoint_t *mnt)
 {
     if (dev->class->type != block_class.type)
@@ -105,7 +104,7 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
     ssize_t sector_read = 0;
     dev->ops.read(dev, buffer, 1, 0, &sector_read);
 
-    hexdump(buffer, 512, 16);
+    // hexdump(buffer, 512, 16);
 
     fat_priv->bytes_per_sector = bpb->bytes_per_sector;
     fat_priv->sectors_per_cluster = bpb->sectors_per_cluster;
@@ -169,7 +168,7 @@ status_t fat_mount(device_t *dev, mountpoint_t *mnt)
         fat_priv->data_start_lba = fat_priv->root_start_lba + root_sectors;
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_probe(device_t *dev)
@@ -177,7 +176,7 @@ status_t fat_probe(device_t *dev)
     ENTER_FUNC("%p", dev);
     if (dev->class->type != block_class.type)
     {
-        KERRNO_RETURN(KERRNO_NOT_SUPPORTED, "");
+        KERRNO_RETURN_NO_PRINT(KERRNO_NOT_SUPPORTED, "");
     }
 
     uint8_t buffer[512];
@@ -185,7 +184,7 @@ status_t fat_probe(device_t *dev)
     ssize_t sectors_read = 0;
     dev->ops.read(dev, buffer, 1, 0, &sectors_read);
 
-    hexdump(bpb, sizeof(fat_boot_sector_t), 16);
+    // hexdump(bpb, sizeof(fat_boot_sector_t), 16);
 
     uint16_t sig = *(uint16_t *)(buffer + 510);
     if (sig != 0xAA55)
@@ -207,7 +206,7 @@ status_t fat_probe(device_t *dev)
         return KERRNO_UNSUCCESS;
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_ident_fs(device_t *dev, fs_ident_t *ident)
@@ -245,7 +244,7 @@ status_t fat_ident_fs(device_t *dev, fs_ident_t *ident)
         *label = '\0';
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_lookup(inode_t *parent, const char *name, inode_t *out, device_t *dev, mountpoint_t *mnt)
@@ -261,18 +260,18 @@ status_t fat_lookup(inode_t *parent, const char *name, inode_t *out, device_t *d
         out->ino = 0;
         out->type = DT_DIR;
         out->size = 0;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     fat_inode_t *fat_parent = (fat_inode_t *)parent;
     status_t ret = fat_entry_find(fat_parent, name, out, dev, mnt, sb);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
-        // log_err(MODULE, "something is fucked");
+        // trace_err(MODULE, "something is fucked");
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 cluster_t fat_next_cluster(cluster_t current_cluster, device_t *dev, fat_priv_data_t *sb)
@@ -387,7 +386,7 @@ status_t fat_read_file(vfs_node_t *node, void *buffer, off_t offset, size_t size
     {
         *len_out = bytes_read;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
@@ -401,7 +400,7 @@ status_t fat_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
 
     // get the cluster number and size
     fat_read_file(node, NULL, 0, 0, NULL, dev, mnt);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
@@ -415,7 +414,7 @@ status_t fat_close(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
     node->offset = 0;
     node->inode = 0;
     node->size = 0;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_alloc_inode(volume_t *vol, inode_t **out)
@@ -424,7 +423,7 @@ status_t fat_alloc_inode(volume_t *vol, inode_t **out)
     ino->base.volume = vol;
     ino->base.fs = vol->fs;
     *out = &ino->base;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_free_inode(inode_t *ino)

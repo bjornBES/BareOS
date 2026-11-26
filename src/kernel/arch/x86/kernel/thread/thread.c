@@ -46,7 +46,7 @@ vaddr_t thread_arch_ctx_init(thread_t *thread, thread_func_t entry, vaddr_t ksta
 
     // vaddr_t args = stack_frame;
 
-    // log_debug(MODULE, "stack_frame = %p", stack_frame);
+    // trace_debug(MODULE, "stack_frame = %p", stack_frame);
     stack_frame -= sizeof(intr_frame_t);
     intr_frame_t *frame = (intr_frame_t *)stack_frame;
     memset(frame, 0, sizeof(intr_frame_t));

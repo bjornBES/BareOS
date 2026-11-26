@@ -21,7 +21,7 @@ status_t ringbuf_init(size_t size, uint32_t count, ringbuf_t **buf_out)
     rbuf->count = count;
     rbuf->object_size = size;
     *buf_out = rbuf;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ringbuf_read_one(ringbuf_t *ring_buffer, void *buf, size_t *size_out)
@@ -32,7 +32,7 @@ status_t ringbuf_read_one(ringbuf_t *ring_buffer, void *buf, size_t *size_out)
     {
         *size_out = ring_buffer->object_size;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ringbuf_read(ringbuf_t *ring_buffer, void *buf, size_t *size_out)
@@ -65,7 +65,7 @@ status_t ringbuf_read(ringbuf_t *ring_buffer, void *buf, size_t *size_out)
 
     ringbuf_read_one(ring_buffer, buf, size_out);
     ring_buffer->read_ptr++;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ringbuf_write(ringbuf_t *ring_buffer, void *buf)
@@ -89,7 +89,7 @@ status_t ringbuf_write(ringbuf_t *ring_buffer, void *buf)
     off_t write_offset = ring_buffer->write_ptr * ring_buffer->object_size;
     ring_buffer->write_ptr++;
     memcpy(&ring_buffer->buffer[write_offset], buf, ring_buffer->object_size);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ringbuf_erase(ringbuf_t *ring_buffer)
@@ -110,7 +110,7 @@ status_t ringbuf_erase(ringbuf_t *ring_buffer)
     {
         ring_buffer->write_ptr = ring_buffer->count - 1;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ringbuf_read_buffer(ringbuf_t *ring_buffer, void *buf, size_t *size_out)

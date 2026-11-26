@@ -25,7 +25,7 @@
     uintptr_t THREAD_CALL_FUNC(func)(uintptr_t arg) \
     {                                               \
         func((arg_type)arg);                        \
-        return KERRNO_SUCCESSES;                    \
+        return KERRNO_SUCCESS;                    \
     }
 
 #define THREAD_WARPER_NO_ARG(func)                \
@@ -38,14 +38,14 @@
     uintptr_t THREAD_CALL_FUNC(func)(uintptr_t _) \
     {                                             \
         func();                                   \
-        return KERRNO_SUCCESSES;                  \
+        return KERRNO_SUCCESS;                  \
     }
 
 thread_t *thread_get_current();
 
 void thread_set_priority(thread_t *t, int priority);
-thread_t *thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flags);
-thread_t *thread_create_user(process_t *proc, vaddr_t user_stack_top, uint32_t flags);
+status_t thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flags, thread_t **out);
+status_t thread_create_user(process_t *proc, vaddr_t user_stack_top, uint32_t flags, thread_t **out);
 status_t thread_clone(thread_t *dest, thread_t *src);
 status_t thread_create_and_copy(thread_t *src, thread_t **out_t);
 

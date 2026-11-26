@@ -12,18 +12,23 @@
 
 #include <types.h>
 
-#define PCI_DEVICE(vend, dev)         \
-    .vendor = (vend), .device = (dev)
+#define PCI_DEVICE(vend, dev)                     \
+    .vendor = (vend), .device = (dev), 0, 0, 0, 0
 
 #define PCI_DEVICE_SUB(vend, dev, subvend, subdev) \
-    .vendor = (vend), .device = (dev)
+    .vendor = (vend), .device = (dev), 0, 0, 0, 0
 
-#define PCI_DEVICE_CLASS(dev_class, dev_class_mask)       \
-    .class = (dev_class), .class_mask = (dev_class_mask), \
-    .vendor = PCI_ANY_ID, .device = PCI_ANY_ID
+#define PCI_DEVICE_CLASS(dev_class, dev_class_mask)      \
+    .vendor = PCI_ANY_ID, .device = PCI_ANY_ID,          \
+    0, 0,                                                \
+    .class = (dev_class), .class_mask = (dev_class_mask)
 
-#define PCI_VDEVICE(vend, dev)                            \
-    .vendor = PCI_VENDOR_ID_##vend, .device = (dev), 0, 0
+#define PCI_VDEVICE(vend, dev)                                  \
+    .vendor = PCI_VENDOR_ID_##vend, .device = (dev), 0, 0, 0, 0
+
+#define PCI_VDEVICE_SUB(vend, dev, subvend, subdev)       \
+    .vendor = PCI_VENDOR_ID_##vend, .device = (dev),      \
+    .sub_vendor = (subvend), .sub_device = (subdev), 0, 0
 
 #define PCI_ANY_ID   (~0)
 
@@ -38,4 +43,6 @@ typedef struct pci_device_id
     uint32_t sub_device;
     uint32_t class;
     uint32_t class_mask;
+
+    uint64_t driver_data;
 } pci_device_id_t;

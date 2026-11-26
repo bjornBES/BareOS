@@ -30,14 +30,14 @@ INTERNAL status_t vma_shrink_down(vma_memory_t *mm, vma_t *vma)
     // ENTER_FUNC(MODULE, "%p, %p", mm, vma);
     if (vma->start >= vma->end)
     {
-        log_warn(MODULE, "start (%p) >= end (%p)", vma->start, vma->end);
+        trace_warn(MODULE, "start (%p) >= end (%p)", vma->start, vma->end);
         return KERRNO_UNSUCCESS;
     }
     vaddr_t old_page = vma->start;
     bool is_present;
     status_t ret = 0;
     ret = mmu_arch_is_present(mm->page_directory, old_page, &is_present);
-    if (ret == KERRNO_SUCCESSES && is_present)
+    if (ret == KERRNO_SUCCESS && is_present)
     {
         paddr_t frame;
         ret = mmu_arch_unmap(mm->page_directory, old_page, &frame);
@@ -53,7 +53,7 @@ INTERNAL status_t vma_shrink_down(vma_memory_t *mm, vma_t *vma)
     }
 
     vma->start = old_page + PAGE_SIZE;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL status_t vma_shrink_up(vma_memory_t *mm, vma_t *vma)
@@ -61,14 +61,14 @@ INTERNAL status_t vma_shrink_up(vma_memory_t *mm, vma_t *vma)
     // ENTER_FUNC(MODULE, "%p, %p", mm, vma);
     if (vma->end >= vma->start)
     {
-        log_warn(MODULE, "start (%p) >= end (%p)", vma->end, vma->start);
+        trace_warn(MODULE, "start (%p) >= end (%p)", vma->end, vma->start);
         return KERRNO_UNSUCCESS;
     }
     status_t ret = 0;
     vaddr_t old_page = vma->end - PAGE_SIZE;
     bool is_present;
     ret = mmu_arch_is_present(mm->page_directory, old_page, &is_present);
-    if (ret == KERRNO_SUCCESSES && is_present)
+    if (ret == KERRNO_SUCCESS && is_present)
     {
         paddr_t frame;
         ret = mmu_arch_unmap(mm->page_directory, old_page, &frame);
@@ -80,11 +80,11 @@ INTERNAL status_t vma_shrink_up(vma_memory_t *mm, vma_t *vma)
     }
     else
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     vma->end = old_page;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vma_shrink(vma_memory_t *mm, vma_t *vma)
@@ -201,12 +201,12 @@ status_t do_mmap(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t type, m
 
     vma_insert(mm, vma);
     *out_vma = vma;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t type, mmu_flags_t flags)
+status_t do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t type, mmu_flags_t flags, vma_t **vma_out)
 {
-    ENTER_FUNC("%p, %p, 0x%x, %u, 0x%x", mm, addr, size, type, flags);
+    ENTER_FUNC("%p, %p, 0x%x, %u, 0x%x, %p", mm, addr, size, type, flags, vma_out);
     page_table_t curr;
     mmu_arch_current_table(&curr);
     mmu_arch_load_table(mm->page_directory);
@@ -240,9 +240,14 @@ vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t typ
     {
         for (vaddr_t va = base; base - len < va; va -= PAGE_SIZE)
         {
-            paddr_t frame = pmm_alloc_frame();
+            paddr_t frame;
+            status_t ret = pmm_alloc_frame(&frame);
+            if (ret)
+            {
+                LOG_RETURN(ret);
+            }
             // virt_addr virt_frame = phys_to_virt_auto(frame);
-            // log_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
+            // trace_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
             trace_debug(MODULE, "mapping virt %p .. phys %p", va, frame);
             trace_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, mm->page_directory);
             trace_debug(MODULE, "mm->page_directory->page_dir_phys = %p", mm->page_directory->page_dir_phys);
@@ -254,9 +259,14 @@ vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t typ
     {
         for (vaddr_t va = base; va < base + len; va += PAGE_SIZE)
         {
-            paddr_t frame = pmm_alloc_frame();
+            paddr_t frame;
+            status_t ret = pmm_alloc_frame(&frame);
+            if (ret)
+            {
+                LOG_RETURN(ret);
+            }
             // virt_addr virt_frame = phys_to_virt_auto(frame);
-            // log_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
+            // trace_debug(MODULE, "phys = %p | virt = %p", frame, virt_frame);
             trace_debug(MODULE, "mapping virt %p .. phys %p", va, frame);
             trace_debug(MODULE, "mm = %p, mm->page_directory = %p", mm, mm->page_directory);
             trace_debug(MODULE, "mm->page_directory->page_dir_phys = %p", mm->page_directory->page_dir_phys);
@@ -268,7 +278,9 @@ vma_t *do_mmap_eager(vma_memory_t *mm, vaddr_t addr, size_t size, vma_type_t typ
     vma_insert(mm, vma);
     mmu_arch_set_prints(state);
     mmu_arch_load_table(&curr);
-    return vma;
+    // TODO: check kerrno
+    *vma_out = vma;
+    return KERRNO_SUCCESS;
 }
 
 status_t vma_free(vma_memory_t *mm)
@@ -279,14 +291,14 @@ status_t vma_free(vma_memory_t *mm)
     {
         vma_t *current_map = cur;
         cur = cur->next;
-        log_debug(MODULE, "starting %p", current_map);
+        trace_debug(MODULE, "starting %p", current_map);
         while (!vma_shrink(mm, current_map))
         {
         }
-        log_debug(MODULE, "done here");
+        trace_debug(MODULE, "done here");
         kfree(current_map);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vma_allocate(vma_memory_t **out_vma)
@@ -296,17 +308,21 @@ status_t vma_allocate(vma_memory_t **out_vma)
     mmu_arch_create_table(&vma_mm->page_directory);
 
     trace_info(MODULE, "mmap stack vma_mm = %p", vma_mm);
-    vma_t *stack = do_mmap_eager(vma_mm, USER_STACK_TOP, PAGE_SIZE * 2, VMA_ANONYMOUS, stack_flags);
+    vma_t *stack;
+    do_mmap_eager(vma_mm, USER_STACK_TOP, PAGE_SIZE * 2, VMA_ANONYMOUS, stack_flags, &stack);
+    vma_t *heap;
     trace_info(MODULE, "stack @ %p = {%p, %p}", stack, stack->start, stack->end);
     trace_info(MODULE, "mmap heap vma_mm = %p", vma_mm);
-    vma_t *heap = do_mmap_eager(vma_mm, USER_HEAP_BASE, PAGE_SIZE * 2, VMA_ANONYMOUS, data_flags);
+    do_mmap_eager(vma_mm, USER_HEAP_BASE, PAGE_SIZE * 2, VMA_ANONYMOUS, data_flags, &heap);
+
+    // TODO: check kerrno
 
     vma_mm->start_stack = stack->end;
     vma_mm->start_heap = heap->start;
     vma_mm->end_heap = heap->end;
     vma_mm->heap_vma = heap;
     vma_mm->stack_vma = stack;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vma_clone(vma_memory_t *dest, vma_memory_t *src)
@@ -325,7 +341,7 @@ status_t vma_clone(vma_memory_t *dest, vma_memory_t *src)
     {
         vma_t *new_vma = kmalloc(sizeof(vma_t));
         memcpy(new_vma, current, sizeof(vma_t));
-        trace_info(MODULE, "new_vma = %p, dest = %p\n", new_vma, dest);
+        trace_info(MODULE, "new_vma = %p, dest = %p", new_vma, dest);
         size_t region_size = PAGE_ALIGN_UP(current->end - current->start);
         for (size_t offset = 0; offset < region_size; offset += PAGE_SIZE)
         {
@@ -343,7 +359,12 @@ status_t vma_clone(vma_memory_t *dest, vma_memory_t *src)
                 mmu_arch_map(proc->page_dir, va, src_phys, current->flags, NULL);
                 continue;
             }
-            paddr_t dst_phys = pmm_alloc_frame();
+            paddr_t dst_phys;
+            status_t ret = pmm_alloc_frame(&dst_phys);
+            if (ret)
+            {
+                LOG_RETURN(ret);
+            }
             mmu_copy_contents(src_phys, dst_phys);
             mmu_arch_map(proc->page_dir, va, dst_phys, current->flags, NULL);
 #else // Cow
@@ -377,8 +398,8 @@ status_t vma_clone(vma_memory_t *dest, vma_memory_t *src)
             pmm_ref_frame(src_phys);
 #endif
         }
-        trace_info(MODULE, "new_vma = %p [%p..%p] of type %u flags %x\n", new_vma, new_vma->start, new_vma->end, new_vma->type, new_vma->flags);
-        trace_info(MODULE, "current = %p [%p..%p] of type %u flags %x\n", current, current->start, current->end, current->type, current->flags);
+        trace_info(MODULE, "new_vma = %p [%p..%p] of type %u flags %x", new_vma, new_vma->start, new_vma->end, new_vma->type, new_vma->flags);
+        trace_info(MODULE, "current = %p [%p..%p] of type %u flags %x", current, current->start, current->end, current->type, current->flags);
         vma_insert(dest, new_vma);
         current = current->next;
     }

@@ -60,11 +60,11 @@ WEAK void *memmove(void *dest, const void *src, size_t n)
     return origDst;
 }
 
-WEAK int memchr(const char *s, int c, size_t count)
+WEAK void *memchr(const char *s, int c, size_t count)
 {
     int ret = 0;
 
-    return ret;
+    return NULL;
 }
 
 WEAK void *memscan(void *s, int c, size_t size)

@@ -16,3 +16,7 @@
 status_t smp_init(boot_params_t *bp);
 
 status_t smp_arch_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg);
+
+status_t smp_send_ipi(uint32_t id, interrupt_vector_t vector);
+status_t smp_send_ipi_all(interrupt_vector_t vector);
+status_t smp_send_ipi_others(interrupt_vector_t vector);

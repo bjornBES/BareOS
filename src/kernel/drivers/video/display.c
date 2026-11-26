@@ -38,11 +38,11 @@ display_device_t *primary_display_dev;
 
 status_t display_device_added(device_t *dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 status_t display_device_removed(device_t *dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static const dev_class_t video_class = {
@@ -51,13 +51,13 @@ static const dev_class_t video_class = {
     .device_added = display_device_added,
     .device_removed = display_device_removed
 };
+REGISTER_CLASS(video_class);
 
 status_t display_init()
 {
-    class_register(&video_class);
     list_initialize(&display_list);
     list_initialize(&listeners);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 ARCHDONE_INITCALL(display_init);
 
@@ -112,12 +112,12 @@ status_t display_notify_listeners(display_device_t *display_dev)
         display_listener_data_t *listener = to_display_listener_data_t(node);
         
         status_t ret = listener->cb(display_dev, listener->ctx);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
 
         node = node->prev;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

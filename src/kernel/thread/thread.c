@@ -22,7 +22,7 @@
 
 #define MODULE "thread"
 
-static tid_t next_tid = 0;
+INTERNAL tid_t next_tid = 0;
 
 thread_t *thread_get_current()
 {
@@ -52,26 +52,39 @@ void thread_set_priority(thread_t *t, int priority)
     t->timeslice = t->timeslice_reset;
 }
 
-thread_t *thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flags)
+status_t thread_create_kernel(thread_func_t entry, uintptr_t arg, uint32_t flags, thread_t **out)
 {
     ENTER_FUNC("%p, %p, 0x%x", entry, arg, flags);
     thread_t *t = thread_allocate();
-    vaddr_t kstack = kstack_alloc(&t->kernel_stack);
+    vaddr_t kstack;
+    status_t ret = kstack_alloc(&t->kernel_stack, &kstack);
+    if (ret)
+    {
+        kfree(t);
+        LOG_RETURN(ret);
+    }
 
     t->kstack = thread_arch_ctx_init(t, entry, kstack, arg);
 
     t->tid = get_tid();
     t->state = THREAD_READY;
     thread_set_priority(t, PRIORITY_NORMAL_SHORT);
-    return t;
+    *out = t;
+    return KERRNO_SUCCESS;
 }
 
-thread_t *thread_create_user(process_t *proc, vaddr_t ustack, uint32_t flags)
+status_t thread_create_user(process_t *proc, vaddr_t ustack, uint32_t flags, thread_t **out)
 {
     ENTER_FUNC("%p, %p, 0x%x", proc, ustack, flags);
     thread_t *t = thread_allocate();
 
-    vaddr_t kstack = kstack_alloc(&t->kernel_stack);
+    vaddr_t kstack;
+    status_t ret = kstack_alloc(&t->kernel_stack, &kstack);
+    if (ret)
+    {
+        kfree(t);
+        LOG_RETURN(ret);
+    }
 
     // fake iretq frame — CPU pops these on iretq
     t->kstack = thread_user_arch_ctx_init(t, proc->loader_data.entry, kstack, ustack, 0);
@@ -81,21 +94,31 @@ thread_t *thread_create_user(process_t *proc, vaddr_t ustack, uint32_t flags)
     t->state = THREAD_READY;
     t->proc = proc;
 
-    return t;
+    *out = t;
+    return KERRNO_SUCCESS;
 }
 
-thread_t *thread_create(thread_func_t entry, uintptr_t arg, uint32_t flags)
+status_t thread_create(thread_func_t entry, uintptr_t arg, uint32_t flags, thread_t **out)
 {
     ENTER_FUNC("%p, %p, 0x%x", entry, arg, flags);
     thread_t *t = thread_allocate();
-    vaddr_t kstack = kstack_alloc(&t->kernel_stack);
+
+    vaddr_t kstack;
+    status_t ret = kstack_alloc(&t->kernel_stack, &kstack);
+    if (ret)
+    {
+        kfree(t);
+        LOG_RETURN(ret);
+    }
 
     t->kstack = thread_arch_ctx_init(t, entry, kstack, arg);
 
     t->tid = get_tid();
     t->state = THREAD_READY;
     thread_set_priority(t, PRIORITY_NORMAL_SHORT);
-    return t;
+
+    *out = t;
+    return KERRNO_SUCCESS;
 }
 
 status_t thread_reap(thread_t *t)

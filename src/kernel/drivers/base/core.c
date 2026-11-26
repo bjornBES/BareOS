@@ -21,30 +21,9 @@
 
 #define MODULE "core"
 
-status_t device_initialize(device_t *dev)
+status_t device_create_groups_vargs(const dev_class_t *class, device_info_t *info, size_t dev_size, off_t dev_offset, void *drvdata, const char *fmt, va_list args, device_t **out)
 {
-    // dev->kobj.kset = devices_kset;
-    // kobject_init(&dev->kobj, &device_ktype);
-    // INIT_LIST_HEAD(&dev->dma_pools);
-    // mutex_init(&dev->mutex);
-    // spin_lock_init(&dev->driver_override.lock);
-    // lockdep_set_novalidate_class(&dev->mutex);
-    // spin_lock_init(&dev->devres_lock);
-    // INIT_LIST_HEAD(&dev->devres_head);
-    // device_pm_init(dev);
-    // set_dev_node(dev, NUMA_NO_NODE);
-    // INIT_LIST_HEAD(&dev->links.consumers);
-    // INIT_LIST_HEAD(&dev->links.suppliers);
-    // INIT_LIST_HEAD(&dev->links.defer_sync);
-    // dev->links.status = DL_DEV_NO_DRIVER;
-    // dev_assign_dma_coherent(dev, dma_default_coherent);
-    // swiotlb_dev_init(dev);
-    return KERRNO_SUCCESSES;
-}
-
-status_t device_create_groups_vargs(const dev_class_t *class, device_t *parent, size_t dev_size, off_t dev_offset, void *drvdata, const char *fmt, bool set_init, va_list args, device_t **out)
-{
-    ENTER_FUNC("%p, %p, %u, %u, %p, %s, %s, 0, %p", class, parent, dev_size, dev_offset, drvdata, fmt, set_init BOOL_TO_STRING, out);
+    ENTER_FUNC("%p, %p, %u, %u, %p, %s, %p", class, info, dev_size, dev_offset, drvdata, fmt, out);
     void *t_dev = NULL;
     device_t *dev = NULL;
     status_t ret = ENODEV;
@@ -66,59 +45,49 @@ status_t device_create_groups_vargs(const dev_class_t *class, device_t *parent, 
 
     device_initialize(dev);
 
+    if (!info->driver)
+    {
+        dev_set_no_driver(dev);
+    }
+
     size_t size = 0;
-    if (set_init)
-    {
-        size = vsprintf(dev->init_name, fmt, args);
-        dev->init_name[size] = '\0';
-    }
-    else
-    {
-        size = vsnprintf(dev->name, DEVICE_NAME_MAX, fmt, args);
-        dev->name[size] = '\0';
-        dev->init_name = (char *)dev->name;
-        dev_set_same_name(dev);
-    }
+    size = vsnprintf(dev->name, DEVICE_NAME_MAX, fmt, args);
+    dev->name[size] = '\0';
 
     dev->class = class;
-    dev->parent = parent;
     dev->drv_data = drvdata;
-    dev->id = (~0);
 
-    ret = device_add(dev);
-    if (ret)
-    {
-        return ret;
-    }
+    ret = device_register_id(dev, info);
+    KERRNO_CHECK_AND_RETURN(ret);
 
     *out = t_dev;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-void *core_device_create_size(const dev_class_t *class, device_t *parent, size_t dev_size, off_t dev_offset, void *drvdata, const char *fmt, ...)
+void *core_device_create_size(const dev_class_t *class, device_info_t *info, size_t dev_size, off_t dev_offset, void *drvdata, const char *fmt, ...)
 {
     va_list vargs;
     device_t *dev;
 
     va_start(vargs, fmt);
-    status_t ret = device_create_groups_vargs(class, parent, dev_size, dev_offset, drvdata, fmt, false, vargs, &dev);
+    status_t ret = device_create_groups_vargs(class, info, dev_size, dev_offset, drvdata, fmt, vargs, &dev);
     va_end(vargs);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return NULL;
     }
     return dev;
 }
 
-device_t *core_device_create(const dev_class_t *class, device_t *parent, void *drvdata, const char *fmt, ...)
+device_t *core_device_create(const dev_class_t *class, device_info_t *info, void *drvdata, const char *fmt, ...)
 {
     va_list vargs;
     device_t *dev;
 
     va_start(vargs, fmt);
-    status_t ret = device_create_groups_vargs(class, parent, sizeof(device_t), -1, drvdata, fmt, false, vargs, &dev);
+    status_t ret = device_create_groups_vargs(class, info, sizeof(device_t), -1, drvdata, fmt, vargs, &dev);
     va_end(vargs);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return NULL;
     }

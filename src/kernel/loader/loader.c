@@ -28,7 +28,7 @@ status_t loader_init()
 {
     list_initialize(&loader_list);
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_LOADER);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 ARCHDONE_INITCALL(loader_init);
@@ -52,7 +52,7 @@ status_t loader_load(vfs_node_t *file, process_t *proc)
     while (curr)
     {
         loader = to_loader(curr);
-        if (loader->probe(buffer, loader) == KERRNO_SUCCESSES)
+        if (loader->probe(buffer, loader) == KERRNO_SUCCESS)
         {
             kfree(buffer);
             break;
@@ -63,7 +63,7 @@ status_t loader_load(vfs_node_t *file, process_t *proc)
     kfree(buffer);
     if (!loader)
     {
-        KERRNO_RETURN(KERRNO_DEVICE_NOT_FOUND, "");
+        KERRNO_RETURN(KERRNO_DEV_NOT_FOUND, "");
     }
 
     return loader->load(file, proc, loader);

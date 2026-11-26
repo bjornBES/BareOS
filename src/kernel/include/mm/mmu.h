@@ -64,7 +64,7 @@ void mmu_copy_contents(paddr_t src, paddr_t dst);
 /// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
 /// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
-/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
+/// @retval KERRNO_ALLOC_FAILED: The PMM is out of memory
 paddr_t mmu_alloc_and_map(page_table_t *table, vaddr_t virt, mmu_flags_t flags);
 
 /// @brief Map a contiguous virtual region to newly allocated physical frames with the given flags
@@ -79,7 +79,7 @@ paddr_t mmu_alloc_and_map(page_table_t *table, vaddr_t virt, mmu_flags_t flags);
 /// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
 /// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
-/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
+/// @retval KERRNO_ALLOC_FAILED: The PMM is out of memory
 paddr_t mmu_alloc_and_map_region(page_table_t *table, vaddr_t virt, size_t size, mmu_flags_t flags);
 
 /// @brief Map a contiguous physical region to a contiguous virtual address with the given flags
@@ -95,7 +95,7 @@ paddr_t mmu_alloc_and_map_region(page_table_t *table, vaddr_t virt, size_t size,
 /// @retval KERRNO_BAD_VALUE: flags, size or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt or virt+size exceeds the virtual space of the CPU
 /// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
-/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
+/// @retval KERRNO_ALLOC_FAILED: The PMM is out of memory
 size_t mmu_map_region(page_table_t *table, vaddr_t virt, paddr_t phys, size_t size, mmu_flags_t flags);
 
 // Unmap [virt, virt + size) and free the backing frames.

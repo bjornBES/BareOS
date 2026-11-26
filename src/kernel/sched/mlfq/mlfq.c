@@ -87,7 +87,7 @@ status_t mlfq_yield(void *runq_data, thread_t *current)
     }
     current->timeslice_reset = priority_to_timeslice(current->priority);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t mlfq_tick(void *runq_data, thread_t *current)
@@ -109,7 +109,7 @@ status_t mlfq_tick(void *runq_data, thread_t *current)
         }
         current->timeslice_reset = priority_to_timeslice(current->priority);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 thread_t *mlfq_pick_next(void *runq_data)
@@ -121,7 +121,7 @@ thread_t *mlfq_pick_next(void *runq_data)
     }
     for (int b = MLFQ_NUM_BUCKETS - 1; b >= 0; b--)
     {
-        // log_debug(MODULE, "&q->queues[%u] = %p", b, &q->queues[b]);
+        // trace_debug(MODULE, "&q->queues[%u] = %p", b, &q->queues[b]);
         if (q->queues[b].count > 0)
         {
             list_node_t *n = list_pop_head(&q->queues[b]);
@@ -150,7 +150,7 @@ status_t mlfq_enqueue(void *runq_data, thread_t *t)
     int b = priority_to_bucket(t->priority);
     list_push_tail(&q->queues[b], &THIS_NODE(t));
     q->count++;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 thread_t *mlfq_get_first(void *runq_data, int level)
@@ -195,7 +195,7 @@ status_t mlfq_setup(sched_class_t *class)
     class->ops.yield = mlfq_yield;
     class->ops.should_preempt = mlfq_should_preempt;
     class->ops.steal_one = mlfq_steal_one;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 #endif

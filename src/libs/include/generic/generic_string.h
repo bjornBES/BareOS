@@ -14,6 +14,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <types.h>
+
+status_t kstrscpy(char *dst, const char *src, size_t size, ssize_t *out_size);
 
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t count);

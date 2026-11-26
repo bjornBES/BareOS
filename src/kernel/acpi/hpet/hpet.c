@@ -91,7 +91,6 @@ static uint32_t period_fs;
 static volatile uint64_t s_ticks = 0;
 hpet_table_t *hpet;
 
-
 uint64_t hpet_read_counter(timer_source_t *self)
 {
     return hpet_arch_read(HPET_REG_COUNTER);
@@ -118,11 +117,11 @@ INTERNAL_INLINE hpet_comparator_t *hpet_alloc_comparator()
 // clock event ops
 status_t hpet_set_oneshot(timer_source_t *dev, uint64_t ns, timer_callback_t cb)
 {
-    log_err(MODULE, "one short");
+    trace_err(MODULE, "one short");
     hpet_comparator_t *comp = hpet_alloc_comparator();
     if (!comp)
     {
-        log_err(MODULE, "ENODEV");
+        trace_err(MODULE, "ENODEV");
         return -ENODEV;
     }
 
@@ -135,7 +134,7 @@ status_t hpet_set_oneshot(timer_source_t *dev, uint64_t ns, timer_callback_t cb)
     hpet_arch_write(HPET_TIMER_CONFIG(comp->index), hpet_arch_read(HPET_TIMER_CONFIG(comp->index)) | HPET_TIMER_CONFIG_INTENABLE);
     hpet_arch_write(HPET_TIMER_COMPARATOR(comp->index), target);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t hpet_set_periodic(timer_source_t *dev, uint64_t ns, timer_callback_t cb)
@@ -153,7 +152,7 @@ status_t hpet_set_periodic(timer_source_t *dev, uint64_t ns, timer_callback_t cb
     hpet_arch_write(HPET_TIMER_CONFIG(comp->index), hpet_arch_read(HPET_TIMER_CONFIG(comp->index)) | HPET_TIMER_CONFIG_INTENABLE | HPET_TIMER_CONFIG_PERIODIC);
     hpet_arch_write(HPET_TIMER_COMPARATOR(comp->index), ticks);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t hpet_cancel(timer_source_t *dev)
@@ -163,7 +162,7 @@ status_t hpet_cancel(timer_source_t *dev)
     {
         hpet_arch_write(HPET_TIMER_CONFIG(i), 0);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t hpet_irq_handler(intr_frame_t *regs, void *ctx)
@@ -177,16 +176,28 @@ status_t hpet_irq_handler(intr_frame_t *regs, void *ctx)
     }
     comp->in_use = false;
     irq_eoi(comp->irq);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t hpet_register()
 {
-    device_t *hpet_dev = timer_create_device();
-    hpet_dev->init_name = "hpet";
-    
+    timer_source_t *hpet_main_timer = timer_create();
+    device_t *hpet_main_dev = &hpet_main_timer->dev;
+    hpet_main_timer->caps.invariant = 1;
+    hpet_main_timer->caps.read_cost_ns = 100000;
+    hpet_main_timer->caps.freq_hz = hpet_freq;
+    hpet_main_timer->caps.min_interval_ns = 1;
+    hpet_main_timer->caps.max_interval_ns = UINT64_MAX / hpet_freq;
+
+    hpet_main_timer->read_counter = hpet_read_counter;
+    hpet_main_timer->ticks_to_ns = hpet_ticks_to_ns;
+
+    // (device_id_t)MKDEV_KERNEL(hpet_main_dev->class->type, DEV_AUTO_DEV, DEV_AUTO_MIN)
+    status_t ret = device_register_with_name(hpet_main_dev, "hpet-main");
+    KERRNO_CHECK_AND_RETURN(ret);
+
     timer_source_t *hpet_timer = timer_create();
-    hpet_timer->name = "hpet";
+    device_t *hpet_dev = &hpet_timer->dev;
     hpet_timer->caps.interrupt_capable = 1;
     hpet_timer->caps.supports_oneshot = 1;
     hpet_timer->caps.supports_periodic = 1;
@@ -194,32 +205,13 @@ status_t hpet_register()
     hpet_timer->caps.freq_hz = hpet_freq;
     hpet_timer->caps.min_interval_ns = 1;
     hpet_timer->caps.max_interval_ns = UINT32_MAX / hpet_freq;
-    
+
     hpet_timer->arm_oneshot = hpet_set_oneshot;
     hpet_timer->arm_periodic = hpet_set_periodic;
     hpet_timer->cancel = hpet_cancel;
-    hpet_dev->class_data = hpet_timer;
-    
-    device_register(hpet_dev);
-    hpet_timer->dev = hpet_dev->devt.id;
-    
-    device_t *hpet_main_dev = timer_create_device();
-    hpet_main_dev->init_name = "hpet-main";
-    
-    timer_source_t *hpet_main_timer = timer_create();
-    hpet_main_timer->name = "hpet-main";
-    hpet_main_timer->caps.invariant = 1;
-    hpet_main_timer->caps.read_cost_ns = 100000;
-    hpet_main_timer->caps.freq_hz = hpet_freq;
-    hpet_main_timer->caps.min_interval_ns = 1;
-    hpet_main_timer->caps.max_interval_ns = UINT64_MAX / hpet_freq;
-    
-    hpet_main_timer->read_counter = hpet_read_counter;
-    hpet_main_timer->ticks_to_ns = hpet_ticks_to_ns;
-    hpet_main_dev->class_data = hpet_main_timer;
-    
-    device_register(hpet_main_dev);
-    hpet_main_timer->dev = hpet_main_dev->devt.id;
+
+    ret = device_register_child_with_name(hpet_dev, "hpet", hpet_main_dev);
+    KERRNO_CHECK_AND_RETURN(ret);
 
     hpet_arch_write(HPET_REG_CONFIG, hpet_arch_read(HPET_REG_CONFIG) | HPET_CONFIG_ENABLE);
     hpet_arch_write(HPET_REG_COUNTER, 0);
@@ -227,7 +219,7 @@ status_t hpet_register()
     // timer_register(hpet_timer);
     // timer_register(hpet_main_timer);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t hpet_parse()
@@ -235,18 +227,18 @@ status_t hpet_parse()
     sdt_header_t *hpet_header = (sdt_header_t *)table_get_table(0x54455048);
     if (!hpet_header)
     {
-        KERRNO_RETURN(ENOENT, "no hpet found")
+        KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "no hpet found")
     }
     trace_info(MODULE, "hpet found revision=%u", hpet_header->revision);
 
     table_verify_checksum(hpet_header);
 
     hpet = (hpet_table_t *)hpet_header;
-    
+
     if (!hpet)
     {
-        log_crit(MODULE, "no HPET");
-        KERRNO_RETURN(0, ""); // TODO
+        trace_crit(MODULE, "no HPET");
+        KERRNO_RETURN(KERRNO_UNSUCCESS, ""); // TODO
     }
     trace_info(MODULE, "IO address_space = %x", hpet->base_address.address_space);
     trace_info(MODULE, "IO access_size = %x", hpet->base_address.access_size);
@@ -268,7 +260,7 @@ status_t hpet_parse()
     uint64_t caps = hpet_arch_read(HPET_REG_CAPS);
     if (!caps)
     {
-        KERRNO_RETURN(0, "caps 0x%016x are not valid", caps); // TODO
+        KERRNO_RETURN(KERRNO_UNSUCCESS, "caps 0x%016x are not valid", caps); // TODO
     }
     trace_info(MODULE, "caps=0x%llx", caps);
 
@@ -286,7 +278,7 @@ status_t hpet_parse()
     // check periodic is supported
     if (!(timer0_cfg & HPET_TIMER_CONFIG_PERIODIC_CAP))
     {
-        KERRNO_RETURN(0, "timer0 does not support periodic mode"); // TODO
+        KERRNO_RETURN(KERRNO_UNSUCCESS, "timer0 does not support periodic mode"); // TODO
     }
 
     // enumerate comparators
@@ -304,7 +296,7 @@ status_t hpet_parse()
         gsi_t gsi;
         kernel_irq_t irq;
         status_t ret = irq_pick_free_gsi(irq_mask, &irq, &gsi);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             trace_crit(MODULE, "irq_pick_free_gsi returned 0x%x", ret);
         }
@@ -336,7 +328,7 @@ ARCHDONE_INITCALL(hpet_parse)
 
 status_t hpet_intcall_device()
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 DEVICE_INITCALL(hpet_intcall_device);

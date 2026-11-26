@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "drivers/base/block/blkdevt.h"
+#include "drivers/block/blkdevt.h"
 
 #include "debug/debug.h"
 
@@ -60,8 +60,12 @@ status_t block_register(blkdev_t *blk_dev, device_t *parent)
     blk_dev->dev.ops.read = block_partition_read;
     blk_dev->ops.read_sectors = block_partition_read_sectors;
 
-    blk_dev->parent = to_blkdev(parent);
+    blkdev_t *parent_blk_dev = to_blkdev(parent);
+    blk_dev->parent = parent_blk_dev;
 
-    dev_set_no_driver(&blk_dev->dev);
-    return device_register_child(&blk_dev->dev, parent);
+    device_t *dev = &blk_dev->dev;
+    device_set_name(dev, "%s%u", parent->name, parent_blk_dev->partition_count);
+
+    dev_set_no_driver(dev);
+    return device_register_child(dev, parent);
 }

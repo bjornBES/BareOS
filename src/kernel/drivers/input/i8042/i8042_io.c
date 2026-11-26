@@ -125,7 +125,7 @@ status_t i8042_first_channel_wait_for_ack()
         uint8_t data = inb(I8042_DATA_REG);
         if (data == 0xFA)
         {
-            return KERRNO_SUCCESSES; // acknowledge sended
+            return KERRNO_SUCCESS; // acknowledge sended
         }
     }
     trace_err(MODULE, "Timer ran out in polling first channel");
@@ -150,7 +150,7 @@ status_t i8042_first_channel_wait_for_reset()
         trace_err(MODULE, "First channel reset self-test failed: 0x%X", result);
         return KERRNO_UNSUCCESS;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void i8042_write_second_channel(uint8_t data)
@@ -174,7 +174,7 @@ status_t i8042_second_channel_wait_for_ack()
             uint8_t data = i8042_read(I8042_DATA_REG);
             if (data == 0xFA)
             {
-                return KERRNO_SUCCESSES; // acknowledge sended
+                return KERRNO_SUCCESS; // acknowledge sended
             }
         }
         ticks++;

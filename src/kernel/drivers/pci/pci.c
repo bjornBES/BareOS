@@ -48,19 +48,19 @@ pci_device_t **pci_devices;
 status_t pci_config_read8(pci_device_t *pci_dev, uint16_t offset, uint8_t *out)
 {
     *out = pci_arch_read_config32(pci_dev, offset) >> ((offset & 3) << 3);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_config_read16(pci_device_t *pci_dev, uint16_t offset, uint16_t *out)
 {
     *out = pci_arch_read_config32(pci_dev, offset) >> ((offset & 2) << 3);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_config_read32(pci_device_t *pci_dev, uint16_t offset, uint32_t *out)
 {
     *out = pci_arch_read_config32(pci_dev, offset);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_config_write8(pci_device_t *pci_dev, uint16_t offset, uint8_t val)
@@ -69,7 +69,7 @@ status_t pci_config_write8(pci_device_t *pci_dev, uint16_t offset, uint8_t val)
     uint32_t old_data = pci_arch_read_config32(pci_dev, offset) & ~(0xFFu << ((offset & 3) << 3));
     uint32_t data = old_data | val32;
     pci_arch_write_config32(pci_dev, offset, data);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_config_write16(pci_device_t *pci_dev, uint16_t offset, uint16_t val)
@@ -78,21 +78,21 @@ status_t pci_config_write16(pci_device_t *pci_dev, uint16_t offset, uint16_t val
     uint32_t old_data = pci_arch_read_config32(pci_dev, offset) & ~(0xFFFFu << ((offset & 2) << 3));
     uint32_t data = old_data | val32;
     pci_arch_write_config32(pci_dev, offset, data);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_config_write32(pci_device_t *pci_dev, uint16_t offset, uint32_t val)
 {
     pci_arch_write_config32(pci_dev, offset, val);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_init_capabilities(pci_device_t *pci_dev)
 {
     ENTER_FUNC("%p", pci_dev);
     // pci_ea_init(pci_dev);		/* Enhanced Allocation */
-    pci_dev->no_msi = pci_msi_init(pci_dev) != KERRNO_SUCCESSES;           /* Disable MSI */
-    pci_dev->msix_enabled = !(pci_msix_init(pci_dev) == KERRNO_SUCCESSES); /* Disable MSI-X */
+    pci_dev->no_msi = pci_msi_init(pci_dev) != KERRNO_SUCCESS;           /* Disable MSI */
+    pci_dev->msix_enabled = !(pci_msix_init(pci_dev) == KERRNO_SUCCESS); /* Disable MSI-X */
 
     /* Buffers for saving PCIe and PCI-X capabilities */
     // pci_allocate_cap_save_buffers(pci_dev);
@@ -118,7 +118,7 @@ status_t pci_init_capabilities(pci_device_t *pci_dev)
 
     // pcie_report_downtraining(pci_dev);
     // pci_init_reset_methods(pci_dev);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *pci_dev, int offset, int bar_index, pci_bar_t *out_abar);
@@ -129,18 +129,18 @@ status_t pci_get_bar(pci_device_t *pci_dev, uint8_t bar_index, pci_bar_t *out)
     pci_int_decode_bar(pci_dev, bar_index * 4 + 0x10, bar_index, &pci_dev->bars[bar_index]);
     trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", pci_dev->bars[bar_index].base, pci_dev->bars[bar_index].is_64bit BOOL_TO_STRING, pci_dev->bars[bar_index].is_mmio BOOL_TO_STRING, pci_dev->bars[bar_index].prefetchable BOOL_TO_STRING, pci_dev->bars[bar_index].size);
     memcpy(out, &pci_dev->bars[bar_index], sizeof(pci_bar_t));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_map_bar(pci_device_t *pci_dev, uint8_t bar_index, vaddr_t *out_vaddr)
 {
     resource_t *res = &pci_dev->resource[bar_index];
-    if (res->space != RES_SPACE_MEM)
+    if (res->space != RES_SPACE_RAM)
     {
         KERRNO_RETURN(KERRNO_DONT_DO_THAT, "can only map memory");
     }
     *out_vaddr = ioremap(pci_dev->bars[bar_index].base, pci_dev->bars[bar_index].size);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_find_capability(pci_device_t *pci_dev, uint8_t cap_id, uint16_t *out_offset)
@@ -148,7 +148,7 @@ status_t pci_find_capability(pci_device_t *pci_dev, uint8_t cap_id, uint16_t *ou
     uint16_t conf_id = pci_dev->config_ptr;
     if (conf_id == 0x0000)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     uint16_t conf = 0x0;
     do
@@ -172,12 +172,12 @@ status_t pci_find_capability(pci_device_t *pci_dev, uint8_t cap_id, uint16_t *ou
         }
         conf_id = ((conf & PCI_CAP_LIST_NEXT_MASK) >> 8);
     } while (conf_id != 0);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_find_ext_capability(pci_device_t *pci_dev, uint16_t cap_id, uint16_t *out_offset)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_get_irq(pci_device_t *pci_dev, interrupt_vector_t *out_line, kernel_irq_t *out_pin)
@@ -186,12 +186,12 @@ status_t pci_get_irq(pci_device_t *pci_dev, interrupt_vector_t *out_line, kernel
     {
         pci_msi_register_irq(pci_dev, out_line, out_pin);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_enable_device(pci_device_t *pci_dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_set_bus_master(pci_device_t *pci_dev, uint8_t enable)
@@ -200,7 +200,7 @@ status_t pci_set_bus_master(pci_device_t *pci_dev, uint8_t enable)
     uint16_t cmd;
 
     status_t ret = pci_config_read16(pci_dev, PCI_HEADER_COMMAND, &old_cmd);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -216,34 +216,34 @@ status_t pci_set_bus_master(pci_device_t *pci_dev, uint8_t enable)
     if (cmd != old_cmd)
     {
         ret = pci_config_write16(pci_dev, PCI_HEADER_COMMAND, cmd);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
     }
     pci_dev->is_bus_master = enable;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_enable_interrupt(pci_device_t *pci_dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_enable_dma(pci_device_t *pci_dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_set_command_flags(pci_device_t *pci_dev, pci_command_bits_t flags)
 {
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_clear_command_flags(pci_device_t *pci_dev, pci_command_bits_t flags)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL pci_bar_t pci_int_decode_bar(pci_device_t *pci_dev, int offset, int bar_index, pci_bar_t *out_abar)
@@ -470,11 +470,11 @@ extern bus_type_t pci_bus_type;
 
 status_t pci_device_added(device_t *dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 status_t pci_device_removed(device_t *dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static const dev_class_t pcibus_class = {
@@ -483,6 +483,7 @@ static const dev_class_t pcibus_class = {
     .device_added = pci_device_added,
     .device_removed = pci_device_removed,
 };
+REGISTER_CLASS(pcibus_class);
 
 void pci_check_buses()
 {
@@ -504,7 +505,7 @@ void pci_check_buses()
                 pci_devices[pci_device_count] = pci_dev;
             }
             {
-                log_debug(NO_MODULE, "");
+                trace_debug(MODULE, "");
 
                 // trace_debug(MODULE, "pci_devices[%u] = %p", pci_device_count, &pdev);
                 device_t *dev = &pci_dev->dev;
@@ -552,7 +553,7 @@ void pci_check_buses()
                         trace_debug(MODULE, "status: 0x%x, command: 0x%x", pdev_func.status, pdev_func.command);
                         trace_debug(MODULE, "class_code: 0x%x, sub_class: 0x%x, prog_if: 0x%x, revision: 0x%x", pdev_func.class_code, pdev_func.sub_class, pdev_func.prog_if, pdev_func.revision);
                         trace_debug(MODULE, "bist: 0x%x, header_type: 0x%x, latency_timer: 0x%x, cache_line_size: 0x%x", pdev_func.bist, pdev_func.header_type, pdev_func.latency_timer, pdev_func.cache_line_size);
-                        log_debug(NO_MODULE, "");
+                        trace_debug(MODULE, "");
                     }
                 }
                 else
@@ -567,26 +568,26 @@ status_t pci_register_driver(pci_driver_t *driver)
 {
     driver->driver.bus = &pci_bus_type;
     driver->driver.name = driver->name;
-    drivers_register(&driver->driver);
-    return KERRNO_SUCCESSES;
+    driver_register(&driver->driver);
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_unregister_driver()
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_initialize()
 {
-    class_register(&pcibus_class);
     pci_device_count = 0;
     pci_capacity = 16;
     pci_devices = (pci_device_t **)kmalloc(sizeof(pci_device_t *) * 16);
     trace_debug(MODULE, "pci_devices = %p", pci_devices);
-    if (mcfg_parse() != KERRNO_SUCCESSES)
+    if (mcfg_parse() != KERRNO_SUCCESS)
     {
     }
 
     pci_check_buses();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
+

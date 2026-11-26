@@ -162,11 +162,11 @@ INTERNAL status_t vc_data_init(vc_data_t *vc, int num, bool init)
     vc->vc_display_fg = &master_display_fg;
     // vc->can_do_color = 0;
     status_t ret = vc->vc_sw->con_init(vc, init);
-    if (ret == KERRNO_SUCCESSES)
+    if (ret == KERRNO_SUCCESS)
     {
         // vc->vc_size_row = vc->vc_cols << 1;
         vc->vc_screenbuf_cells = vc->vc_rows * vc->vc_cols;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return ret;
 }
@@ -503,15 +503,13 @@ void vc_redraw_screen(vc_data_t *vc, int is_switch)
     int redraw = 0;
 
     WARN_LOCK_UNLOCKED();
-    trace_debug(MODULE, "here");
 
     if (!vc)
     {
         /* strange ... */
-        /* printk("vc_redraw_screen: tty %d not allocated ??\n", new_console+1); */
+        pr_err("vc_redraw_screen: tty %d not allocated ??", vc->vc_index);
         return;
     }
-    trace_debug(MODULE, "here 1");
 
     if (is_switch)
     {
@@ -539,15 +537,12 @@ void vc_redraw_screen(vc_data_t *vc, int is_switch)
         redraw = 1;
     }
 
-    trace_debug(MODULE, "here 2");
     if (redraw)
     {
         bool update;
         bool old_was_color = vc_can_color(vc);
 
-        trace_debug(MODULE, "here 3");
         vc_set_origin(vc);
-        trace_debug(MODULE, "here 4");
         update = vc->vc_sw->con_switch(vc);
         // set_palette(vc);
 
@@ -696,13 +691,13 @@ status_t vc_allocate(uint32_t currcons)
 
     if (consoles[currcons].data)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     vc = kzmalloc(sizeof(vc_data_t));
     if (!vc)
     {
-        KERRNO_RETURN(KERRNO_OOM, "");
+        KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "");
     }
 
     consoles[currcons].data = vc;
@@ -725,14 +720,14 @@ status_t vc_allocate(uint32_t currcons)
     vc->vc_screenbuf = kzmalloc(vc->vc_screenbuf_cells * sizeof(vt_cell_t));
     if (!vc->vc_screenbuf)
     {
-        KERRNO_NO_RETURN(KERRNO_OOM, "");
-        ret = KERRNO_OOM;
+        KERRNO_NO_RETURN(KERRNO_OUT_OF_MEMORY, "");
+        ret = KERRNO_OUT_OF_MEMORY;
         goto err_free;
     }
 
     vc_init(vc, 1);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 err_free:
     vt_data_deinit(vc);
     kfree(vc);
@@ -930,12 +925,12 @@ int vc_cons_allocated(unsigned int i)
 
 status_t vt_console_added()
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vt_console_removed()
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 typedef struct vc_draw_region
@@ -1050,7 +1045,7 @@ INTERNAL status_t vc_con_write_normal(vc_data_t *vc, code_point_t tc, code_point
     // vc->vc_pos->attr = vc->vc_attr;
     // vc->vc_pos++;
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static bool ansi_control_string(enum vc_ctl_state state)
@@ -1560,7 +1555,7 @@ rescan_last_byte:
     // trace_debug(MODULE, "pos = %p, vc_x = %u", vc->vc_pos, vc->vc_x);
     *size_out = n;
     UNLOCK();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t con_vc_install(tty_driver_t *driver, tty_struct_t *tty)
@@ -1604,19 +1599,19 @@ status_t con_vc_install(tty_driver_t *driver, tty_struct_t *tty)
 
     UNLOCK();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t con_vc_open(tty_struct_t *tty, vfs_node_t *filp)
 {
     /* everything done in install */
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t con_vc_close(tty_struct_t *tty, vfs_node_t *filp)
 {
     /* Nothing to do - we defer to shutdown */
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vc_con_write(tty_struct_t *tty, const uint8_t *buf, size_t count, ssize_t *size_out)
@@ -1641,7 +1636,7 @@ tty_driver_t *console_driver;
 
 #ifdef CONFIG_VT_CONSOLE
 
-status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
+status_t vt_console_print(console_t *co, console_message_t *console_msg, const char *s, size_t count)
 {
     //     struct vc_data *vc = vc_cons[fg_console].d;
     //     unsigned char c;
@@ -1739,19 +1734,23 @@ status_t vt_console_print(console_t *co, wchar_t *b, size_t count)
     // quit:
     //     spin_unlock(&printing_lock);
     FUNC_NOT_IMPLEMENTED();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vt_console_device(console_t *c, int *index, tty_driver_t **tty_out)
 {
     *index = c->index ? c->index - 1 : fg_console;
     *tty_out = console_driver;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vt_console_setup(console_t *co, char *options)
 {
-    return co->index >= MAX_CONSOLES ? EINVAL : KERRNO_SUCCESSES;
+    if (co->index >= MAX_CONSOLES)
+    {
+        KERRNO_RETURN(EINVAL, "");
+    }
+    return KERRNO_SUCCESS;
 }
 
 console_t vt_console_driver = {
@@ -1762,6 +1761,7 @@ console_t vt_console_driver = {
     // .unblank	= unblank_screen,
     .flags = CON_PRINTBUFFER,
     .index = -1,
+    .console_loglevel = CON_WRITE_LEVEL_NORMAL,
 };
 #endif
 
@@ -1788,18 +1788,18 @@ status_t vty_init()
     status_t ret = tty_alloc_driver(MAX_CONSOLES, TTY_DRIVER_REAL_RAW | TTY_DRIVER_RESET_TERMIOS, &console_driver);
     if (ret)
     {
-        KERNEL_PANIC(MODULE, "Couldn't allocate console driver\n");
+        KERNEL_PANIC(MODULE, "Couldn't allocate console driver");
     }
 
     console_driver->name = "vtty";
     console_driver->major = tty_class.type;
-    console_driver->device = 0;
+    console_driver->device = 1;
     console_driver->name_base = 1;
     console_driver->minor_start = 1;
     console_driver->type = TTY_DRIVER_TYPE_CONSOLE;
     console_driver->init_termios = tty_std_termios;
     console_driver->init_termios.c_iflag |= IUTF8;
-    console_driver->ops = &con_ops;
+    tty_set_operations(console_driver, &con_ops);
     tty_dev_t *vtty_dev;
     if (tty_register_driver(console_driver, &vtty_dev))
     {
@@ -1808,7 +1808,7 @@ status_t vty_init()
     vtty_dev->tty = master_display_fg->vc_tty;
     // kbd_init();
     // console_map_init();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 const dev_class_t vtconsole_class = {
@@ -1817,11 +1817,10 @@ const dev_class_t vtconsole_class = {
     .device_removed = vt_console_removed,
     .type = DEVICE_SERIAL,
 };
+REGISTER_CLASS(vtconsole_class);
 
 status_t vt_init()
 {
-    class_register(&vtconsole_class);
-
     LOCK();
 
     conswitchp = (virt_con_ops_t *)&dummy_con;
@@ -1874,7 +1873,7 @@ status_t vt_init()
 
     UNLOCK();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 CONSOLE_INITCALL(vt_init);
@@ -2021,7 +2020,7 @@ INTERNAL status_t vc_do_register_con_driver(const virt_con_ops_t *con, uint32_t 
             con_driver->flag = CON_DRIVER_FLAG_MODULE | CON_DRIVER_FLAG_INIT;
             con_driver->first = first;
             con_driver->last = last;
-            ret = KERRNO_SUCCESSES;
+            ret = KERRNO_SUCCESS;
             break;
         }
     }
@@ -2032,7 +2031,15 @@ INTERNAL status_t vc_do_register_con_driver(const virt_con_ops_t *con, uint32_t 
         // return ret;
     }
 
-    con_driver->dev = core_device_create(&vtconsole_class, NULL, con_driver, "vtcon%i", con_driver->node);
+    device_info_t info = {
+        .dev_id = {
+            .major = vtconsole_class.type,
+            .device = con_driver->node,
+            .minor = 0,
+        },
+    };
+
+    con_driver->dev = core_device_create(&vtconsole_class, &info, con_driver, "vtcon%i", con_driver->node);
     if (!con_driver->dev)
     {
         trace_warn(MODULE, "Unable to create device for %s", con_driver->desc);
@@ -2042,7 +2049,7 @@ INTERNAL status_t vc_do_register_con_driver(const virt_con_ops_t *con, uint32_t 
     {
         con_driver->flag |= CON_DRIVER_FLAG_ATTR;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vc_register_con_driver(const virt_con_ops_t *con, uint32_t first, uint32_t last)
@@ -2062,10 +2069,10 @@ status_t vc_take_over_console(const virt_con_ops_t *con, uint32_t first, uint32_
     KERRNO_CHECK_RETURN(ret);
     if (ret == EBUSY)
     {
-        ret = KERRNO_SUCCESSES;
+        ret = KERRNO_SUCCESS;
     }
 
-    if (ret == KERRNO_SUCCESSES)
+    if (ret == KERRNO_SUCCESS)
     {
         ret = vc_do_bind_con_driver(con, first, last, is_default);
         UNLOCK();

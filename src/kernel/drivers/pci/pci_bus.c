@@ -88,14 +88,14 @@ status_t pci_bus_match(device_t *dev, driver_t *drv)
     {
         return KERRNO_UNSUCCESS;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_call_probe(pci_driver_t *pci_drv, pci_device_t *pci_dev, pci_device_id_t *pci_dev_id)
 {
     pci_dev->driver = pci_drv;
     status_t ret = pci_drv->probe(pci_dev, pci_dev_id);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         pci_dev->driver = NULL;
         return ret;
@@ -150,7 +150,7 @@ bus_type_t pci_bus_type = {
 status_t pci_register_bus()
 {
     bus_register(&pci_bus_type);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 SUBSYS_INITCALL(pci_register_bus);

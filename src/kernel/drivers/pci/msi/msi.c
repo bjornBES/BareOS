@@ -61,7 +61,7 @@ status_t pci_msi_register_irq(pci_device_t *pci_dev, interrupt_vector_t *out_lin
 {
     *out_pin = pci_dev->kernel_irq;
     irq_register_handler(pci_dev->kernel_irq, IRQ_SOURCE_MSI, msi_handler, pci_dev, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, ANY_CPU);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_msi_set_enable(pci_device_t *pci_dev, uint8_t enable)
@@ -69,7 +69,7 @@ status_t pci_msi_set_enable(pci_device_t *pci_dev, uint8_t enable)
     uint32_t control;
 
     status_t ret = msi_pci_read32(pci_dev, 0, &control);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -79,14 +79,14 @@ status_t pci_msi_set_enable(pci_device_t *pci_dev, uint8_t enable)
         control |= PCI_MSI_FLAGS_ENABLE;
     }
     ret = msi_pci_write32(pci_dev, 0, control);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     pci_dev->msi_enabled = enable;
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t msi_enable(pci_device_t *pci_dev)
@@ -135,5 +135,5 @@ status_t pci_enable_msi_range(pci_device_t *pci_dev, size_t min_vecs, size_t max
     pci_dev->irq_count = count;
 
     pci_msi_set_enable(pci_dev, 1);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

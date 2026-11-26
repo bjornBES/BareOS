@@ -13,7 +13,7 @@
 #include "ahci.h"
 
 #include "dev/devicet.h"
-#include "drivers/base/block/blkdevt.h"
+#include "drivers/block/blkdevt.h"
 
 #include "drivers/pci/pci_dev.h"
 

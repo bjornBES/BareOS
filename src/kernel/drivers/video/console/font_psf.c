@@ -56,7 +56,7 @@ typedef struct
 
 status_t map_insert(font_unicode_map_t *m, wchar_t ch, uint32_t glyph)
 {
-    ENTER_FUNC("%p, 0x%x, 0x%x", m, ch, glyph);
+    // ENTER_FUNC("%p, 0x%x, 0x%x", m, ch, glyph);
     if (m->count >= m->cap)
     {
         m->cap <<= 1;
@@ -65,7 +65,7 @@ status_t map_insert(font_unicode_map_t *m, wchar_t ch, uint32_t glyph)
     m->e[m->count].ch = ch;
     m->e[m->count].glyph = glyph;
     m->count++;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 int map_compare_cp(const void *blockA, const void *blockB)
@@ -78,7 +78,7 @@ int map_compare_cp(const void *blockA, const void *blockB)
 status_t map_finalize(const font_unicode_map_t *m)
 {
     qsort(m->e, m->count, sizeof(struct unicode_map_entry), map_compare_cp);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t parse_unicode_table_psf1(font_t *out, const uint8_t *tab, size_t len)
@@ -117,7 +117,7 @@ status_t parse_unicode_table_psf1(font_t *out, const uint8_t *tab, size_t len)
 
         {
 
-            if (map_insert(m, v, glyph) != KERRNO_SUCCESSES)
+            if (map_insert(m, v, glyph) != KERRNO_SUCCESS)
             {
                 return kfree(m);
             }
@@ -126,7 +126,7 @@ status_t parse_unicode_table_psf1(font_t *out, const uint8_t *tab, size_t len)
 
     map_finalize(m); // sort, drop duplicates
     out->map = m;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t parse_psf1(font_t *out, const uint8_t *data, size_t size)
@@ -174,7 +174,7 @@ status_t parse_psf1(font_t *out, const uint8_t *data, size_t size)
     {
         ret = parse_unicode_table_psf1(out, data + 4 + glyph_bytes, size - 4 - glyph_bytes);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
@@ -182,14 +182,14 @@ status_t parse_psf1(font_t *out, const uint8_t *data, size_t size)
 
     ret = font_map_lookup(out, '?', &out->fallback);
     // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     // 63
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL status_t parse_unicode_table_psf2(font_t *out, const uint8_t *tab, size_t len);

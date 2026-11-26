@@ -11,6 +11,8 @@
 #include "dev/device_id.h"
 #include "dev/device.h"
 
+#include "drivers/base/class.h"
+
 #include "debug/debug.h"
 
 #include "string.h"
@@ -35,25 +37,8 @@ uint32_t device_id_get_id(device_t *dev)
     return dev->class->devices.count;
 }
 
-uint32_t device_id_get_next_class_id(const char *class_name)
-{
-    for (int i = 0; i < class_counter_count; i++)
-    {
-        if (strcmp(class_counters[i].name, class_name) == 0)
-        {
-            return class_counters[i].next_id++;
-        }
-    }
-
-    // new class name, start at 0
-    strncpy(class_counters[class_counter_count].name, class_name, DEVICE_NAME_MAX - 1);
-    class_counters[class_counter_count].next_id = 1; // returning 0 this call
-    class_counter_count++;
-    return 0;
-}
-
 status_t device_id_print(device_id_t *devt)
 {
     trace_info(MODULE, "dev_id=%u:%u:%u", devt->major, devt->device, devt->minor);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

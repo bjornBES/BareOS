@@ -8,15 +8,13 @@
  * -----
  */
 
-#include "drivers/base/block/partition.h"
+#include "drivers/block/partition.h"
 
-#include "drivers/base/block/blkdev.h"
+#include "drivers/block/blkdev.h"
 
 #include "kerrno.h"
 
 #define MODULE "partitions"
-
-extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t part_detect(blkdev_t *blk_dev)
 {
@@ -24,11 +22,11 @@ status_t part_detect(blkdev_t *blk_dev)
     char buf[512];
     ssize_t sector_size;
     status_t ret = blk_dev->ops.read_sectors(blk_dev, buf, 1, 0, &sector_size);
-    if (sector_size != 1 && ret != KERRNO_SUCCESSES)
+    if (sector_size != 1 && ret != KERRNO_SUCCESS)
     {
         trace_err(MODULE, "something is wrong");
     }
     
-    hexdump(buf + 0x1be, 0x10*4, 16);
+    // hexdump(buf + 0x1be, 0x10*4, 16);
     return mbr_detect(blk_dev, buf);
 }

@@ -33,10 +33,24 @@ SECTIONS
         __cmdline_params_end = .;
     }
 
+    .earlycon_table : {
+        earlycon_table_start = .;
+        KEEP(*(.earlycon_table))
+        earlycon_table_end = .;
+    }
+
     .init.data              : AT(ADDR(.init.data) - KERNEL_VMA + KERNEL_LMA)
     {
+        __initcall_constr = .;
+        KEEP(*(.initcallconstr.init))
+        QUAD(0x0)
+
         __initcall_start = .;
         KEEP(*(.initcallearly.init))
+        QUAD(0x0)
+
+        initcallallocator_start = .;
+        KEEP(*(.initcallallocator.init))
         QUAD(0x0)
 
         initcall1_start = .;
@@ -45,6 +59,10 @@ SECTIONS
 
         initcall2_start = .;
         KEEP(*(.initcall2.init))
+        QUAD(0x0)
+
+        initcallclass_start = .;
+        KEEP(*(.initcallclass.init))
         QUAD(0x0)
 
         initcall3_start = .;

@@ -34,7 +34,7 @@ extern status_t cmdline_call_later(char *key, const char *value);
 status_t cmdline_early_parse()
 {
     const char *cmdline = saved_cmdline;
-    trace_debug(MODULE, "kernel command line = \"%s\"", cmdline);
+    // trace_debug(MODULE, "kernel command line = \"%s\"", cmdline);
     bool last_entry = false;
     while (*cmdline)
     {
@@ -73,7 +73,7 @@ status_t cmdline_early_parse()
 
         char *key = (char *)cmdline;
 
-        trace_debug(MODULE, "key: \"%s\" = value: \"%s\"", key, value);
+        // trace_debug(MODULE, "key: \"%s\" = value: \"%s\"", key, value);
         cmdline_call_early(key, value);
         if (!last_entry)
         {
@@ -87,12 +87,12 @@ status_t cmdline_early_parse()
         }
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t cmdline_early_init(boot_params_t *boot_params)
 {
-    hexdump((char *)boot_params->cmdline_addr, boot_params->cmdline_size, 16);
+    // hexdump((char *)boot_params->cmdline_addr, boot_params->cmdline_size, 16);
     memcpy(saved_cmdline, (void *)boot_params->cmdline_addr, boot_params->cmdline_size);
 
     return cmdline_early_parse();
@@ -161,7 +161,7 @@ status_t cmdline_parse()
         }
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t cmdline_init()

@@ -147,7 +147,7 @@ status_t process_args_parse(process_args_t *info, process_t *proc)
         {
             if (temp_envp[i] == NULL)
             {
-                log_warn(MODULE, "envp[%u] is null", i);
+                trace_warn(MODULE, "envp[%u] is null", i);
                 continue;
             }
             size_t length = strlen(temp_envp[i]) + 1;
@@ -191,7 +191,7 @@ status_t process_load(const char *path, process_t *proc)
     trace_info(MODULE, "loading proc->vma = %p", proc->vma);
     ret = loader_load(fd_node, proc);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t proc_exec(process_t *proc, const char *path, char *argv[], char *envp[])
@@ -229,7 +229,7 @@ status_t proc_exec(process_t *proc, const char *path, char *argv[], char *envp[]
     mmu_arch_load_table(&current_page); // load cr3
     // mmu_arch_flush_all();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t proc_kernel_execve(process_t *proc, const char *path, char *argv[], char *envp[], thread_t **out_thread)
@@ -237,7 +237,9 @@ status_t proc_kernel_execve(process_t *proc, const char *path, char *argv[], cha
     ENTER_FUNC(MODULE, "%p, %s, %p, %p, %p", proc, path, argv, envp, out_thread);
     proc_exec(proc, path, argv, envp);
     trace_info(MODULE, "new thread");
-    thread_t *user = thread_create_user(proc, (uint64_t)proc->vma->start_stack, 0);
+    thread_t *user;
+    thread_create_user(proc, (uint64_t)proc->vma->start_stack, 0, &user);
+    // TODO: check kerrno
     user->cpu_affinity = cpu_arch_get_current();
     user->cpu_affinity->current_proc = proc;
     user->is_main_thread = 1;
@@ -247,5 +249,5 @@ status_t proc_kernel_execve(process_t *proc, const char *path, char *argv[], cha
     context_dump(&user->ctx);
 
     *out_thread = user;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

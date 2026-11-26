@@ -25,7 +25,7 @@ typedef struct device_attach_data
 
 status_t call_driver_probe(device_t *dev, driver_t *drv)
 {
-    int ret = 0;
+    status_t ret = 0;
 
     if (dev->bus->probe)
     {
@@ -33,27 +33,27 @@ status_t call_driver_probe(device_t *dev, driver_t *drv)
     }
     else if (drv->probe)
     {
-        ret = drv->probe(dev);
+        driver_probe_dev(drv, dev);
+    }
+
+    if (ret >= KERRNO_DEVICE_ERROR_BASE && ret < KERRNO_END_BASE)
+    {
+        trace_err(MODULE, "probe with driver %s rejects match %d", drv->name, ret);
     }
 
     switch (ret)
     {
-        case KERRNO_SUCCESSES :
+        case KERRNO_SUCCESS :
             break;
         case KERRNO_PROBE_DEFER :
             /* Driver requested deferred probing */
-            // dev_dbg(dev, "Driver %s requests probe deferral\n", drv->name);
+            // dev_dbg(dev, "Driver %s requests probe deferral", drv->name);
             trace_err(MODULE, "Driver %s requests probe deferral", drv->name);
-            break;
-        case -ENODEV :
-        case -ENXIO :
-            trace_err(MODULE, "probe with driver %s rejects match %d", drv->name, ret);
-            // dev_dbg(dev, "probe with driver %s rejects match %d\n", drv->name, ret);
             break;
         default :
             /* driver matched but the probe failed */
             trace_err(MODULE, "probe with driver %s failed with error %d", drv->name, ret);
-            // dev_err(dev, "probe with driver %s failed with error %d\n", drv->name, ret);
+            // dev_err(dev, "probe with driver %s failed with error %d", drv->name, ret);
             break;
     }
 
@@ -71,7 +71,7 @@ status_t driver_probe_device(driver_t *drv, device_t *dev)
     dev->driver = drv;
 
     status_t ret = call_driver_probe(dev, drv);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         dev->driver = NULL;
         return ret;
@@ -89,7 +89,7 @@ status_t device_try_attach_driver(driver_t *drv, void *_data)
     if (ret == KERRNO_UNSUCCESS)
     {
         // no matches
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     ret = driver_probe_device(drv, dev);
@@ -105,7 +105,7 @@ status_t device_attach(device_t *dev)
 
     driver_t *drv = NULL;
     status_t ret = bus_for_each_driver(dev->bus, drv, &data, device_try_attach_driver);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "couldn't find a driver for %p", dev);
     }

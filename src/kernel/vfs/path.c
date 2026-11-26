@@ -40,7 +40,7 @@ status_t path_has_volume(char *path)
         return KERRNO_UNSUCCESS;
     }
 #endif
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t path_is_rooted(char *path)
@@ -63,9 +63,9 @@ status_t path_combind(char *path, char *path2)
 status_t path_split_prefix(const char *path, char *volume_id_out, const char **rel_out)
 {
     char *cpath = (char *)path;
-    if (path_has_volume(cpath) != KERRNO_SUCCESSES)
+    if (path_has_volume(cpath) != KERRNO_SUCCESS)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
 #if CONFIG_VOLUME_POSTFIX != 0 || (CONFIG_VOLUME_POSTFIX != 0 && CONFIG_VOLUME_PREFIX != 0)
@@ -84,7 +84,7 @@ status_t path_split_prefix(const char *path, char *volume_id_out, const char **r
         return KERRNO_UNSUCCESS;
     }
 
-    if (path_is_rooted(cpath) == KERRNO_SUCCESSES)
+    if (path_is_rooted(cpath) == KERRNO_SUCCESS)
     {
         cpath++;
     }
@@ -113,7 +113,7 @@ status_t path_split_prefix(const char *path, char *volume_id_out, const char **r
         volume_id_out = memcpy(volume_id_out, cpath, volume_length);
         volume_id_out[volume_length] = '\0';
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t path_next_segment(const char *path, char *seg_out, const char **rest_out)
@@ -168,7 +168,7 @@ status_t path_next_segment(const char *path, char *seg_out, const char **rest_ou
         {
             *rest_out = NULL; // signal: nothing left
         }
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     size_t length_curr_seg = (size_t)(next_seg - curr_seg);
@@ -181,7 +181,7 @@ status_t path_next_segment(const char *path, char *seg_out, const char **rest_ou
         memcpy(seg_out, curr_seg, length_curr_seg);
         seg_out[length_curr_seg] = '\0';
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t path_resolve_segment(dentry_t *parent, const char *name, inode_t **inode_out)
@@ -195,7 +195,7 @@ status_t path_resolve_segment(dentry_t *parent, const char *name, inode_t **inod
     // 1. try dcache first
     dentry_t *dentry;
     status_t ret = dcache_lookup(parent, name, &dentry);
-    if (ret == KERRNO_SUCCESSES)
+    if (ret == KERRNO_SUCCESS)
     {
         // hit — check it is not a negative dentry
         if (dentry->flags & DENTRY_FLAG_NEGATIVE)
@@ -203,7 +203,7 @@ status_t path_resolve_segment(dentry_t *parent, const char *name, inode_t **inod
             return dentry_put(dentry);
         }
         ret = inode_get(dentry->inode, inode_out);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
@@ -214,22 +214,22 @@ status_t path_resolve_segment(dentry_t *parent, const char *name, inode_t **inod
     volume_t *vol = parent->inode->volume;
     inode_t *ino;
     ret = inode_alloc(vol, &ino);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     ret = vol->fs->lookup(parent->inode, name, ino, vol->device, parent->inode->volume->mountpoint);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         // not found — insert negative dentry so we don't ask again
         dentry_t *neg;
         ret = dentry_alloc(name, NULL, parent, &neg);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             neg->flags |= DENTRY_FLAG_NEGATIVE;
             ret = dcache_insert(neg);
-            if (ret != KERRNO_SUCCESSES)
+            if (ret != KERRNO_SUCCESS)
             {
                 return ret;
             }
@@ -241,20 +241,20 @@ status_t path_resolve_segment(dentry_t *parent, const char *name, inode_t **inod
     // 3. found — cache it
     dentry_t *new_dentry;
     ret = dentry_alloc(name, ino, parent, &new_dentry);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
-        log_err(MODULE, "dentry_alloc(%s, %p, %p) returned NULL", name, ino, parent);
+        trace_err(MODULE, "dentry_alloc(%s, %p, %p) returned NULL", name, ino, parent);
         inode_free(ino);
         KERRNO_RETURN(ENOENT, "A component of pathname (%s) does not exist.", name);
     }
 
     ret = icache_insert(ino);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     ret = dcache_insert(new_dentry);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -274,7 +274,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     const char *rel = NULL;
 
     status_t ret = path_split_prefix(path, vol_id, &rel);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "path_split_prefix returned %i", ret);
         return ret;
@@ -283,7 +283,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     // 2. find volume
     volume_t *vol = NULL;
     ret = volume_find(vol_id, &vol);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "volume not found at \"%s\"", vol_id);
         return ret;
@@ -297,7 +297,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     // trace_info(MODULE, "rel = %p, rest = %p, seg = %s", rel, rest, seg);
     mountpoint_t *mnt;
     ret = mount_find_for_volume(rel, vol, &mnt);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "Couldn't find a mountpoint at %s in volume %s", rel, vol->volume_id);
         return ret;
@@ -316,7 +316,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     while (rest != NULL)
     {
         ret = path_next_segment(rest, seg, &rest);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             trace_debug(MODULE, "path_next_segment returned %i", ret);
             return ret;
@@ -330,7 +330,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
 
         inode_t *next_ino = NULL;
         ret = path_resolve_segment(parent, seg, &next_ino);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             trace_debug(MODULE, "path_resolve_segment returned %i", ret);
             return ret;
@@ -339,7 +339,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
 
         // move down the tree
         ret = dcache_lookup(parent, seg, &parent);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             trace_debug(MODULE, "dcache_lookup returned %i", ret);
             return ret;
@@ -351,7 +351,7 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     vfs_node_t *node = kzmalloc(sizeof(vfs_node_t));
     if (node == NULL)
     {
-        KERRNO_RETURN(KERRNO_OOM, "");
+        KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "");
     }
 
     node->inode = ino;
@@ -361,5 +361,5 @@ status_t path_lookup(const char *path, vfs_node_t **node_out)
     node->fs = vol->fs;
 
     *node_out = node;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

@@ -12,10 +12,19 @@
 
 #include "module.h"
 
+status_t platform_device_alloc(const char *name, int id, platform_device_t **out_platform_dev); 
+
+status_t platform_device_add(platform_device_t *pdev);
+
 status_t platform_device_register(platform_device_t *platform_dev);
 
 status_t platform_register_driver(platform_driver_t *driver);
 status_t platform_unregister_driver(platform_driver_t *driver);
+
+static inline void *dev_get_platdata(const platform_device_t *pdev)
+{
+	return pdev->platform_data;
+}
 
 #define MODULE_PLATFORM_DRIVER(__platform_driver)                                     \
     MODULE_DRIVER(__platform_driver, platform_register_driver, platform_unregister_driver)

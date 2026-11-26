@@ -12,6 +12,8 @@
 #include "vfs/fs_registry.h"
 #include "vfs/path.h"
 
+#include "drivers/base/classt.h"
+
 #include "sync/spinlock.h"
 #include "lists/list.h"
 #include "lists/hash.h"
@@ -34,15 +36,15 @@ status_t vfs_volume_init()
     volume_registry = kmalloc(sizeof(list_t));
     if (volume_registry == NULL)
     {
-        KERRNO_RETURN(KERRNO_OOM, "kmalloc returned null");
+        KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "kmalloc returned null");
     }
     list_initialize(volume_registry);
     status_t ret = hash_map_create(&volume_hash, CONFIG_INITIAL_FS_SIZE);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 POSTCORE_INITCALL(vfs_volume_init);
@@ -50,7 +52,7 @@ POSTCORE_INITCALL(vfs_volume_init);
 status_t volume_do_register(const char *volume_id, device_t *dev, filesystem_t *fs, volume_t **out)
 {
     ENTER_FUNC("\"%s\", %p, %p, %p", volume_id, dev, fs, out);
-    if (hash_search(volume_hash, (char *)volume_id, NULL) == KERRNO_SUCCESSES)
+    if (hash_search(volume_hash, (char *)volume_id, NULL) == KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "volume id \"%s\" is already in use", volume_id);
     }
@@ -69,20 +71,20 @@ status_t volume_do_register(const char *volume_id, device_t *dev, filesystem_t *
 
     status_t ret = ADD_THIS_TO_LIST(*volume_registry, vol);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     ret = hash_insert(volume_hash, (char *)volume_id, vol);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     *out = vol;
     trace_debug(MODULE, "*out = %p", *out);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
@@ -91,7 +93,7 @@ status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
     if (dev == NULL)
     {
         status_t ret = vfs_fs_probe(dev, &fs);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
@@ -103,7 +105,7 @@ status_t volume_register(const char *volume_id, device_t *dev, volume_t **out)
 status_t volume_unregister(const char *volume_id)
 {
     hash_node_t *node;
-    if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESSES)
+    if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_NAME_NOT_FOUND, "volume id \"%s\" is already in use", volume_id);
     }
@@ -112,37 +114,37 @@ status_t volume_unregister(const char *volume_id)
 
     status_t ret = list_remove(volume_registry, &THIS_NODE(vol));
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     ret = hash_delete(volume_hash, (char *)volume_id);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     ret = kfree(vol);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t volume_find(const char *volume_id, volume_t **out)
 {
     ENTER_FUNC("%p, %p", volume_id, out);
     hash_node_t *node;
-    if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESSES)
+    if (hash_search(volume_hash, (char *)volume_id, &node) != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_NAME_NOT_FOUND, "volume id \"%s\" is not in use", volume_id);
         return KERRNO_NAME_NOT_FOUND;
     }
     volume_t *vol = node->value;
     *out = vol;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t volume_from_prefix(const char *path, volume_t **out)
@@ -150,7 +152,7 @@ status_t volume_from_prefix(const char *path, volume_t **out)
     char volume_name[CONFIG_MAX_VOLUME_LENGTH];
     status_t ret = path_split_prefix(path, volume_name, NULL);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         *out = NULL;
         return ret;
@@ -174,5 +176,5 @@ status_t volume_list(volume_t **buf, size_t buf_size, size_t *out_size)
         node = node->prev;
     }
     *out_size = count;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

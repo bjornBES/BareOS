@@ -10,54 +10,90 @@
 
 #pragma once
 
+#include <base_errno.h>
+
 // most (if not all) of the comments in this file are made by an AI,
 // this will be changed in later versions of the kernel.
 
 /* Error baselines */
-#define KERRNO_GENERAL_ERROR_BASE                0                                   /* General errors */
-#define KERRNO_OS_ERROR_BASE                     (KERRNO_GENERAL_ERROR_BASE + 0x100) /* Kernel Kit errors */
-#define KERRNO_APP_ERROR_BASE                    (KERRNO_GENERAL_ERROR_BASE + 0x200) /* Application Kit errors */
-#define KERRNO_INTERFACE_ERROR_BASE              (KERRNO_GENERAL_ERROR_BASE + 0x300) /* Interface Kit errors */
-#define KERRNO_MEDIA_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x400) /* Media Kit errors: 0x400-0x47f */
-#define KERRNO_TRANSLATION_ERROR_BASE            (KERRNO_GENERAL_ERROR_BASE + 0x480) /* Translation Kit errors: 0x480-0x4ff */
-#define KERRNO_MIDI_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x500) /* MIDI Kit errors */
-#define KERRNO_STORAGE_ERROR_BASE                (KERRNO_GENERAL_ERROR_BASE + 0x600) /* Storage Kit and file-system errors */
-#define KERRNO_MAIL_ERROR_BASE                   (KERRNO_GENERAL_ERROR_BASE + 0x700) /* Mail Kit errors */
-#define KERRNO_PRINT_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0x800) /* Printing errors */
-#define KERRNO_DEVICE_ERROR_BASE                 (KERRNO_GENERAL_ERROR_BASE + 0x900) /* Device Kit errors */
-#define KERRNO_POSIX_ERROR_BASE                  (KERRNO_GENERAL_ERROR_BASE + 0xA00) /* POSIX-compatible errors */
+#define KERRNO_POSIX_ERROR_BASE                  0x200  /* POSIX-compatible errors */
+#define KERRNO_GENERAL_ERROR_BASE                0x1000 /* General errors */
+#define KERRNO_OS_ERROR_BASE                     0x2000 /* Kernel Kit errors */
+#define KERRNO_APP_ERROR_BASE                    0x3000 /* Application Kit errors */
+#define KERRNO_INTERFACE_ERROR_BASE              0x4000 /* Interface Kit errors */
+#define KERRNO_MEDIA_ERROR_BASE                  0x5000 /* Media Kit errors */
+#define KERRNO_TRANSLATION_ERROR_BASE            0x6000 /* Translation Kit errors */
+#define KERRNO_MIDI_ERROR_BASE                   0x7000 /* MIDI Kit errors */
+#define KERRNO_STORAGE_ERROR_BASE                0x8000 /* Storage Kit and file-system errors */
+#define KERRNO_MAIL_ERROR_BASE                   0x9000 /* Mail Kit errors */
+#define KERRNO_PRINT_ERROR_BASE                  0xA000 /* Printing errors */
+#define KERRNO_DEVICE_ERROR_BASE                 0xB000 /* Device Kit errors */
+#define KERRNO_END_BASE                          0xC000
 
-#define KERRNO_ERRORS_END                        (KERRNO_GENERAL_ERROR_BASE + 0xFFF) /* Last reserved system error value */
+/* POSIX errors that can be mapped to BeOS error codes */
+
+#define ESIGPARM                                 KERRNO_POSIX_ERROR_BASE + 15             /* Invalid signal parameter */
+#define ENOATTR                                  KERRNO_POSIX_ERROR_BASE + 60             /* Attribute is missing */
+
+#define KERRNO_ALLOC_FAILED                      (KERRNO_POSIX_ERROR_BASE + ENOMEM)       /* Memory allocation failed */
+#define KERRNO_IO_ERROR                          (KERRNO_POSIX_ERROR_BASE + EIO)          /* Input/output failure */
+#define KERRNO_DEVICE_NOT_EXIST                  (KERRNO_POSIX_ERROR_BASE + ENODEV)       /* Device does not exist */
+#define KERRNO_ADDRESS_NOT_EXIST                 (KERRNO_POSIX_ERROR_BASE + ENXIO)        /* Address or Device does not exist */
+#define KERRNO_PERMISSION_DENIED                 (KERRNO_POSIX_ERROR_BASE + EACCES)       /* Operation is not permitted */
+#define KERRNO_BAD_VALUE                         (KERRNO_POSIX_ERROR_BASE + EINVAL)       /* Value is invalid */
+#define KERRNO_TIMED_OUT                         (KERRNO_POSIX_ERROR_BASE + ETIMEDOUT)    /* Operation exceeded its time limit */
+#define KERRNO_INTERRUPTED                       (KERRNO_POSIX_ERROR_BASE + EINTR)        /* Operation was interrupted */
+#define KERRNO_WOULD_BLOCK                       (KERRNO_POSIX_ERROR_BASE + EAGAIN)       /* Operation would block */
+#define KERRNO_BUSY                              (KERRNO_POSIX_ERROR_BASE + EBUSY)        /* Resource is busy */
+#define KERRNO_NOT_ALLOWED                       (KERRNO_POSIX_ERROR_BASE + EPERM)        /* Operation is not allowed */
+#define KERRNO_SYSCALL_WAS_INVALID               (KERRNO_POSIX_ERROR_BASE + ENOSYS)       /* Invalid system call number */
+
+#define KERRNO_BAD_ADDRESS                       (KERRNO_POSIX_ERROR_BASE + EFAULT)       /* Address is invalid */
+#define KERRNO_NOT_AN_EXECUTABLE                 (KERRNO_POSIX_ERROR_BASE + ENOEXEC)      /* File is not executable */
+
+#define KERRNO_FILE_ERROR                        (KERRNO_POSIX_ERROR_BASE + EBADF)        /* Generic file error */
+#define KERRNO_FILE_EXISTS                       (KERRNO_POSIX_ERROR_BASE + EEXIST)       /* File or directory already exists */
+#define KERRNO_ENTRY_NOT_FOUND                   (KERRNO_POSIX_ERROR_BASE + ENOENT)       /* Directory entry was not found */
+#define KERRNO_NAME_TOO_LONG                     (KERRNO_POSIX_ERROR_BASE + ENAMETOOLONG) /* File or directory name is too long */
+#define KERRNO_NOT_A_DIRECTORY                   (KERRNO_POSIX_ERROR_BASE + ENOTDIR)      /* Path component is not a directory */
+#define KERRNO_DIRECTORY_NOT_EMPTY               (KERRNO_POSIX_ERROR_BASE + ENOTEMPTY)    /* Directory contains entries */
+#define KERRNO_DEVICE_FULL                       (KERRNO_POSIX_ERROR_BASE + ENOSPC)       /* Device has no free space */
+#define KERRNO_READ_ONLY_DEVICE                  (KERRNO_POSIX_ERROR_BASE + EROFS)        /* Device cannot be written */
+#define KERRNO_IS_A_DIRECTORY                    (KERRNO_POSIX_ERROR_BASE + EISDIR)       /* Path refers to a directory */
+#define KERRNO_NO_MORE_FDS                       (KERRNO_POSIX_ERROR_BASE + EMFILE)       /* No file descriptors remain */
+#define KERRNO_CROSS_DEVICE_LINK                 (KERRNO_POSIX_ERROR_BASE + EXDEV)        /* Link crosses devices */
+#define KERRNO_LINK_LIMIT                        (KERRNO_POSIX_ERROR_BASE + ELOOP)        /* Link traversal limit was reached */
+#define KERRNO_BUSTED_PIPE                       (KERRNO_POSIX_ERROR_BASE + EPIPE)        /* Pipe has no readers */
+
+#define KERRNO_BUFFER_OVERFLOW                   (KERRNO_POSIX_ERROR_BASE + EOVERFLOW)    /* Buffer or value overflowed */
+#define KERRNO_TOO_MANY_ARGS                     (KERRNO_POSIX_ERROR_BASE + E2BIG)        /* Too many arguments */
+#define KERRNO_FILE_TOO_LARGE                    (KERRNO_POSIX_ERROR_BASE + EFBIG)        /* File is too large */
+#define KERRNO_RESULT_NOT_REPRESENTABLE          (KERRNO_POSIX_ERROR_BASE + ERANGE)       /* Result cannot be represented */
+#define KERRNO_NOT_SUPPORTED                     (KERRNO_POSIX_ERROR_BASE + EOPNOTSUPP)   /* Operation is not supported */
+
+#define KERRNO_CANCELED                          (KERRNO_POSIX_ERROR_BASE + ECANCELED)    /* Operation was canceled */
+#define KERRNO_ALREADY                           (KERRNO_POSIX_ERROR_BASE + EALREADY)     /* Operation is already in progress */
+
+#define KERRNO_UNSUCCESS                         ((int)~0)
+#define KERRNO_SUCCESS                           ((int)0)
 
 /* General Errors */
-#define KERRNO_OOM                               (KERRNO_GENERAL_ERROR_BASE + 1)  /* Out of memory */
-#define KERRNO_IO_ERROR                          (KERRNO_GENERAL_ERROR_BASE + 2)  /* Input/output failure */
-#define KERRNO_PERMISSION_DENIED                 (KERRNO_GENERAL_ERROR_BASE + 3)  /* Operation is not permitted */
 #define KERRNO_BAD_INDEX                         (KERRNO_GENERAL_ERROR_BASE + 4)  /* Index is outside the valid range */
 #define KERRNO_BAD_TYPE                          (KERRNO_GENERAL_ERROR_BASE + 5)  /* Value has the wrong type */
-#define KERRNO_BAD_VALUE                         (KERRNO_GENERAL_ERROR_BASE + 6)  /* Value is invalid */
+#define KERRNO_BAD_ARGUMENT                      (KERRNO_GENERAL_ERROR_BASE + 6)  /* Argument is invalid */
 #define KERRNO_MISMATCHED_VALUES                 (KERRNO_GENERAL_ERROR_BASE + 7)  /* Related values do not match */
 #define KERRNO_NAME_NOT_FOUND                    (KERRNO_GENERAL_ERROR_BASE + 8)  /* Requested name was not found */
 #define KERRNO_NAME_IN_USE                       (KERRNO_GENERAL_ERROR_BASE + 9)  /* Name is already in use */
-#define KERRNO_TIMED_OUT                         (KERRNO_GENERAL_ERROR_BASE + 10) /* Operation exceeded its time limit */
-#define KERRNO_INTERRUPTED                       (KERRNO_GENERAL_ERROR_BASE + 11) /* Operation was interrupted */
-#define KERRNO_WOULD_BLOCK                       (KERRNO_GENERAL_ERROR_BASE + 12) /* Operation would block */
-#define KERRNO_CANCELED                          (KERRNO_GENERAL_ERROR_BASE + 13) /* Operation was canceled */
 #define KERRNO_NO_INIT                           (KERRNO_GENERAL_ERROR_BASE + 14) /* Required initialization is unavailable */
 #define KERRNO_NOT_INITIALIZED                   (KERRNO_GENERAL_ERROR_BASE + 15) /* Component has not been initialized */
-#define KERRNO_BUSY                              (KERRNO_GENERAL_ERROR_BASE + 16) /* Resource is busy */
-#define KERRNO_NOT_ALLOWED                       (KERRNO_GENERAL_ERROR_BASE + 17) /* Operation is not allowed */
 #define KERRNO_BAD_DATA                          (KERRNO_GENERAL_ERROR_BASE + 18) /* Data is malformed or invalid */
-#define KERRNO_DONT_DO_THAT                      (KERRNO_GENERAL_ERROR_BASE + 19) /* Operation is explicitly unsupported */
-#define KERRNO_DEBUG                             (KERRNO_GENERAL_ERROR_BASE + 20) /* Only for debug builds */
-#define KERRNO_PROBE_DEFER                       (KERRNO_GENERAL_ERROR_BASE + 21) /* Driver requests probe retry */
-
-#define KERRNO_UNSUCCESS                         ((int)~0)
-#define KERRNO_SUCCESSES                         ((int)0)
+#define KERRNO_ENTRY_IN_USE                      (KERRNO_GENERAL_ERROR_BASE + 19) /* entry is already in use */
 
 /* Kernel Kit Errors */
 #define KERRNO_BAD_SEM_ID                        (KERRNO_OS_ERROR_BASE + 1)     /* Semaphore ID is invalid */
 #define KERRNO_NO_MORE_SEMS                      (KERRNO_OS_ERROR_BASE + 2)     /* No semaphore IDs remain */
+
+#define KERRNO_DONT_DO_THAT                      (KERRNO_OS_ERROR_BASE + 0x80)  /* Operation is explicitly unsupported */
 
 #define KERRNO_BAD_THREAD_ID                     (KERRNO_OS_ERROR_BASE + 0x100) /* Thread ID is invalid */
 #define KERRNO_NO_MORE_THREADS                   (KERRNO_OS_ERROR_BASE + 0x101) /* No thread IDs remain */
@@ -69,14 +105,23 @@
 #define KERRNO_NO_MORE_PORTS                     (KERRNO_OS_ERROR_BASE + 0x201) /* No port IDs remain */
 
 #define KERRNO_BAD_IMAGE_ID                      (KERRNO_OS_ERROR_BASE + 0x300) /* Image ID is invalid */
-#define KERRNO_BAD_ADDRESS                       (KERRNO_OS_ERROR_BASE + 0x301) /* Address is invalid */
-#define KERRNO_NOT_AN_EXECUTABLE                 (KERRNO_OS_ERROR_BASE + 0x302) /* File is not executable */
 #define KERRNO_MISSING_LIBRARY                   (KERRNO_OS_ERROR_BASE + 0x303) /* Required library is missing */
 #define KERRNO_MISSING_SYMBOL                    (KERRNO_OS_ERROR_BASE + 0x304) /* Required symbol is missing */
 #define KERRNO_UNKNOWN_EXECUTABLE                (KERRNO_OS_ERROR_BASE + 0x305) /* Executable format is unknown */
 #define KERRNO_LEGACY_EXECUTABLE                 (KERRNO_OS_ERROR_BASE + 0x306) /* Executable uses a legacy format */
 
 #define KERRNO_DEBUGGER_ALREADY_INSTALLED        (KERRNO_OS_ERROR_BASE + 0x400) /* A debugger is already installed */
+#define KERRNO_DEBUG                             (KERRNO_OS_ERROR_BASE + 0x401) /* Only for debug builds */
+
+#define KERRNO_OUT_OF_MEMORY                     (KERRNO_OS_ERROR_BASE + 0x500) /* Out of memory */
+#define KERRNO_BAD_MEM_ALIGN                     (KERRNO_OS_ERROR_BASE + 0x501) /* Invalid address alignment */
+#define KERRNO_BAD_PADDR                         (KERRNO_OS_ERROR_BASE + 0x502) /* Nonexistent physical address */
+#define KERRNO_PHYS_ALLOC_FAILED                 (KERRNO_OS_ERROR_BASE + 0x503) /* Physical memory allocation failed */
+#define KERRNO_PAGETABLE_NOT_PRESENT             (KERRNO_OS_ERROR_BASE + 0x504) /* A Page table (or entry) is not present */
+
+#define KERRNO_PROBE_DEFER                       (KERRNO_OS_ERROR_BASE + 0x600) /* Driver requests probe retry */
+
+#define KERRNO_IRQ_ALLOC_FAILED                  (KERRNO_OS_ERROR_BASE + 0x700) /* Couldn't allocate a free vector */
 
 /* Application Kit Errors */
 #define KERRNO_BAD_REPLY                         (KERRNO_APP_ERROR_BASE + 1)  /* Reply is invalid */
@@ -100,19 +145,6 @@
 #define KERRNO_SHUTTING_DOWN                     (KERRNO_APP_ERROR_BASE + 19) /* System is shutting down */
 
 /* Storage Kit/File System Errors */
-#define KERRNO_FILE_ERROR                        (KERRNO_STORAGE_ERROR_BASE + 1)  /* Generic file error */
-#define KERRNO_FILE_EXISTS                       (KERRNO_STORAGE_ERROR_BASE + 2)  /* File or directory already exists */
-#define KERRNO_ENTRY_NOT_FOUND                   (KERRNO_STORAGE_ERROR_BASE + 3)  /* Directory entry was not found */
-#define KERRNO_NAME_TOO_LONG                     (KERRNO_STORAGE_ERROR_BASE + 4)  /* File or directory name is too long */
-#define KERRNO_NOT_A_DIRECTORY                   (KERRNO_STORAGE_ERROR_BASE + 5)  /* Path component is not a directory */
-#define KERRNO_DIRECTORY_NOT_EMPTY               (KERRNO_STORAGE_ERROR_BASE + 6)  /* Directory contains entries */
-#define KERRNO_DEVICE_FULL                       (KERRNO_STORAGE_ERROR_BASE + 7)  /* Device has no free space */
-#define KERRNO_READ_ONLY_DEVICE                  (KERRNO_STORAGE_ERROR_BASE + 8)  /* Device cannot be written */
-#define KERRNO_IS_A_DIRECTORY                    (KERRNO_STORAGE_ERROR_BASE + 9)  /* Path refers to a directory */
-#define KERRNO_NO_MORE_FDS                       (KERRNO_STORAGE_ERROR_BASE + 10) /* No file descriptors remain */
-#define KERRNO_CROSS_DEVICE_LINK                 (KERRNO_STORAGE_ERROR_BASE + 11) /* Link crosses devices */
-#define KERRNO_LINK_LIMIT                        (KERRNO_STORAGE_ERROR_BASE + 12) /* Link traversal limit was reached */
-#define KERRNO_BUSTED_PIPE                       (KERRNO_STORAGE_ERROR_BASE + 13) /* Pipe has no readers */
 #define KERRNO_UNSUPPORTED                       (KERRNO_STORAGE_ERROR_BASE + 14) /* Operation is unsupported */
 #define KERRNO_PARTITION_TOO_SMALL               (KERRNO_STORAGE_ERROR_BASE + 15) /* Partition is too small */
 #define KERRNO_PARTIAL_READ                      (KERRNO_STORAGE_ERROR_BASE + 16) /* Read completed only partially */
@@ -206,6 +238,8 @@
 #define KERRNO_DEV_PENDING                       (KERRNO_DEVICE_ERROR_BASE + 29) /* Device operation is pending */
 #define KERRNO_DEV_MULTIPLE_ERRORS               (KERRNO_DEVICE_ERROR_BASE + 30) /* Device reported multiple errors */
 #define KERRNO_DEV_TOO_LATE                      (KERRNO_DEVICE_ERROR_BASE + 31) /* Device operation was too late */
+#define KERRNO_DEV_NOT_FOUND                     (KERRNO_DEVICE_ERROR_BASE + 32) /* Device was not found */
+#define KERRNO_DEV_ALREADY_EXISTS                (KERRNO_DEVICE_ERROR_BASE + 33) /* Device already exists in the registry */
 
 /* Translation Kit Errors */
 #define KERRNO_TRANSLATION_BASE_ERROR            (KERRNO_TRANSLATION_ERROR_BASE + 1) /* Generic translation error */
@@ -213,107 +247,6 @@
 #define KERRNO_ILLEGAL_DATA                      (KERRNO_TRANSLATION_ERROR_BASE + 3) /* Input data is invalid for translation */
 
 /* POSIX Errors */
-#define KERRNO_TO_POSIX_ERROR(error)             (-(error))                   /* Convert a positive kernel error to a negative POSIX-style result */
-#define KERRNO_FROM_POSIX_ERROR(error)           (-(error))                   /* Convert a negative POSIX-style result to a positive kernel error */
-
-#define KERRNO_POSIX_ENOMEM                      KERRNO_POSIX_ERROR_BASE + 0  /* Memory allocation failed */
-#define E2BIG                                    KERRNO_POSIX_ERROR_BASE + 1  /* Argument list is too long */
-#define ECHILD                                   KERRNO_POSIX_ERROR_BASE + 2  /* Required child process is unavailable */
-#define EDEADLK                                  KERRNO_POSIX_ERROR_BASE + 3  /* Deadlock would occur */
-#define EFBIG                                    KERRNO_POSIX_ERROR_BASE + 4  /* File is too large */
-#define EMLINK                                   KERRNO_POSIX_ERROR_BASE + 5  /* Too many links */
-#define ENFILE                                   KERRNO_POSIX_ERROR_BASE + 6  /* System file table is full */
-#define ENODEV                                   KERRNO_POSIX_ERROR_BASE + 7  /* Device does not exist */
-#define ENOLCK                                   KERRNO_POSIX_ERROR_BASE + 8  /* No locks are available */
-#define ENOSYS                                   KERRNO_POSIX_ERROR_BASE + 9  /* Function is not implemented */
-#define ENOTTY                                   KERRNO_POSIX_ERROR_BASE + 10 /* Inappropriate device operation */
-#define ENXIO                                    KERRNO_POSIX_ERROR_BASE + 11 /* Device or address does not exist */
-#define ESPIPE                                   KERRNO_POSIX_ERROR_BASE + 12 /* Invalid seek on a pipe or stream */
-#define ESRCH                                    KERRNO_POSIX_ERROR_BASE + 13 /* Process does not exist */
-#define EFPOS                                    KERRNO_POSIX_ERROR_BASE + 14 /* Invalid file position */
-#define ESIGPARM                                 KERRNO_POSIX_ERROR_BASE + 15 /* Invalid signal parameter */
-#define EDOM                                     KERRNO_POSIX_ERROR_BASE + 16 /* Argument is outside the function domain */
-#define ERANGE                                   KERRNO_POSIX_ERROR_BASE + 17 /* Result is outside the representable range */
-#define EPROTOTYPE                               KERRNO_POSIX_ERROR_BASE + 18 /* Protocol type is incorrect */
-#define EPROTONOSUPPORT                          KERRNO_POSIX_ERROR_BASE + 19 /* Protocol is unsupported */
-#define EPFNOSUPPORT                             KERRNO_POSIX_ERROR_BASE + 20 /* Protocol family is unsupported */
-#define EAFNOSUPPORT                             KERRNO_POSIX_ERROR_BASE + 21 /* Address family is unsupported */
-#define EADDRINUSE                               KERRNO_POSIX_ERROR_BASE + 22 /* Address is already in use */
-#define EADDRNOTAVAIL                            KERRNO_POSIX_ERROR_BASE + 23 /* Address is not available */
-#define ENETDOWN                                 KERRNO_POSIX_ERROR_BASE + 24 /* Network is down */
-#define ENETUNREACH                              KERRNO_POSIX_ERROR_BASE + 25 /* Network is unreachable */
-#define ENETRESET                                KERRNO_POSIX_ERROR_BASE + 26 /* Network connection was reset */
-#define ECONNABORTED                             KERRNO_POSIX_ERROR_BASE + 27 /* Connection was aborted */
-#define ECONNRESET                               KERRNO_POSIX_ERROR_BASE + 28 /* Connection was reset */
-#define EISCONN                                  KERRNO_POSIX_ERROR_BASE + 29 /* Socket is already connected */
-#define ENOTCONN                                 KERRNO_POSIX_ERROR_BASE + 30 /* Socket is not connected */
-#define ESHUTDOWN                                KERRNO_POSIX_ERROR_BASE + 31 /* Endpoint has been shut down */
-#define ECONNREFUSED                             KERRNO_POSIX_ERROR_BASE + 32 /* Connection was refused */
-#define EHOSTUNREACH                             KERRNO_POSIX_ERROR_BASE + 33 /* Host is unreachable */
-#define ENOPROTOOPT                              KERRNO_POSIX_ERROR_BASE + 34 /* Protocol option is unavailable */
-#define ENOBUFS                                  KERRNO_POSIX_ERROR_BASE + 35 /* No buffer space is available */
-#define EINPROGRESS                              KERRNO_POSIX_ERROR_BASE + 36 /* Operation is in progress */
-#define EALREADY                                 KERRNO_POSIX_ERROR_BASE + 37 /* Operation is already in progress */
-#define EILSEQ                                   KERRNO_POSIX_ERROR_BASE + 38 /* Invalid byte sequence */
-#define ENOMSG                                   KERRNO_POSIX_ERROR_BASE + 39 /* Required message is unavailable */
-#define ESTALE                                   KERRNO_POSIX_ERROR_BASE + 40 /* Stale file handle */
-#define EOVERFLOW                                KERRNO_POSIX_ERROR_BASE + 41 /* Value would overflow */
-#define EMSGSIZE                                 KERRNO_POSIX_ERROR_BASE + 42 /* Message is too large */
-#define EOPNOTSUPP                               KERRNO_POSIX_ERROR_BASE + 43 /* Operation is not supported */
-#define ENOTSOCK                                 KERRNO_POSIX_ERROR_BASE + 44 /* File descriptor is not a socket */
-#define EHOSTDOWN                                KERRNO_POSIX_ERROR_BASE + 45 /* Host is down */
-#define EBADMSG                                  KERRNO_POSIX_ERROR_BASE + 46 /* Message is invalid */
-#define ECANCELED                                KERRNO_POSIX_ERROR_BASE + 47 /* Operation was canceled */
-#define EDESTADDRREQ                             KERRNO_POSIX_ERROR_BASE + 48 /* Destination address is required */
-#define EDQUOT                                   KERRNO_POSIX_ERROR_BASE + 49 /* Disk quota is exceeded */
-#define EIDRM                                    KERRNO_POSIX_ERROR_BASE + 50 /* Identifier was removed */
-#define EMULTIHOP                                KERRNO_POSIX_ERROR_BASE + 51 /* Too many protocol hops */
-#define ENODATA                                  KERRNO_POSIX_ERROR_BASE + 52 /* No data is available */
-#define ENOLINK                                  KERRNO_POSIX_ERROR_BASE + 53 /* Link has been severed */
-#define ENOSR                                    KERRNO_POSIX_ERROR_BASE + 54 /* No stream resources */
-#define ENOSTR                                   KERRNO_POSIX_ERROR_BASE + 55 /* Object is not a stream */
-#define ENOTSUP                                  KERRNO_POSIX_ERROR_BASE + 56 /* Feature is not supported */
-#define EPROTO                                   KERRNO_POSIX_ERROR_BASE + 57 /* Protocol error */
-#define ETIME                                    KERRNO_POSIX_ERROR_BASE + 58 /* Timer expired */
-#define ETXTBSY                                  KERRNO_POSIX_ERROR_BASE + 59 /* Text file is busy */
-#define ENOATTR                                  KERRNO_POSIX_ERROR_BASE + 60 /* Attribute is missing */
-#define ENOTRECOVERABLE                          KERRNO_POSIX_ERROR_BASE + 61 /* State cannot be recovered */
-#define EOWNERDEAD                               KERRNO_POSIX_ERROR_BASE + 62 /* Previous owner died */
-#define ESOCKTNOSUPPORT                          KERRNO_POSIX_ERROR_BASE + 63 /* Socket type is unsupported */
-
-#define ENOMEM                                   KERRNO_POSIX_ENOMEM          /* POSIX name for out-of-memory */
-
-/* POSIX errors that can be mapped to BeOS error codes */
-#define EACCES                                   KERRNO_PERMISSION_DENIED   /* Permission denied */
-#define EINTR                                    KERRNO_INTERRUPTED         /* Interrupted system call */
-#define EIO                                      KERRNO_IO_ERROR            /* Input/output error */
-#define EBUSY                                    KERRNO_BUSY                /* Device or resource is busy */
-#define EFAULT                                   KERRNO_BAD_ADDRESS         /* Bad address */
-#define ETIMEDOUT                                KERRNO_TIMED_OUT           /* Operation timed out */
-#define EAGAIN                                   KERRNO_WOULD_BLOCK         /* SysV compatibility */
-#define EWOULDBLOCK                              KERRNO_WOULD_BLOCK         /* BSD compatibility */
-#define EBADF                                    KERRNO_FILE_ERROR          /* Bad file descriptor */
-#define EEXIST                                   KERRNO_FILE_EXISTS         /* File exists */
-#define EINVAL                                   KERRNO_BAD_VALUE           /* Invalid argument */
-#define ENAMETOOLONG                             KERRNO_NAME_TOO_LONG       /* File name is too long */
-#define ENOENT                                   KERRNO_ENTRY_NOT_FOUND     /* No such file or directory */
-#define EPERM                                    KERRNO_NOT_ALLOWED         /* Operation not permitted */
-#define ENOTDIR                                  KERRNO_NOT_A_DIRECTORY     /* Not a directory */
-#define EISDIR                                   KERRNO_IS_A_DIRECTORY      /* Is a directory */
-#define ENOTEMPTY                                KERRNO_DIRECTORY_NOT_EMPTY /* Directory not empty */
-#define ENOSPC                                   KERRNO_DEVICE_FULL         /* No space left on device */
-#define EROFS                                    KERRNO_READ_ONLY_DEVICE    /* Read-only file system */
-#define EMFILE                                   KERRNO_NO_MORE_FDS         /* Too many open files */
-#define EXDEV                                    KERRNO_CROSS_DEVICE_LINK   /* Cross-device link */
-#define ELOOP                                    KERRNO_LINK_LIMIT          /* Too many symbolic links */
-#define ENOEXEC                                  KERRNO_NOT_AN_EXECUTABLE   /* Exec format error */
-#define EPIPE                                    KERRNO_BUSTED_PIPE         /* Broken pipe */
-
-/* new error codes that can be mapped to POSIX errors */
-#define KERRNO_BUFFER_OVERFLOW                   EOVERFLOW  /* Buffer or value overflowed */
-#define KERRNO_TOO_MANY_ARGS                     E2BIG      /* Too many arguments */
-#define KERRNO_FILE_TOO_LARGE                    EFBIG      /* File is too large */
-#define KERRNO_RESULT_NOT_REPRESENTABLE          ERANGE     /* Result cannot be represented */
-#define KERRNO_DEVICE_NOT_FOUND                  ENODEV     /* Device was not found */
-#define KERRNO_NOT_SUPPORTED                     EOPNOTSUPP /* Operation is not supported */
+#define KERRNO_TO_POSIX_ERROR(error)             (-(error)) /* Convert a positive kernel error to a negative POSIX-style result */
+#define KERRNO_FROM_POSIX_ERROR(error)           (-(error)) /* Convert a negative POSIX-style result to a positive kernel error */
 

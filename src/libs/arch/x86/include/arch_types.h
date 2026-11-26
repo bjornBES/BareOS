@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "stdatomic.h"
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -46,3 +47,5 @@ typedef struct irq_mask
 
 typedef uint32_64_t paddr_t;
 typedef uint32_64_t vaddr_t;
+
+typedef uint16_t arch_port_t;

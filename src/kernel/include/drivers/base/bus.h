@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "core_types.h"
+
 #include "bust.h"
 
 status_t bus_initialize();

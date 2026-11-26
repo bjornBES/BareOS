@@ -12,6 +12,8 @@
 
 #include "dev/devicet.h"
 
+#include "drivers/input/serio/seriot.h"
+
 #include <types.h>
 #include <binary.h>
 
@@ -55,7 +57,7 @@
 #define I8042_COP_SYS_RESET BIT(0)
 
 typedef struct i8042_port {
-	// struct serio *serio;
+	serio_dev_t *serio;
     device_t *dev;
 	kernel_irq_t irq;
 	bool exists;

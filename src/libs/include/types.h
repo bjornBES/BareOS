@@ -54,10 +54,11 @@ typedef uint32_t gid_t;
 typedef uint32_t id_t;
 
 typedef int32_64_t nlink_t;
-typedef uint32_t cpu_logical_id_t;
+typedef int32_t cpu_logical_id_t;
 
 /// @brief the default return type of functions
 typedef int32_t status_t;
+typedef int32_t irq_return_t;
 
 typedef int32_t fd_t;
 
@@ -74,9 +75,15 @@ typedef uint32_t refcount_t;
 
 typedef uint32_64_t sigset_t;
 typedef int32_t sig_id_t;
-typedef struct __kernel_sigset_t
+typedef struct kernel_sigset
 {
     unsigned long __bits[BITS_TO_LONGS(_NSIG)];
 } kernel_sigset_t;
 
+typedef struct {
+	uid_t val;
+} kuid_t;
 
+typedef struct {
+	gid_t val;
+} kgid_t;

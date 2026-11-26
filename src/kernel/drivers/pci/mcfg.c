@@ -25,8 +25,6 @@
 
 mcfg_t *mcfg = NULL;
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 status_t mcfg_parse()
 {
     mcfg = (mcfg_t *)table_get_table(0x4746434D);
@@ -67,5 +65,5 @@ status_t mcfg_parse()
 
 
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

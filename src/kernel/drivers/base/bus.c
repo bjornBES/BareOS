@@ -25,19 +25,19 @@ list_t bus_registry;
 __init status_t bus_initialize()
 {
     list_initialize(&bus_registry);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-EARLY_INITCALL(bus_initialize);
+CONSTRUCTOR_INITCALL(bus_initialize);
 
 status_t bus_register(bus_type_t *bus)
 {
     status_t ret = list_push_tail(&bus_registry, &bus->node);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return KERRNO_UNSUCCESS;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t bus_for_each_driver(bus_type_t *bus, driver_t *curr, void *data, status_t (*func)(driver_t *, void *))
@@ -49,13 +49,13 @@ status_t bus_for_each_driver(bus_type_t *bus, driver_t *curr, void *data, status
         state = driver_next(&curr, bus);
         trace_debug(MODULE, "curr = %p", curr);
         trace_debug(MODULE, "state = %u", state);
-        if (state != KERRNO_SUCCESSES || curr == NULL)
+        if (state != KERRNO_SUCCESS || curr == NULL)
         {
             break;
         }
         state = func(curr, data);
         trace_debug(MODULE, "state = %u", state);
-    }  while (state == KERRNO_SUCCESSES);
+    }  while (state == KERRNO_SUCCESS);
     return state;
 }
 
@@ -84,10 +84,10 @@ status_t bus_probe_device(device_t *dev)
 
 status_t bus_remove_device(device_t *dev)
 {
-    if (dev->driver)
+    if (dev->bus)
     {
-        status_t ret = dev->driver->remove(dev);
-        dev->driver = NULL;
+        status_t ret = dev->bus->remove(dev);
+        dev->bus = NULL;
         return ret;
     }
 

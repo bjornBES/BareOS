@@ -106,9 +106,9 @@ status_t syscall_arch_handler(intr_frame_t *regs)
     }
     else
     {
-        // log_debug(MODULE, "done with %u", func_info.number);
+        // trace_debug(MODULE, "done with %u", func_info.number);
     }
-    // log_debug(MODULE, "DONE");
+    // trace_debug(MODULE, "DONE");
     return ret;
 }
 
@@ -160,12 +160,12 @@ void syscall_dispatch(syscall_frame_t *regs)
     regs->flags = frame.flags;
     // if (syscall > 1)
     // {
-    //     log_debug(MODULE, "\t{ frame @ %p }", regs);
-    //     log_debug(MODULE, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }", regs->ax, regs->bx, regs->cx, regs->dx);
-    //     log_debug(MODULE, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }", regs->di, regs->si, regs->r8, regs->r9);
-    //     log_debug(MODULE, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }", regs->r10, regs->r11, regs->r12, regs->r13);
-    //     log_debug(MODULE, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }", regs->r14, regs->r15, regs->bp, regs->flags);
-    //     log_debug(MODULE, "\t{ pc = %p, sp = %p }", regs->pc, regs->sp);
+    //     trace_debug(MODULE, "\t{ frame @ %p }", regs);
+    //     trace_debug(MODULE, "\t{ ax = 0x%lx, bx = 0x%lx, cx = 0x%lx, dx = 0x%lx }", regs->ax, regs->bx, regs->cx, regs->dx);
+    //     trace_debug(MODULE, "\t{ di = 0x%lx, si = 0x%lx, r8 = 0x%lx, r9 = 0x%lx }", regs->di, regs->si, regs->r8, regs->r9);
+    //     trace_debug(MODULE, "\t{ r10 = 0x%lx, r11 = 0x%lx, r12 = 0x%lx, r13 = 0x%lx }", regs->r10, regs->r11, regs->r12, regs->r13);
+    //     trace_debug(MODULE, "\t{ r14 = 0x%lx, r15 = 0x%lx, bp = 0x%lx, flags = 0x%lx }", regs->r14, regs->r15, regs->bp, regs->flags);
+    //     trace_debug(MODULE, "\t{ pc = %p, sp = %p }", regs->pc, regs->sp);
     //     ivt_dump_frame(&frame);
     // }
 }

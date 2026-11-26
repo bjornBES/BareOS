@@ -8,7 +8,7 @@
  * -----
  */
 
-#include "drivers/base/block/blkdev.h"
+#include "drivers/block/blkdev.h"
 
 #include "dev/device.h"
 
@@ -81,20 +81,19 @@ status_t mbr_detect(blkdev_t *blk_dev, void *mbr)
 
         status_t ret = block_register(part_blk_dev, &blk_dev->dev);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
-        {
-            return ret;
-        }
+
+        blk_dev->partition_count++;
+
         ret = vfs_mount(&part_blk_dev->dev, 0);
         if (ret == KERRNO_ENTRY_NOT_FOUND)
         {
             continue;
         }
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

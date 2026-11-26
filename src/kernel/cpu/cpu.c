@@ -46,7 +46,7 @@ status_t cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp)
     }
     cpu_count++;
     
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 cpu_entry_t *cpu_get_entry(cpu_logical_id_t id)
@@ -66,4 +66,18 @@ cpu_entry_t *cpu_get_bsp()
 size_t cpu_get_count()
 {
     return (size_t)cpu_count;
+}
+
+cpu_logical_id_t cpu_this_id()
+{
+    if (cpu_arch_get_current())
+    {
+        return cpu_arch_get_current()->logical_id;
+    }
+    return INVALID_CPU;
+}
+
+void cpu_halt_forever()
+{
+    
 }

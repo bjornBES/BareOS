@@ -38,7 +38,7 @@
  *
  * @param entry Logical CPU metadata describing the processor to create.
  *
- * @return KERRNO_SUCCESSES on success.
+ * @return KERRNO_SUCCESS on success.
  */
 status_t cpu_create(cpu_entry_t *entry);
 
@@ -76,5 +76,7 @@ cpu_t *cpu_arch_get(cpu_logical_id_t logical_id);
  * @param stack_top Top address of the kernel stack for that processor.
  */
 void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top);
+
+void cpu_arch_halt_forever();
 
 /// @}

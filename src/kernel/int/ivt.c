@@ -47,7 +47,7 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
     if (FLAG_IS_SET(handlers[vector].state, HANDLER_IS_ACTIVE))
     {
         status_t result = handlers[vector].handler(frame);
-        if (result == KERRNO_SUCCESSES)
+        if (result == KERRNO_SUCCESS)
         {
             handlers[vector].count = 0;
         }
@@ -61,14 +61,14 @@ status_t ivt_handler(interrupt_vector_t vector, intr_frame_t *frame)
         trace_debug(MODULE, "flags = 0x%x", handlers[vector].state);
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Vector %u's handler is not active", vector);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 __init status_t ivt_init()
 {
     memset(handlers, 0, sizeof(handlers));
     // handler_init();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 EARLY_INITCALL(ivt_init);
@@ -92,7 +92,7 @@ status_t ivt_enable_vector(interrupt_vector_t vector)
     }
     idt_enable_gate(vector);
     FLAG_SET(handlers[vector].state, HANDLER_IS_ACTIVE);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ivt_disable_vector(interrupt_vector_t vector)
@@ -103,7 +103,7 @@ status_t ivt_disable_vector(interrupt_vector_t vector)
     }
     FLAG_UNSET(handlers[vector].state, HANDLER_IS_ACTIVE);
     idt_disable_gate(vector);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 interrupt_vector_t ivt_find_free_vector(interrupt_vector_t mask)

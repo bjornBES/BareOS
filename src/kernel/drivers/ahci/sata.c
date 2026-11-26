@@ -11,7 +11,7 @@
 #include "sata.h"
 #include "ahci.h"
 
-#include "drivers/base/block/blkdev.h"
+#include "drivers/block/blkdev.h"
 
 #include "asm/mmu_arch.h"
 
@@ -62,8 +62,8 @@ uint32_t sata_find_cmdslot(ahci_port_priv_t *aport)
 
 status_t sata_read_sectors(blkdev_t *blk_dev, void *buf, size_t count, off_t sector, ssize_t *size_out)
 {
-    // log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
-    // log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
+    // trace_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
+    // trace_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
     ahci_port_priv_t *aport = blk_dev->dev.drv_data;
 
     ahci_cmd_request_t req = {
@@ -81,8 +81,8 @@ status_t sata_read_sectors(blkdev_t *blk_dev, void *buf, size_t count, off_t sec
 int sata_identify_aport(sata_port_t *aport, ahci_port_priv_t *ahci_port, vaddr_t buf_virt)
 {
     ENTER_FUNC("%p, %p", aport, buf_virt);
-    // log_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
-    // log_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
+    // trace_debug(MODULE, "ahci_identify_device(%p, %p)", aport, buf);
+    // trace_debug(MODULE, "buf = p%p / v%p", buf, buf_virt);
 
     /*     ahci_cmd_request_t req = {
             .command = SATA_IDENTIFY_DEVICE, // IDENTIFY DEVICE
@@ -153,10 +153,8 @@ int sata_identify_aport(sata_port_t *aport, ahci_port_priv_t *ahci_port, vaddr_t
     {
         return 3;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
-
-extern void hexdump(void *ptr, size_t len, size_t size);
 
 status_t sata_init_port(pci_device_t *pci_dev, ahci_host_priv_t *host, ahci_port_priv_t *aport, blkdev_t **blk_dev_out)
 {
@@ -196,7 +194,7 @@ status_t sata_init_port(pci_device_t *pci_dev, ahci_host_priv_t *host, ahci_port
     blk_dev->dev.drv_data = aport;
     // dev->read = ahci_read;
     // dev->write = ahci_write;
-    blk_dev->dev.init_name = "sata";
+    device_set_name(&blk_dev->dev, "sata%u", aport->drive);
     // dev->flags = DEVICE_FLAG_RW | DEVICE_FLAG_BLOCKDEV;
 
     // partition_block_device_register(dev);
@@ -223,8 +221,8 @@ status_t sata_init_port(pci_device_t *pci_dev, ahci_host_priv_t *host, ahci_port
     blk_dev->sector_start = 0;
     blk_dev->sectors_count = total_sectors;
 
-    // printf("Detected SATA drive: %s (%u MiB)\n", modelName, info.total_sectors / 2048);
+    // printf("Detected SATA drive: %s (%u MiB)", modelName, info.total_sectors / 2048);
     trace_info(MODULE, "Detected SATA drive: %s (%u MiB)", name, total_sectors / 2048);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

@@ -59,7 +59,7 @@ status_t sched_algorithm_get_algorithm(sched_class_t algorithms[CONFIG_MAX_SCHED
         sched_class_t func;
         trace_debug(MODULE, "table[%u] @ %p, &func @ %p", i, algorithms[i], &func);
         int state = algorithm_table[i](&func);
-        if (state != KERRNO_SUCCESSES)
+        if (state != KERRNO_SUCCESS)
         {
             KERRNO_RETURN(KERRNO_NO_INIT, "setup failed");
             return state;
@@ -68,6 +68,6 @@ status_t sched_algorithm_get_algorithm(sched_class_t algorithms[CONFIG_MAX_SCHED
         memcpy(&algorithms[i], &func, sizeof(sched_class_t));
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 

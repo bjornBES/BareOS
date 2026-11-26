@@ -37,7 +37,7 @@ status_t resource_space_init(resource_space_t *rs, res_space_t space, resource_s
     rs->root.space = space;
     rs->root.start = start;
     rs->root.end = end;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 resource_t *resource_create()
@@ -100,37 +100,37 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
     {
         cur = cur->child;
     }
-    trace_debug(MODULE, "found child at %p", cur);
+    // trace_debug(MODULE, "found child at %p", cur);
 
     while (cur->sibling && cur->sibling->start <= new->start)
     {
         cur = cur->sibling;
     }
-    trace_debug(MODULE, "found sibling at %p", cur);
+    // trace_debug(MODULE, "found sibling at %p", cur);
 
     if (new->start == cur->start && new->end == cur->end)
     {
         new->parent = cur;
         cur->child = new;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     if (parent->parent == NULL && parent->child == NULL && parent->name == NULL)
     {
         parent->child = new;
         new->parent = parent;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     if (new->start > cur->start && new->start < cur->end)
     {
-        trace_warn(MODULE, "insert as child");
+        // trace_warn(MODULE, "insert as child");
         if (cur->child)
         {
             // insert before head
             if (cur->child->start >= new->start)
             {
-                trace_warn(MODULE, "insert before %s", cur->child->name);
+                // trace_warn(MODULE, "insert before %s", cur->child->name);
                 new->parent = cur;
                 new->sibling = cur->child;
                 cur->child = new;
@@ -138,7 +138,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
             // insert after cur
             else
             {
-                trace_warn(MODULE, "insert after %s", cur->child->name);
+                // trace_warn(MODULE, "insert after %s", cur->child->name);
                 new->parent = cur;
                 new->sibling = cur->child->sibling;
                 cur->child->sibling = new;
@@ -149,7 +149,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
             new->parent = cur;
             cur->child = new;
         }
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     // insert before head
@@ -166,7 +166,7 @@ status_t resource_do_insert(resource_t *parent, resource_t *new)
         new->sibling = cur->sibling;
         cur->sibling = new;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t resource_request(resource_t *parent, resource_t *out, resource_size_t start, resource_size_t end, const char *name, res_type_t type, res_flags_t flags)
@@ -184,25 +184,25 @@ status_t resource_request(resource_t *parent, resource_t *out, resource_size_t s
 
     resource_do_insert(parent, out);
     // resource_dump(parent);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t resource_insert(resource_t *parent, resource_t *entry)
 {
     resource_do_insert(parent, entry);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t resource_allocate(resource_t *parent, resource_t *out, resource_size_t size, resource_size_t align, const char *name, res_type_t type, res_flags_t flags)
 {
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t resource_release(resource_t *res)
 {
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 resource_t *resource_find(resource_t *root, resource_size_t addr)

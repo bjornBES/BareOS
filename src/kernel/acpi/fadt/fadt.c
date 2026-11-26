@@ -18,14 +18,12 @@
 
 fadt_t *fadt = NULL;
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 void fadt_parse()
 {
     fadt = (fadt_t *)table_get_table(0x50434146);
     if (!fadt)
     {
-        log_crit(MODULE, "no fadt_t found");
+        trace_crit(MODULE, "no fadt_t found");
         return;
     }
     trace_info(MODULE, "fadt_t found revision=%u", fadt->h.revision);

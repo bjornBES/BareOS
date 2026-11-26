@@ -74,7 +74,7 @@ void sem_post(semaphore_t *s)
         
         t->state = THREAD_READY;
         sched_add(t);
-        log_debug(MODULE, "added %u back in", t->tid);
+        trace_debug(MODULE, "added %u back in", t->tid);
     }
     #endif
 }

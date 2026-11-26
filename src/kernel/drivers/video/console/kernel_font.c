@@ -19,7 +19,7 @@
 status_t font_alloc(font_t **out)
 {
     *out = kzmalloc(sizeof(font_t));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 status_t font_free(font_t *font)
 {
@@ -56,7 +56,7 @@ status_t font_internal_map_lookup(const font_unicode_map_t *m, wchar_t ch, uint3
         return KERRNO_ENTRY_NOT_FOUND;
         KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t font_map_lookup(const font_t *font, wchar_t ch, uint32_t *cp_out)
@@ -83,11 +83,11 @@ status_t font_glyph_index(const font_t *font, wchar_t ch, uint32_t *out_cp)
         {
             KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
         }
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     status_t ret = font_internal_map_lookup(font->map, ch, out_cp);
     // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         *out_cp = font->fallback;
         return KERRNO_BAD_INDEX;
@@ -106,11 +106,11 @@ status_t font_has_glyph(const font_t *font, wchar_t ch)
         {
             KERRNO_RETURN(KERRNO_ENTRY_NOT_FOUND, "");
         }
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     status_t ret = font_internal_map_lookup(font->map, ch, &out_cp);
     // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -120,5 +120,5 @@ status_t font_has_glyph(const font_t *font, wchar_t ch)
 status_t font_get_glyph(const font_t *font, wchar_t ch, uint8_t **out_glyph)
 {
     *out_glyph = (uint8_t *)(font->glyphs + ch * font->glyph_size);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

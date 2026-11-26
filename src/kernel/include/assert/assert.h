@@ -16,7 +16,7 @@
 #define ASSERT_RETURN(expr, return_value, ...)                                                                     \
     if ((expr) == 0)                                                                                               \
     {                                                                                                              \
-        trace_info("assert", "proc: %s:%u: %s: Assertion '%s' failed\n", __FILE__, __LINE__, __FUNCTION__, #expr); \
+        trace_info("assert", "proc: %s:%u: %s: Assertion '%s' failed", __FILE__, __LINE__, __FUNCTION__, #expr); \
         trace_info("assert", __VA_ARGS__);                                                                         \
         return return_value;                                                                                       \
         KERNEL_PANIC("ASSERT", "assert failed");                                                                   \
@@ -25,7 +25,7 @@
 #define ASSERT(expr, ...)                                                                                          \
     if ((expr) == 0)                                                                                               \
     {                                                                                                              \
-        trace_info("assert", "proc: %s:%u: %s: Assertion '%s' failed\n", __FILE__, __LINE__, __FUNCTION__, #expr); \
+        trace_info("assert", "proc: %s:%u: %s: Assertion '%s' failed", __FILE__, __LINE__, __FUNCTION__, #expr); \
         trace_info("assert", __VA_ARGS__);                                                                         \
         KERNEL_PANIC("ASSERT", "assert failed");                                                                   \
     }

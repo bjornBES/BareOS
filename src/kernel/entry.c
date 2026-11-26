@@ -30,15 +30,30 @@
 
 NORETURN __init void kernel_entry(boot_params_t *boot_params)
 {
-    cmdline_early_init(boot_params);
-
-    extern char __initcall_start;
-    initcall_t *funcs = (initcall_t *)&__initcall_start;
+    extern char __initcall_constr;
+    initcall_t *funcs = (initcall_t *)&__initcall_constr;
     while (*funcs != NULL)
     {
         trace_debug(MODULE, "init func %p", *funcs);
         status_t ret = (*funcs)();
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
+        {
+            KERNEL_PANIC(MODULE, "init function at %p returned non zero", *funcs);
+        }
+        funcs++;
+    }
+
+    cmdline_early_init(boot_params);
+
+    trace_debug(MODULE, "Hello world");
+
+    extern char __initcall_start;
+    funcs = (initcall_t *)&__initcall_start;
+    while (*funcs != NULL)
+    {
+        trace_debug(MODULE, "init func %p", *funcs);
+        status_t ret = (*funcs)();
+        if (ret != KERRNO_SUCCESS)
         {
             KERNEL_PANIC(MODULE, "init function at %p returned non zero", *funcs);
         }
@@ -46,7 +61,7 @@ NORETURN __init void kernel_entry(boot_params_t *boot_params)
     }
 
     pmm_early_init(boot_params);
-    
+
     arch_setup(boot_params);
 
     for (;;)
@@ -58,6 +73,7 @@ NORETURN __init void kernel_entry(boot_params_t *boot_params)
 status_t entry_init_param(const char *value)
 {
     ENTER_FUNC("%p (%s)", value, value);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
+
 CMDLINE_PARAM("test", entry_init_param, 1);

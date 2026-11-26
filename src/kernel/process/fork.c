@@ -33,7 +33,7 @@ INTERNAL status_t proc_clone(process_t *dest, process_t *src)
     memcpy(dest->volume, src->volume, CONFIG_MAX_VOLUME_LENGTH);
     memcpy(&dest->fd_table, &src->fd_table, sizeof(fd_table_t));
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t proc_vfork(process_t *parent, process_t *child)
@@ -46,7 +46,7 @@ status_t proc_vfork(process_t *parent, process_t *child)
     vfs_clone_node(&parent->fd_table, &child->fd_table);
 
     FUNC_NOT_IMPLEMENTED();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t proc_spawn(process_t *parent, process_t *child)
@@ -58,5 +58,5 @@ status_t proc_spawn(process_t *parent, process_t *child)
         proc_add(parent, child);
         vfs_clone_node(&parent->fd_table, &child->fd_table);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

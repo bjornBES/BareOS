@@ -63,34 +63,35 @@ typedef struct timer_caps
     uint64_t max_interval_ns; /* largest interval before the counter would wrap or need reprogram */
 } timer_caps_t;
 
-typedef struct timer_source timer_source_t;
 typedef void (*timer_callback_t)(void *ctx);
 
 typedef struct timer_source
 {
     const char *name; /* debug/log only, never branched on by generic code */
     timer_caps_t caps;
-    kernel_dev_t dev;
     void *priv;
     timer_role_t role;
 
-    /// @brief
-    uint64_t (*read_counter)(timer_source_t *self);
-    /// @brief
-    uint64_t (*ticks_to_ns)(timer_source_t *self, uint64_t ticks);
+    device_t dev;
 
     /// @brief
-    status_t (*arm_oneshot)(timer_source_t *self, uint64_t ns_from_now, timer_callback_t cb);
+    uint64_t (*read_counter)(struct timer_source *self);
+    /// @brief
+    uint64_t (*ticks_to_ns)(struct timer_source *self, uint64_t ticks);
 
     /// @brief
-    status_t (*arm_periodic)(timer_source_t *self, uint64_t period_ns, timer_callback_t cb);
+    status_t (*arm_oneshot)(struct timer_source *self, uint64_t ns_from_now, timer_callback_t cb);
 
     /// @brief
-    status_t (*cancel)(timer_source_t *self);
+    status_t (*arm_periodic)(struct timer_source *self, uint64_t period_ns, timer_callback_t cb);
 
     /// @brief
-    status_t (*set_callback)(timer_source_t *self, timer_callback_t cb, void *ctx);
+    status_t (*cancel)(struct timer_source *self);
+
+    /// @brief
+    status_t (*set_callback)(struct timer_source *self, timer_callback_t cb, void *ctx);
 } timer_source_t;
+#define to_timer_source(n) container_of(n, timer_source_t, dev)
 
 typedef struct periodic_function_args
 {

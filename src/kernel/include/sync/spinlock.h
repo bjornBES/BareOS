@@ -26,15 +26,20 @@
     INTERNAL ALWAYS_INLINE void CONCAT(__acquire_unlock_, name)() \
     {                                                             \
         spinlock_release(&SPIN_NAME(name));                       \
+    }                                                             \
+    INTERNAL ALWAYS_INLINE bool CONCAT(__is_locked_, name)()      \
+    {                                                             \
+        return spinlock_is_locked(&SPIN_NAME(name));              \
     }
 #define SPIN_LOCK(name)               CONCAT(__acquire_lock_, name)();
 #define SPIN_UNLOCK(name)             CONCAT(__acquire_unlock_, name)();
 
-#define LOCK()                        CONCAT(__acquire_lock_, LOCK_NAME)();
-#define UNLOCK()                      CONCAT(__acquire_unlock_, LOCK_NAME)();
+#define LOCK()                        CONCAT(__acquire_lock_, LOCK_NAME)()
+#define UNLOCK()                      CONCAT(__acquire_unlock_, LOCK_NAME)()
+#define IS_LOCKED()                   CONCAT(__is_locked_, LOCK_NAME)()
+#define WARN_LOCK_UNLOCKED()          WARN_ON(!CONCAT(__is_locked_, LOCK_NAME)())
 
 #define SPIN_WARN_LOCK_UNLOCKED(name) WARN_ON(!spinlock_is_locked(&SPIN_NAME(name)))
-#define WARN_LOCK_UNLOCKED()          WARN_ON(!spinlock_is_locked(&SPIN_NAME(LOCK_NAME)))
 
 void spinlock_acquire_log(spinlock_t *lock);
 void spinlock_release_log(spinlock_t *lock);

@@ -17,6 +17,6 @@
 #define KERNEL_STACK_SIZE    (16 * 1024) // 24k
 #define KERNEL_STACK_SLOT   (KERNEL_STACK_SIZE + PAGE_SIZE)  // +guard page
 
-vaddr_t kstack_alloc(stack_info_t *info);
-vaddr_t kstack_per_cpu_alloc(stack_info_t *info);
+status_t kstack_alloc(stack_info_t *info, vaddr_t *out_addr);
+status_t kstack_per_cpu_alloc(stack_info_t *info, vaddr_t *out_addr);
 void kstack_free(vaddr_t stack_top);

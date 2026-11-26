@@ -72,7 +72,7 @@ INTERNAL status_t fbcon_resize_grid(uint32_t cols, uint32_t rows)
 
     // size.cols = cols;
     // size.rows = rows;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // recompute cols/rows
@@ -102,10 +102,10 @@ INTERNAL status_t fbcon_on_display_change(display_device_t *primary_display_dev,
     vc_resize(vc, fb->width / primary_display_dev->font_data->width, fb->height / primary_display_dev->font_data->height, false);
     // return fbcon_bind_surface(fb);
     // return fbcon_redraw();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-INTERNAL INLINE bool fbcon_is_active(vc_data_t *vc, video_framebuffer_t *info)
+INTERNAL_INLINE bool fbcon_is_active(vc_data_t *vc, video_framebuffer_t *info)
 {
     return vc_use_text(vc);
 }
@@ -162,7 +162,7 @@ status_t fbcon_redraw()
     //         display_draw_blit_mono(active_fb, col * vc->current_font->width, row * vc->current_font->height, glyph, vc->current_font->width, vc->current_font->height, call->fg, call->bg);
     //     }
     // }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fbcon_redraw_region(uint32_t start_col, uint32_t start_row, uint32_t cols, uint32_t rows)
@@ -189,12 +189,12 @@ status_t fbcon_redraw_region(uint32_t start_col, uint32_t start_row, uint32_t co
     //         display_draw_blit_mono(active_fb, col * vc->current_font->width, row * vc->current_font->height, glyph, vc->current_font->width, vc->current_font->height, call->fg, call->bg);
     //     }
     // }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fbcon_resize(vc_data_t *vc, uint32_t width, uint32_t height, bool from_user)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fbcon_putcs(vc_data_t *vc, const vt_cell_t *s, size_t count, uint32_t xpos, uint32_t ypos)
@@ -232,7 +232,7 @@ status_t fbcon_switch(vc_data_t *vc)
     ENTER_FUNC("%p", vc);
     video_framebuffer_t *info = fbcon_info_from_console(vc->vc_index);
     display_device_t *p = fb_display[vc->vc_index];
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fbcon_init(vc_data_t *vc, bool do_init)
@@ -251,7 +251,7 @@ status_t fbcon_init(vc_data_t *vc, bool do_init)
         vc->vc_cols = 80;
         vc->vc_rows = 40;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 const virt_con_ops_t fbcon = {
@@ -275,7 +275,7 @@ status_t fbcon_initcall()
     default_font = (font_t *)psf_font_builtin();
     vc_take_over_console(&fbcon, first_fb_vc, last_fb_vc, true);
     // return display_add_listener(fbcon_on_display_change, NULL);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 SUBSYS_INITCALL(fbcon_initcall)

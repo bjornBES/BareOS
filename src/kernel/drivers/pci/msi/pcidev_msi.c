@@ -18,14 +18,14 @@ status_t pci_msi_init(pci_device_t *pci_dev)
 {
     ENTER_FUNC("%p", pci_dev);
     status_t ret = pci_find_capability(pci_dev, PCI_CAP_ID_MSI, &pci_dev->msi_cap);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     uint16_t flags;
     ret = pci_config_read16(pci_dev, pci_dev->msi_cap + PCI_MSI_FLAGS, &flags);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -40,21 +40,21 @@ status_t pci_msi_init(pci_device_t *pci_dev)
     {
         pci_dev->msi_addr_mask = BIT_RANGE(31, 0);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pci_msix_init(pci_device_t *pci_dev)
 {
     ENTER_FUNC("%p", pci_dev);
     status_t ret = pci_find_capability(pci_dev, PCI_CAP_ID_MSIX, &pci_dev->msix_cap);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     uint16_t flags;
     ret = pci_config_read16(pci_dev, pci_dev->msix_cap + PCI_MSIX_FLAGS, &flags);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -65,5 +65,5 @@ status_t pci_msix_init(pci_device_t *pci_dev)
         pci_config_write16(pci_dev, pci_dev->msix_cap + PCI_MSIX_FLAGS, flags);
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

@@ -36,6 +36,8 @@
     flags,                                      \
     GDT_BASE_HIGH(base)}
 
+#define MODULE "x86-gdt"
+
 #ifdef __i686__
 ASMCALL void gdt_load_32(gdtr_t *descriptor);
 #else
@@ -157,7 +159,7 @@ void x86_gdt_dump_selector_index(uint16_t index)
         base |= ((uint64_t)ss_desc->base_upper << 32);
 #endif
         int desc_type = BIT_GET_RANGE(desc->access, 0, 3);
-        trace_info(NO_MODULE, "gdt[%u] = system { base: %p, limit: %p, present: %s, ring%u, type: 0x%x, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, desc_size);
+        trace_info(MODULE, "gdt[%u] = system { base: %p, limit: %p, present: %s, ring%u, type: 0x%x, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, desc_size);
         hexdump(ss_desc, sizeof(system_segment_descriptor_t), 16);
     }
     else
@@ -172,7 +174,7 @@ void x86_gdt_dump_selector_index(uint16_t index)
         {
             desc_type = "DATA";
         }
-        trace_info(NO_MODULE, "gdt[%u] = segment { base: %p, limit: %p, present: %s, ring%u, seg_type: %s, accessed: %s, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, accessed BOOL_TO_STRING, desc_size);
+        trace_info(MODULE, "gdt[%u] = segment { base: %p, limit: %p, present: %s, ring%u, seg_type: %s, accessed: %s, size: %s}", index, base, limit, is_present BOOL_TO_STRING, dpl, desc_type, accessed BOOL_TO_STRING, desc_size);
         hexdump(desc, sizeof(gdt_entry_t), 16);
     }
 #endif

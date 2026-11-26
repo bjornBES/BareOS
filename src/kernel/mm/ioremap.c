@@ -23,7 +23,7 @@ vaddr_t mmio_bump = (vaddr_t)MEMORY_MMIO_VIRT_BASE;
 __init status_t ioremap_init()
 {
     mmio_bump = (vaddr_t)MEMORY_MMIO_VIRT_BASE;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 EARLY_INITCALL(ioremap_init);
@@ -38,7 +38,9 @@ vaddr_t ioremap(paddr_t phys, size_t size)
         trace_info(MODULE, "mapping %u bytes", size);
     }
 
-    mmu_map_region(&kernel_page, virt, phys, size, mmio_flags);
+    paddr_t aligned_paddr = PAGE_ALIGN_DOWN(phys);
+
+    mmu_map_region(&kernel_page, virt, aligned_paddr, size, mmio_flags);
 
     mmio_bump += PAGE_ALIGN_UP(size);
 

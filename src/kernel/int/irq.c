@@ -46,7 +46,7 @@ int irq_handler(intr_frame_t *regs)
     if (irq_is_masked(vector))
     {
         irq_eoi(vector);
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     if (FLAG_IS_SET(handler->state, HANDLER_IN_USE))
@@ -55,25 +55,25 @@ int irq_handler(intr_frame_t *regs)
     }
     else
     {
-        log_err(MODULE, "Unhandled IRQ %d base was %u", vector, regs->interrupt);
-        return KERRNO_SUCCESSES;
+        trace_err(MODULE, "Unhandled IRQ %d base was %u", vector, regs->interrupt);
+        return KERRNO_SUCCESS;
     }
 
     irq_eoi(vector);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_initialize(irq_controller_t *(*get_ops)())
 {
     ENTER_FUNC("%p", get_ops);
     irq_controller_t *controller = get_ops();
-    if (controller->probe() != KERRNO_SUCCESSES)
+    if (controller->probe() != KERRNO_SUCCESS)
     {
         current = NULL;
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "%s failed probe", controller->name);
     }
 
-    if (controller->initialize() != KERRNO_SUCCESSES)
+    if (controller->initialize() != KERRNO_SUCCESS)
     {
         current = NULL;
         KERRNO_RETURN(KERRNO_NOT_ALLOWED, "%s failed initialize", controller->name);
@@ -98,7 +98,7 @@ status_t irq_initialize(irq_controller_t *(*get_ops)())
 
     current = get_ops();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_release_reserved(kernel_irq_t irq, size_t count)
@@ -108,7 +108,7 @@ status_t irq_release_reserved(kernel_irq_t irq, size_t count)
         irq_descriptor_t *entry = &irq_descriptors[i];
         FLAG_UNSET(entry->flags, HANDLER_RESERVED);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void irq_print_descriptor(irq_descriptor_t *descriptor)
@@ -239,7 +239,7 @@ INTERNAL status_t irq_pick_core(irq_pick_reg_t *r, kernel_irq_t *out)
         }
     }
     *out = first;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler_func_t handler, void *ctx, irq_trigger_t trigger, irq_polarity_t polarity, cpu_logical_id_t target)
@@ -252,7 +252,7 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
     if (FLAG_IS_SET(descriptor->flags, HANDLER_IN_USE))
     {
         irq_print_descriptor(descriptor);
-        KERRNO_RETURN(KERRNO_DONT_DO_THAT, "TODO");
+        KERRNO_RETURN(KERRNO_ENTRY_IN_USE, "TODO");
     }
     descriptor->id = irq;
 
@@ -266,7 +266,7 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
     {
         gsi_t gsi = current->pick_free_pin(~0);
         ret = current->bind(gsi, irq);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             KERRNO_RETURN(KERRNO_DONT_DO_THAT, "TODO");
         }
@@ -277,10 +277,9 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
     // descriptor->trigger = trigger;
 
     ret = irq_arch_register(descriptor, current, source, handler, ctx, trigger, polarity, target, &target_cpu);
-
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
-        KERRNO_RETURN(KERRNO_PERMISSION_DENIED, "ivt entry already in use");
+        KERRNO_RETURN(KERRNO_DEVICE_FULL);
     }
 
     // trace_debug(MODULE, "current @ %p, current->debug @ %p", current, current->debug);
@@ -291,28 +290,28 @@ status_t irq_register_handler(kernel_irq_t irq, irq_source_t source, irq_handler
 
     ret = ivt_set_handler(descriptor->vectors[target_cpu] + IRQ_BASE, irq_handler);
 
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_PERMISSION_DENIED, "ivt entry already in use");
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_unregister_handler(kernel_irq_t irq)
 {
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_mask(kernel_irq_t irq)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_unmask(kernel_irq_t irq)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 bool irq_is_masked(kernel_irq_t irq)
@@ -323,7 +322,7 @@ bool irq_is_masked(kernel_irq_t irq)
 status_t irq_eoi(kernel_irq_t irq)
 {
     current->send_eoi(irq);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t irq_pick_free_entry(irq_mask_t *allowed_mask, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
@@ -342,7 +341,6 @@ status_t irq_pick_free_entry(irq_mask_t *allowed_mask, irq_source_t source, cpu_
         .use_range = false,
     };
     return irq_pick_core(&r, out);
-    // return irq_arch_pick_free_entry(allowed_mask, source, target, out);
 }
 
 status_t irq_pick_free_range_size(irq_range_t range, size_t count, irq_source_t source, cpu_logical_id_t target, kernel_irq_t *out)
@@ -357,7 +355,6 @@ status_t irq_pick_free_range_size(irq_range_t range, size_t count, irq_source_t 
         .use_range = true,
     };
     return irq_pick_core(&r, out);
-    // return irq_arch_pick_free_entry(allowed_mask, source, target, out);
 }
 
 status_t irq_pick_free_gsi(uint32_t allowed_pins, kernel_irq_t *irq_out, gsi_t *out)

@@ -52,7 +52,7 @@ status_t ioapic_print_entry(uint8_t ioapic_id, gsi_t gsi);
 /// @param ioapic_id The ID of the given io apic, given from madt entry type 1
 /// @param ioapic_address The address of the io acpi, given from madt
 /// @param gsi_base The start gsi index of the give io acpi, given from madt
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi_base);
 
 void ioapic_write(uint8_t ioapic_id, uint32_t reg, uint32_t value);

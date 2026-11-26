@@ -35,15 +35,20 @@ size_t heap_size;
 status_t alloc_new_page()
 {
 	// ENTER_FUNC("", 0);
-    paddr_t phys = pmm_alloc_frame();
-    vaddr_t virt = heap_end;  // next virtual page after current end
+    paddr_t phys;
+	status_t ret = pmm_alloc_frame(&phys);
+    if (ret)
+	{
+		LOG_RETURN(ret);
+	}
+	vaddr_t virt = heap_end;  // next virtual page after current end
 	// mmu_arch_enable_prints();
     size_t size_mapped;
-	mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags, &size_mapped);
+	ret = mmu_arch_map(&kernel_page, virt, phys, kernel_data_flags, &size_mapped);
 	// mmu_arch_disable_prints();
-	if (!(size_mapped > KERRNO_ERRORS_END))
+	if (ret)
 	{
-		return size_mapped;
+		LOG_RETURN(ret);
 	}
 	// trace_debug(MODULE, "mapped %p..%p for %u page(s)", virt, phys, PAGE_COUNT(size_mapped));
 	
@@ -51,7 +56,7 @@ status_t alloc_new_page()
 	// trace_debug(MODULE, "%p + (%u * %x) = %p", heap_begin, heap_size, size_mapped, heap_begin + (heap_size * size_mapped));
     heap_end = heap_begin + (heap_size * size_mapped);
 	memset((void*)virt, 0, size_mapped);
-	return KERRNO_SUCCESSES;
+	return KERRNO_SUCCESS;
 }
 
 status_t allocator_init()
@@ -68,7 +73,7 @@ status_t allocator_init()
 	allocator_print_status();
 
 	trace_info(MODULE, "Kernel heap starts at %p", heap_begin);
-	return KERRNO_SUCCESSES;
+	return KERRNO_SUCCESS;
 }
 CORE_INITCALL(allocator_init);
 
@@ -117,7 +122,7 @@ status_t kfree(void *mem)
 	alloc_t *alloc = (mem - sizeof(alloc_t));
 	memory_used -= alloc->size + sizeof(alloc_t);
 	alloc->status = 0;
-	return KERRNO_SUCCESSES;
+	return KERRNO_SUCCESS;
 }
 
 INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
@@ -154,7 +159,7 @@ INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
 			memory_used += size + 0x10 + sizeof(alloc_t);
 			*ret = (void *)(mem + sizeof(alloc_t));
-			return KERRNO_SUCCESSES;
+			return KERRNO_SUCCESS;
 		}
 
 		mem += a->size;
@@ -162,9 +167,9 @@ INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 		mem += 0x10;
 		if (mem >= heap_end)
 		{
-			if (alloc_new_page() != KERRNO_SUCCESSES)
+			if (alloc_new_page() != KERRNO_SUCCESS)
 			{
-				KERRNO_RETURN(KERRNO_OOM, "Out of memory");
+				KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "Out of memory");
 			}
 		}
 	}
@@ -173,9 +178,9 @@ INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 	{
 		while (last_alloc + size + sizeof(alloc_t) >= heap_end)
 		{
-			if (alloc_new_page() != KERRNO_SUCCESSES)
+			if (alloc_new_page() != KERRNO_SUCCESS)
 			{
-				KERRNO_RETURN(KERRNO_OOM, "Out of memory");
+				KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "Out of memory");
 			}
 		}
 		// KERNEL_PANIC(MODULE, "Cannot allocate %d bytes! Out of memory.", size);
@@ -183,6 +188,8 @@ INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 	// pmm_print_info_verbose();
 
 	alloc_t *alloc = (alloc_t *)last_alloc;
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
 	alloc->status |= STATUS_ALLOCATED;
 	alloc->size = size;
 
@@ -190,12 +197,10 @@ INTERNAL_INLINE status_t allocator_malloc(size_t size, void **ret)
 	last_alloc += sizeof(alloc_t);
 	last_alloc += 0x10;
 
-	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
-	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
 
 	memory_used += size + 0x10 + sizeof(alloc_t);
 	*ret = (char *)((vaddr_t)alloc + sizeof(alloc_t));
-	return KERRNO_SUCCESSES;
+	return KERRNO_SUCCESS;
 }
 
 INTERNAL_INLINE status_t allocator_calloc(size_t num, size_t size, void **out_ret)
@@ -203,11 +208,11 @@ INTERNAL_INLINE status_t allocator_calloc(size_t num, size_t size, void **out_re
 	size_t total_size = num * size;
 	void *ptr;
 	status_t ret = allocator_malloc(total_size, &ptr);
-	if (ret == KERRNO_SUCCESSES)
+	if (ret == KERRNO_SUCCESS)
 	{
 		memset(ptr, 0, total_size);
 		*out_ret = ptr;
-		return KERRNO_SUCCESSES;
+		return KERRNO_SUCCESS;
 	}
 	return ret;
 }
@@ -215,12 +220,12 @@ INTERNAL_INLINE status_t allocator_realloc(void *ptr, size_t size, void **out_re
 {
 	void *new_ptr;
 	status_t ret = allocator_malloc(size, &new_ptr);
-	if (ret == KERRNO_SUCCESSES)
+	if (ret == KERRNO_SUCCESS)
 	{
 		alloc_t *old = (alloc_t *)((vaddr_t)ptr - sizeof(alloc_t));
 		memcpy(new_ptr, ptr, old->size < size ? old->size : size);
 		ret = kfree(ptr);
-		if (ret != KERRNO_SUCCESSES)
+		if (ret != KERRNO_SUCCESS)
 		{
 			return ret;
 		}
@@ -230,14 +235,14 @@ INTERNAL_INLINE status_t allocator_realloc(void *ptr, size_t size, void **out_re
 		return ret;
 	}
 	*out_ret = new_ptr;
-	return KERRNO_SUCCESSES;
+	return KERRNO_SUCCESS;
 }
 
 void* kmalloc(size_t size)
 {
     void *ret;
     status_t status = allocator_malloc(size, &ret);
-    if (status != KERRNO_SUCCESSES)
+    if (status != KERRNO_SUCCESS)
     {
         return NULL;
     }
@@ -248,7 +253,7 @@ void* kzmalloc(size_t size)
 {
     void *ret;
     status_t status = allocator_malloc(size, &ret);
-    if (status != KERRNO_SUCCESSES)
+    if (status != KERRNO_SUCCESS)
     {
         return NULL;
     }
@@ -260,7 +265,7 @@ void* kcalloc(size_t num, size_t size)
 {
     void *ret;
     status_t status = allocator_calloc(num, size, &ret);
-    if (status != KERRNO_SUCCESSES)
+    if (status != KERRNO_SUCCESS)
     {
         return NULL;
     }
@@ -271,7 +276,7 @@ void* krealloc(void* ptr, size_t size)
 {
     void *ret;
     status_t status = allocator_realloc(ptr, size, &ret);
-    if (status != KERRNO_SUCCESSES)
+    if (status != KERRNO_SUCCESS)
     {
         return NULL;
     }
@@ -281,12 +286,12 @@ void* krealloc(void* ptr, size_t size)
 void *kmalloc_phys(size_t size, void **virt_out)
 {
 	void *virt = kmalloc(size);
-	// log_debug(MODULE, "malloc returned %p", virt);
+	// trace_debug(MODULE, "malloc returned %p", virt);
 	memset(virt, 0, size);
 	*virt_out = virt;
 	paddr_t phys;
 	mmu_arch_virt_to_phys(&kernel_page, (vaddr_t)virt, &phys);
-	// log_debug(MODULE, "p%p = kmalloc_phys(%u, v%p)", phys, size, virt);
+	// trace_debug(MODULE, "p%p = kmalloc_phys(%u, v%p)", phys, size, virt);
 	return (void*)phys;
 }
 

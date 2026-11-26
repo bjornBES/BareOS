@@ -83,9 +83,9 @@ static INLINE void *memmove(void *dest, const void *src, size_t n)
     return origDst;
 }
 
-static INLINE int memchr(const char *s, int c, size_t count)
+static INLINE void *memchr(const char *s, int c, size_t count)
 {
-    int ret;
+    void *ret;
     __asm__(
         "rep scasb\n\t"
         "jne not_found_%=\n\t"

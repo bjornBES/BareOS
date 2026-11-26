@@ -36,7 +36,7 @@ status_t apic_probe()
         KERRNO_RETURN(KERRNO_NOT_INITIALIZED, "madt has not been initialize and parsed");
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t apic_initialize()
@@ -62,7 +62,7 @@ status_t apic_initialize()
         }
     }
     lapic_eoi();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 gsi_t apic_pick_free_gsi(uint32_t allowed_pins)
@@ -98,10 +98,9 @@ gsi_t apic_pick_free_gsi(uint32_t allowed_pins)
     return ~0;
 }
 
-gsi_t apic_irq_to_gsi(kernel_irq_t irq)
+status_t apic_irq_to_gsi(kernel_irq_t irq, gsi_t *out_gsi)
 {
     ENTER_FUNC("%u", irq);
-    gsi_t gsi = (~0);
     for (uint8_t i = 0; i < ioapic_count; i++)
     {
         ioapic_entry_t *entry = ioapic_get_entry(i);
@@ -111,11 +110,12 @@ gsi_t apic_irq_to_gsi(kernel_irq_t irq)
             iso_entry_t *iso_entry = &entry->redir_entries[irq_index - entry->gsi_base];
             if (iso_entry->irq == irq)
             {
-                return iso_entry->gsi;
+                *out_gsi = iso_entry->gsi;
+                return KERRNO_SUCCESS;
             }
         }
     }
-    return KERRNO_UNSUCCESS;
+    KERRNO_RETURN(KERRNO_UNSUCCESS, "");
 }
 
 kernel_irq_t apic_lookup_gsi(gsi_t gsi, irq_trigger_t *trigger, irq_polarity_t *polarity)
@@ -161,15 +161,15 @@ status_t apic_route(kernel_irq_t irq, interrupt_vector_t vector, cpu_logical_id_
     iso_entry_t *iso_entry = &entry->redir_entries[gsi - entry->gsi_base];
     if (iso_entry->dont_use)
     {
-        return KERRNO_UNSUCCESS;
+        KERRNO_RETURN(KERRNO_DONT_DO_THAT, "");
     }
     if (iso_entry->locked)
     {
         if (iso_entry->vector != vector || iso_entry->pin != vector - IRQ_BASE)
         {
-            trace_debug(MODULE, "vector: 0x%x == 0x%x, gsi: %u == %u, pin: %u == %u",
+            trace_err(MODULE, "vector: 0x%x == 0x%x, gsi: %u == %u, pin: %u == %u",
                         iso_entry->vector, vector, iso_entry->gsi, gsi, iso_entry->pin, vector - IRQ_BASE);
-            return KERRNO_UNSUCCESS;
+            KERRNO_RETURN(KERRNO_BAD_INDEX, "");
         }
     }
     iso_entry->irq = irq;
@@ -178,7 +178,7 @@ status_t apic_route(kernel_irq_t irq, interrupt_vector_t vector, cpu_logical_id_
     ioapic_set_entry(entry->ioapic_id, gsi, vector - IRQ_BASE, trigger, polarity, cpu->arch_id);
     trace_debug(MODULE, "ioapic_id = %u", ioapic_id);
     // FUNC_NOT_IMPLEMENTED();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t apic_bind_gsi(gsi_t gsi, kernel_irq_t irq)
@@ -186,7 +186,7 @@ status_t apic_bind_gsi(gsi_t gsi, kernel_irq_t irq)
     ioapic_entry_t *entry = ioapic_get_entry(ioapic_get_id(gsi));
     iso_entry_t *iso_entry = &entry->redir_entries[gsi - entry->gsi_base];
     iso_entry->irq = irq;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void apic_disable()
@@ -232,7 +232,7 @@ status_t apic_debug_print()
             // trace_info(MODULE, "IRQ %u -> GSI %u vector 0x%x", iso_entry->pin, gsi, vector);
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static irq_controller_t apic_driver = {

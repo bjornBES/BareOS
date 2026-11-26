@@ -32,15 +32,15 @@ int fat_entries_match(fat_entry_t *entry, fat_directory_t *directory, int entry_
         return KERRNO_UNSUCCESS;
     }
     char entry_name[13] = {0};
-    if (fat_83_to_name(entry->entry.name, entry_name) != KERRNO_SUCCESSES)
+    if (fat_83_to_name(entry->entry.name, entry_name) != KERRNO_SUCCESS)
     {
         trace_err(MODULE, "entry name %s is not the right format", entry->entry.name);
         return KERRNO_UNSUCCESS;
     }
 
-    if (fat_name_eq((char*)name, entry_name) == KERRNO_SUCCESSES)
+    if (fat_name_eq((char*)name, entry_name) == KERRNO_SUCCESS)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return KERRNO_UNSUCCESS;
 }
@@ -64,7 +64,7 @@ int fat_read_directory(fat_inode_t *directory, fat_directory_t *out, int entry_c
     cluster_t cluster_count = byte_count / sb->bytes_per_cluster;
     ssize_t bytes_read;
     status_t ret = fat_read_clusters(out->entries, directory->first_cluster, cluster_count, dev, sb, &bytes_read);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -103,7 +103,7 @@ status_t fat_entry_find(fat_inode_t *parent, const char *entry_name, inode_t *en
     {
         fat_directory_entry_t *entry = &(entries[i].entry);
         trace_info(MODULE, "entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
-        if (fat_entries_match(&entries[i], &directory, i, entry_name) == KERRNO_SUCCESSES)
+        if (fat_entries_match(&entries[i], &directory, i, entry_name) == KERRNO_SUCCESS)
         {
             trace_info(MODULE, "> entry %u @ %p {%s, %x, %u, %u}", i, entry, entry->name, entry->attributes, COMBINE_CLUSTERS(*entry), entry->size);
             fat_ino->first_cluster = COMBINE_CLUSTERS(*entry);
@@ -119,7 +119,7 @@ status_t fat_entry_find(fat_inode_t *parent, const char *entry_name, inode_t *en
                 fat_ino->base.type = DT_DIR;
             }
             kfree(entries);
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
     }
     kfree(entries);

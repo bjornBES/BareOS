@@ -87,12 +87,16 @@ NORETURN void ap_startup()
     }
 }
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 void smp_arch_boot_ap(cpu_entry_t *entry, vaddr_t trampoline)
 {
     int last_total_cores_init = total_cores_init;
-    vaddr_t ap_stack = kstack_alloc(NULL); // allocate kernel stack for this AP
+    vaddr_t ap_stack;
+    status_t ret = kstack_alloc(NULL, &ap_stack); // allocate kernel stack for this AP
+    if (ret)
+    {
+        KERRNO_CHECK_RETURN(ret);
+        KERNEL_PANIC(MODULE, "");
+    }
 
     uint64_t *orig = (uint64_t *)(trampoline + 2);
     orig[0] = (uint64_t)kernel_page.page_dir_phys;
@@ -162,18 +166,18 @@ status_t smp_arch_send_ipi(uint32_t apic_id, interrupt_vector_t vector)
 {
     ENTER_FUNC("%u, 0x%x", apic_id, vector);
     lapic_write_icr(apic_id, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_NO));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t smp_arch_send_ipi_all(interrupt_vector_t vector)
 {
     lapic_write_icr(0xFFFFFFFF, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_ALL));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t smp_arch_send_ipi_others(interrupt_vector_t vector)
 {
     lapic_write_icr(0xFFFFFFFF, MAKE_LOW(vector, DELI_FIXED, DEST_PHYS, DELI_STATUS_IDLE, LEVEL_ASSERT, 0, DEST_EXCLUDE_SELF));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 

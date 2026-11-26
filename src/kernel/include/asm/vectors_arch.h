@@ -30,6 +30,7 @@
 #define IPI_START                0xD2
 #define IPI_CALL_FUNCTION_VECTOR 0xD2
 #define IPI_CPUS_IDLE_VECTOR     0xD3
+#define IPI_CPUS_STOP            0xD4
 #define IPI_END_PRINTABLE        0xE0
 #define IPI_RESCHEDULE_VECTOR    0xE1
 #define IPI_END                  0xEE

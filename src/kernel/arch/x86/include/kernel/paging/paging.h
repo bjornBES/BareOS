@@ -21,7 +21,7 @@ extern bool paging_disable_print;
 #endif
 
 paddr_t paging_print_info(page_table_t *page_dir, vaddr_t cr2);
-int map(page_table_t *page_table, vaddr_t start_virt, paddr_t start_phys, size_t size, mmu_flags_t flags);
+status_t map(page_table_t *page_table, vaddr_t start_virt, paddr_t start_phys, size_t size, mmu_flags_t flags);
 status_t paging_clean_up(page_table_t *page_table, vaddr_t virtAddr);
 status_t paging_unmap_page(page_table_t *page_table, vaddr_t virtAddr, paddr_t *out_paddr);
 status_t allocate_leaf(page_table_t *page_table, vaddr_t start_virt, paddr_t start_phys, mmu_flags_t flags, size_t *out_size);

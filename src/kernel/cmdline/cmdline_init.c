@@ -20,25 +20,31 @@ extern const cmdline_param_t __cmdline_params_end[];
 status_t cmdline_call_early(char *key, const char *value)
 {
     {
-        cmdline_param_t *funcs = (cmdline_param_t *)__cmdline_params_start;
-        while (funcs != NULL && funcs->handler != NULL)
+        cmdline_param_t *funcs = (cmdline_param_t *)&__cmdline_params_start;
+        int i = 0;
+        while (funcs)
         {
-            if (funcs->early)
+            cmdline_param_t *func = &funcs[i];
+            if (func == __cmdline_params_end)
             {
-                if (strcmp(funcs->key, key) == 0)
+                break;
+            }
+            if (func->early)
+            {
+                if (strcmp(func->key, key) == 0)
                 {
-                    trace_debug("cmdline-init", "running function %p", *funcs);
-                    status_t ret = (*funcs->handler)(value);
-                    if (ret != KERRNO_SUCCESSES)
+                    // trace_debug("cmdline-init", "running function %p", *funcs);
+                    status_t ret = (*func->handler)(value);
+                    if (ret != KERRNO_SUCCESS)
                     {
-                        KERNEL_PANIC("cmdline-init", "init function at %p returned non zero", *funcs);
+                        KERNEL_PANIC("cmdline-init", "init function at %p returned non zero", func);
                     }
                 }
-                funcs++;
             }
+            i++;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t cmdline_call_later(char *key, const char *value)
@@ -53,7 +59,7 @@ status_t cmdline_call_later(char *key, const char *value)
                 {
                     trace_debug("cmdline-init", "running function %p", *funcs);
                     status_t ret = (*funcs->handler)(value);
-                    if (ret != KERRNO_SUCCESSES)
+                    if (ret != KERRNO_SUCCESS)
                     {
                         KERNEL_PANIC("cmdline-init", "init function at %p returned non zero", *funcs);
                     }
@@ -62,5 +68,5 @@ status_t cmdline_call_later(char *key, const char *value)
             funcs++;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

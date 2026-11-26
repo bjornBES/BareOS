@@ -71,7 +71,7 @@ INTERNAL status_t pid_block_init(pid_block_t *b, int index)
     b->allocated = 0;
     b->hint = 0;
     b->base = index * PID_MAX;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL pid_block_t *pid_allocate_block(int index)
@@ -149,7 +149,7 @@ status_t pid_allocate(process_t *proc)
     pid_block_unlock(current_block);
 
     proc->pid = pid;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pid_init()
@@ -159,7 +159,7 @@ status_t pid_init()
     blocks[0] = &init_pid_block;
     pid_block_init(&init_pid_block, 0);
     UNLOCK();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 POSTCORE_INITCALL(pid_init);

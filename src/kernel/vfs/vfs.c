@@ -28,14 +28,12 @@
 
 #define MODULE "vfs"
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 status_t vfs_initialize()
 {
     ENTER_FUNC("", 0);
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_FS);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL status_t vfs_do_mount(const char *path, device_t *dev, volume_t *volume, int flags)
@@ -45,12 +43,12 @@ INTERNAL status_t vfs_do_mount(const char *path, device_t *dev, volume_t *volume
     mountpoint_t *mount = NULL;
     status_t ret = mount_create(volume, path, flags, &mount);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_mount_label(const char *path, device_t *dev, int flags)
@@ -61,7 +59,7 @@ status_t vfs_mount_label(const char *path, device_t *dev, int flags)
     filesystem_t *fs;
     status_t ret = vfs_fs_probe(dev, &fs);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -69,14 +67,14 @@ status_t vfs_mount_label(const char *path, device_t *dev, int flags)
     volume_t *vol = NULL;
     ret = volume_do_register(volume_path, dev, fs, &vol);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     ret = vfs_do_mount(path, dev, vol, flags);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -89,7 +87,7 @@ status_t vfs_mount(device_t *dev, int flags)
     filesystem_t *fs;
     status_t ret = vfs_fs_probe(dev, &fs);
     // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -106,17 +104,17 @@ status_t vfs_mount(device_t *dev, int flags)
 
     blkdev_t *blk_dev = to_blkdev(dev);
 
-    if (fs->ident_fs(dev, &blk_dev->fs_ident) != KERRNO_SUCCESSES)
+    if (fs->ident_fs(dev, &blk_dev->fs_ident) != KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_UNSUCCESS, "%s did not identify itself", fs->name);
     }
 
-    hexdump(&blk_dev->fs_ident, sizeof(fs_ident_t), 16);
+    // hexdump(&blk_dev->fs_ident, sizeof(fs_ident_t), 16);
 
     volume_t *vol = NULL;
     ret = volume_do_register(blk_dev->fs_ident.label, dev, fs, &vol);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -138,12 +136,12 @@ status_t vfs_mount(device_t *dev, int flags)
 
     ret = vfs_do_mount(path, dev, vol, flags);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **out_node)
@@ -151,7 +149,7 @@ status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **o
     ENTER_FUNC("%s, 0x%x, 0x%x, %p", path, flags, mode, out_node);
     vfs_node_t *node = NULL;
     status_t ret = path_lookup(path, &node);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         trace_err(MODULE, "returned %i", ret);
         return ret;
@@ -164,7 +162,7 @@ status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **o
     trace_debug(MODULE, "vol->fs->open @ %p", vol->fs->open);
     ret = vol->fs->open(node, vol->device, mnt);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -175,7 +173,7 @@ status_t vfs_open_internal(const char *path, int flags, int mode, vfs_node_t **o
     node->opened = true;
 
     *out_node = node;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_open(const char *path, int flags, int mode, vfs_node_t **out_node)
@@ -190,14 +188,14 @@ status_t vfs_close(vfs_node_t *node)
 
     ret = inode_put(node->inode);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
 
     ret = node->fs->close(node, node->mountpoint->volume->device, node->mountpoint);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -239,7 +237,7 @@ status_t vfs_seek(vfs_node_t *node, off_t offset, int whence)
     if (whence == SEEK_SET)
     {
         node->offset = offset;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return KERRNO_UNSUCCESS;
 }

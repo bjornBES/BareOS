@@ -10,18 +10,12 @@
 
 #pragma once
 
+#include "interrupt/interrupt_flags.h"
+
 #include "asm/ivt_arch.h"
 
 #include <binary.h>
-#include <types.h>
-
-#define HANDLER_IN_USE    BIT(0)
-#define HANDLER_IS_ACTIVE BIT(1)
-#define HANDLER_SHAREABLE BIT(2)
-#define HANDLER_MSI       BIT(3)
-#define HANDLER_GSI       BIT(4)
-#define HANDLER_RESERVED  BIT(5)
-#define HANDLER_FULL      BIT(6)
+#include <types.h>  
 
 typedef status_t (*interrupt_handler)(intr_frame_t *regs);
 
@@ -37,7 +31,7 @@ status_t ivt_init();
 /// @param[in] vector The vector that will the handler will run on.
 /// @param[in] handler The handler that needs to get info about the interrupt and either resolve it, panic or give it to a kernel handler
 ///
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 /// @retval KERRNO_BUSY: Will be returned if the handler's HANDLER_IN_USE flag is set.
 status_t ivt_set_handler(interrupt_vector_t vector, interrupt_handler handler);
 
@@ -45,7 +39,7 @@ status_t ivt_set_handler(interrupt_vector_t vector, interrupt_handler handler);
 ///
 /// @param vector The vector that will be enabled.
 ///
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: Will be returned if the handler's HANDLER_IN_USE flag is zero.
 status_t ivt_enable_vector(interrupt_vector_t vector);
 
@@ -53,7 +47,7 @@ status_t ivt_enable_vector(interrupt_vector_t vector);
 ///
 /// @param vector The vector that will be disabled.
 ///
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 /// @retval KERRNO_NOT_ALLOWED: Will be returned if the handler's HANDLER_IN_USE flag is zero.
 status_t ivt_disable_vector(interrupt_vector_t vector);
 

@@ -68,17 +68,17 @@ status_t proc_add(process_t *parent, process_t *child)
 {
     ADD_THIS_TO_LIST(parent->children, child);
     child->parent = parent;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t proc_run(process_t *proc)
 {
     FUNC_NOT_IMPLEMENTED();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t process_get_current(process_t **out_proc)
 {
     *out_proc = THISCPU()->current_proc;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

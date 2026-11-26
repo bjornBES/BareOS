@@ -23,7 +23,7 @@ status_t madt_parse()
     madt_t *_madt = (madt_t *)table_get_table(0x43495041); // apic
     if (!_madt)
     {
-        log_crit(MODULE, "no madt");
+        trace_crit(MODULE, "no madt");
         return -1;
     }
 

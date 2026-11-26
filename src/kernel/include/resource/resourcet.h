@@ -21,7 +21,7 @@ typedef paddr_t resource_size_t;
  */
 typedef enum
 {
-    RES_SPACE_MEM, /**< Physical memory-mapped address space (MMIO + RAM) */
+    RES_SPACE_RAM, /**< Physical memory-mapped address space (MMIO RAM) */
     RES_SPACE_IO,  /**< I/O port space */
     RES_SPACE_IRQ, /**< IRQ/GSI number space */
 } res_space_t;

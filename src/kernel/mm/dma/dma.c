@@ -27,7 +27,7 @@ INTERNAL vaddr_t dma_bump = MEMORY_DMA_VIRT_BASE;
 status_t dma_initialize()
 {
     dma_bump = MEMORY_DMA_VIRT_BASE;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 EARLY_INITCALL(dma_initialize);
@@ -52,7 +52,7 @@ status_t dma_allocate(size_t size, dma_t **out_dma)
     ret = pmm_alloc_frame_at_size(FRAME_COUNT(aligned_size), &addr); // allocates the biggest single frame
     if (ret)
     {
-        KERRNO_RETURN(KERRNO_OOM, "");
+        KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "");
     }
     dma_t *dma = dma_create();
     *out_dma = dma;

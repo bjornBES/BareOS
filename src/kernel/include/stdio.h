@@ -72,7 +72,8 @@ int vprintf(fd_t file, const char *format, va_list args);
 int vfprintf(fd_t file, const char *fmt, va_list args);
 int vsprintf(char *s, const char *format, va_list args);
 int vsnprintf(char *s, size_t n, const char *format, va_list args);
-
+int vscnprintf(char *buf, size_t size, const char *fmt, va_list args);
+int scnprintf(char *buf, size_t size, const char *fmt, ...);
 
 /* 
 int fsetpos(fd_t, const fpos_t *);

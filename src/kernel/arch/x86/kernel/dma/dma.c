@@ -49,7 +49,7 @@ status_t dma_arch_map(dma_t *dma, size_t size)
         paddr += size;
         i += PAGE_COUNT(size);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL_INLINE size_t dma_do_copy(void *dest, void *src, size_t size)
@@ -76,12 +76,12 @@ INTERNAL_INLINE size_t dma_do_copy(void *dest, void *src, size_t size)
 status_t dma_arch_copy_from(dma_t *alloc, void *src, size_t size, size_t *out_size)
 {
     *out_size = dma_do_copy((void *)alloc->virt, src, size);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t dma_arch_copy_to(dma_t *alloc, void *dst, size_t size, size_t *out_size)
 {
     ENTER_FUNC("%p, %p, %u, %p", alloc, dst, size, out_size);
     *out_size = dma_do_copy(dst, (void *)alloc->virt, size);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

@@ -61,14 +61,14 @@ typedef struct buddy
     uint8_t *free_bitmap;
 } buddy_t;
 
-void buddy_print_info_verbose(frame_allocator_t *allocator);
-void buddy_print_info(frame_allocator_t *allocator);
-void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out);
-int buddy_free(frame_allocator_t *allocator, paddr_t physaddr, size_t nframes);
-int buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_phys);
-int buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t order, paddr_t *phys_out);
+void buddy_print_info_verbose(allocator_info_t *allocator);
+void buddy_print_info(allocator_info_t *allocator);
+void buddy_stats(allocator_info_t *allocator, frame_allocator_stats_t *out);
+int buddy_free(allocator_info_t *allocator, paddr_t physaddr, size_t nframes);
+int buddy_alloc(allocator_info_t *allocator, size_t nframes, paddr_t *out_phys);
+int buddy_alloc_at(allocator_info_t *allocator, paddr_t addr, size_t order, paddr_t *phys_out);
 
-int buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order);
+int buddy_free_block(allocator_info_t *allocator, paddr_t physaddr, uint32_t order);
 
 INTERNAL ALWAYS_INLINE void buddy_list_push(buddy_order_t *o, buddy_free_node_t *node)
 {
@@ -128,26 +128,24 @@ INTERNAL ALWAYS_INLINE void buddy_bit_set(buddy_t *global_buddy, size_t order, s
 
 INTERNAL ALWAYS_INLINE void buddy_bit_clear(buddy_t *global_buddy, size_t order, size_t index)
 {
-    // this is... quantum physics i uncomment the 2 trace lines... and it doesn't fail but if i comment them it fails?
-    // - BjornBEs 29.10.2026 17:11
-    // trace_debug(MODULE, "global_buddy->order_bit_offset = %p", global_buddy->order_bit_offset);
-    // trace_debug(MODULE, "global_buddy->free_bitmap = %p", global_buddy->free_bitmap);
-    
-    // and now it works? - BjornBEs 29.10.2026 17:13
-    // trace_debug(MODULE, "");
-
-    // just uncommented that... i don't understand GCC sometimes. - BjornBEs 29.10.2026 17:17
     size_t bit = global_buddy->order_bit_offset[order] + index;
     global_buddy->free_bitmap[bit / 8] &= ~(1 << (bit % 8));
 }
 
-status_t buddy_setup(frame_allocator_t *out, pmm_info_t *info)
+status_t buddy_setup(allocator_info_t *out, const pmm_zone_info_t *info)
 {
     ENTER_FUNC("%p, %p", out, info);
-    paddr_t phys_buddy = pmm_alloc_frame();
+    paddr_t phys_buddy;
+    status_t ret = pmm_alloc_frame(&phys_buddy);
+    if (ret)
+    {
+        KERRNO_CHECK_RETURN(ret);
+        KERNEL_PANIC(MODULE, "early heap is exhausted");
+    }
     buddy_t *global_buddy = (buddy_t *)phys_to_virt_auto(phys_buddy);
     memset(global_buddy, 0, sizeof(buddy_t));
 
+    trace_debug(MODULE, "start        = %016llx end      = %016llx", info->phys_start, info->phys_end);
     size_t total_frames = PAGE_COUNT(info->phys_end - info->phys_start);
     size_t total_bits = 0;
     for (size_t i = 0; i < BUDDY_MAX_ORDER; i++)
@@ -158,28 +156,32 @@ status_t buddy_setup(frame_allocator_t *out, pmm_info_t *info)
     size_t bitmap_bytes = PAGE_ALIGN_UP((total_bits + 7) / 8);
     size_t bitmap_frames = bitmap_bytes / PAGE_SIZE;
 
-    paddr_t bitmap_phys = pmm_alloc_frame();
+    paddr_t bitmap_phys;
+    ret = pmm_alloc_frame(&bitmap_phys);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        KERNEL_PANIC(MODULE, "early heap is exhausted");
+    }
     for (size_t f = 1; f < bitmap_frames; f++)
     {
-        pmm_alloc_frame();
+        ret = pmm_alloc_frame(NULL);
+        KERRNO_CHECK_RETURN(ret);
+        if (ret)
+        {
+            KERNEL_PANIC(MODULE, "early heap is exhausted");
+        }
     }
 
     global_buddy->bitmap_phys = bitmap_phys;
     global_buddy->bitmap_bytes = bitmap_bytes;
 
     out->priv = (void *)global_buddy;
-    out->ops.stats = buddy_stats;
-    out->ops.print_stat = buddy_print_info;
-    out->ops.print_stat_verbose = buddy_print_info_verbose;
-    out->ops.alloc = buddy_alloc;
-    out->ops.free = buddy_free;
-    out->ops.alloc_at = buddy_alloc_at;
-    out->name = "buddy";
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
+status_t buddy_initialize(allocator_info_t *out, const pmm_zone_info_t *info)
 {
     ENTER_FUNC("%p, %p", out, info);
     buddy_t *global_buddy = out->priv;
@@ -189,9 +191,9 @@ status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
     global_buddy->free_bitmap = (uint8_t *)phys_to_virt_auto(global_buddy->bitmap_phys);
     memset(global_buddy->free_bitmap, 0, global_buddy->bitmap_bytes);
 
-    trace_debug(MODULE, "region start=%p end=%p", global_buddy->start, global_buddy->end);
-    trace_debug(MODULE, "mapping the frames");
-    trace_debug(MODULE, "%p..%p size %x", global_buddy->start, global_buddy->end, global_buddy->end - global_buddy->start);
+    // trace_debug(MODULE, "region start=%p end=%p", global_buddy->start, global_buddy->end);
+    // trace_debug(MODULE, "mapping the frames");
+    // trace_debug(MODULE, "%p..%p size %x", global_buddy->start, global_buddy->end, global_buddy->end - global_buddy->start);
 
     paddr_t addr = global_buddy->start;
     while (addr < global_buddy->end)
@@ -207,14 +209,14 @@ status_t buddy_initialize(frame_allocator_t *out, pmm_info_t *info)
             order--;
         }
 
-        trace_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
+        // trace_debug(MODULE, "  inserting addr=%p order=%d", addr, order);
         buddy_free_block(out, addr, order);
         addr += BUDDY_BLOCK_SIZE(order);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-void buddy_print_info_verbose(frame_allocator_t *allocator)
+void buddy_print_info_verbose(allocator_info_t *allocator)
 {
     buddy_t *global_buddy = allocator->priv;
     buddy_print_info(allocator);
@@ -227,44 +229,44 @@ void buddy_print_info_verbose(frame_allocator_t *allocator)
             continue;
         }
 
-        log_debug(NO_MODULE, "  order[%u] blocks:", i);
+        trace_debug(MODULE, "  order[%u] blocks:", i);
         buddy_free_node_t *node = o->free_list;
         size_t j = 0;
         while (node)
         {
             paddr_t addr = virt_to_phys_auto((vaddr_t)node);
-            log_debug(NO_MODULE, "    [%4zu] %p/%p", j, addr, node);
+            trace_debug(MODULE, "    [%4zu] %p/%p index=0x%x", j, addr, node, buddy_block_index(global_buddy, addr, i));
             node = node->next;
             j++;
         }
     }
 }
 
-void buddy_print_info(frame_allocator_t *allocator)
+void buddy_print_info(allocator_info_t *allocator)
 {
     buddy_t *global_buddy = allocator->priv;
     frame_allocator_stats_t st;
     buddy_stats(allocator, &st);
 
-    log_debug(NO_MODULE, "=== Buddy Allocator Info ===");
-    log_debug(NO_MODULE, "Region: %p..%p (size: %x)", global_buddy->start, global_buddy->end, (uint32_t)(global_buddy->end - global_buddy->start));
-    log_debug(NO_MODULE, "");
+    trace_debug(MODULE, "=== Buddy Allocator Info ===");
+    trace_debug(MODULE, "Region: %p..%p (size: %x)", global_buddy->start, global_buddy->end, (uint32_t)(global_buddy->end - global_buddy->start));
+    trace_debug(MODULE, "");
 
     for (size_t i = 0; i < BUDDY_MAX_ORDER; i++)
     {
         size_t block_size = BUDDY_BLOCK_SIZE(i);
         size_t free_bytes = st.per_order_count[i] * block_size;
-        log_debug(NO_MODULE, "  order[%2u] block_size=%8x  count=%5u  free=%x bytes", i, block_size, st.per_order_count[i], free_bytes);
+        trace_debug(MODULE, "  order[%2u] block_size=%8x  count=%5u  free=%x bytes", i, block_size, st.per_order_count[i], free_bytes);
     }
 
-    log_debug(NO_MODULE, "");
+    trace_debug(MODULE, "");
     size_t total_free_bytes = st.free_frames * PAGE_SIZE;
     size_t total_bytes = st.total_frames * PAGE_SIZE;
-    log_debug(NO_MODULE, "Total free: %x/%x bytes (%u KiB / %u MiB)", total_free_bytes, total_bytes, (uint32_t)(total_free_bytes / 1024), (uint32_t)(total_free_bytes / (1024 * 1024)));
-    log_debug(NO_MODULE, "============================");
+    trace_debug(MODULE, "Total free: %x/%x bytes (%u KiB / %u MiB)", total_free_bytes, total_bytes, (uint32_t)(total_free_bytes / 1024), (uint32_t)(total_free_bytes / (1024 * 1024)));
+    trace_debug(MODULE, "============================");
 }
 
-void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out)
+void buddy_stats(allocator_info_t *allocator, frame_allocator_stats_t *out)
 {
     buddy_t *global_buddy = allocator->priv;
     memset(out, 0, sizeof(*out));
@@ -278,14 +280,15 @@ void buddy_stats(frame_allocator_t *allocator, frame_allocator_stats_t *out)
     }
 }
 
-status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32_t order)
+status_t buddy_free_block(allocator_info_t *allocator, paddr_t physaddr, uint32_t order)
 {
     buddy_t *global_buddy = allocator->priv;
-    trace_debug(MODULE, "buddy_free addr=%p order=%d", physaddr, order);
+    // trace_debug(MODULE, "buddy_free addr=%p order=%d", physaddr, order);
     if (order >= BUDDY_MAX_ORDER)
     {
         KERRNO_RETURN(KERRNO_BAD_VALUE, "order is not valid");
     }
+    // trace_debug(MODULE, "global_buddy = %p", global_buddy);
 
     paddr_t addr = physaddr;
 
@@ -314,16 +317,17 @@ status_t buddy_free_block(frame_allocator_t *allocator, paddr_t physaddr, uint32
         order++;
     }
 
+    // trace_debug(MODULE, "addr = %p, order = %u", addr, order);
     size_t idx = buddy_block_index(global_buddy, addr, order);
-    // trace_debug(MODULE, "idx = %u", idx);
+    // trace_debug(MODULE, "idx = %u/0x%x", idx, idx);
     buddy_free_node_t *node = (buddy_free_node_t *)phys_to_virt_auto(addr);
     // trace_debug(MODULE, "node = %p", node);
     buddy_list_push(&global_buddy->orders[order], node);
     buddy_bit_set(global_buddy, order, idx);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-status_t buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
+status_t buddy_free(allocator_info_t *allocator, paddr_t phys, size_t nframes)
 {
     paddr_t addr = phys;
     size_t remaining = nframes;
@@ -334,17 +338,21 @@ status_t buddy_free(frame_allocator_t *allocator, paddr_t phys, size_t nframes)
         size_t max_fit_order = floor_log2(remaining);
         size_t chunk_order = min(max_align_order, max_fit_order);
 
-        buddy_free_block(allocator, addr, chunk_order);
+        status_t ret = buddy_free_block(allocator, addr, chunk_order);
+        if (ret)
+        {
+            return ret;
+        }
 
         addr += (1 << chunk_order) * PAGE_SIZE;
         remaining -= (1 << chunk_order);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *phys_out)
+status_t buddy_alloc_block(allocator_info_t *allocator, size_t order, paddr_t *phys_out)
 {
-    ENTER_FUNC("%p, %u, %p", allocator, order, phys_out);
+    // ENTER_FUNC("%p, %u, %p", allocator, order, phys_out);
     buddy_t *global_buddy = allocator->priv;
     if (order >= BUDDY_MAX_ORDER)
     {
@@ -359,28 +367,37 @@ status_t buddy_alloc_block(frame_allocator_t *allocator, size_t order, paddr_t *
 
     if (found_order == BUDDY_MAX_ORDER)
     {
-        KERRNO_RETURN(KERRNO_POSIX_ENOMEM, "Out of memory");
+        KERRNO_RETURN(KERRNO_ALLOC_FAILED, "Out of memory");
     }
 
     buddy_free_node_t *node = buddy_list_pop(&global_buddy->orders[found_order]);
     paddr_t addr = virt_to_phys_auto((vaddr_t)node);
-    buddy_bit_clear(global_buddy, found_order, buddy_block_index(global_buddy, addr, found_order));
+    // trace_debug(MODULE, "here 0 addr = %p, global_buddy = %p", addr, global_buddy);
+    size_t index = buddy_block_index(global_buddy, addr, found_order);
+    // trace_debug(MODULE, "here 0.1 index=0x%x", index);
+    buddy_bit_clear(global_buddy, found_order, index);
+    // trace_debug(MODULE, "here 1 found_order = %u, order = %u", found_order, order);
 
     while (found_order > order)
     {
+        // trace_debug(MODULE, "here 2");
         found_order--;
         paddr_t split = addr + BUDDY_BLOCK_SIZE(found_order);
+        // trace_debug(MODULE, "here 3");
         buddy_free_node_t *split_node = (buddy_free_node_t *)phys_to_virt_auto(split);
+        // trace_debug(MODULE, "here 4");
         buddy_list_push(&global_buddy->orders[found_order], split_node);
+        // trace_debug(MODULE, "here 5");
         buddy_bit_set(global_buddy, found_order, buddy_block_index(global_buddy, split, found_order));
+        // trace_debug(MODULE, "here 6");
     }
 
     // trace_debug(MODULE, "got addr=%p order=%d", addr, order);
     *phys_out = addr;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-status_t buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_phys)
+status_t buddy_alloc(allocator_info_t *allocator, size_t nframes, paddr_t *out_phys)
 {
     size_t order = ceil_log2(nframes);
 
@@ -410,10 +427,10 @@ status_t buddy_alloc(frame_allocator_t *allocator, size_t nframes, paddr_t *out_
     }
 
     *out_phys = base;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-static status_t buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr)
+static status_t buddy_alloc_at_single(allocator_info_t *allocator, paddr_t addr)
 {
     buddy_t *global_buddy = allocator->priv;
     for (uint32_t order = BUDDY_MAX_ORDER - 1;; order--)
@@ -443,7 +460,7 @@ static status_t buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr
                     buddy_free_block(allocator, upper, order);
                 }
             }
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
         if (order == 0)
         {
@@ -453,7 +470,7 @@ static status_t buddy_alloc_at_single(frame_allocator_t *allocator, paddr_t addr
     return 1; // already allocated / not in any free list
 }
 
-status_t buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t nframes, paddr_t *phys_out)
+status_t buddy_alloc_at(allocator_info_t *allocator, paddr_t addr, size_t nframes, paddr_t *phys_out)
 {
     for (size_t i = 0; i < nframes; i++)
     {
@@ -464,5 +481,18 @@ status_t buddy_alloc_at(frame_allocator_t *allocator, paddr_t addr, size_t nfram
         }
     }
     *phys_out = addr;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
+
+frame_allocator_t buddy_allocator = {
+    .name = "buddy",
+    .setup = buddy_setup,
+    .initialize = buddy_initialize,
+    .ops.stats = buddy_stats,
+    .ops.print_stat = buddy_print_info,
+    .ops.print_stat_verbose = buddy_print_info_verbose,
+    .ops.alloc = buddy_alloc,
+    .ops.free = buddy_free,
+    .ops.alloc_at = buddy_alloc_at,
+};
+INITCALL_ALLOCATOR(buddy_allocator);

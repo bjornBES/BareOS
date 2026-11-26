@@ -50,7 +50,7 @@ static status_t tty_get_ldops(int disc, const tty_ldisc_ops_t **ldisc_out)
     }
     UNLOCK();
     *ldisc_out = ldops;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static status_t tty_ldisc_get(tty_struct_t *tty, int disc, tty_ldisc_t **out_ldisc)
@@ -78,7 +78,7 @@ static status_t tty_ldisc_get(tty_struct_t *tty, int disc, tty_ldisc_t **out_ldi
     ld->tty = tty;
 
     *out_ldisc = ld;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static status_t tty_ldisc_open(tty_struct_t *tty, tty_ldisc_t *ld)
@@ -94,7 +94,7 @@ static status_t tty_ldisc_open(tty_struct_t *tty, tty_ldisc_t *ld)
         }
         return ret;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static void tty_ldisc_close(tty_struct_t *tty, tty_ldisc_t *ld)
@@ -130,7 +130,7 @@ status_t tty_ldisc_setup(tty_struct_t *tty, tty_struct_t *o_tty)
             return ret;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t tty_ldisc_init(tty_struct_t *tty)
@@ -143,5 +143,5 @@ status_t tty_ldisc_init(tty_struct_t *tty)
         return ret;
     }
     tty->ldisc = ld;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

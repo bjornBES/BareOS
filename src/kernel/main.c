@@ -42,16 +42,14 @@
 
 boot_params_t *main_boot_params;
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 extern void kernel_start_pid0();
 
 NORETURN void kernel_main()
 {
     ENTER_FUNC("", 0);
 
-    trace_info(NO_MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
-    trace_info(NO_MODULE, "timer_now_ns()    = %lld", timer_now_ns());
+    trace_info(MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
+    trace_info(MODULE, "timer_now_ns()    = %lld", timer_now_ns());
 
     pci_initialize();
 
@@ -99,12 +97,14 @@ __init void kernel_early_main(boot_params_t *boot_params)
 
     fadt_parse();
 
-    trace_info(NO_MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
-    trace_info(NO_MODULE, "timer_now_ns()    = %lld", timer_now_ns());
+    trace_info(MODULE, "timer_now_ticks() = %lld", timer_now_ticks());
+    trace_info(MODULE, "timer_now_ns()    = %lld", timer_now_ns());
 
     device_debug();
 
-    thread_t *main_thread = thread_create_kernel(THREAD_CALL_FUNC(kernel_main), 0, 0);
+    thread_t *main_thread;
+    thread_create_kernel(THREAD_CALL_FUNC(kernel_main), 0, 0, &main_thread);
+    // TODO: check kerrno
     sched_init(main_thread);
 
     trace_info(MODULE, "jump to kernel_main");

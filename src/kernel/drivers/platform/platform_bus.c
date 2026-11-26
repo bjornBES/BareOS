@@ -29,7 +29,7 @@ status_t platform_bus_match(device_t *dev, driver_t *drv)
 
     if (strcmp(platform_dev->name, drv->name) == 0)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return KERRNO_UNSUCCESS;
 }
@@ -47,7 +47,7 @@ status_t platform_bus_probe(device_t *dev)
         ret = platform_drv->probe(platform_dev);
     }
 
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         platform_dev->driver = NULL;
         return ret;

@@ -18,11 +18,11 @@
 
 static const char *const log_severity_colors[] =
     {
-        [LVL_DEBUG] = "\033[2;37m",
-        [LVL_INFO] = "\033[37m",
-        [LVL_WARN] = "\033[1;33m",
-        [LVL_ERROR] = "\033[1;31m",
-        [LVL_CRITICAL] = "\033[1;37;41m",
+        [DEBUG_LVL_DEBUG] = "\033[2;37m",
+        [DEBUG_LVL_INFO] = "\033[37m",
+        [DEBUG_LVL_WARN] = "\033[1;33m",
+        [DEBUG_LVL_ERROR] = "\033[1;31m",
+        [DEBUG_LVL_CRITICAL] = "\033[1;37;41m",
 };
 
 static const char *const g_ColorReset = "\033[0m";
@@ -41,11 +41,6 @@ void logfl(const char *module, debug_level_t level, const char *fmt, ...)
 
 void logfl_args(const char *module, debug_level_t level, const char *fmt, va_list args)
 {
-    if (level < MIN_LOG_LEVEL)
-    {
-        return;
-    }
-
     char log[255];
     char message[255];
     int count;
@@ -83,11 +78,6 @@ void logf(const char *module, debug_level_t level, const char *fmt, ...)
 
 void logf_args(const char *module, debug_level_t level, const char *fmt, va_list args)
 {
-    if (level < MIN_LOG_LEVEL)
-    {
-        return;
-    }
-
     char log[255];
     char message[255];
     int count;
@@ -111,35 +101,5 @@ void logf_args(const char *module, debug_level_t level, const char *fmt, va_list
     spinlock_acquire(&debug_logs);
     debug_write_line(log, count);
     spinlock_release(&debug_logs);
-}
-
-void debug_enter_func(const char *module, const char *function, const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-
-    // spinlock_acquire_irq(&debug_logs);
-
-    char log[255];
-    int count;
-    memset(log, 0, 255);
-    if (*module != '\0')
-    {
-        count = sprintf(log, "%s[%s] Enter %s(", log_severity_colors[LVL_DEBUG], module, function);
-        debug_write_line(log, count);
-    }
-    else
-    {
-        count = sprintf(log, "%sEnter %s(", log_severity_colors[LVL_DEBUG], function);
-        debug_write_line(log, count);
-    }
-    memset(log, 0, 255);
-    count = vsprintf(log, fmt, args); // write text
-    debug_write_line(log, count);
-
-    count = sprintf(log, ")%s\n", g_ColorReset); // write text
-    debug_write_line(log, count);
-    va_end(args);
-    // spinlock_release_irq(&debug_logs);
 }
 

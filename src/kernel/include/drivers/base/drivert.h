@@ -10,30 +10,11 @@
 
 #pragma once
 
-#include <types.h>
-
-#include "lists/list_node.h"
-
-#include "bust.h"
+#include "core_types.h"
 
 #include "module.h"
 
-typedef struct device device_t;
-
-typedef struct driver
-{
-    const char *name;
-
-    bus_type_t *bus;
-    size_t match_count;
-
-    status_t (*probe)(device_t *dev);   // called when a match is found, driver decides accept/reject
-    status_t (*remove)(device_t *dev);  // hot-unplug / teardown
-    status_t (*suspend)(device_t *dev); // optional, power state transitions
-    status_t (*resume)(device_t *dev);
-
-    list_node_t node; // linkage into the global driver registry
-} driver_t;
+#include <types.h>
 
 #define MODULE_DRIVER(__driver, __register, __unregister, ...) \
     static status_t __init __driver##_init()                   \

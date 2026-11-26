@@ -134,9 +134,9 @@ status_t n_tty_linebuf_erase(tty_struct_t *tty, n_tty_data_t *ldata)
     if (L_ECHOE(tty))
     {
         // return tty_echo_erase(tty);
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static void n_tty_receive_char(tty_struct_t *tty, n_tty_data_t *ldata, uint8_t c)
@@ -535,7 +535,7 @@ static int do_output_char(tty_struct_t *tty, n_tty_data_t *ldata, uint8_t c, int
             if (O_ONOCR(tty) && ldata->column == 0)
             {
                 *out_status = 0;
-                return KERRNO_SUCCESSES;
+                return KERRNO_SUCCESS;
             }
             if (O_OCRNL(tty))
             {
@@ -587,7 +587,7 @@ static int do_output_char(tty_struct_t *tty, n_tty_data_t *ldata, uint8_t c, int
 
     tty_put_char(tty, c);
     *out_status = 1;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static status_t process_output(tty_struct_t *tty, n_tty_data_t *ldata, uint8_t c)
@@ -611,7 +611,7 @@ static status_t process_output(tty_struct_t *tty, n_tty_data_t *ldata, uint8_t c
     }
     
     mutex_unlock(&ldata->output_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static ssize_t process_output_block(tty_struct_t *tty, n_tty_data_t *ldata, const uint8_t *buf, size_t count)
@@ -785,7 +785,7 @@ INTERNAL status_t n_tty_do_set_termios(tty_struct_t *tty, n_tty_data_t *ldata, c
 
     // wake_up_interruptible(&tty->write_wait);
     // wake_up_interruptible(&tty->read_wait);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static bool copy_from_read_buf(const tty_struct_t *tty, n_tty_data_t *ldata, uint8_t **kbp, size_t *nr)
@@ -978,7 +978,7 @@ static status_t n_tty_wait_for_input(tty_struct_t *tty, n_tty_data_t *ldata, vfs
     // *timeout = wait_woken(wait, TASK_INTERRUPTIBLE, *timeout);
     // down_read(&tty->termios_rwsem);
 
-    LOG_RETURN(KERRNO_SUCCESSES)
+    LOG_RETURN(KERRNO_SUCCESS)
 }
 
 status_t n_tty_open(tty_struct_t *tty)
@@ -1024,7 +1024,7 @@ status_t n_tty_receive(tty_struct_t *tty, wchar_t ch)
     ldata->commit_head = ldata->read_head;
     // n_tty_process_event(tty, ldata, ch);
     // return n_tty_process_byte(tty, ldata, ch);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t n_tty_set_termios(tty_struct_t *tty, const termios_t *old)
@@ -1057,7 +1057,7 @@ status_t n_tty_read(tty_struct_t *tty, vfs_node_t *file, uint8_t *kbuf, size_t c
         }
     }
 
-    status_t ret = KERRNO_SUCCESSES;
+    status_t ret = KERRNO_SUCCESS;
     while (count)
     {
         if (!input_available_p(tty, ldata, 0))

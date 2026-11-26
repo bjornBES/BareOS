@@ -8,8 +8,8 @@
  * -----
  */
 
-#include "drivers/base/block/blkdev.h"
-#include "drivers/base/block/partition.h"
+#include "drivers/block/blkdev.h"
+#include "drivers/block/partition.h"
 
 #include "drivers/base/class.h"
 
@@ -39,7 +39,7 @@ status_t block_device_added(device_t *dev)
         return part_detect(blk_dev);
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 status_t block_device_removed(device_t *dev)
 {
@@ -47,7 +47,7 @@ status_t block_device_removed(device_t *dev)
 
     FUNC_NOT_IMPLEMENTED();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 const dev_class_t block_class = {
@@ -72,12 +72,7 @@ status_t block_device_create(blkdev_t **blk_dev_out)
     // - BjornBEs 28.10.2026 21:42
     // ... ok context i have been debugging this for about 1:30 HOURS
     // and i forgot to set the output.
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-status_t block_class_register()
-{
-    return class_register(&block_class);
-}
-
-ARCHDONE_INITCALL(block_class_register);
+REGISTER_CLASS(block_class);

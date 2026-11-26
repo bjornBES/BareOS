@@ -84,7 +84,7 @@ status_t pit_set_oneshot(timer_source_t *self, uint64_t ns, timer_callback_t cb)
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
 
     RESTORE_IRQ();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pit_set_periodic(timer_source_t *self, uint64_t ns, timer_callback_t cb)
@@ -103,7 +103,7 @@ status_t pit_set_periodic(timer_source_t *self, uint64_t ns, timer_callback_t cb
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
 
     RESTORE_IRQ();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pit_cancel(timer_source_t *self)
@@ -113,7 +113,7 @@ status_t pit_cancel(timer_source_t *self)
     outb(PIT_CHANNEL0, 0);
     outb(PIT_CHANNEL0, 0);
     RESTORE_IRQ();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 uint64_t pit_read_count(timer_source_t *self)
@@ -142,17 +142,13 @@ uint64_t pit_ticks_to_ns(timer_source_t *self, uint64_t ticks)
 status_t pit_irq_handler(intr_frame_t *frame, void *ctx)
 {
     irq_eoi(frame->interrupt);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t pit_init()
 {
-    device_t *pit = timer_create_device();
-    pit->init_name = "pit";
-    
     timer_source_t *pit_timer = timer_create();
-    
-    pit_timer->name = "pit";
+    device_t *pit = &pit_timer->dev;
     pit_timer->caps.freq_hz = PIT_BASE_FREQ;
     pit_timer->caps.interrupt_capable = 1;
     pit_timer->caps.invariant = 1;
@@ -162,17 +158,14 @@ status_t pit_init()
     pit_timer->read_counter = pit_read_count;
     pit_timer->ticks_to_ns = pit_ticks_to_ns;
     
-    pit->class_data = pit_timer;
-    
-    device_register(pit);
-    pit_timer->dev = pit->devt.id;
+    device_register_with_name(pit, "pit");
     // timer_register(pit_timer);
 
     kernel_irq_t irq;
     irq_pick_free_entry(NULL, IRQ_SOURCE_IRQ, 0, &irq);
 
     irq_register_handler(irq, IRQ_SOURCE_IRQ, pit_irq_handler, NULL, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, 0);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 ARCHDONE_INITCALL(pit_init);

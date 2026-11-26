@@ -39,7 +39,7 @@ status_t devfs_probe(device_t *dev)
 {
     if (dev->class->type == virtual_class.type)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return KERRNO_UNSUCCESS;
 }
@@ -50,7 +50,7 @@ status_t devfs_mount(device_t *dev, mountpoint_t *mnt)
     devfs_priv_data_t *priv = kzmalloc(sizeof(devfs_priv_data_t));
     hash_map_create(&devfs_map, 64);
     devfs_vol->sb = priv;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t devfs_lookup(inode_t *parent, const char *name, inode_t *out, device_t *dev, mountpoint_t *mnt)
@@ -67,7 +67,7 @@ status_t devfs_lookup(inode_t *parent, const char *name, inode_t *out, device_t 
         out->type = DT_DIR;
         out->size = 0;
         dev_ino->map = devfs_map;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     dev_inode_t *dev_parent = (dev_inode_t *)parent;
@@ -79,7 +79,7 @@ status_t devfs_lookup(inode_t *parent, const char *name, inode_t *out, device_t 
     trace_debug(MODULE, "dev_inode->dev_id = ");
     device_id_print(&dev_inode->dev_id);
     memcpy(dev_ino, dev_inode, sizeof(dev_inode_t));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t devfs_open(vfs_node_t *node, device_t *dev, mountpoint_t *mnt)
@@ -102,7 +102,7 @@ status_t devfs_write(vfs_node_t *node, const void *buf, off_t offset, size_t len
     if (ret)
     {
         device_id_print(&dev_ino->dev_id);
-        KERRNO_RETURN(KERRNO_DEVICE_NOT_FOUND, "device was not found");
+        KERRNO_RETURN(KERRNO_DEV_NOT_FOUND, "device was not found");
     }
     if (!target_dev->ops.write)
     {
@@ -176,13 +176,13 @@ status_t devfs_add(device_t *dev)
 status_t devfs_device_added(device_t *dev)
 {
     ENTER_FUNC("%p", dev);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t devfs_device_removed(device_t *dev)
 {
     ENTER_FUNC("%p", dev);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 const dev_class_t virtual_class = {
@@ -194,7 +194,14 @@ const dev_class_t virtual_class = {
 
 status_t devfs_initcall_init()
 {
-    device_t *dev = core_device_create(&virtual_class, NULL, NULL, "devfs");
+    device_info_t info = {
+        .dev_id = {
+            .major = virtual_class.type,
+            .device = 0,
+            .minor = 0,
+        },
+    };
+    device_t *dev = core_device_create(&virtual_class, &info, NULL, "devfs");
     char *path = kzmalloc(CONFIG_MAX_VOLUME_LENGTH);
     size_t path_count = 0;
 #if CONFIG_VOLUME_POSTFIX != 0 && CONFIG_VOLUME_PREFIX != 0
@@ -208,7 +215,7 @@ status_t devfs_initcall_init()
 #endif
     path[path_count] = '\0';
     vfs_mount_label(path, dev, 0);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 ROOTFS_INITCALL(devfs_initcall_init)
 

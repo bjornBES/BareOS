@@ -47,7 +47,7 @@ status_t inode_alloc(volume_t *vol, inode_t **out)
     // driver allocates its own inode type
     inode_t *ino;
     status_t ret = vol->fs->alloc_inode(vol, &ino);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -58,7 +58,7 @@ status_t inode_alloc(volume_t *vol, inode_t **out)
     ino->hash_next = NULL;
 
     *out = ino;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // call fs->free_inode, remove from icache
@@ -70,7 +70,7 @@ status_t inode_free(inode_t *ino)
     }
 
     status_t ret = icache_remove(ino);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -90,7 +90,7 @@ status_t inode_get(inode_t *ino, inode_t **out)
     {
         *out = ino;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // decrement refcount, free if zero
@@ -105,7 +105,7 @@ status_t inode_put(inode_t *ino)
     {
         return inode_free(ino);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // hash lookup by (volume ptr + inode number)
@@ -122,7 +122,7 @@ status_t icache_lookup(volume_t *vol, uint32_t ino_num, inode_t **out)
             inode_get(ino, NULL);
             spinlock_release(&icache_lock);
             *out = ino;
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
         ino = ino->hash_next;
     }
@@ -144,7 +144,7 @@ status_t icache_insert(inode_t *ino)
     ino->hash_next = icache[slot];
     icache[slot] = ino;
     spinlock_release(&icache_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // remove from hash table
@@ -179,5 +179,5 @@ status_t icache_remove(inode_t *ino)
         curr = curr->hash_next;
     }
     spinlock_release(&icache_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

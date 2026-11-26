@@ -24,7 +24,7 @@ status_t pledge_check(pledge_flags_t function_pledge)
     }
     if ((current_process->pledge_mask & function_pledge) == function_pledge)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     return KERRNO_UNSUCCESS;

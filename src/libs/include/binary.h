@@ -15,7 +15,9 @@
 #include <bits.h>
 #include <find.h>
 
-#define BIT(x)                      (1ull << (x))
+#define BIT(x)                      (1 << (x))
+#define BIT_UL(x)                   (1ul << (x))
+#define BIT_ULL(x)                  (1ull << (x))
 #define BIT_RANGE(high, low)        ((1ull << ((high) - (low) + 1)) - 1)
 
 #define BIT_SET(x, bit)             (x) |= (1 << (bit))
@@ -48,5 +50,4 @@
     }
 
 // #define TEST_BIT_ACQUIRE(nr, addr) bitop(_test_bit_acquire, nr, addr)
-
 

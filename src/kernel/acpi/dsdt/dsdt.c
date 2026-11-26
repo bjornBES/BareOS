@@ -21,8 +21,6 @@
 
 #define MODULE "dsdt"
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 typedef struct
 {
     sdt_header_t header;
@@ -58,7 +56,7 @@ size_t aml_get_ident(uint8_t *code, int start_index, char *ident_out)
             break;
         }
         ident_out[ident_index] = 0;
-        // log_debug(NO_MODULE, "ident = \"%s\"", ident_out);
+        // trace_debug(MODULE, "ident = \"%s\"", ident_out);
     }
     return ident_index;
 }
@@ -83,7 +81,7 @@ status_t aml_parse_byte_data(uint8_t *code, int *start_index, uint8_t *out_data)
         (*start_index)++;
         *out_data = code[*start_index];
         (*start_index)++;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return 1;
 }
@@ -95,10 +93,10 @@ void dsdt_init(paddr_t dsdt_phys)
     mmu_arch_map(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys), PAGE_ALIGN_DOWN((paddr_t)dsdt_phys), kernel_data_flags, NULL);
     dsdt = (dsdt_t *)dsdt_phys;
     uint32_t size = dsdt->header.length;
-    log_debug(MODULE, "size = %u", size);
+    trace_debug(MODULE, "size = %u", size);
     mmu_arch_unmap(&kernel_page, PAGE_ALIGN_DOWN((vaddr_t)dsdt_phys), NULL);
     dsdt = (dsdt_t *)(ioremap((paddr_t)dsdt_phys, size) + GET_PAGE_OFFSET(dsdt_phys));
-    hexdump(dsdt->aml, dsdt->header.length, 16);
+    // hexdump(dsdt->aml, dsdt->header.length, 16);
     for (int i = 0; i < dsdt->header.length; i++)
     {
         uint8_t byte = dsdt->aml[i];
@@ -107,29 +105,29 @@ void dsdt_init(paddr_t dsdt_phys)
             i++;
             char ident[255];
             i += aml_get_ident(dsdt->aml, i, ident) - 1;
-            log_debug(NO_MODULE, "NAMEOP \"%s\"", ident);
+            trace_debug(MODULE, "NAMEOP \"%s\"", ident);
         }
         else if (byte == 0x10)
         {
-            log_debug(NO_MODULE, "SCOPE 0x%x", dsdt->aml[i + 1]);
+            trace_debug(MODULE, "SCOPE 0x%x", dsdt->aml[i + 1]);
         }
         else if (byte == 0x11)
         {
-            log_debug(NO_MODULE, "BufferOp 0x%x", dsdt->aml[i + 1]);
+            trace_debug(MODULE, "BufferOp 0x%x", dsdt->aml[i + 1]);
         }
         else if (byte == 0x12)
         {
-            log_debug(NO_MODULE, "PackageOp 0x%x at %u", dsdt->aml[i + 1], i);
+            trace_debug(MODULE, "PackageOp 0x%x at %u", dsdt->aml[i + 1], i);
             hexdump(dsdt->aml + i, 16, 16);
             aml_opcode_info_t info = aml_opcode(dsdt->aml, &i);
-            log_debug(NO_MODULE, "PackageOp 0x%x at %u", dsdt->aml[i], i);
+            trace_debug(MODULE, "PackageOp 0x%x at %u", dsdt->aml[i], i);
             uint8_t num_elements = dsdt->aml[i];
             i++;
-            log_debug(NO_MODULE, "PackageOp 0x%x at %u", dsdt->aml[i], i);
+            trace_debug(MODULE, "PackageOp 0x%x at %u", dsdt->aml[i], i);
         }
         else if (byte == 0x13)
         {
-            log_debug(NO_MODULE, "VarPackageOp 0x%x", dsdt->aml[i + 1]);
+            trace_debug(MODULE, "VarPackageOp 0x%x", dsdt->aml[i + 1]);
         }
         else if (byte == 0x5B)
         {
@@ -143,7 +141,7 @@ void dsdt_init(paddr_t dsdt_phys)
                         char ident[255];
                         byte = dsdt->aml[i];
                         i += aml_get_ident(dsdt->aml, i + 1, ident);
-                        log_debug(NO_MODULE, "DeviceOpList 0x%x \"%s\"", byte, ident);
+                        trace_debug(MODULE, "DeviceOpList 0x%x \"%s\"", byte, ident);
                         break;
                         // _0x53 0x35_
                     }
@@ -169,7 +167,7 @@ void dsdt_init(paddr_t dsdt_phys)
                 break;
             }
             ident[ident_index] = 0;
-            log_debug(NO_MODULE, "ident = \"%s\"", ident); */
+            trace_debug(MODULE, "ident = \"%s\"", ident); */
         }
     }
 }

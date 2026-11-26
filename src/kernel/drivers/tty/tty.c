@@ -38,7 +38,7 @@
     {                            \
         [VINTR] = 'C' - 0x40,    \
         [VQUIT] = '\\' - 0x40,   \
-        [VERASE] = '\b',       \
+        [VERASE] = '\b',         \
         [VKILL] = 'U' - 0x40,    \
         [VEOF] = 'D' - 0x40,     \
         [VTIME] = 0,             \
@@ -84,12 +84,12 @@ status_t tty_added(device_t *dev)
 {
     ENTER_FUNC("%p", dev);
     dev->ops.open = tty_dev_open;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t tty_removed(device_t *dev)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 tty_struct_t *active_tty;
@@ -105,7 +105,7 @@ status_t tty_devfs_dev_read(device_t *dev, void *buf, size_t len, off_t off, ssi
     ENTER_FUNC("%p, %p, 0x%x, 0x%x, %p", dev, buf, len, off, size_out);
     FUNC_NOT_IMPLEMENTED();
     // tty_write(active_tty, buf, len, size_out);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t tty_devfs_dev_write(device_t *dev, const void *buf, size_t len, off_t off, ssize_t *size_out)
@@ -122,7 +122,7 @@ status_t tty_devfs_dev_write(device_t *dev, const void *buf, size_t len, off_t o
     }
 
     // tty_write(active_tty, (void *)buf, len, size_out);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 const dev_class_t tty_class = {
@@ -132,20 +132,40 @@ const dev_class_t tty_class = {
     .device_removed = tty_removed,
 };
 
+REGISTER_CLASS(tty_class);
+
 status_t tty_init()
 {
     list_initialize(&tty_drivers);
-    class_register(&tty_class);
     // active_tty = kzmalloc(sizeof(tty_struct_t));
     // memcpy(&active_tty->termios, &tty_std_termios, sizeof(tty_std_termios));
 
-    tty_dev_t *tty_dev = core_device_create_type(&tty_class, NULL, tty_dev_t, NULL, "tty");
+
+    // ringbuf_init(sizeof(wchar_t), 128, &active_tty->char_buffer);
+    return KERRNO_SUCCESS;
+}
+
+POSTCORE_INITCALL(tty_init);
+
+status_t tty_rootfs_init()
+{
+    device_info_t info = {
+        .dev_id = {
+            .major = tty_class.type,
+            .device = 0,
+            .minor = 0,
+        },
+    };
+
+    tty_dev_t *tty_dev = core_device_create_type(&tty_class, &info, tty_dev_t, NULL, "tty0");
     tty_dev->dev.ops.open = tty_devfs_dev_open;
     tty_dev->dev.ops.read = tty_devfs_dev_read;
     tty_dev->dev.ops.write = tty_devfs_dev_write;
     devfs_add(&tty_dev->dev);
-    
-    console_dev = core_device_create(&tty_class, NULL, NULL, "console");
+
+    info.dev_id.minor++;
+
+    console_dev = core_device_create(&tty_class, &info, NULL, "console");
     devfs_add(console_dev);
 
     // ringbuf_init(sizeof(wchar_t), 128, &active_tty->char_buffer);
@@ -153,8 +173,8 @@ status_t tty_init()
 #ifdef CONFIG_USE_VT
     return vty_init();
 #endif
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-DEVICE_INITCALL(tty_init);
+DEVICE_INITCALL(tty_rootfs_init);
 

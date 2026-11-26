@@ -23,7 +23,7 @@ INTERNAL status_t apply_mode(display_device_t *display_dev, const display_mode_t
     if (!display_dev->driver->set_mode)
     {
         // firmware fb: keeps its native mode, not an error
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return display_dev->driver->set_mode(display_dev, m);
 }
@@ -34,7 +34,7 @@ status_t display_set_mode(display_device_t *display_dev, const display_mode_t *m
     display_mode_t old = cur_mode; // copy before touching anything
     cur_mode = *m;
     status_t r = apply_mode(display_dev, &cur_mode);
-    if (r != KERRNO_SUCCESSES)
+    if (r != KERRNO_SUCCESS)
     {
         cur_mode = old;
         r = apply_mode(display_dev, &old); // best effort: put the hardware back too

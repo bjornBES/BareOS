@@ -82,7 +82,7 @@ status_t fat_83_to_name(const char raw83[11], char out[13])
     }
 
     *p = '\0';
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_name_to_83(const char *name, uint8_t out83[11])
@@ -144,14 +144,14 @@ status_t fat_name_to_83(const char *name, uint8_t out83[11])
         }
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t fat_name_eq(char name1[13], char name2[13])
 {
     if (strcasecmp(name1, name2) == 0)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return KERRNO_UNSUCCESS;
 }

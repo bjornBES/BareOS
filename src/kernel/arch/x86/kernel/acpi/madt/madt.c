@@ -119,7 +119,7 @@ status_t madt_arch_parse(madt_t *madt)
 
                     if (FLAG_IS_SET(la->flags, 1) == false)
                     {
-                        log_err(MODULE, "CPU flags=0x2 not good");
+                        trace_err(MODULE, "CPU flags=0x2 not good");
                         for (;;)
                         {
                             ;
@@ -166,5 +166,5 @@ status_t madt_arch_parse(madt_t *madt)
         }
         entry += en->length; // advance by entry length, not sizeof
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

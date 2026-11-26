@@ -47,13 +47,11 @@
 
 #define MODULE "x86-setup"
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 status_t breakpoint(intr_frame_t *frame)
 {
-    trace_debug("breakpoint", "breakpoint\n");
+    trace_debug("breakpoint", "breakpoint");
     frame_arch_dump_frame(frame);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t write_registers(intr_frame_t *regs)
@@ -62,13 +60,13 @@ status_t write_registers(intr_frame_t *regs)
     trace_debug(MODULE, "from cpu %d", cpu_arch_get_current());
     frame_arch_dump_frame(regs);
     trace_debug("DEBUG", "======== DEBUG ========");
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t double_fault(intr_frame_t *regs)
 {
     frame_arch_dump_frame(regs);
-    log_err("double", "double fault");
+    trace_err("double", "double fault");
 
     FUNC_NOT_IMPLEMENTED();
     return ENOSYS;
@@ -76,7 +74,7 @@ status_t double_fault(intr_frame_t *regs)
 
 status_t general_protection_fault(intr_frame_t *frame)
 {
-    log_err("GPF", "General Protection Fault 0x%x", frame->error);
+    trace_err("GPF", "General Protection Fault 0x%x", frame->error);
     frame_arch_dump_frame(frame);
     uint8_t table = BIT_GET_RANGE(frame->error, 1, 2);
     uint16_t selector = frame->error & ~0x3;
@@ -88,7 +86,7 @@ status_t general_protection_fault(intr_frame_t *frame)
         if (selector == 0 && checksum != 0)
         {
             gdt_set_entry(entry, 0, 0, 0, 0, 0);
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
     }
     else if (table == 0b01 || table == 0b11)
@@ -103,7 +101,7 @@ status_t general_protection_fault(intr_frame_t *frame)
 
 status_t segment_not_present(intr_frame_t *frame)
 {
-    log_err("SNP", "Segment not present 0x%x", frame->error);
+    trace_err("SNP", "Segment not present 0x%x", frame->error);
     frame_arch_dump_frame(frame);
     uint8_t table = BIT_GET_RANGE(frame->error, 1, 2);
     uint16_t selector = frame->error & ~0x3;
@@ -115,7 +113,7 @@ status_t segment_not_present(intr_frame_t *frame)
         if (selector == 0 && checksum != 0)
         {
             gdt_set_entry(entry, 0, 0, 0, 0, 0);
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
     }
     else if (table == 0b01 || table == 0b11)
@@ -167,7 +165,7 @@ __init void arch_setup(boot_params_t *boot_params)
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_ARCH);
 
-    resource_space_init(&mem_space, RES_SPACE_MEM, 0, UINT64_MAX);
+    resource_space_init(&mem_space, RES_SPACE_RAM, 0, UINT64_MAX);
 
     ivt_set_handler(EXC_DEBUG, write_registers);
     ivt_set_handler(EXC_BREAKPOINT, breakpoint);
@@ -178,6 +176,7 @@ __init void arch_setup(boot_params_t *boot_params)
 
     mmu_arch_init(boot_params);
     mmu_arch_disable_prints();
+
 
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_CORE);
 
@@ -212,6 +211,11 @@ __init void arch_setup(boot_params_t *boot_params)
     rsdt_parse(bp_arch);
     
     CALL_INITCALL_FUNCTIONS(INITCALL_LVL_POSTCORE);
+
+    // while (true)
+    // {
+    // }
+    
     
     resource_dump(&mem_space.root);
     

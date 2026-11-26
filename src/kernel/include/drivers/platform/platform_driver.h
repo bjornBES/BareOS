@@ -8,6 +8,8 @@
  * -----
  */
 
+#pragma once
+
 #include "platform_dev.h"
 
 typedef struct platform_driver

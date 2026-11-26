@@ -52,7 +52,7 @@ INTERNAL timer_role_t timer_caps_to_role(timer_caps_t *caps)
     return role;
 }
 
-INTERNAL timer_source_t *timer_select(timer_role_t role)
+INTERNAL status_t timer_select(timer_role_t role, timer_source_t **out)
 {
     timer_source_t *priv_src = NULL;
     switch (role)
@@ -67,7 +67,7 @@ INTERNAL timer_source_t *timer_select(timer_role_t role)
             priv_src = cached_tick_source;
             break;
         default :
-            KERRNO_RETURN_TYPE(KERRNO_BAD_VALUE, timer_source_t *, "%u is not a valid role", role);
+            KERRNO_RETURN(KERRNO_BAD_VALUE, "%u is not a valid role", role);
     }
 
     uint32_t lowest_read_cost = UINT32_MAX;
@@ -100,7 +100,7 @@ INTERNAL timer_source_t *timer_select(timer_role_t role)
     {
         if (lowest_min_interval_index == -1)
         {
-            KERRNO_RETURN_TYPE(KERRNO_BAD_INDEX, timer_source_t *, "Couldn't find any entry with role TIMER_ROLE_DEADLINE");
+            KERRNO_RETURN(KERRNO_BAD_INDEX, "Couldn't find any entry with role TIMER_ROLE_DEADLINE");
         }
         if (lowest_min_interval != priv_src->caps.min_interval_ns)
         {
@@ -123,7 +123,7 @@ INTERNAL timer_source_t *timer_select(timer_role_t role)
     {
         if (lowest_read_cost_index == -1)
         {
-            KERRNO_RETURN_TYPE(KERRNO_BAD_INDEX, timer_source_t *, "Couldn't find any entry with role %u", role);
+            KERRNO_RETURN(KERRNO_BAD_INDEX, "Couldn't find any entry with role %u", role);
         }
 
         if (min(lowest_read_cost, priv_src->caps.read_cost_ns) == lowest_read_cost)
@@ -146,11 +146,13 @@ INTERNAL timer_source_t *timer_select(timer_role_t role)
         KERNEL_PANIC(MODULE, "and yes it is");
     }
 
-    return new_best;
+    *out = new_best;
+    return KERRNO_SUCCESS;
 }
 
 status_t timer_register(timer_source_t *src)
 {
+    src->name = src->dev.name;
     timers[timer_count] = src;
     timer_count++;
 
@@ -159,8 +161,9 @@ status_t timer_register(timer_source_t *src)
 
     trace_info(MODULE, "registered %s (role=%d)", src->name, src->role);
 
-    timer_source_t *timer_src = timer_select(role);
-    if (timer_src < (timer_source_t *)KERRNO_ERRORS_END)
+    timer_source_t *timer_src;
+    status_t ret = timer_select(role, &timer_src);
+    if (ret)
     {
         KERRNO_RETURN(KERRNO_CANCELED, "timer_select returned a non-valid value");
     }
@@ -190,12 +193,12 @@ status_t timer_register(timer_source_t *src)
         default :
             KERRNO_RETURN(KERRNO_BAD_VALUE, "%u is not a valid role", role);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t timer_class_added(device_t *dev)
 {
-    timer_source_t *src = dev->class_data;
+    timer_source_t *src = to_timer_source(dev);
     return timer_register(src);
 }
 
@@ -205,7 +208,7 @@ status_t timer_class_removed(device_t *dev)
 
     FUNC_NOT_IMPLEMENTED();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static const dev_class_t timer_class = {
@@ -215,17 +218,22 @@ static const dev_class_t timer_class = {
     .device_removed = timer_class_removed,
 };
 
+REGISTER_CLASS(timer_class);
+
 status_t timer_init()
 {
-    class_register(&timer_class);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 ARCHDONE_INITCALL(timer_init);
 
 timer_source_t *timer_create()
 {
-    return kmalloc(sizeof(timer_source_t));
+    timer_source_t *timer_source = kzmalloc(sizeof(timer_source_t));
+    device_initialize(&timer_source->dev);
+    timer_source->dev.class = &timer_class;
+    dev_set_no_driver(&timer_source->dev);
+    return timer_source;
 }
 
 device_t *timer_create_device()

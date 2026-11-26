@@ -25,9 +25,26 @@ status_t class_get(dev_type_t type, dev_class_t **class_out);
 
 status_t class_register(const dev_class_t *class);
 
+status_t class_release_device(device_t *dev);
+
+status_t class_get_next_minor(const dev_class_t *class, device_id_t id, uint32_t *out_minor);
+status_t class_get_next_device(const dev_class_t *class, uint32_t *out_device);
+
 status_t class_find_device(const dev_class_t *class, const device_t *start, const void *data, device_match_t match, device_t **out_dev);
 
 static status_t class_find_device_by_devt(const dev_class_t *class, kernel_dev_t devt, device_t **out_dev)
 {
     return class_find_device(class, NULL, &devt, device_match_devt, out_dev);
 }
+
+static status_t class_find_device_by_ref(const dev_class_t *class, device_t *dev, device_t **out_dev)
+{
+    return class_find_device(class, NULL, dev, device_match_ref, out_dev);
+}
+
+#define REGISTER_CLASS(class)                \
+    status_t CONCAT(class, _register)()      \
+    {                                        \
+        return class_register(&class);       \
+    }                                        \
+    CLASS_INITCALL(CONCAT(class, _register))

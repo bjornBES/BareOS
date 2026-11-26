@@ -1,0 +1,2 @@
+load_kernel=boot/kernel.elf
+console=e9 earlycon=e9,io,0xE9 serial=0x3F8 serialtype=ports

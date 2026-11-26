@@ -26,7 +26,7 @@ status_t vfs_clone_node(fd_table_t *table, fd_table_t *dest)
     {
         if (table->entries[i] == NULL)
         {
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
         if (table->entries[i] != NULL)
         {
@@ -36,7 +36,7 @@ status_t vfs_clone_node(fd_table_t *table, fd_table_t *dest)
             table->entries[i]->refcount++;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_table_find_free(fd_table_t *table, fd_t *out_fd)
@@ -46,7 +46,7 @@ status_t vfs_table_find_free(fd_table_t *table, fd_t *out_fd)
         if (!table->entries[i])
         {
             *out_fd = i;
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
     }
     KERRNO_RETURN(KERRNO_NO_MORE_FDS, "");
@@ -80,10 +80,10 @@ status_t vfs_open_file(fd_table_t *table, const char *path, fd_t *out_fd)
     table->entries[fd]->node = node;
     table->entries[fd]->refcount++;
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_open_dev(fd_table_t *table, device_t *dev, fd_t *out_fd)
 {
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

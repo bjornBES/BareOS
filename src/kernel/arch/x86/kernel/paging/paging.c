@@ -25,6 +25,7 @@
 #include "string.h"
 #include "kernel/paging/paging.h"
 #include "panic.h"
+#include "math.h"
 
 #include <binary.h>
 
@@ -68,7 +69,7 @@ int mmu_arch_page_fault(intr_frame_t *frame)
     info.page_directory.page_dir_phys = (paddr_t)cr3;
 
     frame_arch_dump_frame(frame);
-    log_info(NO_MODULE, "CR2: 0x%016llx CR3: 0x%016llx", cr2, cr3);
+    trace_info(MODULE, "CR2: 0x%016llx CR3: 0x%016llx", cr2, cr3);
 
     info.fault_addr = cr2;
 
@@ -119,26 +120,51 @@ void mmu_arch_init(boot_params_t *bp)
 {
     mmu_arch_disable_prints();
     mmu_arch_enable_prints();
-    pmm_info_t *info = pmm_get_info();
+    pmm_zone_info_t *info = pmm_get_kernel_zone_info();
 
     paddr_t kernel_start_phys = bp->kernel_phys_base;
 
-    kernel_page.page_dir_phys = pmm_alloc_frame();
+    status_t ret = pmm_alloc_frame(&kernel_page.page_dir_phys);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        KERNEL_PANIC(MODULE, "");
+    }
 
-    trace_debug(MODULE, "kernel_text_flags = %llx, @ %p", kernel_text_flags, &kernel_text_flags);
-    map(&kernel_page, kernel_start_phys, bp->kernel_virt_base, bp->kernel_size, kernel_text_flags);
+    paddr_t phys_start = ALIGN_2_UP(max(info->phys_start, kernel_start_phys), 0x200000);
 
-    paddr_t start_phys_aligned = info->phys_start; // pmm_start gotten from the pmm allocator (buddy)
-    paddr_t end_phys_aligned = info->phys_end;     // pmm_end gotten from the pmm allocator (buddy)
-    size_t pmm_size = ALIGN_2_UP(info->phys_end - info->phys_start, 0x1000000);
-    trace_warn(MODULE, "pmm_start = %p pmm_end = %p", info->phys_start, info->phys_end);
-    map(&kernel_page, info->phys_start, (vaddr_t)MEMORY_DIRECT_MAP_VIRT_BASE, pmm_size, kernel_data_flags);
+    size_t size = max(phys_start - kernel_start_phys, bp->kernel_size) - 0x200000;
+
+    // trace_debug(MODULE, "kernel_text_flags = %llx, @ %p", kernel_text_flags, &kernel_text_flags);
+    ret = map(&kernel_page, kernel_start_phys, bp->kernel_virt_base, size, kernel_text_flags);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        KERNEL_PANIC(MODULE, "");
+    }
+    
+
+    size_t pmm_size = ALIGN_2_UP(info->phys_end - phys_start, 0x1000000);
+    trace_warn(MODULE, "pmm_start = %p pmm_end = %p", phys_start, info->phys_end);
+    ret = map(&kernel_page, phys_start, (vaddr_t)MEMORY_DIRECT_MAP_VIRT_BASE, pmm_size, kernel_data_flags);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        KERNEL_PANIC(MODULE, "");
+    }
 
     trace_debug(MODULE, "setting cr3");
     inline_asm("mov cr3, %0" : : "r"(kernel_page.page_dir_phys));
-    trace_debug(MODULE, "kernel_page @%p", &kernel_page);
+    // trace_debug(MODULE, "kernel_page @%p", &kernel_page);
 
-    ivt_set_handler(EXC_FAULT, mmu_arch_page_fault);
+    ret = ivt_set_handler(EXC_FAULT, mmu_arch_page_fault);
+    KERRNO_CHECK_RETURN(ret);
+    if (ret)
+    {
+        KERNEL_PANIC(MODULE, "");
+    }
+
+    pmm_print_info_verbose();
 
     paging_print_tree(&kernel_page);
 }
@@ -160,7 +186,7 @@ status_t mmu_arch_load_table(page_table_t *table)
     paddr_t cr3 = (paddr_t)table->page_dir_phys;
     // trace_debug(MODULE, "loading %p/%p", cr3, table->page_dir);
     inline_asm("mov cr3, %0" : : "r"(cr3));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t mmu_arch_current_table(page_table_t *table)
@@ -170,7 +196,35 @@ status_t mmu_arch_current_table(page_table_t *table)
     vaddr_t virt_cr3 = phys_to_virt_auto(cr3);
     table->page_dir = virt_cr3;
     table->page_dir_phys = cr3;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
+}
+
+status_t mmu_arch_get_zone(paddr_t start, paddr_t end, paddr_t *out_split, memory_zone_t *out_zone)
+{
+    ENTER_FUNC("%p, %p, %p, %p", start, end, out_split, out_zone);
+    if (start <= 0 || start < 0x100000)
+    {
+        if (end >= 0x100000)
+        {
+            *out_split = 0x100000;
+            KERRNO_RETURN(KERRNO_BAD_PADDR, "size is over 1 MB");
+        }
+        *out_zone = MEMORY_ZONE_BELOW_1MB;
+    }
+    // else if (start <= 0x100000 || start < 0x1000000)
+    // {
+    //     if (end >= 0x1000000)
+    //     {
+    //         *out_split = 0x1000000;
+    //         KERRNO_RETURN(KERRNO_BAD_PADDR, "size is over 16 MB");
+    //     }
+    //     *out_zone = MEMORY_ZONE_BELOW_16MB;
+    // }
+    else
+    {
+        *out_zone = MEMORY_ZONE_BELOW_4GB;
+    }
+    return KERRNO_SUCCESS;
 }
 
 status_t mmu_arch_copy_from_kernel(page_table_t *table)
@@ -196,6 +250,13 @@ status_t mmu_arch_map(page_table_t *table, vaddr_t virtAddr, paddr_t physAddr, m
 
     size_t size;
     status_t ret = allocate_leaf(table, virt, physAddr, flags, &size);
+    if (ret)
+    {
+        if (ret == KERRNO_MISMATCHED_VALUES)
+        {
+            return KERRNO_PERMISSION_DENIED;
+        }
+    }
     if (out_size)
     {
         *out_size = size;
@@ -213,20 +274,20 @@ status_t mmu_arch_unmap(page_table_t *table, vaddr_t virt, paddr_t *out_paddr)
     paddr_t addr;
     status_t ret = paging_unmap_page(table, virt, &addr);
 
-    if ((addr > 0 && addr < 1024) || ret)
+    if (ret)
     {
-        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_unmap_page) return %u", ret);
+        return ret;
     }
     ret = paging_clean_up(table, virt);
     if (ret)
     {
-        KERRNO_RETURN(KERRNO_NOT_ALLOWED, "Internal function (paging_clean_up) return %u", ret);
+        KERRNO_RETURN(KERRNO_BAD_VALUE, "Internal function (paging_clean_up) return %u", ret);
     }
     if (out_paddr)
     {
         *out_paddr = addr;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t mmu_arch_protect(page_table_t *table, vaddr_t virt, mmu_flags_t flags)
@@ -256,7 +317,7 @@ status_t mmu_arch_is_present(page_table_t *table, vaddr_t virt, bool *is_present
     {
         *is_present = true;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void mmu_arch_flush_page(vaddr_t virt)
@@ -268,7 +329,7 @@ void mmu_arch_flush_all()
 {
     uint64_t kernel_cr3;
     inline_asm("mov %0, cr3" : "=r"(kernel_cr3));
-    trace_debug(MODULE, "reloading cr3 %p", kernel_cr3);
+    // trace_debug(MODULE, "reloading cr3 %p", kernel_cr3);
     inline_asm("mov cr3, %0" ::"r"(kernel_cr3) : "memory");
 }
 

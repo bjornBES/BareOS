@@ -12,21 +12,22 @@
 
 #include <types.h>
 
-typedef enum
+typedef enum trace_level
 {
-    FUNC_ENTER = 0,
-    LVL1 = 0x1, // debug
-    LVL2 = 0x2, // info
-    LVL3 = 0x3, //
-    LVL4 = 0x4,
-    LVL5 = 0x5,
-    LVL_WARNING = 0xE0,
-    LVL_FIX, // fix
-    LVL_ERR, // error
-    LVL_CRIT, // crit
-    LVL_BUG = 0xFF,
+    LVL_FUNC_ENTER = 0,
+    LVL_DEBUG,
+    LVL_INFO,
+    LVL_SCHED,
+    LVL_NOTICE,
+    LVL_WARNING,
+    LVL_FIX,  // fix
+    LVL_ERROR,  // error
+    LVL_CRITICAL, // crit
+    LVL_ALERT,
+    LVL_EMERG,
+    LVL_BUG,
 } trace_level_t;
 
-void trace(fd_t file, trace_level_t level, char *fmt, ...);
-void trace_with_id(fd_t file, trace_level_t level, const char *module, char *fmt, ...);
-void trace_enter_func(fd_t file, const char *module, trace_level_t level, const char *function, char *fmt, ...);
+// void trace(fd_t file, trace_level_t level, char *fmt, ...);
+// void trace_with_id(fd_t file, trace_level_t level, const char *module, char *fmt, ...);
+// void trace_enter_func(fd_t file, const char *module, trace_level_t level, const char *function, char *fmt, ...);

@@ -30,7 +30,7 @@ dentry_t *dcache[CONFIG_DCACHE_SIZE];
 status_t vfs_dentry_init()
 {
     memset(dcache, 0, sizeof(dcache));
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 POSTCORE_INITCALL(vfs_dentry_init);
@@ -54,7 +54,7 @@ status_t dentry_alloc(const char *name, inode_t *inode, dentry_t *parent, dentry
     dentry_t *d = kzmalloc(sizeof(dentry_t));
     if (d == NULL)
     {
-        return KERRNO_OOM;
+        return KERRNO_OUT_OF_MEMORY;
     }
 
     strncpy(d->name, name, CONFIG_MAX_PATH_LENGTH - 1);
@@ -70,7 +70,7 @@ status_t dentry_alloc(const char *name, inode_t *inode, dentry_t *parent, dentry
     }
 
     *out = d;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // remove from cache, free struct
@@ -120,7 +120,7 @@ status_t dentry_get(dentry_t *d, dentry_t **out)
     {
         *out = d;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // decrement refcount, free if zero
@@ -135,18 +135,18 @@ status_t dentry_put(dentry_t *d)
     {
         status_t ret = dcache_invalidate(d);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
         ret = dentry_free(d);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // hash lookup by (parent ino + name)
@@ -161,15 +161,15 @@ status_t dcache_lookup(dentry_t *parent, const char *name, dentry_t **out)
         if (d->parent == parent && strcmp(d->name, name) == 0)
         {
             dentry_get(d, NULL);
-            // log_debug(MODULE, "dcache_lookup is done -> %p", d);
+            // trace_debug(MODULE, "dcache_lookup is done -> %p", d);
             spinlock_release(&dcache_lock);
             *out = d;
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
         d = d->hash_next; // walk hash chain, not sibling chain
     }
     spinlock_release(&dcache_lock);
-    // log_debug(MODULE, "dcache_lookup is done -> NULL");
+    // trace_debug(MODULE, "dcache_lookup is done -> NULL");
     return KERRNO_UNSUCCESS;
 }
 
@@ -182,7 +182,7 @@ status_t dcache_insert(dentry_t *d)
     d->hash_next = dcache[slot]; // prepend to bucket
     dcache[slot] = d;
     spinlock_release(&dcache_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // mark negative or remove on unlink
@@ -212,5 +212,5 @@ status_t dcache_invalidate(dentry_t *d)
         curr = curr->hash_next;
     }
     spinlock_release(&dcache_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

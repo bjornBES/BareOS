@@ -33,7 +33,7 @@ typedef struct irq_controller
 
     int (*route)(kernel_irq_t irq, interrupt_vector_t vector, cpu_logical_id_t target, irq_trigger_t trigger, irq_polarity_t polarity);
 
-    gsi_t (*irq_to_gsi)(kernel_irq_t irq);
+    status_t (*irq_to_gsi)(kernel_irq_t irq, gsi_t *out_gsi);
 
     kernel_irq_t (*gsi_lookup)(gsi_t gsi, irq_trigger_t *trigger, irq_polarity_t *polarity);
 

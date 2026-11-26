@@ -24,6 +24,14 @@
 
 extern page_table_t kernel_page;
 
+typedef enum memory_zone
+{
+    MEMORY_ZONE_BELOW_1MB,
+    MEMORY_ZONE_BELOW_16MB,
+    MEMORY_ZONE_BELOW_4GB,
+    MEMORY_ZONE_NORMAL,
+} memory_zone_t;
+
 /// @brief Will make the kernel mappings in kernel_page and will also load then
 ///
 /// The mappings need to cover the kernel and the PMM.
@@ -39,7 +47,7 @@ void mmu_arch_init(boot_params_t *bp);
 
 /// @brief create a new empty address space, returns physical address of top level table
 /// @return The new page table or an kerrno number
-/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
+/// @retval KERRNO_ALLOC_FAILED: The PMM is out of memory
 status_t mmu_arch_create_table(page_table_t **out_table);
 
 /// @brief destroy an address space and free all arch-owned paging structures
@@ -59,6 +67,14 @@ status_t mmu_arch_load_table(page_table_t *table);
 /// @return 0 on successes or an kerrno number
 /// @retval KERRNO_BAD_VALUE: table is not valid
 status_t mmu_arch_current_table(page_table_t *table);
+
+/// @brief 
+/// @param[in] start 
+/// @param[in] end 
+/// @param[out in] split 
+/// @param[out] out_zone 
+/// @return 
+status_t mmu_arch_get_zone(paddr_t start, paddr_t end, paddr_t *split, memory_zone_t *out_zone);
 
 // --- Kernel Mapping ---
 
@@ -86,8 +102,8 @@ status_t mmu_arch_copy_from(page_table_t *dst, page_table_t *src);
 /// @retval KERRNO_NOT_ALLOWED: phys or virt is not valid e.g. They are too large or not page aligned
 /// @retval KERRNO_BAD_VALUE: flags or table are not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
-/// @retval KERRNO_PERMISSION_DENIED: flags requests for execution with write (W^X)
-/// @retval KERRNO_POSIX_ENOMEM: The PMM is out of memory
+/// @retval KERRNO_PERMISSION_DENIED: flags requests is invalid like execution with write (W^X)
+/// @retval KERRNO_ALLOC_FAILED: The PMM is out of memory
 status_t mmu_arch_map(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags_t flags, size_t *out_size);
 
 /// @brief unmap a single virtual page and will also free the physical frames
@@ -98,6 +114,7 @@ status_t mmu_arch_map(page_table_t *table, vaddr_t virt, paddr_t phys, mmu_flags
 /// @retval KERRNO_BAD_VALUE: table is not valid
 /// @retval KERRNO_BAD_ADDRESS: virt exceeds the virtual space of the CPU
 /// @retval KERRNO_ENTRY_NOT_FOUND: no entry exists at that virtual address
+/// @retval KERRNO_PAGETABLE_NOT_PRESENT: an entry was not present
 status_t mmu_arch_unmap(page_table_t *table, vaddr_t virt, paddr_t *out_paddr);
 
 /// @brief change flags on an existing mapping without remapping

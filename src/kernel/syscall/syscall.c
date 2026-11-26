@@ -86,7 +86,7 @@ status_t syscall_get_handler(uint32_t sys_number, syscall_function_info_t **out_
     if (syscall_info->handler)
     {
         *out_info = syscall_info;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     KERRNO_RETURN(KERRNO_BAD_VALUE, "");
 }
@@ -115,7 +115,7 @@ status_t syscall_handler_func(syscall_info_t *info, syscall_function_info_t *fun
     }
     // ivt_dump_frame(regs);
     // signal_try_deliver(current_t, info, regs);
-    // log_debug(MODULE, "DONE");
+    // trace_debug(MODULE, "DONE");
     // sched_thread_info();
     *out_ret = ret_val;
     return ret;

@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ttyt.h"
+#include "tty_core_types.h"
 #include "tty_ldisct.h"
 
 #include "vfs/vfs_internals.h"
@@ -55,6 +56,11 @@ status_t tty_register_driver(tty_driver_t *driver, tty_dev_t **out_tty_dev);
 
 status_t tty_alloc_driver(unsigned int lines, unsigned long flags, tty_driver_t **out);
 
+// status_t tty_call_set_termios(const tty_ops_t *ops);
+
+// tty_io.c
+
+
 // tty_ldisc.c
 
 /// @brief 
@@ -78,3 +84,16 @@ status_t tty_ldisc_setup(tty_struct_t *tty, tty_struct_t *o_tty);
 /// @brief 
 /// @return 
 status_t n_tty_init();
+
+// tty_baudrate.c
+
+/// @brief 
+/// @param termios 
+/// @param ibaud 
+/// @param obaud 
+void tty_termios_encode_baud_rate(termios_t *termios, speed_t ibaud, speed_t obaud);
+
+/// @brief 
+/// @param termios 
+/// @return 
+speed_t tty_termios_baud_rate(const termios_t *termios);

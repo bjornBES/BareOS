@@ -34,10 +34,10 @@ list_t mount_list;
 status_t vfs_mount_init()
 {
     list_initialize(&mount_list);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
-POSTCORE_INITCALL(vfs_mount_init);
+CONSTRUCTOR_INITCALL(vfs_mount_init);
 
 // alloc mountpoint, call fs->mount, insert tree
 status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoint_t **out)
@@ -52,7 +52,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
     path_split_prefix(path, NULL, &mount_path);
 
     // check not already mounted at this path
-    if (mount_find_for_volume(path, vol, NULL) == KERRNO_SUCCESSES)
+    if (mount_find_for_volume(path, vol, NULL) == KERRNO_SUCCESS)
     {
         KERRNO_RETURN(KERRNO_NAME_IN_USE, "path '%s' already has a mountpoint", path);
     }
@@ -67,7 +67,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
     mountpoint_t *mnt = kzmalloc(sizeof(mountpoint_t));
     if (mnt == NULL)
     {
-        KERRNO_RETURN(KERRNO_OOM, "Out of memory");
+        KERRNO_RETURN(KERRNO_OUT_OF_MEMORY, "Out of memory");
     }
 
     strncpy(mnt->path, mount_path, sizeof(mnt->path) - 1);
@@ -77,7 +77,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
     // call the driver — fills vol->sb with superblock data
     status_t ret = vol->fs->mount(vol->device, mnt);
     KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         // trace_err(MODULE, "fs driver failed to mount '%s'", vol->volume_id);
         kfree(mnt);
@@ -92,7 +92,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
         // allocate root inode — driver fills it in via alloc_inode
         ret = inode_alloc(vol, &root_ino);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             vol->fs->umount(vol->device, mnt);
             kfree(mnt);
@@ -107,7 +107,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
         // ask driver to fill root inode (ino=0 or ino=2 for ext2 etc.)
         ret = vol->fs->lookup(NULL, "/", root_ino, vol->device, mnt);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             // trace_err(MODULE, "driver failed to provide root inode");
             inode_free(root_ino);
@@ -119,7 +119,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
         // allocate root dentry
         ret = dentry_alloc("/", root_ino, NULL, &root_dentry);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             inode_free(root_ino);
             vol->fs->umount(vol->device, mnt);
@@ -142,7 +142,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
     {
         ret = icache_insert(root_ino);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             inode_free(root_ino);
             vol->fs->umount(vol->device, mnt);
@@ -152,7 +152,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
 
         ret = dcache_insert(root_dentry);
         KERRNO_CHECK_RETURN(ret);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             inode_free(root_ino);
             vol->fs->umount(vol->device, mnt);
@@ -163,7 +163,7 @@ status_t mount_create(volume_t *vol, const char *path, uint32_t flags, mountpoin
 
     trace_info(MODULE, "mounted '%s' at '%s'", vol->volume_id, path);
     *out = mnt;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // call fs->umount, remove from tree, free
@@ -176,7 +176,7 @@ status_t mount_destroy(mountpoint_t *mnt)
 
     // call driver umount — frees vol->sb
     status_t ret = mnt->volume->fs->umount(mnt->volume->device, mnt);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
@@ -241,7 +241,7 @@ INTERNAL status_t mount_int_find(const char *mount_path, volume_t *volume, mount
     {
         *out = best;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t mount_find(const char *path, mountpoint_t **out)
@@ -254,11 +254,11 @@ status_t mount_find(const char *path, mountpoint_t **out)
     char volume_path[CONFIG_MAX_VOLUME_LENGTH];
     const char *mount_path;
     path_split_prefix(path, volume_path, &mount_path);
-    // log_debug(MODULE, "path = %s { volume_path = %s, mount_path = %s}", path, volume_path, mount_path);
+    // trace_debug(MODULE, "path = %s { volume_path = %s, mount_path = %s}", path, volume_path, mount_path);
     volume_t *volume;
     status_t ret = volume_find(volume_path, &volume);
     // KERRNO_CHECK_RETURN(ret);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return KERRNO_UNSUCCESS;
     }
@@ -285,7 +285,7 @@ status_t mount_get_root(mountpoint_t *mnt, dentry_t **out)
         KERRNO_RETURN(KERRNO_BAD_VALUE, "bad arguments");
     }
     *out = mnt->root_dentry;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // check if dentry has a mount on top of it
@@ -300,5 +300,5 @@ status_t mount_cross(dentry_t *dentry, mountpoint_t **out)
         return KERRNO_UNSUCCESS;
     }
     *out = dentry->mountpoint;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

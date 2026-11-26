@@ -14,7 +14,7 @@
 #include "vfs/inodet.h"
 #include "vfs/vfs_internals.h"
 
-#include "drivers/base/block/blkdevt.h"
+#include "drivers/block/blkdevt.h"
 
 #include "init.h"
 
@@ -56,25 +56,25 @@ THIS_TO_TYPE_DEF(filesystem_t);
 
 /// @brief Adds a filesystem driver to the filesystem registry list
 /// @param[in] fs The filesystem driver to add
-/// @return KERRNO_SUCCESSES on successes or a +kerrno on failure
+/// @return KERRNO_SUCCESS on successes or a +kerrno on failure
 status_t vfs_fs_register(filesystem_t *fs);
 
 /// @brief Removes a filesystem driver from the filesystem registry list
 /// @param[in] name The filesystem driver's name to remove
-/// @return KERRNO_SUCCESSES on successes or a +kerrno on failure
+/// @return KERRNO_SUCCESS on successes or a +kerrno on failure
 status_t vfs_fs_unregister(const char *name);
 
 /// @brief tries to lookup a filesystem driver form the given @p name
 /// @param[in] name The filesystem driver's name to try to find
 /// @param[out] out_fs The found filesystem driver on successes or NULL on failure
-/// @return KERRNO_SUCCESSES on successes or a +kerrno on failure
+/// @return KERRNO_SUCCESS on successes or a +kerrno on failure
 status_t vfs_fs_find(const char *name, filesystem_t **out_fs);
 
 // try each driver's probe(), return first match
 /// @brief tries each filesystem driver's probe function and sets the first match
 /// @param[in] dev The device that will be used by probe
 /// @param[out] out_fs The found filesystem driver on successes or NULL on failure
-/// @return KERRNO_SUCCESSES on successes or a +kerrno on failure
+/// @return KERRNO_SUCCESS on successes or a +kerrno on failure
 status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs);
 
 #define VFS_FS_DRIVER(__fs_driver)              \

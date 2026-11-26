@@ -181,7 +181,7 @@ status_t i8042_kbd_handler(input_dev_t *input_dev)
     uint8_t status = i8042_read(I8042_STATUS_REG);
     if (BIT_GET(status, I8042_STAT_OUTPUT_BUFF_STATE) == I8042_STAT_OUTPUT_FULL)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     uint8_t raw = i8042_read(I8042_DATA_REG);
@@ -193,7 +193,7 @@ status_t i8042_kbd_handler(input_dev_t *input_dev)
     {
         input_report_key(input_dev, &ev);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t i8042_kbd_set_leds(input_dev_t *input_dev)
@@ -205,7 +205,7 @@ status_t i8042_kbd_set_leds(input_dev_t *input_dev)
 
     i8042_write_cmd(0xED);
     i8042_write(I8042_DATA_REG, led_status);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t i8042_kbd_probe(i8042_port_t *port)
@@ -258,11 +258,11 @@ status_t i8042_kbd_probe(i8042_port_t *port)
     {
         i8042_write_cmd(0xAE);
         i8042_write_first_channel(0xFF); // reset
-        if (i8042_first_channel_wait_for_ack() != KERRNO_SUCCESSES)
+        if (i8042_first_channel_wait_for_ack() != KERRNO_SUCCESS)
         {
             KERRNO_RETURN(KERRNO_DEV_TIMEOUT, "First channel no ACK after reset");
         }
-        if (i8042_first_channel_wait_for_reset() != KERRNO_SUCCESSES)
+        if (i8042_first_channel_wait_for_reset() != KERRNO_SUCCESS)
         {
             KERRNO_RETURN(KERRNO_DEV_TIMEOUT, "First channel no response after reset");
         }
@@ -278,14 +278,14 @@ status_t i8042_kbd_probe(i8042_port_t *port)
     {
         // after reset device should not be in streaming mode, but to be sure disable streaming
         i8042_write_first_channel(0xF5);
-        if (i8042_first_channel_wait_for_ack() != KERRNO_SUCCESSES)
+        if (i8042_first_channel_wait_for_ack() != KERRNO_SUCCESS)
         {
             KERRNO_RETURN(KERRNO_DEV_TIMEOUT, "First channel no ACK after 0xF5");
         }
 
         // read device ID
         i8042_write_first_channel(0xF2);
-        if (i8042_first_channel_wait_for_ack() == KERRNO_SUCCESSES)
+        if (i8042_first_channel_wait_for_ack() == KERRNO_SUCCESS)
         {
             if (true)
             {
@@ -308,7 +308,7 @@ status_t i8042_kbd_probe(i8042_port_t *port)
                 }
 
                 i8042_write_first_channel(0xF4);
-                if (i8042_first_channel_wait_for_ack() == KERRNO_SUCCESSES)
+                if (i8042_first_channel_wait_for_ack() == KERRNO_SUCCESS)
                 {
                     port->driver_bound = true;
                 }
@@ -349,6 +349,5 @@ status_t i8042_kbd_probe(i8042_port_t *port)
     port->dev = &input_dev->dev;
     dev_set_no_driver(port->dev);
     port->dev->drv_data = port;
-    port->dev->init_name = "i8042-kbd";
-    return device_register(port->dev);
+    return device_register_with_name(port->dev, "i8042-kbd");
 }

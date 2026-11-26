@@ -83,7 +83,7 @@ status_t sched_thread_reap(thread_t *t)
     if (current_thread == t)
     {
         t->state = THREAD_DEAD;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     return thread_reap(t);
@@ -215,8 +215,6 @@ INTERNAL_INLINE thread_t *sched_next()
     return me->idle; // caller goes idle (hlt)
 }
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
 {
     // ENTER_FUNC("%p", next);
@@ -230,17 +228,17 @@ INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
         THISCPU()->current_proc = current_thread->proc;
     }
 
-    // log_debug(MODULE, "here4");
+    // trace_debug(MODULE, "here4");
     // spinlock_release(&schedule_lock);
     // vaddr_t stack_pointer = ctx_arch_get_sp(&current_thread->ctx);
     // page_table_t table;
     // mmu_arch_current_table(&table);
-    // log_debug(MODULE, "here5");
+    // trace_debug(MODULE, "here5");
 
     cpu_arch_set_kernel_stack(cpu_arch_get_current(), (vaddr_t)current_thread->kstack);
     if (!current_thread->is_idle_thread)
     {
-        // trace_debug(MODULE, "switching to tid %u %p\n", current_thread->tid, current_thread->kstack);
+        // trace_debug(MODULE, "switching to tid %u %p", current_thread->tid, current_thread->kstack);
         // frame_arch_dump_frame(current_thread->ctx.regs);
         // frame_arch_dump_frame((intr_frame_t *)current_thread->ctx.sp);
     }
@@ -254,7 +252,7 @@ INTERNAL NORETURN void schedule_switch(thread_t *next, intr_frame_t *frame)
     }
     context_arch_switch(current_thread->ctx.sp);
 
-    log_debug(MODULE, "something is wrong");
+    trace_debug(MODULE, "something is wrong");
     KERNEL_PANIC(MODULE, "something is wrong");
 
     // loop
@@ -279,18 +277,18 @@ status_t schedule(intr_frame_t *regs)
             irq_eoi(0);
         }
         irq_arch_enable();
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     if (THISCPU()->disable)
     {
         irq_eoi(0);
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     if (total_threads == 0)
     {
         irq_eoi(0);
         irq_arch_enable();
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     if (current_thread != NULL && !current_thread->is_idle_thread)
     {
@@ -373,7 +371,7 @@ try_again:
 
     /*     if (next->proc && next->proc->state == PROC_STATE_SUSPENDED)
         {
-            fprintf(VFS_FD_DEBUG, "========== proc is suspended ==========\n");
+            fprintf(VFS_FD_DEBUG, "========== proc is suspended ==========");
             irq_arch_disable();
             current_thread->timeslice = current_thread->timeslice_reset; // reload
             irq_eoi(0);
@@ -403,14 +401,14 @@ try_again:
         {
             if (next->tid == 0 || next->proc == NULL)
             {
-                // fprintf(VFS_FD_STDOUT, "switch to kernel\n");
+                // fprintf(VFS_FD_STDOUT, "switch to kernel");
                 mmu_arch_load_table(&kernel_page);
             }
             else
             {
                 // trace_debug(MODULE, "next->proc->pid = %u", next->proc->pid);
                 // trace_debug(MODULE, "next->proc->vma = %p", next->proc->vma);
-                // fprintf(VFS_FD_STDOUT, "switch to process %u\n", next->proc->pid);
+                // fprintf(VFS_FD_STDOUT, "switch to process %u", next->proc->pid);
                 mmu_arch_copy_from_kernel(next->proc->vma->page_directory);
                 mmu_arch_load_table(next->proc->vma->page_directory);
             }
@@ -421,7 +419,7 @@ try_again:
 
     // spinlock_release(&schedule_lock);
     schedule_switch(next, regs);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL ALWAYS_INLINE void sched_algorithm_enqueue(sched_class_t *class, void *runq_data, thread_t *t)
@@ -503,7 +501,7 @@ status_t sched_add(thread_t *t)
         spinlock_release(&sched_runq.lock);
     }
     // trace_debug(MODULE, "total_threads = %u", total_threads);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t sched_has_work(cpu_t *cpu)
@@ -513,7 +511,7 @@ status_t sched_has_work(cpu_t *cpu)
     {
         // sched_thread_info();
         spinlock_release(&sched_runq.lock);
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     spinlock_release(&sched_runq.lock);
     spinlock_acquire(&cpu->local_runq_lock);
@@ -521,7 +519,7 @@ status_t sched_has_work(cpu_t *cpu)
     {
         // sched_thread_info();
         spinlock_release(&cpu->local_runq_lock);
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     spinlock_release(&cpu->local_runq_lock);
     return 1;
@@ -533,21 +531,21 @@ status_t sched_yield()
     cpu_t *cpu = cpu_arch_get_current();
     if (cpu == NULL)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     if (cpu->sched_class == NULL || cpu->runq_data == NULL)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     cpu->sched_class->ops.yield(cpu->runq_data, cpu->current);
     if (total_threads == 0)
     {
         cpu->current->timeslice = cpu->current->timeslice_reset;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     // ENTER_FUNC(MODULE, "", "");
     scheduler_arch_yield();
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
     // KERNEL_PANIC(MODULE, "thread didn't yield");
     // while (true)
     // {
@@ -573,7 +571,7 @@ status_t sched_init(thread_t *main_thread)
 {
     sched_init_done = 0;
     int active_sched_index = 0;
-    if (sched_algorithm_get_algorithm(algorithms_table, &active_sched_index) != KERRNO_SUCCESSES)
+    if (sched_algorithm_get_algorithm(algorithms_table, &active_sched_index) != KERRNO_SUCCESS)
     {
         KERRNO_NO_RETURN(KERRNO_NOT_ALLOWED, "Can't get an algorithm for the scheduler");
         KERNEL_PANIC(MODULE, "Can't get an algorithm");
@@ -626,7 +624,7 @@ status_t sched_init(thread_t *main_thread)
         }
 
         extern uintptr_t THREAD_CALL_FUNC(smp_arch_idle_thread)(uintptr_t _);
-        other_cpu->idle = thread_create_kernel(THREAD_CALL_FUNC(smp_arch_idle_thread), 0, 0);
+        thread_create_kernel(THREAD_CALL_FUNC(smp_arch_idle_thread), 0, 0, &other_cpu->idle);
         thread_set_priority(other_cpu->idle, PRIORITY_MIDDLE_SHORT);
         other_cpu->idle->is_idle_thread = true;
 
@@ -639,5 +637,5 @@ status_t sched_init(thread_t *main_thread)
     main_thread->cpu_affinity->disable = 0;
 
     sched_init_done = 1;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

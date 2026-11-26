@@ -14,6 +14,8 @@
 
 #include <types.h>
 
+#define INVALID_CPU -1
+
 typedef enum cpu_state
 {
     CPU_STATE_ABSENT = 0,
@@ -35,5 +37,6 @@ typedef struct cpu_entry
 int cpu_register(uint32_t processor_uid, uint32_t arch_id, bool is_bsp);
 cpu_entry_t *cpu_get_entry(cpu_logical_id_t id);
 cpu_entry_t *cpu_get_bsp();
+cpu_logical_id_t cpu_this_id();
 size_t cpu_get_count();
-
+void cpu_halt_forever();

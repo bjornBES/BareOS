@@ -44,19 +44,18 @@ void cpu_set_gsbase(cpu_t *cpu)
     msr_set_64(MSR_GS_BASE, addr);
 }
 
-extern void hexdump(void *ptr, size_t len, size_t size);
-
 void cpu_arch_init_bsp()
 {
     ENTER_FUNC("", 0);
     cpu_t *cpu = &cpus[0];
     cpu->self = cpu;
     cpu->online = true;
-    cpu->kernel_stack = kstack_per_cpu_alloc(NULL);
+    status_t ret = kstack_per_cpu_alloc(NULL, &cpu->kernel_stack);
+    // TODO: check kerrno
     bsp_cpu = cpu;
 
-    hexdump(cpu->gdt_table, sizeof(cpu->gdt_table), 16);
-    hexdump(&cpu->gdtr, sizeof(cpu->gdtr), 16);
+    // hexdump(cpu->gdt_table, sizeof(cpu->gdt_table), 16);
+    // hexdump(&cpu->gdtr, sizeof(cpu->gdtr), 16);
 
     cpu_set_gsbase(cpu);
 
@@ -191,7 +190,7 @@ status_t cpu_init_cpu()
         arch_runtime_data.paging.max_phys = BIT_GET_RANGE(regs_leaf_ext8.eax, 0, 7);
     }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 ARCH_INITCALL(cpu_init_cpu);
@@ -200,7 +199,8 @@ status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu)
 {
     cpu_basic_setup(cpu);
 
-    cpu->kernel_stack = kstack_per_cpu_alloc(NULL);
+    status_t ret = kstack_per_cpu_alloc(NULL, &cpu->kernel_stack);
+    // TODO: check kerrno
 
     mmu_arch_load_table(&kernel_page);
 
@@ -209,7 +209,7 @@ status_t cpu_init_ap(uint32_t apic_id, cpu_t *cpu)
 
     cpu->online = true;
     trace_info(MODULE, "AP %u init done", apic_id);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t cpu_create(cpu_entry_t *entry)
@@ -227,7 +227,7 @@ status_t cpu_create(cpu_entry_t *entry)
     {
         bsp_cpu = cpu;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void cpu_registered(cpu_logical_id_t id)
@@ -260,4 +260,14 @@ cpu_t *cpu_arch_get(cpu_logical_id_t id)
 void cpu_arch_set_kernel_stack(cpu_t *cpu, vaddr_t stack_top)
 {
     cpu->tss.sp0 = stack_top;
+}
+
+NORETURN void cpu_arch_halt_forever()
+{
+    inline_asm("cli" : : : "memory");
+    inline_asm("hlt" : : : "memory");
+    while (true)
+    {
+        continue;
+    }
 }

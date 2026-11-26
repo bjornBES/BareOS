@@ -18,8 +18,9 @@ typedef struct
     const char *key;
     status_t (*handler)(const char *value); // value NULL for bare flags
     bool early;
+    void *padding;
 } cmdline_param_t;
 
 #define CMDLINE_PARAM(k, fn, e)                                                              \
-    static USED SECTION(".cmdline_params") const cmdline_param_t __cmdline_##fn = {k, fn, e}
+    USED SECTION(".cmdline_params") const cmdline_param_t __cmdline_##fn = {k, fn, e}
 

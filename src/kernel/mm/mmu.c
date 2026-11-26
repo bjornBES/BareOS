@@ -111,5 +111,5 @@ status_t mmu_free_region(page_table_t *table, vaddr_t _virt, size_t size)
         mmu_arch_unmap(table, virt, NULL);
         virt += PAGE_SIZE;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }

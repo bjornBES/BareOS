@@ -48,7 +48,7 @@ status_t ioapic_print_entry(uint8_t ioapic_id, gsi_t gsi)
     trace_info(MODULE, "entry @ %p index %u = {vector: 0x%x, gsi: %u, irq: %u, pin: %u, flags: 0x%x, lapic: %u, locked: %s, dont use: %s, trigger: %u, polarity: %u}",
                iso_entry, gsi - entry->gsi_base,
                iso_entry->vector, iso_entry->gsi, iso_entry->irq, iso_entry->pin, iso_entry->flags, iso_entry->lapic_target, iso_entry->locked BOOL_TO_STRING, iso_entry->dont_use BOOL_TO_STRING, iso_entry->trigger, iso_entry->polarity);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi_base)
@@ -80,7 +80,7 @@ status_t ioapic_register(uint8_t ioapic_id, paddr_t ioapic_address, uint32_t gsi
     }
     ioapic_count++;
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 ioapic_entry_t *ioapic_get_entry(uint8_t ioapic_id)

@@ -32,11 +32,11 @@ status_t pci_init_irq(pci_device_t *pci_dev, size_t min_vecs, size_t max_vecs, u
     if ((flags & PCI_IRQ_MSI) == PCI_IRQ_MSI)
     {
         ret = pci_enable_msi_range(pci_dev, min_vecs, max_vecs);
-        if (ret != KERRNO_SUCCESSES)
+        if (ret != KERRNO_SUCCESS)
         {
             return ret;
         }
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     /* use INTx IRQ if allowed */

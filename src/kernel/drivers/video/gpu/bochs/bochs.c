@@ -83,7 +83,7 @@ status_t bochs_dispi_write(bochs_device_t *bochs_dev, uint16_t reg, uint16_t val
     if (bochs_dev->mmio)
     {
         *(volatile uint16_t *)((0x500) + (reg << 1) + bochs_dev->mmio) = val;
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
 
     return 0;
@@ -109,7 +109,7 @@ status_t bochs_set_mode(display_device_t *display_dev, const display_mode_t *mod
     display_dev->frame_buffer.height = mode->h;
     display_dev->frame_buffer.bpp = mode->bpp;
     display_dev->frame_buffer.pitch = bochs_dispi_read(b, VBE_DISPI_INDEX_VIRT_WIDTH) * mode->bpp / 8;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static display_driver_t bochs_video_device = {
@@ -127,7 +127,7 @@ status_t bochs_pci_probe(pci_device_t *pci_dev, pci_device_id_t *ent)
     ret = pci_set_bus_master(pci_dev, 1);
     ret |= pci_set_command_flags(pci_dev, PCI_COMMAND_MEMORY | PCI_COMMAND_IO);
     ret |= pci_clear_command_flags(pci_dev, PCI_COMMAND_INTX_DISABLE);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return KERRNO_UNSUCCESS;
     }
@@ -137,7 +137,7 @@ status_t bochs_pci_probe(pci_device_t *pci_dev, pci_device_id_t *ent)
     pci_bar_t memory_bar;
     pci_bar_t io_bar;
     ret = pci_get_bar(pci_dev, 0, &memory_bar);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return KERRNO_UNSUCCESS;
     }
@@ -158,7 +158,7 @@ status_t bochs_pci_probe(pci_device_t *pci_dev, pci_device_id_t *ent)
     display_dev->priority = 5;
 
     ret = pci_get_bar(pci_dev, 2, &io_bar);
-    if (ret == KERRNO_SUCCESSES)
+    if (ret == KERRNO_SUCCESS)
     {
         trace_debug(MODULE, "%p, is 64: %s, is mmio: %s, pre: %s, size: %p", io_bar.base, io_bar.is_64bit BOOL_TO_STRING, io_bar.is_mmio BOOL_TO_STRING, io_bar.prefetchable BOOL_TO_STRING, io_bar.size);
         resource_request(&mem_space.root, &pci_dev->driver_exclusive_resource, io_bar.base, io_bar.base + io_bar.size, "mmio", RES_TYPE_PCI_BAR, RES_FLAG_NONE);
@@ -205,7 +205,7 @@ status_t bochs_pci_probe(pci_device_t *pci_dev, pci_device_id_t *ent)
     //     ;
     // }
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 void bochs_pci_remove(pci_device_t *pci_dev)

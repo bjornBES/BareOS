@@ -50,16 +50,16 @@ void allocator_init()
 
 void allocator_print_status()
 {
-	/* log_debug(MODULE, "Memory used: %d bytes", memory_used);
-	log_debug(MODULE, "Memory free: %d bytes", heap_end - heap_begin - memory_used);
-	log_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
-	log_debug(MODULE, "Heap start: %p", heap_begin);
-	log_debug(MODULE, "Heap end: %p", heap_end); */
+	/* trace_debug(MODULE, "Memory used: %d bytes", memory_used);
+	trace_debug(MODULE, "Memory free: %d bytes", heap_end - heap_begin - memory_used);
+	trace_debug(MODULE, "Heap size: %d bytes", heap_end - heap_begin);
+	trace_debug(MODULE, "Heap start: %p", heap_begin);
+	trace_debug(MODULE, "Heap end: %p", heap_end); */
 }
 
 void allocator_print_blocks()
 {
-/* 	log_debug(MODULE, "=== Heap Blocks ==="); */
+/* 	trace_debug(MODULE, "=== Heap Blocks ==="); */
 	vaddr_t mem = heap_begin;
 	int block_index = 0;
 
@@ -70,7 +70,7 @@ void allocator_print_blocks()
 		if (!a->size)
 			break; // no more blocks
 
-/* 		log_debug(MODULE, "Block %d: addr=%p size=%u status=%s(%08b)",
+/* 		trace_debug(MODULE, "Block %d: addr=%p size=%u status=%s(%08b)",
 				  block_index, (mem + sizeof(alloc_t)),
 				  a->size, a->status ? "allocated" : "free", a->status); */
 
@@ -80,7 +80,7 @@ void allocator_print_blocks()
 		mem += ALLOC_ALIGN;
 		block_index++;
 	}
-/* 	log_debug(MODULE, "=== End of Blocks ==="); */
+/* 	trace_debug(MODULE, "=== End of Blocks ==="); */
 }
 
 void impl_free(void *mem)
@@ -101,8 +101,8 @@ void *impl_malloc(size_t size)
 	while (mem < last_alloc)
 	{
 		alloc_t *a = (alloc_t *)mem;
-		// log_debug(MODULE, "mem=%p-%p", mem, mem + a->size + sizeof(alloc_t));
-		// log_debug(MODULE, "mem=%p a={.status=%d, .size=%d}", mem, a->status, a->size);
+		// trace_debug(MODULE, "mem=%p-%p", mem, mem + a->size + sizeof(alloc_t));
+		// trace_debug(MODULE, "mem=%p a={.status=%d, .size=%d}", mem, a->status, a->size);
 
 		if (!a->size)
 		{
@@ -120,8 +120,8 @@ void *impl_malloc(size_t size)
 		if (a->size >= size && !(a->status & STATUS_ALLOCATED))
 		{
 			a->status |= STATUS_ALLOCATED;
-			// log_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a, a + sizeof(alloc_t));
-			// log_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
+			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a, a + sizeof(alloc_t));
+			// trace_debug(MODULE, "RE: Allocated %d bytes from %p to %p", size, a + sizeof(alloc_t), a + sizeof(alloc_t) + size);
 			memory_used += size + ALLOC_ALIGN + sizeof(alloc_t);
 			return (void *)(mem + sizeof(alloc_t));
 		}
@@ -153,8 +153,8 @@ void *impl_malloc(size_t size)
 	last_alloc += sizeof(alloc_t);
 	last_alloc += ALLOC_ALIGN;
 
-	// log_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
-	// log_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc, alloc + sizeof(alloc_t));
+	// trace_debug(MODULE, "Allocated %d bytes from %p to %p", size, alloc + sizeof(alloc_t), alloc + sizeof(alloc_t) + size);
 
 	memory_used += size + ALLOC_ALIGN + sizeof(alloc_t);
 	return (char *)((vaddr_t)alloc + sizeof(alloc_t));

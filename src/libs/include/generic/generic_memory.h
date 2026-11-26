@@ -23,5 +23,5 @@ static INLINE void *memset64(void *s, long long c, size_t n);
 #endif
 int memcmp(const char *cs, const char *ct, size_t num);
 void *memmove(void *dest, const void *src, size_t n);
-int memchr(const char *s, int c, size_t count);
+void *memchr(const char *s, int c, size_t count);
 void *memscan(void *s, int c, size_t size);

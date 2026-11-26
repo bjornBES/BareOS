@@ -12,7 +12,7 @@
 
 #include "vfs/vfs_internals.h"
 
-#include "drivers/base/block/blkdevt.h"
+#include "drivers/block/blkdevt.h"
 
 #include <defs.h>
 #include <types.h>

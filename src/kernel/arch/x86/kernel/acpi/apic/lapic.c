@@ -261,7 +261,7 @@ status_t lapic_timer_cancel(timer_source_t *_)
     // mid-reprogram and fire the old callback on the new state
     lapic_write(LAPIC_REG_TIMER, CPU_TIMER_VECTOR | LAPIC_TIMER_MASKED);
     lapic_write(LAPIC_REG_TIMER_INITIAL, 0);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t lapic_timer_isr(intr_frame_t *frame)
@@ -272,13 +272,13 @@ status_t lapic_timer_isr(intr_frame_t *frame)
 
     if (lapic_priv->callback)
     {
-        // log_debug(MODULE, "apic_id = %u", lapic_priv->id);
+        // trace_debug(MODULE, "apic_id = %u", lapic_priv->id);
         lapic_priv->callback(self);
     }
 
     lapic_eoi();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
@@ -309,11 +309,10 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
 
     if (entry->is_bsp)
     {
-        device_t *lapic = timer_create_device();
-        lapic->init_name = "lapic";
+        device_t *lapic = &lapic_timer->dev;
         lapic->class_data = lapic_timer;
-        device_register(lapic);
-        // timer_register(lapic_timer);
+        status_t ret = device_register_with_name(lapic, "lapic");
+        KERRNO_CHECK_AND_RETURN(ret);
         ivt_set_handler(CPU_TIMER_VECTOR, lapic_timer_isr);
     }
     
@@ -323,6 +322,6 @@ status_t lapic_timer_init(uint32_t lapic_id, cpu_logical_id_t logical_id)
     // set timer to periodic mode
     // lapic_write(LAPIC_REG_TIMER, LAPIC_TIMER_PERIODIC | CPU_TIMER_VECTOR);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 

@@ -37,7 +37,7 @@ status_t input_device_added(device_t *dev)
 
     irq_register_handler(input_dev->irq, IRQ_SOURCE_IRQ, input_handler, input_dev, IRQ_TRIGGER_EDGE, IRQ_POLARITY_HIGH, ANY_CPU);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 status_t input_device_removed(device_t *dev)
 {
@@ -45,12 +45,12 @@ status_t input_device_removed(device_t *dev)
 
     FUNC_NOT_IMPLEMENTED();
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 static const dev_class_t input_class = {
     .name = "input",
-    .type = DEVICE_CHAR,
+    .type = DEVICE_INPUT,
     .device_added = input_device_added,
     .device_removed = input_device_removed,
 };
@@ -133,12 +133,7 @@ status_t input_report_key(input_dev_t *input_dev, key_event_t *key)
     return tty_receive_key(active_tty, key, input_dev->dev.devt);
 }
 
-status_t input_class_register()
-{
-    return class_register(&input_class);
-}
-
-ARCHDONE_INITCALL(input_class_register);
+REGISTER_CLASS(input_class);
 
 input_dev_t *input_create_device()
 {

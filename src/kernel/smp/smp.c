@@ -29,7 +29,11 @@
 
 #define MODULE "smp"
 
-// extern void hexdump(void *ptr, size_t len, size_t size);
+status_t smp_ipi_stop(intr_frame_t *frame)
+{
+    cpu_arch_halt_forever();
+    return KERRNO_SUCCESS;
+}
 
 status_t smp_ipi_call_function_handler(intr_frame_t *frame)
 {
@@ -40,7 +44,7 @@ status_t smp_ipi_call_function_handler(intr_frame_t *frame)
     cpu->func_pending(cpu->func_arg_pending);
     cpu->func_pending = NULL;
     // ivt_dump_frame(frame);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t smp_init(boot_params_t *bp)
@@ -68,8 +72,9 @@ status_t smp_init(boot_params_t *bp)
     cpu_arch_init_bsp();
 
     ivt_set_handler(IPI_CALL_FUNCTION_VECTOR, smp_ipi_call_function_handler);
+    ivt_set_handler(IPI_CPUS_STOP, smp_ipi_stop);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t smp_arch_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), uintptr_t arg)
@@ -84,4 +89,17 @@ status_t smp_arch_call_function(cpu_logical_id_t id, void (*func)(uintptr_t), ui
     {
     }
     return ret;
+}
+
+status_t smp_send_ipi(uint32_t id, interrupt_vector_t vector)
+{
+    return smp_arch_send_ipi(id, vector);
+}
+status_t smp_send_ipi_all(interrupt_vector_t vector)
+{
+    return smp_arch_send_ipi_all(vector);
+}
+status_t smp_send_ipi_others(interrupt_vector_t vector)
+{
+    return smp_arch_send_ipi_others(vector);
 }

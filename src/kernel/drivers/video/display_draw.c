@@ -67,7 +67,7 @@ status_t display_draw_putpixel(const video_framebuffer_t *fb, uint32_t x, uint32
 
     uint8_t *pixel = display_draw_get_address(fb, x, y);
     display_draw_pack_to_buffer(fb, pixel, color_red, color_green, color_blue);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t display_draw_fillrect(const video_framebuffer_t *fb, uint32_t x, uint32_t y, uint32_t w, uint32_t h, color_t color)
@@ -82,7 +82,7 @@ status_t display_draw_fillrect(const video_framebuffer_t *fb, uint32_t x, uint32
         uint8_t *line = display_draw_get_address(fb, x, row);
         display_draw_pack_to_buffer(fb, line, color_red, color_green, color_blue);
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t display_draw_clear(const video_framebuffer_t *fb, color_t color)
@@ -142,7 +142,7 @@ status_t display_draw_blit_mono(const video_framebuffer_t *dst, uint32_t x, uint
     }
     kfree(buffer);
 
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 // Move a rectangle within the same surface (safe when the areas overlap).

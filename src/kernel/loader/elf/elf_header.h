@@ -193,7 +193,7 @@ typedef struct
     elf64_half e_shstrndx;  // section_names_index
 } PACKED elf_header_t;
 
-INTERNAL void to_elf_header(elf_header_t *header, void *_bit_header)
+static void to_elf_header(elf_header_t *header, void *_bit_header)
 {
     elf32_header_t *bit_header = _bit_header;
     if (bit_header->bitness == ELF_CLASS_32)

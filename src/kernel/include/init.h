@@ -21,31 +21,34 @@ typedef void (*exitcall_t)();
 #define DEFINE_INITCALL_WITH_ID(fn, id, __sec)                                                                   \
     static USED SECTION(STRINGIFY(__sec) ".init") initcall_t CONCAT(initcall_##fn, CONCAT(_, __COUNTER__)) = fn;
 
-#define DEFINE_INITCALL(fn, id) DEFINE_INITCALL_WITH_ID(fn, (id), CONCAT(.initcall, id))
+#define DEFINE_INITCALL(fn, id)  DEFINE_INITCALL_WITH_ID(fn, (id), CONCAT(.initcall, id))
 
-#define INITCALL_LVL_EARLY      early
-#define INITCALL_LVL_ARCH       1
-#define INITCALL_LVL_CORE       2
-#define INITCALL_LVL_POSTCORE   3
-#define INITCALL_LVL_ARCHDONE   4
-#define INITCALL_LVL_SUBSYS     5
-#define INITCALL_LVL_FS         6
-#define INITCALL_LVL_ROOTFS     rootfs
-#define INITCALL_LVL_DEVICE     7
-#define INITCALL_LVL_PREUSER    8
+#define INITCALL_LVL_CONSTRUCTOR constr
+#define INITCALL_LVL_EARLY       early
+#define INITCALL_LVL_ALLOCATOR   allocator
+#define INITCALL_LVL_ARCH        1
+#define INITCALL_LVL_CORE        2
+#define INITCALL_LVL_CLASS       class
+#define INITCALL_LVL_POSTCORE    3
+#define INITCALL_LVL_ARCHDONE    4
+#define INITCALL_LVL_SUBSYS      5
+#define INITCALL_LVL_FS          6
+#define INITCALL_LVL_ROOTFS      rootfs
+#define INITCALL_LVL_DEVICE      7
+#define INITCALL_LVL_PREUSER     8
 
-#define INITCALL_LVL_CONSOLE    console
-#define INITCALL_LVL_LOADER     loader
+#define INITCALL_LVL_CONSOLE     console
+#define INITCALL_LVL_LOADER      loader
 
 #define _CALL_INITCALL_FUNCTIONS(_name_)                                                   \
     {                                                                                      \
         extern char _name_;                                                                \
         initcall_t *funcs = (initcall_t *)&_name_;                                         \
-        while (*funcs != NULL)                                                             \
+        while (*funcs)                                                                     \
         {                                                                                  \
             trace_debug("initcall", "running function %p", *funcs);                        \
             status_t ret = (*funcs)();                                                     \
-            if (ret != KERRNO_SUCCESSES)                                                   \
+            if (ret != KERRNO_SUCCESS)                                                     \
             {                                                                              \
                 KERNEL_PANIC("initcall", "init function at %p returned non zero", *funcs); \
             }                                                                              \
@@ -55,11 +58,15 @@ typedef void (*exitcall_t)();
 
 #define CALL_INITCALL_FUNCTIONS(lvl) _CALL_INITCALL_FUNCTIONS(CONCAT(initcall, CONCAT(lvl, _start)))
 
+#define CONSTRUCTOR_INITCALL(fn)     DEFINE_INITCALL(fn, INITCALL_LVL_CONSTRUCTOR)
 #define EARLY_INITCALL(fn)           DEFINE_INITCALL(fn, INITCALL_LVL_EARLY)
+#define ALLOCATOR_INITCALL(fn)       DEFINE_INITCALL(fn, INITCALL_LVL_ALLOCATOR)
 #define ARCH_INITCALL(fn)            DEFINE_INITCALL(fn, INITCALL_LVL_ARCH)
 
 // After paging has been initialized
 #define CORE_INITCALL(fn)            DEFINE_INITCALL(fn, INITCALL_LVL_CORE)
+
+#define CLASS_INITCALL(fn)           DEFINE_INITCALL(fn, INITCALL_LVL_CLASS)
 
 // After rsdt parsing and after moving the boot params
 #define POSTCORE_INITCALL(fn)        DEFINE_INITCALL(fn, INITCALL_LVL_POSTCORE)

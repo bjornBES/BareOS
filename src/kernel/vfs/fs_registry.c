@@ -27,11 +27,11 @@ status_t vfs_fs_init()
 {
     list_initialize(&fs_list);
     status_t ret = hash_map_create(&hash, CONFIG_INITIAL_FS_SIZE);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 POSTCORE_INITCALL(vfs_fs_init);
@@ -40,30 +40,30 @@ status_t vfs_fs_register(filesystem_t *fs)
 {
     ENTER_FUNC("%p", fs);
     status_t ret = hash_insert(hash, fs->name, fs);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     trace_debug(MODULE, "hash add returned %u", ret);
     ret = ADD_THIS_TO_LIST(fs_list, fs);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     trace_debug(MODULE, "list add returned %u", ret);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_fs_find(const char *name, filesystem_t **out_fs)
 {
     hash_node_t *hash_node;
     status_t ret = hash_search(hash, (char *)name, &hash_node);
-    if (ret != KERRNO_SUCCESSES)
+    if (ret != KERRNO_SUCCESS)
     {
         return ret;
     }
     *out_fs = hash_node->value;
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
@@ -86,11 +86,11 @@ status_t vfs_fs_probe(device_t *dev, filesystem_t **out_fs)
             continue;
         }
         trace_debug(MODULE, "fs->probe = %p", fs->probe);
-        if (fs->probe(dev) == KERRNO_SUCCESSES)
+        if (fs->probe(dev) == KERRNO_SUCCESS)
         {
             trace_debug(MODULE, "found fs = %p", fs);
             *out_fs = fs;
-            return KERRNO_SUCCESSES;
+            return KERRNO_SUCCESS;
         }
         trace_debug(MODULE, "node = %p", node);
         node = node->prev;

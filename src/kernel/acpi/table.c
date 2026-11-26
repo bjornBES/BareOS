@@ -63,7 +63,7 @@ status_t table_verify_checksum(sdt_header_t *header)
 
     if (sum == 0)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     return 1;
 }

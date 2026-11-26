@@ -10,11 +10,9 @@
 
 #pragma once
 
-#include "device_id.h"
+#include "drivers/base/core_types.h"
 
-#include "drivers/base/drivert.h"
-#include "drivers/base/bust.h"
-#include "drivers/base/classt.h"
+#include "device_id.h"
 
 #include "vfs/vfs_internals.h"
 
@@ -45,6 +43,14 @@ typedef enum device_flags
 
 typedef struct device device_t;
 
+typedef struct device_type
+{
+    const char *name;
+    // int (*uevent)(const struct device *dev, struct kobj_uevent_env *env);
+    // char *(*devnode)(const struct device *dev, umode_t *mode, kuid_t *uid, kgid_t *gid);
+    status_t (*release)(device_t *dev);
+} device_type_t;
+
 typedef struct device_ops
 {
     status_t (*read)(device_t *dev, void *buf, size_t len, off_t off, ssize_t *size_out);
@@ -55,20 +61,28 @@ typedef struct device_ops
     // int     (*mmap)(device_t *dev, struct vm_area *vma);   // for framebuffers, DMA regions exposed to userspace
 
     status_t (*destroy)(device_t *dev); // cleanup
+    status_t (*release)(device_t *dev);
     // void (*tty_ops)(device_t *dev, tty_dev_ops_t *out);
 } device_ops_t;
+
 typedef struct device
 {
     LIST_ENTRY_THIS();
     char name[DEVICE_NAME_MAX]; // built on register
-    char *init_name;      // set by driver
+    char *init_name;            // set by driver
 
-    void *bus_id;
+    spinlock_t dev_spinlock;
+
+    device_type_t *type;
+    
+    struct device *parent;
+    struct device *controller;
+    list_t children;
+
+    device_ops_t ops;
 
     uint32_t id;
-    device_id_t devt;       // opaque, generic-assigned
-    struct device *parent;
-    device_ops_t ops;
+    device_id_t devt; // opaque, generic-assigned
 
     bus_type_t *bus;
 
@@ -78,9 +92,12 @@ typedef struct device
     const dev_class_t *class;
     void *class_data;
 
-    uint32_t flags;
+    refcount_t refcount;
 
-    list_t children;
+    uint8_t dead : 1;
+    uint8_t registered : 1;
+
+    uint32_t flags;
 } device_t;
 
 THIS_TO_TYPE_DEF(device_t);
@@ -116,3 +133,11 @@ CREATE_DEV_FLAG_ACCESSORS(is_char, DEV_FLAG_CHAR_DEV);
 
 #undef CREATE_DEV_FLAG_ACCESSORS
 
+typedef struct device_info
+{
+    char *init_name;
+    char name[DEVICE_NAME_MAX];
+    device_id_t dev_id;
+    device_t *parent;
+    driver_t *driver;
+} device_info_t;

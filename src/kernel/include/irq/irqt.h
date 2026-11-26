@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "interrupt/interrupt_flags.h"
+
 #include "asm/frame_arch.h"
 
 #include "irq_controller.h"

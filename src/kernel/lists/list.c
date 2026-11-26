@@ -68,7 +68,7 @@ status_t list_push_head(list_t *list, list_node_t *node)
         cur = cur->next;
     }
     spinlock_release_log(&list->list_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t list_push_tail(list_t *list, list_node_t *node)
@@ -106,7 +106,7 @@ status_t list_push_tail(list_t *list, list_node_t *node)
     list->tail = node;
     list->count++;
     spinlock_release_log(&list->list_lock);
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 INTERNAL status_t list_internal_reindex(list_t *list)
@@ -121,7 +121,7 @@ INTERNAL status_t list_internal_reindex(list_t *list)
     }
     if (list->count == 0)
     {
-        return KERRNO_SUCCESSES;
+        return KERRNO_SUCCESS;
     }
     // reindex everyone after the new head, tail included
     list->head->curr_index = 0;
@@ -137,7 +137,7 @@ INTERNAL status_t list_internal_reindex(list_t *list)
         priv = cur;
         cur = cur->next;
     }
-    return KERRNO_SUCCESSES;
+    return KERRNO_SUCCESS;
 }
 
 status_t list_reindex(list_t *list)

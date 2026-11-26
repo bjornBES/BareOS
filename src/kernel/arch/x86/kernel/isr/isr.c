@@ -101,6 +101,10 @@ void stack_trace(uint32_t max_frames)
         {
             break;
         }
+        if (frame->ip < 0xffffffff80000000)
+        {
+            break;
+        }
         if (frame->bp == 0)
         {
             break;
@@ -131,7 +135,7 @@ void isr_handler(intr_frame_t *frame)
     {
         frame_arch_dump_frame(frame);
 
-        log_crit(MODULE, "Unhandled exception %d %s 0x%x", vector, exception_names[vector], frame->error);
+        trace_crit(MODULE, "Unhandled exception %d %s 0x%x", vector, exception_names[vector], frame->error);
         KERNEL_PANIC(MODULE, "Unhandled exception %d", vector);
     }
 

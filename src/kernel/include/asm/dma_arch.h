@@ -26,7 +26,7 @@
 /// @brief Will map the contiguous physical frames
 /// @param dma
 /// @param size
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 status_t dma_arch_map(dma_t *dma, size_t size);
 
 /// @brief
@@ -34,7 +34,7 @@ status_t dma_arch_map(dma_t *dma, size_t size);
 /// @param[in] src
 /// @param[in] size
 /// @param[out] out_size
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 status_t dma_arch_copy_from(dma_t *dma, void *src, size_t size, size_t *out_size);
 
 /// @brief
@@ -42,7 +42,7 @@ status_t dma_arch_copy_from(dma_t *dma, void *src, size_t size, size_t *out_size
 /// @param[in] dst
 /// @param[in] size
 /// @param[out] out_size
-/// @return KERRNO_SUCCESSES on successes or an kerrno number
+/// @return KERRNO_SUCCESS on successes or an kerrno number
 status_t dma_arch_copy_to(dma_t *dma, void *dst, size_t size, size_t *out_size);
 
 #if CONFIG_DMA == 0
